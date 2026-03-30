@@ -184,6 +184,11 @@ function loadCurriculumYearsByProgram(string $filePath): array {
 $coordinatorProgramRaw = '';
 $coordinatorProgramCode = '';
 $programConfigNotice = '';
+$pageLoadError = '';
+$existing = [];
+$curriculumCatalog = [];
+$availableCurriculumYears = [];
+$currentCurriculumYear = '';
 $programs = [
   'BSIndT' => 'BS Industrial Technology',
   'BSCpE'  => 'BS Computer Engineering',
@@ -199,123 +204,118 @@ $programs = [
 $bridgeLoaded = false;
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
-if (getenv('USE_LARAVEL_BRIDGE') === '1') {
-  $bridgeData = postLaravelJsonBridge(
-    'http://localhost/ASPLAN_v10/laravel-app/public/api/program-coordinator/curriculum-management/bootstrap',
-    [
-      'bridge_authorized' => true,
-      'is_admin' => $isAdmin,
-      'username' => $_SESSION['username'] ?? '',
-      'program' => trim((string)($_GET['program'] ?? '')),
-    ]
-  );
+try {
+  if (getenv('USE_LARAVEL_BRIDGE') === '1') {
+    $bridgeData = postLaravelJsonBridge(
+      'http://localhost/ASPLAN_v10/laravel-app/public/api/program-coordinator/curriculum-management/bootstrap',
+      [
+        'bridge_authorized' => true,
+        'is_admin' => $isAdmin,
+        'username' => $_SESSION['username'] ?? '',
+        'program' => trim((string)($_GET['program'] ?? '')),
+      ]
+    );
 
-  if (is_array($bridgeData) && !empty($bridgeData['success'])) {
-    $coordinatorProgramRaw = (string)($bridgeData['coordinator_program_raw'] ?? '');
-    $coordinatorProgramCode = (string)($bridgeData['coordinator_program_code'] ?? '');
-    $programConfigNotice = (string)($bridgeData['program_config_notice'] ?? '');
-    $existing = isset($bridgeData['existing']) && is_array($bridgeData['existing']) ? $bridgeData['existing'] : [];
-    $curriculumCatalog = isset($bridgeData['curriculum_catalog']) && is_array($bridgeData['curriculum_catalog']) ? $bridgeData['curriculum_catalog'] : [];
-    $bridgeLoaded = true;
-  }
-}
-
-if (!$bridgeLoaded) {
-$pcTable = resolveProgramCoordinatorTable($conn);
-if (!$isAdmin && $pcTable !== null) {
-  $username = $_SESSION['username'];
-
-  if (tableHasColumn($conn, $pcTable, 'program')) {
-    $stmt = $conn->prepare("SELECT program FROM `$pcTable` WHERE username = ? LIMIT 1");
-    if ($stmt) {
-      $stmt->bind_param('s', $username);
-      $stmt->execute();
-      $res = $stmt->get_result();
-      if ($res && $res->num_rows > 0) {
-        $row = $res->fetch_assoc();
-        $coordinatorProgramRaw = trim((string)($row['program'] ?? ''));
-        $coordinatorProgramCode = normalizeProgramCode($coordinatorProgramRaw);
-      }
-      $stmt->close();
+    if (is_array($bridgeData) && !empty($bridgeData['success'])) {
+      $coordinatorProgramRaw = (string)($bridgeData['coordinator_program_raw'] ?? '');
+      $coordinatorProgramCode = (string)($bridgeData['coordinator_program_code'] ?? '');
+      $programConfigNotice = (string)($bridgeData['program_config_notice'] ?? '');
+      $existing = isset($bridgeData['existing']) && is_array($bridgeData['existing']) ? $bridgeData['existing'] : [];
+      $curriculumCatalog = isset($bridgeData['curriculum_catalog']) && is_array($bridgeData['curriculum_catalog']) ? $bridgeData['curriculum_catalog'] : [];
+      $bridgeLoaded = true;
     }
-  } else {
-    // Backward compatibility when program_coordinator table has no program column.
-    $fallback = $conn->prepare("SELECT program FROM adviser WHERE username = ? LIMIT 1");
-    if ($fallback) {
-      $fallback->bind_param('s', $username);
-      $fallback->execute();
-      $fallbackRes = $fallback->get_result();
-      if ($fallbackRes && $fallbackRes->num_rows > 0) {
-        $fallbackRow = $fallbackRes->fetch_assoc();
-        $coordinatorProgramRaw = trim((string)($fallbackRow['program'] ?? ''));
-        $coordinatorProgramCode = normalizeProgramCode($coordinatorProgramRaw);
-        $programConfigNotice = 'Program source fallback is active (adviser table).';
+  }
+
+  if (!$bridgeLoaded) {
+    $pcTable = resolveProgramCoordinatorTable($conn);
+    if (!$isAdmin && $pcTable !== null) {
+      $username = $_SESSION['username'];
+
+      if (tableHasColumn($conn, $pcTable, 'program')) {
+        $stmt = $conn->prepare("SELECT program FROM `$pcTable` WHERE username = ? LIMIT 1");
+        if ($stmt) {
+          $stmt->bind_param('s', $username);
+          $stmt->execute();
+          $res = $stmt->get_result();
+          if ($res && $res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $coordinatorProgramRaw = trim((string)($row['program'] ?? ''));
+            $coordinatorProgramCode = normalizeProgramCode($coordinatorProgramRaw);
+          }
+          $stmt->close();
+        }
       } else {
-        $programConfigNotice = 'Program is not configured for this account.';
+        $fallback = $conn->prepare("SELECT program FROM adviser WHERE username = ? LIMIT 1");
+        if ($fallback) {
+          $fallback->bind_param('s', $username);
+          $fallback->execute();
+          $fallbackRes = $fallback->get_result();
+          if ($fallbackRes && $fallbackRes->num_rows > 0) {
+            $fallbackRow = $fallbackRes->fetch_assoc();
+            $coordinatorProgramRaw = trim((string)($fallbackRow['program'] ?? ''));
+            $coordinatorProgramCode = normalizeProgramCode($coordinatorProgramRaw);
+            $programConfigNotice = 'Program source fallback is active (adviser table).';
+          } else {
+            $programConfigNotice = 'Program is not configured for this account.';
+          }
+          $fallback->close();
+        } else {
+          $programConfigNotice = 'Unable to load coordinator program configuration.';
+        }
       }
-      $fallback->close();
-    } else {
-      $programConfigNotice = 'Unable to load coordinator program configuration.';
+    }
+
+    if ($isAdmin) {
+      $requestedProgram = trim((string)($_GET['program'] ?? ''));
+      if ($requestedProgram !== '' && isset($programs[$requestedProgram])) {
+        $coordinatorProgramCode = $requestedProgram;
+      }
+      if ($coordinatorProgramCode === '') {
+        $coordinatorProgramCode = 'BSCS';
+      }
+      $coordinatorProgramRaw = $programs[$coordinatorProgramCode] ?? $coordinatorProgramCode;
     }
   }
-}
 
-if ($isAdmin) {
-  $requestedProgram = trim((string)($_GET['program'] ?? ''));
-  if ($requestedProgram !== '' && isset($programs[$requestedProgram])) {
-    $coordinatorProgramCode = $requestedProgram;
-  }
-  if ($coordinatorProgramCode === '') {
-    $coordinatorProgramCode = 'BSCS';
-  }
-  $coordinatorProgramRaw = $programs[$coordinatorProgramCode] ?? $coordinatorProgramCode;
-}
-}
-
-// Get existing curriculum years per program for reference
-$existing = [];
-$r = $conn->query("SELECT DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) AS cy, programs FROM cvsucarmona_courses ORDER BY cy DESC");
-if ($r) {
-  while ($row = $r->fetch_assoc()) {
-    $normalizedYear = normalizeCurriculumYear((string)($row['cy'] ?? ''));
-    if ($normalizedYear === '') {
-      continue;
-    }
+  $r = $conn->query("SELECT DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) AS cy, programs FROM cvsucarmona_courses ORDER BY cy DESC");
+  if ($r) {
+    while ($row = $r->fetch_assoc()) {
+      $normalizedYear = normalizeCurriculumYear((string)($row['cy'] ?? ''));
+      if ($normalizedYear === '') {
+        continue;
+      }
 
       $progs = array_map('trim', explode(',', $row['programs']));
       foreach ($progs as $p) {
         appendCurriculumYear($existing, $p, $normalizedYear);
       }
-  }
-}
-
-// Include program-year pairs saved even when no courses are added yet.
-$conn->query(
-  "CREATE TABLE IF NOT EXISTS program_curriculum_years (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    program VARCHAR(64) NOT NULL,
-    curriculum_year CHAR(4) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uniq_program_year (program, curriculum_year)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-);
-
-$yearOnlyRes = $conn->query("SELECT program, curriculum_year FROM program_curriculum_years");
-if ($yearOnlyRes) {
-  while ($row = $yearOnlyRes->fetch_assoc()) {
-    $program = trim((string)($row['program'] ?? ''));
-    $year = normalizeCurriculumYear((string)($row['curriculum_year'] ?? ''));
-    if ($program === '' || $year === '') {
-      continue;
     }
-
-    appendCurriculumYear($existing, $program, $year);
   }
-}
 
-  // Preload curriculum rows for in-page checklist viewing.
-  $curriculumCatalog = [];
+  $conn->query(
+    "CREATE TABLE IF NOT EXISTS program_curriculum_years (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      program VARCHAR(64) NOT NULL,
+      curriculum_year CHAR(4) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_program_year (program, curriculum_year)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+  );
+
+  $yearOnlyRes = $conn->query("SELECT program, curriculum_year FROM program_curriculum_years");
+  if ($yearOnlyRes) {
+    while ($row = $yearOnlyRes->fetch_assoc()) {
+      $program = trim((string)($row['program'] ?? ''));
+      $year = normalizeCurriculumYear((string)($row['curriculum_year'] ?? ''));
+      if ($program === '' || $year === '') {
+        continue;
+      }
+
+      appendCurriculumYear($existing, $program, $year);
+    }
+  }
+
   if ($coordinatorProgramCode !== '') {
     $stmt = $conn->prepare(
       "SELECT curriculumyear_coursecode, course_title, year_level, semester,
@@ -374,19 +374,6 @@ if ($yearOnlyRes) {
     }
   }
 
-$conn->close();
-
-$roleLabel = $isAdmin ? 'Admin' : 'Program Coordinator';
-$panelTitle = $isAdmin ? 'Admin Panel' : 'Program Coordinator Panel';
-$dashboardHref = $isAdmin ? '../admin/index.php' : 'index.php';
-$programOptions = is_array($programs) ? $programs : [];
-if (!empty($programOptions)) {
-  asort($programOptions, SORT_NATURAL | SORT_FLAG_CASE);
-}
-
-  $availableCurriculumYears = [];
-  $currentCurriculumYear = '';
-
   if ($coordinatorProgramCode !== '') {
     $fromExisting = $existing[$coordinatorProgramCode] ?? [];
     if (!empty($fromExisting)) {
@@ -404,6 +391,31 @@ if (!empty($programOptions)) {
       $currentCurriculumYear = (string)end($existingSorted);
     }
   }
+} catch (Throwable $e) {
+  if (function_exists('elsError')) {
+    elsError('Curriculum management bootstrap failed', [
+      'message' => $e->getMessage(),
+      'file' => $e->getFile(),
+      'line' => $e->getLine(),
+    ], 'program_coordinator');
+  } else {
+    error_log('Curriculum management bootstrap failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+  }
+  $pageLoadError = 'Unable to load curriculum management data right now.';
+  if ($programConfigNotice === '') {
+    $programConfigNotice = $pageLoadError;
+  }
+}
+
+$conn->close();
+
+$roleLabel = $isAdmin ? 'Admin' : 'Program Coordinator';
+$panelTitle = $isAdmin ? 'Admin Panel' : 'Program Coordinator Panel';
+$dashboardHref = $isAdmin ? '../admin/index.php' : 'index.php';
+$programOptions = is_array($programs) ? $programs : [];
+if (!empty($programOptions)) {
+  asort($programOptions, SORT_NATURAL | SORT_FLAG_CASE);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
