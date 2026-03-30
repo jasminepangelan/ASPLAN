@@ -350,40 +350,7 @@ closeDBConnection($conn);
         }
 
         .content {
-            padding: 30px;
-        }
-
-        .page-header {
-            background: white;
-            padding: 20px 30px;
-            margin: -30px -30px 30px -30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .page-header h1 {
-            color: #333;
-            font-size: 24px;
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .page-back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            border-radius: 10px;
-            background: #e7f1e6;
-            color: #1a4f16;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 14px;
-            border: 1px solid #d5e4d3;
+            padding: 18px 30px 30px;
         }
 
         .container {
@@ -758,11 +725,6 @@ closeDBConnection($conn);
     </div>
 
     <div class="main-content expanded" id="mainContent">
-        <div class="page-header">
-            <h1>Edit Student Profile</h1>
-            <a href="list_of_students.php" class="page-back-link">Back to Student List</a>
-        </div>
-
         <div class="content">
             <div class="container">
                 <div class="title">Student Profile</div>
