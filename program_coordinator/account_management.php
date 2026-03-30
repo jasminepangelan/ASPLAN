@@ -72,6 +72,7 @@ $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $requiredFields = ['last_name', 'first_name', 'email', 'contact_no', 'address', 'admission_date'];
     $missingFields = [];
+    $hasPictureUpload = isset($_FILES['picture']) && (($_FILES['picture']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK);
     foreach ($requiredFields as $field) {
         if (empty($_POST[$field])) {
             $missingFields[] = $field;
@@ -89,29 +90,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         } else {
             $bridgeHandled = false;
 
-            if ($useLaravelBridge) {
+            // Handle picture uploads locally so the saved file lives in the same
+            // service that renders the image path for the coordinator page.
+            if ($useLaravelBridge && !$hasPictureUpload) {
                 $payloadFields = $_POST;
                 $payloadFields['profile_context'] = 'program_coordinator';
 
-                $bridgeData = null;
-                if (isset($_FILES['picture']) && ($_FILES['picture']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-                    $bridgeData = postLaravelMultipartBridge(
-                        'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',
-                        $payloadFields,
-                        [
-                            'picture' => [
-                                'path' => (string)$_FILES['picture']['tmp_name'],
-                                'name' => (string)$_FILES['picture']['name'],
-                                'mime' => (string)($_FILES['picture']['type'] ?? 'application/octet-stream'),
-                            ],
-                        ]
-                    );
-                } else {
-                    $bridgeData = postLaravelJsonBridge(
-                        'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',
-                        $payloadFields
-                    );
-                }
+                $bridgeData = postLaravelJsonBridge(
+                    'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',
+                    $payloadFields
+                );
 
                 if (is_array($bridgeData) && array_key_exists('success', $bridgeData)) {
                     $bridgeHandled = true;
@@ -131,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     $message = 'Error updating profile: ' . (string)$updateResult['error'];
                     $messageType = 'error';
                 } else {
-                    if (isset($_FILES['picture']) && ($_FILES['picture']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                    if ($hasPictureUpload) {
                         $pictureResult = spsUpdateProfilePicture($studentId, $_FILES['picture'], $conn);
                         if (!$pictureResult['success']) {
                             $message = 'Profile updated (with warning: ' . (string)$pictureResult['error'] . ')';
