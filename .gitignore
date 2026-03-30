@@ -34,6 +34,8 @@ cache/
 debug_*.php
 test_*.php
 check_*.php
+!auth/check_auto_login.php
+!auth/check_remember_me.php
 fix_*.php
 
 # Database Files
