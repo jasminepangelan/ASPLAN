@@ -7,7 +7,7 @@ if (!isset($_SESSION['username']) || (isset($_SESSION['user_type']) && $_SESSION
     exit();
 }
 
-function resolveProgramCoordinatorTable(mysqli $conn): ?string {
+function resolveProgramCoordinatorTable($conn): ?string {
     $singular = $conn->query("SHOW TABLES LIKE 'program_coordinator'");
     if ($singular && $singular->num_rows > 0) {
         return 'program_coordinator';
@@ -21,7 +21,7 @@ function resolveProgramCoordinatorTable(mysqli $conn): ?string {
     return null;
 }
 
-function tableHasColumn(mysqli $conn, string $table, string $column): bool {
+function tableHasColumn($conn, string $table, string $column): bool {
     $tableSafe = $conn->real_escape_string($table);
     $columnSafe = $conn->real_escape_string($column);
     $result = $conn->query("SHOW COLUMNS FROM `$tableSafe` LIKE '$columnSafe'");
