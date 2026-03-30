@@ -11,6 +11,23 @@
 require_once __DIR__ . '/../includes/env_loader.php';
 
 if (!function_exists('firstEnvValue')) {
+    function readEnvValue($key) {
+        $value = getenv($key);
+        if ($value !== false && $value !== null && $value !== '') {
+            return $value;
+        }
+
+        if (isset($_ENV[$key]) && $_ENV[$key] !== '') {
+            return $_ENV[$key];
+        }
+
+        if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') {
+            return $_SERVER[$key];
+        }
+
+        return '';
+    }
+
     function normalizeEnvValue($value) {
         if ($value === false || $value === null) {
             return '';
@@ -38,7 +55,7 @@ if (!function_exists('firstEnvValue')) {
 
     function firstEnvValue(array $keys, $default = '') {
         foreach ($keys as $key) {
-            $value = normalizeEnvValue(getenv($key));
+            $value = normalizeEnvValue(readEnvValue($key));
             if ($value !== '') {
                 return $value;
             }
