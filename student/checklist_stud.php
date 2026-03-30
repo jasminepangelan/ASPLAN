@@ -12,19 +12,16 @@ $conn = getDBConnection();
 if (!function_exists('ensureStudentChecklistColumn')) {
     function ensureStudentChecklistColumn($conn, $columnName, $definition)
     {
-        $stmt = $conn->prepare("SHOW COLUMNS FROM student_checklists LIKE ?");
-        if (!$stmt) {
+        $safeColumnName = preg_replace('/[^A-Za-z0-9_]/', '', (string) $columnName);
+        if ($safeColumnName === '') {
             return;
         }
 
-        $stmt->bind_param('s', $columnName);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        $result = $conn->query("SHOW COLUMNS FROM student_checklists LIKE '" . $safeColumnName . "'");
         $exists = $result && $result->num_rows > 0;
-        $stmt->close();
 
         if (!$exists) {
-            $conn->query("ALTER TABLE student_checklists ADD COLUMN {$columnName} {$definition}");
+            $conn->query("ALTER TABLE student_checklists ADD COLUMN {$safeColumnName} {$definition}");
         }
     }
 }
