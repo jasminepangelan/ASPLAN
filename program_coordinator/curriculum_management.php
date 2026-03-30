@@ -227,30 +227,36 @@ if (!$isAdmin && $pcTable !== null) {
 
   if (tableHasColumn($conn, $pcTable, 'program')) {
     $stmt = $conn->prepare("SELECT program FROM `$pcTable` WHERE username = ? LIMIT 1");
-    $stmt->bind_param('s', $username);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($res && $res->num_rows > 0) {
-      $row = $res->fetch_assoc();
-      $coordinatorProgramRaw = trim((string)($row['program'] ?? ''));
-      $coordinatorProgramCode = normalizeProgramCode($coordinatorProgramRaw);
+    if ($stmt) {
+      $stmt->bind_param('s', $username);
+      $stmt->execute();
+      $res = $stmt->get_result();
+      if ($res && $res->num_rows > 0) {
+        $row = $res->fetch_assoc();
+        $coordinatorProgramRaw = trim((string)($row['program'] ?? ''));
+        $coordinatorProgramCode = normalizeProgramCode($coordinatorProgramRaw);
+      }
+      $stmt->close();
     }
-    $stmt->close();
   } else {
     // Backward compatibility when program_coordinator table has no program column.
     $fallback = $conn->prepare("SELECT program FROM adviser WHERE username = ? LIMIT 1");
-    $fallback->bind_param('s', $username);
-    $fallback->execute();
-    $fallbackRes = $fallback->get_result();
-    if ($fallbackRes && $fallbackRes->num_rows > 0) {
-      $fallbackRow = $fallbackRes->fetch_assoc();
-      $coordinatorProgramRaw = trim((string)($fallbackRow['program'] ?? ''));
-      $coordinatorProgramCode = normalizeProgramCode($coordinatorProgramRaw);
-      $programConfigNotice = 'Program source fallback is active (adviser table).';
+    if ($fallback) {
+      $fallback->bind_param('s', $username);
+      $fallback->execute();
+      $fallbackRes = $fallback->get_result();
+      if ($fallbackRes && $fallbackRes->num_rows > 0) {
+        $fallbackRow = $fallbackRes->fetch_assoc();
+        $coordinatorProgramRaw = trim((string)($fallbackRow['program'] ?? ''));
+        $coordinatorProgramCode = normalizeProgramCode($coordinatorProgramRaw);
+        $programConfigNotice = 'Program source fallback is active (adviser table).';
+      } else {
+        $programConfigNotice = 'Program is not configured for this account.';
+      }
+      $fallback->close();
     } else {
-      $programConfigNotice = 'Program is not configured for this account.';
+      $programConfigNotice = 'Unable to load coordinator program configuration.';
     }
-    $fallback->close();
   }
 }
 
@@ -269,16 +275,18 @@ if ($isAdmin) {
 // Get existing curriculum years per program for reference
 $existing = [];
 $r = $conn->query("SELECT DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) AS cy, programs FROM cvsucarmona_courses ORDER BY cy DESC");
-while ($row = $r->fetch_assoc()) {
-  $normalizedYear = normalizeCurriculumYear((string)($row['cy'] ?? ''));
-  if ($normalizedYear === '') {
-    continue;
-  }
-
-    $progs = array_map('trim', explode(',', $row['programs']));
-    foreach ($progs as $p) {
-      appendCurriculumYear($existing, $p, $normalizedYear);
+if ($r) {
+  while ($row = $r->fetch_assoc()) {
+    $normalizedYear = normalizeCurriculumYear((string)($row['cy'] ?? ''));
+    if ($normalizedYear === '') {
+      continue;
     }
+
+      $progs = array_map('trim', explode(',', $row['programs']));
+      foreach ($progs as $p) {
+        appendCurriculumYear($existing, $p, $normalizedYear);
+      }
+  }
 }
 
 // Include program-year pairs saved even when no courses are added yet.
@@ -316,52 +324,54 @@ if ($yearOnlyRes) {
        WHERE FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
        ORDER BY curriculumyear_coursecode"
     );
-    $stmt->bind_param('s', $coordinatorProgramCode);
-    $stmt->execute();
-    $rows = $stmt->get_result();
+    if ($stmt) {
+      $stmt->bind_param('s', $coordinatorProgramCode);
+      $stmt->execute();
+      $rows = $stmt->get_result();
 
-    while ($row = $rows->fetch_assoc()) {
-      $key = (string)($row['curriculumyear_coursecode'] ?? '');
-      $parts = explode('_', $key, 2);
-      $yearToken = $parts[0] ?? '';
-      $normalizedYear = normalizeCurriculumYear($yearToken);
-      if ($normalizedYear === '') {
-        continue;
-      }
-
-      $courseCode = normalizeDisplayCourseCode((string)($parts[1] ?? $key));
-      $yearLevel = (string)($row['year_level'] ?? '');
-      $semester = (string)($row['semester'] ?? '');
-
-      if (!isset($curriculumCatalog[$normalizedYear])) {
-        $curriculumCatalog[$normalizedYear] = [];
-      }
-      if (!isset($curriculumCatalog[$normalizedYear][$yearLevel])) {
-        $curriculumCatalog[$normalizedYear][$yearLevel] = [];
-      }
-      if (!isset($curriculumCatalog[$normalizedYear][$yearLevel][$semester])) {
-        $curriculumCatalog[$normalizedYear][$yearLevel][$semester] = [];
-      }
-
-      foreach ($curriculumCatalog[$normalizedYear][$yearLevel][$semester] as $existingCourse) {
-        if (($existingCourse['course_code'] ?? '') === $courseCode) {
-          continue 2;
+      while ($rows && ($row = $rows->fetch_assoc())) {
+        $key = (string)($row['curriculumyear_coursecode'] ?? '');
+        $parts = explode('_', $key, 2);
+        $yearToken = $parts[0] ?? '';
+        $normalizedYear = normalizeCurriculumYear($yearToken);
+        if ($normalizedYear === '') {
+          continue;
         }
+
+        $courseCode = normalizeDisplayCourseCode((string)($parts[1] ?? $key));
+        $yearLevel = (string)($row['year_level'] ?? '');
+        $semester = (string)($row['semester'] ?? '');
+
+        if (!isset($curriculumCatalog[$normalizedYear])) {
+          $curriculumCatalog[$normalizedYear] = [];
+        }
+        if (!isset($curriculumCatalog[$normalizedYear][$yearLevel])) {
+          $curriculumCatalog[$normalizedYear][$yearLevel] = [];
+        }
+        if (!isset($curriculumCatalog[$normalizedYear][$yearLevel][$semester])) {
+          $curriculumCatalog[$normalizedYear][$yearLevel][$semester] = [];
+        }
+
+        foreach ($curriculumCatalog[$normalizedYear][$yearLevel][$semester] as $existingCourse) {
+          if (($existingCourse['course_code'] ?? '') === $courseCode) {
+            continue 2;
+          }
+        }
+
+        $curriculumCatalog[$normalizedYear][$yearLevel][$semester][] = [
+          'curriculum_key' => $key,
+          'course_code' => $courseCode,
+          'course_title' => (string)($row['course_title'] ?? ''),
+          'credit_units_lec' => (int)($row['credit_units_lec'] ?? 0),
+          'credit_units_lab' => (int)($row['credit_units_lab'] ?? 0),
+          'lect_hrs_lec' => (int)($row['lect_hrs_lec'] ?? 0),
+          'lect_hrs_lab' => (int)($row['lect_hrs_lab'] ?? 0),
+          'pre_requisite' => (string)($row['pre_requisite'] ?? 'NONE'),
+        ];
       }
 
-      $curriculumCatalog[$normalizedYear][$yearLevel][$semester][] = [
-        'curriculum_key' => $key,
-        'course_code' => $courseCode,
-        'course_title' => (string)($row['course_title'] ?? ''),
-        'credit_units_lec' => (int)($row['credit_units_lec'] ?? 0),
-        'credit_units_lab' => (int)($row['credit_units_lab'] ?? 0),
-        'lect_hrs_lec' => (int)($row['lect_hrs_lec'] ?? 0),
-        'lect_hrs_lab' => (int)($row['lect_hrs_lab'] ?? 0),
-        'pre_requisite' => (string)($row['pre_requisite'] ?? 'NONE'),
-      ];
+      $stmt->close();
     }
-
-    $stmt->close();
   }
 
 $conn->close();
