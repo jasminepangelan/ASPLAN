@@ -161,8 +161,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 $conn = null;
 
 try {
-    $conn = getDBConnection();
-
     $rateLimit = checkRateLimit('login');
     if (!$rateLimit['allowed']) {
         sendJsonResponse([
@@ -187,19 +185,7 @@ try {
 
     if ($username === '' || $password === '') {
         recordAttempt('login');
-        if ($username !== '') {
-            registerFailedLoginAttempt($conn, $username);
-        }
         sendJsonResponse(['status' => 'error', 'message' => 'Student ID/Username or password cannot be empty.']);
-    }
-
-    $accountLockStatus = getAccountLockoutStatus($conn, $username);
-    if (!empty($accountLockStatus['locked'])) {
-        $minutes = (int) ceil(((int) ($accountLockStatus['remaining_seconds'] ?? 0)) / 60);
-        sendJsonResponse([
-            'status' => 'rate_limited',
-            'message' => 'This account is temporarily locked due to repeated failed logins. Try again in ' . max(1, $minutes) . ' minute(s).',
-        ]);
     }
 
     if ($useLaravelAuthBridge) {
@@ -212,7 +198,6 @@ try {
         if (is_array($bridgeData) && isset($bridgeData['status'])) {
             if ($bridgeData['status'] === 'success') {
                 resetRateLimit('login');
-                clearAccountLockout($conn, $username);
                 session_regenerate_id(true);
 
                 if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
@@ -235,16 +220,24 @@ try {
 
             if ($bridgeData['status'] === 'error') {
                 recordAttempt('login');
-                registerFailedLoginAttempt($conn, $username);
-                closeDBConnection($conn);
                 sendJsonResponse($bridgeData);
             }
 
             if (in_array($bridgeData['status'], ['pending', 'rejected', 'rate_limited', 'session_expired'], true)) {
-                closeDBConnection($conn);
                 sendJsonResponse($bridgeData);
             }
         }
+    }
+
+    $conn = getDBConnection();
+
+    $accountLockStatus = getAccountLockoutStatus($conn, $username);
+    if (!empty($accountLockStatus['locked'])) {
+        $minutes = (int) ceil(((int) ($accountLockStatus['remaining_seconds'] ?? 0)) / 60);
+        sendJsonResponse([
+            'status' => 'rate_limited',
+            'message' => 'This account is temporarily locked due to repeated failed logins. Try again in ' . max(1, $minutes) . ' minute(s).',
+        ]);
     }
 
     $userFound = null;
