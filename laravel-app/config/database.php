@@ -2,6 +2,14 @@
 
 use Illuminate\Support\Str;
 
+$railwayDatabaseUrl = env('DATABASE_URL', env('MYSQL_URL', env('MYSQL_PUBLIC_URL', '')));
+$railwayDatabaseParts = $railwayDatabaseUrl ? (parse_url($railwayDatabaseUrl) ?: []) : [];
+$railwayDbHost = $railwayDatabaseParts['host'] ?? null;
+$railwayDbPort = isset($railwayDatabaseParts['port']) ? (string) $railwayDatabaseParts['port'] : null;
+$railwayDbName = isset($railwayDatabaseParts['path']) ? ltrim((string) $railwayDatabaseParts['path'], '/') : null;
+$railwayDbUser = $railwayDatabaseParts['user'] ?? null;
+$railwayDbPass = $railwayDatabaseParts['pass'] ?? null;
+
 return [
 
     /*
@@ -45,12 +53,12 @@ return [
 
         'mysql' => [
             'driver' => 'mysql',
-            'url' => env('DATABASE_URL'),
-            'host' => env('DB_HOST', env('MYSQLHOST', '127.0.0.1')),
-            'port' => env('DB_PORT', env('MYSQLPORT', '3306')),
-            'database' => env('DB_DATABASE', env('MYSQLDATABASE', 'forge')),
-            'username' => env('DB_USERNAME', env('MYSQLUSER', 'forge')),
-            'password' => env('DB_PASSWORD', env('MYSQLPASSWORD', '')),
+            'url' => $railwayDatabaseUrl,
+            'host' => env('DB_HOST', env('MYSQLHOST', $railwayDbHost ?: '127.0.0.1')),
+            'port' => env('DB_PORT', env('MYSQLPORT', $railwayDbPort ?: '3306')),
+            'database' => env('DB_DATABASE', env('MYSQLDATABASE', $railwayDbName ?: 'forge')),
+            'username' => env('DB_USERNAME', env('MYSQLUSER', $railwayDbUser ?: 'forge')),
+            'password' => env('DB_PASSWORD', env('MYSQLPASSWORD', $railwayDbPass ?: '')),
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',

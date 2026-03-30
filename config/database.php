@@ -23,14 +23,39 @@ if (!function_exists('firstEnvValue')) {
     }
 }
 
+if (!function_exists('parseDatabaseUrlFallback')) {
+    function parseDatabaseUrlFallback()
+    {
+        $url = firstEnvValue(['DATABASE_URL', 'MYSQL_URL', 'MYSQL_PUBLIC_URL'], '');
+        if ($url === '') {
+            return [];
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return [];
+        }
+
+        return [
+            'host' => $parts['host'] ?? '',
+            'port' => isset($parts['port']) ? (string) $parts['port'] : '',
+            'user' => $parts['user'] ?? '',
+            'pass' => $parts['pass'] ?? '',
+            'name' => isset($parts['path']) ? ltrim((string) $parts['path'], '/') : '',
+        ];
+    }
+}
+
+$parsedDatabaseUrl = parseDatabaseUrlFallback();
+
 // Database credentials - loaded from environment variables.
 // Railway always exposes MYSQL* variables on the database service, so we
 // fall back to those automatically when custom DB_* variables are missing.
-define('DB_HOST', firstEnvValue(['DB_HOST', 'MYSQLHOST'], 'localhost'));
-define('DB_PORT', (int) firstEnvValue(['DB_PORT', 'MYSQLPORT'], '3306'));
-define('DB_USER', firstEnvValue(['DB_USER', 'DB_USERNAME', 'MYSQLUSER'], 'root'));
-define('DB_PASS', firstEnvValue(['DB_PASS', 'DB_PASSWORD', 'MYSQLPASSWORD'], ''));
-define('DB_NAME', firstEnvValue(['DB_NAME', 'DB_DATABASE', 'MYSQLDATABASE'], 'osas_db'));
+define('DB_HOST', firstEnvValue(['DB_HOST', 'MYSQLHOST'], $parsedDatabaseUrl['host'] ?? 'localhost'));
+define('DB_PORT', (int) firstEnvValue(['DB_PORT', 'MYSQLPORT'], $parsedDatabaseUrl['port'] ?? '3306'));
+define('DB_USER', firstEnvValue(['DB_USER', 'DB_USERNAME', 'MYSQLUSER'], $parsedDatabaseUrl['user'] ?? 'root'));
+define('DB_PASS', firstEnvValue(['DB_PASS', 'DB_PASSWORD', 'MYSQLPASSWORD'], $parsedDatabaseUrl['pass'] ?? ''));
+define('DB_NAME', firstEnvValue(['DB_NAME', 'DB_DATABASE', 'MYSQLDATABASE'], $parsedDatabaseUrl['name'] ?? 'osas_db'));
 
 if (!defined('MYSQLI_ASSOC')) {
     define('MYSQLI_ASSOC', 1);
