@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../config/config.php';
 
 $isAdmin = isset($_SESSION['admin_username']) || isset($_SESSION['admin_id']);
