@@ -251,9 +251,7 @@ if (empty($checklistRows)) {
     /* Existing body styles */
     body {
         font-family: Arial, sans-serif;
-        background-color: #f9f9f9;
-        background: url('../pix/school.jpg') no-repeat center center fixed;
-        background-size: cover;
+        background-color: #ffffff;
         margin: 0;
         padding: 0;
       padding-top: 45px;
