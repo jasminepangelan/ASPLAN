@@ -136,44 +136,6 @@ if (!$bridgeLoaded) {
     $conn->close();
 }
 
-$profileFirstName = trim((string)($profile['first_name'] ?? ''));
-$profileMiddleName = trim((string)($profile['middle_name'] ?? ''));
-$profileLastName = trim((string)($profile['last_name'] ?? ''));
-$profilePrefix = trim((string)($profile['prefix'] ?? ''));
-$profileSuffix = trim((string)($profile['suffix'] ?? ''));
-$profileProgram = trim((string)($profile['program'] ?? ''));
-$profileEmail = trim((string)($profile['adviser_email'] ?? ''));
-
-$profileDisplayName = trim(implode(' ', array_filter([
-    $profilePrefix,
-    $profileFirstName,
-    $profileMiddleName,
-    $profileLastName,
-    $profileSuffix,
-])));
-
-if ($profileDisplayName === '') {
-    $profileDisplayName = html_entity_decode($coordinatorName, ENT_QUOTES, 'UTF-8');
-}
-
-$initialSource = trim($profileFirstName . ' ' . $profileLastName);
-if ($initialSource === '') {
-    $initialSource = $profileDisplayName;
-}
-$initialParts = preg_split('/\s+/', trim($initialSource)) ?: [];
-$profileInitials = '';
-foreach ($initialParts as $part) {
-    if ($part === '') {
-        continue;
-    }
-    $profileInitials .= strtoupper(substr($part, 0, 1));
-    if (strlen($profileInitials) >= 2) {
-        break;
-    }
-}
-if ($profileInitials === '') {
-    $profileInitials = 'PC';
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -369,7 +331,7 @@ if ($profileInitials === '') {
             position: relative;
             z-index: 1;
             display: grid;
-            grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.9fr);
+            grid-template-columns: minmax(0, 1fr);
             gap: 24px;
             align-items: center;
         }
@@ -407,71 +369,6 @@ if ($profileInitials === '') {
         .hero-badge strong {
             color: var(--pc-gold-400);
             font-weight: 700;
-        }
-        .profile-summary {
-            position: relative;
-            z-index: 1;
-            display: grid;
-            gap: 14px;
-            padding: 18px;
-            border-radius: 20px;
-            background: rgba(255,255,255,0.14);
-            border: 1px solid rgba(255,255,255,0.18);
-            backdrop-filter: blur(8px);
-        }
-        .summary-top {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .avatar {
-            width: 70px;
-            height: 70px;
-            border-radius: 22px;
-            display: grid;
-            place-items: center;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            background: linear-gradient(145deg, rgba(217, 228, 65, 0.9), rgba(255,255,255,0.92));
-            color: #214922;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
-        }
-        .summary-meta h2 {
-            font-size: 20px;
-            margin-bottom: 4px;
-            line-height: 1.2;
-        }
-        .summary-meta p {
-            font-size: 12px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.74);
-        }
-        .summary-list {
-            display: grid;
-            gap: 10px;
-        }
-        .summary-item {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.12);
-            font-size: 13px;
-        }
-        .summary-item:last-child {
-            border-bottom: 0;
-            padding-bottom: 0;
-        }
-        .summary-label {
-            color: rgba(255,255,255,0.68);
-        }
-        .summary-value {
-            text-align: right;
-            font-weight: 600;
-            color: #fff;
-            word-break: break-word;
         }
         .page-card {
             background: var(--pc-surface);
@@ -757,29 +654,6 @@ if ($profileInitials === '') {
                             <div class="hero-badge"><strong>Role</strong> Program Coordinator</div>
                             <div class="hero-badge"><strong>Status</strong> Active account</div>
                             <div class="hero-badge"><strong>Workspace</strong> Academic administration</div>
-                        </div>
-                    </div>
-                    <div class="profile-summary">
-                        <div class="summary-top">
-                            <div class="avatar"><?php echo htmlspecialchars($profileInitials); ?></div>
-                            <div class="summary-meta">
-                                <h2><?php echo htmlspecialchars($profileDisplayName); ?></h2>
-                                <p>Program Coordinator Profile</p>
-                            </div>
-                        </div>
-                        <div class="summary-list">
-                            <div class="summary-item">
-                                <span class="summary-label">Username</span>
-                                <span class="summary-value"><?php echo htmlspecialchars($profile['username'] ?? $username); ?></span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Program</span>
-                                <span class="summary-value"><?php echo htmlspecialchars($profileProgram !== '' ? $profileProgram : 'Not set'); ?></span>
-                            </div>
-                            <div class="summary-item">
-                                <span class="summary-label">Email</span>
-                                <span class="summary-value"><?php echo htmlspecialchars($profileEmail !== '' ? $profileEmail : 'Not provided'); ?></span>
-                            </div>
                         </div>
                     </div>
                 </div>
