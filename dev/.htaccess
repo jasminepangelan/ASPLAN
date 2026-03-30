@@ -1,0 +1,12 @@
+# Development Folder Protection
+# This folder contains sensitive database migration scripts and development utilities
+# Access is DENIED for security reasons
+
+# Block all access to this directory
+<FilesMatch ".*">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Deny directory browsing
+Options -Indexes

@@ -1,0 +1,117 @@
+<html>
+<head>
+    <title>CVSU-CARMONA E-CHECKLIST</title>
+    <link rel="icon" type="image/png" href="img/cav.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: url('pix/school.jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #206018;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .back-button, .home-button {
+            background-color: #206018;
+            border-radius: 5px;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            text-decoration: none;
+        }
+        .back-button {
+            float: left;
+        }
+        .home-button {
+            float: right;
+        }
+        .content {
+            clear: both;
+            padding: 20px;
+            text-align: center;
+        }
+        .content h2 {
+            background-color: #206018;
+            border-radius: 5px;
+            color: #ffffff;
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 0;
+        }
+        .table-container {
+            margin: 20px auto;
+            width: 60%;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            position: relative;
+            top: 5px;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #206018;
+            position: relative;
+            top: -5px;
+            border-radius: 0px;
+            color: white;
+        }
+        td {
+            background-color: #ffffff;
+        }
+        .restore-link {
+            color: green;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        CVSU-CARMONA E-CHECKLIST
+    </div>
+    <a href="#" onclick="window.location.href='settings.html'" class="back-button">Back<i class="fa-solid fa-arrow-left"></i></a>
+    <div class="content">
+        <h2>Archived records</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>STUDENT NUMBER</th>
+                        <th>STUDENT NAME</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>220100404</td>
+                        <td>Reyna Cruz</td>
+                        <td><span class="restore-link">Restore record</span></td>
+                    </tr>
+                    <tr>
+                        <td>220100303</td>
+                        <td>Jett Dimagiba</td>
+                        <td><span class="restore-link">Restore record</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

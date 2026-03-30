@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Input Form - Page 2</title>
+    <link rel="icon" type="image/png" href="../img/cav.png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: url('../pix/drone.png');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 90vh;
+            margin: 1;
+            margin-top: -35px;
+        }
+        .form-container {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 30px 40px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 378px;
+            margin-left: -700px;
+            margin-bottom: 250px;
+            text-align: center;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .form-container h2 {
+            margin-bottom: 20px;
+            margin-top:10px ;
+            font-size: 24px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .form-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="password"],
+        .form-group input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .form-group input[type="file"] {
+            width: 100%;
+            margin-top: 5px;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .button-group button {
+            flex: 10;
+            padding: 10px 20px;
+            border: none;
+            background-color:#206018;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .button-group button:hover {
+            opacity: 0.9;
+        }
+        .btn-back { background: #888 !important; }
+        .btn-back:hover { background: #444 !important; }
+        #error-message { color: red; display: none; font-size: smaller; margin-left: 10px; }
+        
+        /* Success Message Modal Styles */
+        .success-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .success-modal-content {
+            background: linear-gradient(135deg, #facc41, #206018);
+            margin: 15% auto;
+            padding: 40px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.4s ease-out;
+            position: relative;
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+        }
+        
+        .success-title {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .success-message {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        
+        .success-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .success-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="form-container">
+    <h2>STUDENT INPUT FORM (2/2)</h2>
+    <form id="form2" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="password">Preferred Password (minimum 8 characters)</label>
+            <input type="password" id="password" name="password" placeholder="ex.@juandelacruz123" minlength="8" required>
+            <span id="password-length-error" style="color: red; display: none; font-size: smaller;">Password must be at least 8 characters.</span>
+        </div>
+        <div class="form-group">
+            <label for="confirm-password">Confirm Password</label>
+            <input type="password" id="confirm-password" name="confirm-password" placeholder="Re-enter your password" required>
+            <span id="error-message">Passwords do not match.</span>
+        </div>
+        <div class="form-group">
+            <label for="contact-no">Contact Number</label>
+            <input type="text" id="contact-no" name="contact_no" placeholder="ex.09123456789" required>
+        </div>
+        <div class="form-group">
+            <label for="address">Address</label>
+            <input type="text" id="address" name="address" placeholder="ex. Blk 1, Lot 1, Brgy. Banaba Silang, Cavite" required>
+        </div>
+        <div class="form-group">
+            <label for="strand">Strand</label>
+            <select id="strand" name="strand" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+                <option value="">Select a strand</option>
+                <option value="STEM">STEM (Science, Technology, Engineering, and Mathematics)</option>
+                <option value="ABM">ABM (Accountancy, Business, and Management)</option>
+                <option value="HUMSS">HUMSS (Humanities and Social Sciences)</option>
+                <option value="GAS">GAS (General Academic Strand)</option>
+                <option value="TVL-HE">TVL - Home Economics</option>
+                <option value="TVL-ICT">TVL - Information and Communications Technology</option>
+                <option value="TVL-IA">TVL - Industrial Arts</option>
+                <option value="TVL-AFA">TVL - Agri-Fishery Arts</option>
+                <option value="SPORTS">Sports Track</option>
+                <option value="ADT">Arts and Design Track</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="program">Program</label>
+            <select id="program" name="program" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+                <option value="">Select a program</option>
+                <option value="Bachelor of Science in Business Administration - Major in Marketing Management">Bachelor of Science in Business Administration - Major in Marketing Management</option>
+                <option value="Bachelor of Science in Business Administration - Major in Human Resource Management">Bachelor of Science in Business Administration - Major in Human Resource Management</option>
+                <option value="Bachelor of Science in Computer Engineering">Bachelor of Science in Computer Engineering</option>
+                <option value="Bachelor of Science in Computer Science">Bachelor of Science in Computer Science</option>
+                <option value="Bachelor of Science in Hospitality Management">Bachelor of Science in Hospitality Management</option>
+                <option value="Bachelor of Science in Industrial Technology">Bachelor of Science in Industrial Technology</option>
+                <option value="Bachelor of Science in Information Technology">Bachelor of Science in Information Technology</option>
+                <option value="Bachelor of Secondary Education major in English">Bachelor of Secondary Education major in English</option>
+                <option value="Bachelor of Secondary Education major Math">Bachelor of Secondary Education major Math</option>
+                <option value="Bachelor of Secondary Education major in Science">Bachelor of Secondary Education major in Science</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="admission_date">Date of Admission</label>
+            <input type="date" id="admission_date" name="admission_date" required>
+        </div>
+        <div class="form-group">
+            <label for="upload-picture">Upload a Picture (optional)</label>
+            <input type="file" id="upload-picture" name="picture">
+        </div>
+        <div class="button-group">
+            <button type="button" class="btn-back" onclick="goBack()">Back</button>
+            <button type="submit">Submit</button>
+            <button type="button" onclick="window.location.href='../index.html'">Go to Login</button>
+        </div>
+    </form>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="success-modal">
+    <div class="success-modal-content">
+        <div class="success-icon">✓</div>
+        <div class="success-title">Account Created Successfully!</div>
+        <div class="success-message">Your student account has been registered and is pending approval. You will be notified once your account is approved.</div>
+    <a href="../index.html" class="success-button">Go to Login</a>
+    </div>
+</div>
+<script>
+    // Prefill fields if data exists
+    window.onload = function() {
+        const data = JSON.parse(localStorage.getItem('studentFormPage2') || '{}');
+        if (data.password) document.getElementById('password').value = data.password;
+        if (data['confirm-password']) document.getElementById('confirm-password').value = data['confirm-password'];
+        if (data.contact_no) document.getElementById('contact-no').value = data.contact_no;
+        if (data.address) document.getElementById('address').value = data.address;
+        if (data.strand) document.getElementById('strand').value = data.strand;
+        if (data.program) document.getElementById('program').value = data.program;
+        if (data.admission_date) document.getElementById('admission_date').value = data.admission_date;
+        // picture cannot be prefilled for security reasons
+    };
+    // Save page 2 data to localStorage on input
+    document.getElementById('form2').addEventListener('input', function() {
+        const data = {
+            password: document.getElementById('password').value,
+            'confirm-password': document.getElementById('confirm-password').value,
+            contact_no: document.getElementById('contact-no').value,
+            address: document.getElementById('address').value,
+            strand: document.getElementById('strand').value,
+            program: document.getElementById('program').value,
+            admission_date: document.getElementById('admission_date').value
+        };
+        localStorage.setItem('studentFormPage2', JSON.stringify(data));
+    });
+    // Password validation
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm-password');
+    const errorMessage = document.getElementById('error-message');
+    const passwordLengthError = document.getElementById('password-length-error');
+    passwordInput.addEventListener('input', function() {
+        if (passwordInput.value.length > 0 && passwordInput.value.length < 8) {
+            passwordLengthError.style.display = 'inline';
+            passwordInput.setCustomValidity('Password must be at least 8 characters.');
+        } else {
+            passwordLengthError.style.display = 'none';
+            passwordInput.setCustomValidity('');
+        }
+        // Re-validate confirm password when password changes
+        if (confirmPasswordInput.value.length > 0) {
+            if (passwordInput.value !== confirmPasswordInput.value) {
+                errorMessage.style.display = 'inline';
+                confirmPasswordInput.setCustomValidity('Passwords do not match.');
+            } else {
+                errorMessage.style.display = 'none';
+                confirmPasswordInput.setCustomValidity('');
+            }
+        }
+    });
+    confirmPasswordInput.addEventListener('input', function() {
+        if (passwordInput.value !== confirmPasswordInput.value) {
+            errorMessage.style.display = 'inline';
+            confirmPasswordInput.setCustomValidity('Passwords do not match.');
+        } else {
+            errorMessage.style.display = 'none';
+            confirmPasswordInput.setCustomValidity('');
+        }
+    });
+    function goBack() {
+        window.location.href = 'student_input_form_1.html';
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('successModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.style.display = 'none';
+        }
+    });
+    // On submit, combine data from both pages and send to PHP
+    document.getElementById('form2').onsubmit = function(e) {
+        e.preventDefault();
+        const page1 = JSON.parse(localStorage.getItem('studentFormPage1') || '{}');
+        const formData = new FormData(this);
+        for (const key in page1) {
+            formData.append(key, page1[key]);
+        }
+        
+        // Debug: Log what data is being sent
+        console.log('Page 1 data:', page1);
+        console.log('Form data being sent:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+        fetch('../handlers/student_input_process.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            return response.text().then(text => {
+                console.log('Response text:', text);
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse JSON:', e);
+                    throw new Error('Invalid JSON response: ' + text);
+                }
+            });
+        })
+        .then(data => {
+            console.log('Parsed data:', data);
+            if(data.status === 'success') {
+                // Show custom success modal
+                document.getElementById('successModal').style.display = 'block';
+                document.getElementById('form2').reset();
+                localStorage.removeItem('studentFormPage1');
+                localStorage.removeItem('studentFormPage2');
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while saving the data. Please check the console for details.');
+        });
+        return false;
+    };
+</script>
+</body>
+</html> 

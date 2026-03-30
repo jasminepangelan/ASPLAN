@@ -1,0 +1,70 @@
+# PEAS - Pre-Enrollment Assessment System
+# .gitignore file
+
+# Sensitive Configuration Files
+config/email.php
+config/credentials.php
+.env
+.env.local
+
+# Uploaded Files
+uploads/*
+!uploads/.gitkeep
+adviser/uploads/
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+debug_*.log
+
+# Temporary and Debug Files
+tmp/
+temp/
+cache/
+debug_*.php
+test_*.php
+check_*.php
+fix_*.php
+
+# Database Files
+*.sql
+*.sqlite
+*.db
+
+# Backup Files
+*.bak
+*.backup
+*~
+
+# PHP Specific
+vendor/
+laravel-app/vendor/
+laravel-app/node_modules/
+laravel-app/.env
+laravel-app/.env.*
+!laravel-app/.env.example
+laravel-app/_tmp_*.json
+laravel-app/storage/logs/*.log
+laravel-app/storage/framework/cache/*
+laravel-app/storage/framework/sessions/*
+laravel-app/storage/framework/views/*
+composer.phar
+composer.lock
+
+# Session Files
+sessions/
+var/
+
+# Error Logs
+error_log
+php_errors.log

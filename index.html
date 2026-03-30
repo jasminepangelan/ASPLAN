@@ -1,0 +1,625 @@
+<!-- Student Login Page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Pre-Enrollment Assessment System (PEAS) - Secure login portal for students, advisers, and administrators at Cavite State University Carmona Campus. Manage your pre-enrollment process efficiently.">
+  <meta name="keywords" content="CvSU, Cavite State University, Carmona Campus, PEAS, Pre-Enrollment, Student Portal, Online Enrollment, Academic System">
+  <meta name="author" content="YPADS - Stephen L. Tiozon, Paul Adrian E. Gozo">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#206018">
+  
+  <!-- Open Graph / Facebook --> 
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://cvsu-carmona.edu.ph/peas/">
+  <meta property="og:title" content="PEAS - Pre-Enrollment Assessment System | CvSU Carmona">
+  <meta property="og:description" content="Secure pre-enrollment portal for CvSU Carmona Campus students, advisers, and administrators.">
+  <meta property="og:image" content="img/cav.png">
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://cvsu-carmona.edu.ph/peas/">
+  <meta property="twitter:title" content="PEAS - Pre-Enrollment Assessment System | CvSU Carmona">
+  <meta property="twitter:description" content="Secure pre-enrollment portal for CvSU Carmona Campus students, advisers, and administrators.">
+  <meta property="twitter:image" content="img/cav.png">
+  
+  <title>Student Login</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="img/cav.png">
+  <link rel="apple-touch-icon" href="img/cav.png">
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&display=swap" rel="stylesheet"></noscript>
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" href="assets/css/login.css?v=2.0">
+  
+  <script>
+    // Ensure app is loaded through Apache/PHP, not directly via file://
+    (function () {
+      if (window.location.protocol === 'file:') {
+        window.location.href = 'http://localhost/ASPLAN_v9/index.html';
+        return;
+      }
+
+      // Check remember-me cookie and auto-login if valid
+      fetch(new URL('auth/check_auto_login.php', window.location.href).href, { method: 'GET', credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data && data.session_expired) {
+            var timeoutLimit = parseInt(data.session_timeout_seconds || '0', 10);
+            sessionStorage.setItem('session_expired_notice', '1');
+            if (!isNaN(timeoutLimit) && timeoutLimit > 0) {
+              sessionStorage.setItem('session_expired_limit', String(timeoutLimit));
+            } else {
+              sessionStorage.removeItem('session_expired_limit');
+            }
+          }
+
+          if (data.redirect) {
+            window.location.href = new URL(data.redirect, window.location.href).href;
+          }
+        })
+        .catch(function() { /* silently ignore - user proceeds to manual login */ });
+    })();
+  </script>
+</head>
+<body>
+  <main>
+    <!-- Welcome Title -->
+    <header class="welcome-title" role="banner">
+      <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
+        <img src="img/cav.png" alt="Cavite State University Logo" style="height: calc(1.4em + 70px); margin-top: -20px; margin-right: 30px;">
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-start; width: 150%;">
+        <span style="font-size: 4.5em; font-weight: 900; margin-bottom: 5px; margin-left: 40px; text-align: left; max-width: 150%;">ASPLAN</span>
+        <span style="font-size: 1.5em; font-weight: 900; text-align: left; max-width: 150%;">Automated Study Plan Generator</span>
+      </div>
+    </header>
+    
+    <!-- Login Container -->
+    <div class="container" style="margin-left: calc(7% + 90px) !important;">
+      <h2>LOGIN</h2>
+      <form id="loginForm" method="POST" action="auth/unified_login_process.php" aria-label="Unified Login Form">
+        <!-- CSRF token will be added dynamically by JavaScript -->
+        <input type="hidden" name="csrf_token" id="csrf_token" value="" aria-hidden="true">
+        <label for="username" class="sr-only">Student Number or Username</label>
+        <input 
+          type="text" 
+          id="username"
+          name="username" 
+          placeholder="Student Number or Username" 
+          required 
+          autocomplete="username"
+          title="Enter your Student Number or Username"
+          aria-required="true"
+          aria-describedby="username-help"
+          minlength="1"
+          maxlength="50">
+        
+        <label for="password" class="sr-only">Password</label>
+        <div class="password-wrapper">
+          <input 
+            type="password" 
+            id="password"
+            name="password" 
+            placeholder="Password" 
+            required 
+            autocomplete="current-password"
+            aria-required="true"
+            aria-describedby="password-help"
+          minlength="8">
+          <button type="button" class="password-toggle" onclick="togglePassword('password')" aria-label="Show password">
+            <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Remember Me Checkbox -->
+        <div style="display: flex; align-items: center; gap: 8px; margin: 10px 0; justify-content: flex-start;">
+          <input 
+            type="checkbox" 
+            id="remember_me" 
+            name="remember_me" 
+            value="1"
+            style="width: auto; margin: 0; cursor: pointer;"
+            aria-label="Remember me on this device">
+          <label for="remember_me" style="margin: 0; font-size: 14px; color: #333; cursor: pointer;">
+            Remember me on this device
+          </label>
+        </div>
+        
+        <button type="submit" aria-label="Login to your account">LOG IN</button>
+      </form>
+      <div class="forgot-password">
+        <a href="#" onclick="openForgotPasswordModal(); return false;" aria-label="Reset your password">Forgot password?</a> | 
+        <a href="forms/student_input_form_1.html" aria-label="Create a new student account">Register as Student</a>
+      </div>
+    </div>
+
+  <!-- Forgot Password Modal (multi-step) -->
+  <div id="forgotPasswordModal" class="modal" role="dialog" aria-labelledby="forgotModalTitle" aria-modal="true">
+    <div class="modal-content forgot-enhanced" style="
+      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      color: #333;
+      max-width: 420px !important;
+      min-width: 380px !important;
+      position: relative;
+      top: 0;
+      left: 0;
+      margin: 0;
+      transform: none;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: none;
+      border-radius: 16px;
+      padding: 18px 22px 14px 22px;
+      backdrop-filter: blur(10px);
+    ">
+      <!-- Header Section -->
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 8px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 10px;
+      ">
+        <h2 id="forgotModalTitle" style="
+          color: #206018;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 0 0 4px 0;
+          text-align: center;
+          letter-spacing: -0.5px;
+        ">Reset Password</h2>
+        <p style="
+          color: #6c757d;
+          font-size: 0.9rem;
+          margin: 0;
+          text-align: center;
+          font-weight: 400;
+        ">Follow the steps to recover your account</p>
+      </div>
+
+      <!-- Progress Indicator -->
+      <div style="
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 10px;
+      " role="progressbar" aria-valuenow="1" aria-valuemin="1" aria-valuemax="3" aria-label="Password reset progress">
+        <div id="step1Indicator" style="
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <div style="
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #206018;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+          " aria-label="Step 1">1</div>
+        </div>
+        <div style="
+          width: 24px;
+          height: 2px;
+          background: #e9ecef;
+          border-radius: 1px;
+        " aria-hidden="true"></div>
+        <div id="step2Indicator" style="
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <div style="
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #e9ecef;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+          " aria-label="Step 2">2</div>
+        </div>
+        <div style="
+          width: 24px;
+          height: 2px;
+          background: #e9ecef;
+          border-radius: 1px;
+        " aria-hidden="true"></div>
+        <div id="step3Indicator" style="
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <div style="
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #e9ecef;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+          " aria-label="Step 3">3</div>
+        </div>
+      </div>
+
+      <!-- Content Area -->
+      <div class="modal-message" style="
+        color: #333 !important;
+        width: 100%;
+        min-height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      ">
+        <!-- Step 1: Student ID Input -->
+        <div id="forgot-step-1" style="
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        ">
+          <div style="
+            text-align: center;
+            margin-bottom: 4px;
+          ">
+            <h3 style="
+              color: #206018;
+              font-size: 1.1rem;
+              font-weight: 600;
+              margin: 0 0 4px 0;
+            ">Enter Your Student ID</h3>
+            <p style="
+              color: #6c757d;
+              font-size: 0.9rem;
+              margin: 0;
+            ">We'll send a verification code to your registered email</p>
+          </div>
+          <form id="forgotEmailForm" style="
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+          " aria-label="Request verification code">
+            <label for="forgot-student-id" class="sr-only">Student ID</label>
+            <input 
+              type="text" 
+              id="forgot-student-id" 
+              name="student_id" 
+              placeholder="Enter Student ID" 
+              required 
+              pattern="[0-9]+"
+              title="Student ID must contain only numbers"
+              aria-required="true"
+              aria-describedby="forgotPasswordMessage"
+              style="
+              width: 100%;
+              padding: 10px 12px;
+              border: 2px solid #e9ecef;
+              border-radius: 12px;
+              font-size: 15px;
+              font-weight: 500;
+              background: #fff;
+              transition: all 0.3s ease;
+              box-sizing: border-box;
+              outline: none;
+            " onfocus="this.style.borderColor='#206018'; this.style.boxShadow='0 0 0 3px rgba(32, 96, 24, 0.1)'" onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'">
+            <div id="forgotPasswordMessage" role="alert" aria-live="polite" style="
+              min-height: 20px;
+              font-size: 14px;
+              font-weight: 500;
+              text-align: center;
+            "></div>
+            <button type="submit" style="
+              width: 100%;
+              padding: 11px;
+              background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+              color: white;
+              border: none;
+              border-radius: 12px;
+              font-size: 15px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.3s ease;
+              box-shadow: 0 4px 16px rgba(32, 96, 24, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(32, 96, 24, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(32, 96, 24, 0.3)'">Send Verification Code</button>
+          </form>
+        </div>
+
+        <!-- Step 2: Code Verification -->
+        <div id="forgot-step-2" style="
+          display: none;
+          flex-direction: column;
+          gap: 12px;
+          align-items: center;
+        ">
+          <div style="
+            text-align: center;
+            margin-bottom: 4px;
+          ">
+            <h3 style="
+              color: #206018;
+              font-size: 1.1rem;
+              font-weight: 600;
+              margin: 0 0 4px 0;
+            ">Enter Verification Code</h3>
+            <p style="
+              color: #6c757d;
+              font-size: 0.9rem;
+              margin: 0;
+            ">Check your CvSU email for the 4-digit code</p>
+          </div>
+          <label for="forgot-code" class="sr-only">Verification Code</label>
+          <input 
+            type="text" 
+            id="forgot-code" 
+            maxlength="4" 
+            placeholder="0000" 
+            pattern="[0-9]{4}"
+            title="Enter 4-digit verification code"
+            aria-label="4-digit verification code"
+            aria-required="true"
+            aria-describedby="verifyCodeMessage"
+            inputmode="numeric"
+            style="
+            width: 140px;
+            padding: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 8px;
+            background: #fff;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+            outline: none;
+          " onfocus="this.style.borderColor='#206018'; this.style.boxShadow='0 0 0 3px rgba(32, 96, 24, 0.1)'" onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'">
+          <div id="verifyCodeMessage" role="alert" aria-live="polite" style="
+            min-height: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+          "></div>
+          <button type="button" id="verifyCodeBtn" style="
+            width: 100%;
+            padding: 11px;
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(32, 96, 24, 0.3);
+          " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(32, 96, 24, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(32, 96, 24, 0.3)'">Verify Code</button>
+        </div>
+
+        <!-- Step 3: New Password -->
+        <div id="forgot-step-3" style="
+          display: none;
+          flex-direction: column;
+          gap: 4px;
+        ">
+          <div style="
+            text-align: center;
+            margin-bottom: 0;
+          ">
+            <h3 style="
+              color: #206018;
+              font-size: 1rem;
+              font-weight: 600;
+              margin: 0;
+            ">Create New Password</h3>
+            <p style="
+              color: #6c757d;
+              font-size: 0.85rem;
+              margin: 0;
+            ">Choose a strong password for your account</p>
+          </div>
+          <label for="forgot-new-password" class="sr-only">New Password</label>
+          <div class="password-wrapper">
+            <input 
+              type="password" 
+              id="forgot-new-password" 
+              placeholder="New Password" 
+              minlength="8"
+              required
+              autocomplete="new-password"
+              aria-required="true"
+              aria-describedby="resetPasswordMessage password-requirements"
+              style="
+              width: 100%;
+              padding: 10px 14px;
+              border: 2px solid #e9ecef;
+              border-radius: 10px;
+              font-size: 13px;
+              background: #fff;
+              transition: all 0.3s ease;
+              box-sizing: border-box;
+              outline: none;
+            " onfocus="this.style.borderColor='#206018'; this.style.boxShadow='0 0 0 3px rgba(32, 96, 24, 0.1)'" onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'">
+            <button type="button" class="password-toggle" onclick="togglePassword('forgot-new-password')" aria-label="Show password">
+              <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Password Strength Indicator -->
+          <div class="password-strength-container" style="display: none;" id="forgot-strength-bar">
+            <div class="password-strength-bar">
+              <div class="password-strength-fill"></div>
+            </div>
+            <div class="password-strength-text" id="forgot-strength-text"></div>
+          </div>
+          
+          <!-- Password Requirements -->
+          <div class="password-requirements" id="forgot-requirements" style="display: none;">
+            <strong>Password must contain:</strong>
+            <ul>
+              <li>At least 8 characters</li>
+              <li>One lowercase letter (a-z)</li>
+              <li>One uppercase letter (A-Z)</li>
+              <li>One number (0-9)</li>
+              <li>One special character (!@#$%^&*)</li>
+            </ul>
+          </div>
+          
+          <label for="forgot-confirm-password" class="sr-only">Confirm Password</label>
+          <div class="password-wrapper">
+            <input 
+              type="password" 
+              id="forgot-confirm-password" 
+              placeholder="Confirm Password" 
+              minlength="8"
+              required
+              autocomplete="new-password"
+              aria-required="true"
+              aria-describedby="resetPasswordMessage"
+              style="
+              width: 100%;
+              padding: 10px 14px;
+              border: 2px solid #e9ecef;
+              border-radius: 10px;
+              font-size: 13px;
+              background: #fff;
+              transition: all 0.3s ease;
+              box-sizing: border-box;
+              outline: none;
+            " onfocus="this.style.borderColor='#206018'; this.style.boxShadow='0 0 0 3px rgba(32, 96, 24, 0.1)'" onblur="this.style.borderColor='#e9ecef'; this.style.boxShadow='none'">
+            <button type="button" class="password-toggle" onclick="togglePassword('forgot-confirm-password')" aria-label="Show password">
+              <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          <div id="password-requirements" class="sr-only">Password must be at least 8 characters long</div>
+          <div id="resetPasswordMessage" role="alert" aria-live="polite" style="
+            min-height: 16px;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+          "></div>
+          <button type="button" id="confirmPasswordBtn" style="
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(32, 96, 24, 0.3);
+          " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(32, 96, 24, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(32, 96, 24, 0.3)'">Reset Password</button>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="
+        display: flex;
+        justify-content: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #e9ecef;
+      ">
+        <button onclick="closeForgotModal()" aria-label="Cancel password reset" style="
+          padding: 10px 22px;
+          background: #6c757d;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        " onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">Cancel</button>
+      </div>
+    </div>
+  </div>
+  </main>
+
+  <!-- Pending Approval Modal -->
+  <div id="pendingModal" class="modal" role="dialog" aria-labelledby="pendingModalTitle" aria-modal="true">
+    <div class="modal-content pending-modal">
+      <div class="modal-icon" aria-hidden="true">
+        <img src="pix/account.png" alt="" style="width: 40px; height: 40px; filter: brightness(0) invert(1);">
+      </div>
+      <div id="pendingModalTitle" class="modal-title">Account Pending Approval</div>
+      <div class="modal-message">Your account is pending approval. Please wait for the admin to approve your registration.</div>
+      <button class="modal-button" onclick="closeModal('pendingModal')" aria-label="Close pending approval message">OK</button>
+    </div>
+  </div>
+
+  <!-- Error Modal -->
+  <div id="errorModal" class="modal" role="dialog" aria-labelledby="errorModalTitle" aria-modal="true">
+    <div class="modal-content error-modal">
+      <div class="modal-icon" aria-hidden="true">
+        <img src="pix/set.png" alt="" style="width: 40px; height: 40px; filter: brightness(0) invert(1);">
+      </div>
+      <div id="errorModalTitle" class="modal-title">Login Error</div>
+      <div id="errorMessage" class="modal-message" role="alert">An error occurred during login.</div>
+      <button class="modal-button" onclick="closeModal('errorModal')" aria-label="Close error message">OK</button>
+    </div>
+  </div>
+
+  <!-- Rejected Account Modal -->
+  <div id="rejectedModal" class="modal" role="dialog" aria-labelledby="rejectedModalTitle" aria-modal="true">
+    <div class="modal-content rejected-modal">
+      <div class="modal-icon" aria-hidden="true">
+        <img src="pix/singout.png" alt="" style="width: 40px; height: 40px; filter: brightness(0) invert(1);">
+      </div>
+      <div id="rejectedModalTitle" class="modal-title">Account Rejected</div>
+      <div class="modal-message">Your account was rejected. Please contact admin for more information.</div>
+      <button class="modal-button" onclick="closeModal('rejectedModal')" aria-label="Close rejection message">OK</button>
+    </div>
+  </div>
+
+  <!-- Screen reader only class -->
+  <style>
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+  </style>
+
+  <!-- External JavaScript -->
+  <script src="assets/js/login.js?v=2.1" defer></script>
+</body>
+</html>

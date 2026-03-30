@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Cache Issue - Step by Step</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        h1 { color: #206018; text-align: center; }
+        h2 { color: #2d8f22; }
+        .step {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 5px solid #206018;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #206018;
+        }
+        .step-number {
+            background: #206018;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        .kbd {
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+            display: inline-block;
+            margin: 0 3px;
+        }
+        .success {
+            background: #d4edda;
+            padding: 20px;
+            border-left: 4px solid #28a745;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            padding: 20px;
+            border-left: 4px solid #ffc107;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: #206018;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #2d8f22;
+        }
+        ol {
+            line-height: 2;
+        }
+        li {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Fix Cache Issue - Step by Step Guide</h1>
+        
+        <div class="success">
+            <h3 style="margin-top:0;">✅ Test Results Confirmed:</h3>
+            <ul>
+                <li>Database has <strong>0 grades</strong> for student 220100064</li>
+                <li>Algorithm correctly calculates <strong>0% completion</strong></li>
+                <li>All diagnostic tests pass</li>
+            </ul>
+            <p><strong>Problem:</strong> Study Plan page still shows 93% due to cached PHP/HTML files.</p>
+        </div>
+
+        <h2>Follow These Steps in Order:</h2>
+
+        <div class="step">
+            <h3><span class="step-number">1</span>Restart Apache (Clear PHP OpCache)</h3>
+            <ol>
+                <li>Open <strong>XAMPP Control Panel</strong></li>
+                <li>Click <strong>"Stop"</strong> next to Apache</li>
+                <li>Wait 3-5 seconds</li>
+                <li>Click <strong>"Start"</strong> to restart Apache</li>
+            </ol>
+            <p><strong>Why:</strong> This clears PHP OpCache which may be serving old compiled PHP code.</p>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">2</span>Clear Browser Cache</h3>
+            <p><strong>Option A: Hard Refresh (Quickest)</strong></p>
+            <ol>
+                <li>Go to Study Plan page</li>
+                <li>Press <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">R</span></li>
+                <li>Or press <span class="kbd">Ctrl</span> + <span class="kbd">F5</span></li>
+            </ol>
+            
+            <p><strong>Option B: Clear All Cache (Most Thorough)</strong></p>
+            <ol>
+                <li>Press <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">Delete</span></li>
+                <li>Select "Cached images and files"</li>
+                <li>Select "All time" for time range</li>
+                <li>Click "Clear data"</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">3</span>Try Incognito/Private Window</h3>
+            <ol>
+                <li>Press <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">N</span> (Chrome)</li>
+                <li>Or <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">P</span> (Firefox)</li>
+                <li>Go to: <code>http://localhost/GradMap/student/study_plan.php</code></li>
+                <li>Login as student 220100064</li>
+            </ol>
+            <p><strong>Why:</strong> Incognito mode starts with no cache, proving if it's a cache issue.</p>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">4</span>Verify the Fix</h3>
+            <p>After completing steps 1-3, the Study Plan should now show:</p>
+            <ul style="list-style: none; padding-left: 0;">
+                <li>✅ <strong>0%</strong> Completion Rate</li>
+                <li>✅ <strong>0/57</strong> Courses Completed</li>
+                <li>✅ <strong>0/165</strong> Units Completed</li>
+                <li>✅ <strong>57</strong> Courses Remaining</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <h3 style="margin-top:0;">🎯 Quick Test Links:</h3>
+            <p>After restarting Apache and clearing cache, test these pages:</p>
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="study_plan.php" class="btn" target="_blank">📚 Official Study Plan</a>
+                <a href="fresh_stats_no_cache.php" class="btn" target="_blank">🔄 Fresh Stats (No Cache)</a>
+            </div>
+            <p style="margin-top: 20px;"><strong>They should both show 0% now!</strong></p>
+        </div>
+
+        <h2>Still Not Working?</h2>
+        
+        <div class="step">
+            <h3>Advanced Solutions:</h3>
+            <ol>
+                <li><strong>Restart your computer</strong> - Clears all system caches</li>
+                <li><strong>Try a different browser</strong> - Chrome, Firefox, Edge</li>
+                <li><strong>Check if you're on the right URL</strong>:
+                    <br><code>http://localhost/GradMap/student/study_plan.php</code>
+                </li>
+                <li><strong>Disable browser extensions</strong> - Some extensions cache aggressively</li>
+            </ol>
+        </div>
+
+        <div class="success">
+            <h3 style="margin-top:0;">✨ Expected Result:</h3>
+            <p>After following these steps, when student 220100064 views the Study Plan page, it will show:</p>
+            <ul>
+                <li>✅ <strong>Accurate 0% completion</strong> (matching the database)</li>
+                <li>✅ When they submit grades through checklist, it will count correctly</li>
+                <li>✅ No more stale cached data</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,2145 @@
+<?php
+/**
+ * Study Plan Generator using CSP (Constraint Satisfaction Problem) and Greedy Algorithm
+ * 
+ * This algorithm generates an optimized study plan for students based on:
+ * 1. CSP Phase: Handles hard constraints (prerequisites, semester offerings, year standing)
+ * 2. Greedy Phase: Optimizes course selection (prioritizes by units, critical path, graduation speed)
+ * 
+ * Constraint Rules Implemented:
+ * - Back and failed Courses: Prioritize lower-year failed courses, enforce prerequisites, no overloading
+ * - Cross-Registration: Allow courses available in other programs for the same semester
+ * - Retention Policy: Warning (30-50%), Probation (51%+), Disqualification (75%+)
+ *   with unit limits, semester skips, and consecutive status escalation
+ */
+
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/program_shift_service.php';
+
+class StudyPlanGenerator {
+    private $conn;
+    private $student_id;
+    private $program_label;
+    private $program_code;
+    private $curriculum_year = '';
+    private $curriculum_program_labels = [];
+    private $completed_courses = [];
+    private $failed_courses = [];        // Courses with failing grades (need retake)
+    private $inc_courses = [];           // Courses with INC status
+    private $dropped_courses = [];       // Courses that were dropped
+    private $all_courses = [];
+    private $prerequisite_map = [];
+    private $standing_constraint_map = []; // Year-standing constraints parsed from raw prerequisite text
+    private $semester_grade_history = []; // Grade history per semester for retention
+    private $retention_status = 'None';  // Current retention status
+    private $retention_history = [];     // Retention status per semester
+    private $cross_reg_courses = [];     // Courses available via cross-registration
+    private $disqualification_count = 0; // Number of disqualification statuses received
+    private $term_max_units = [];        // Max units per year|semester from curriculum
+    private $course_failure_counts = []; // Number of failures per course code
+    private $thrice_failed_courses = []; // Courses failed 3+ times (triggers plan stop)
+    private $student_classification = '';
+    private $student_gwa = null;
+    private $has_active_shift_request = false;
+    private $policy_gate_status = [
+        'applies' => false,
+        'eligible' => true,
+        'reasons' => [],
+        'average_grade' => null,
+        'failed_course_count' => 0,
+        'classification' => '',
+        'has_active_shift_request' => false,
+    ];
+    
+    // Map full program names to curriculum program codes
+    private static $programCodeMap = [
+        'Bachelor of Science in Computer Science' => 'BSCS',
+        'Bachelor of Science in Information Technology' => 'BSIT',
+        'Bachelor of Science in Computer Engineering' => 'BSCpE',
+        'Bachelor of Science in Industrial Technology' => 'BSIndT',
+        'Bachelor of Science in Hospitality Management' => 'BSHM',
+        'Bachelor of Science in Business Administration - Major in Marketing Management' => 'BSBA-MM',
+        'Bachelor of Science in Business Administration Major in Marketing Management' => 'BSBA-MM',
+        'Bachelor of Science in Business Administration - Major in Human Resource Management' => 'BSBA-HRM',
+        'Bachelor of Science in Business Administration Major in Human Resource Management' => 'BSBA-HRM',
+        'Bachelor of Secondary Education major in English' => 'BSEd-English',
+        'Bachelor of Secondary Education Major in English' => 'BSEd-English',
+        'Bachelor of Secondary Education major Math' => 'BSEd-Math',
+        'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
+        'Bachelor of Secondary Education major in Science' => 'BSEd-Science',
+        'Bachelor of Secondary Education Major in Science' => 'BSEd-Science',
+    ];
+    
+    public function __construct($student_id, $program = '') {
+        $this->conn = getDBConnection();
+        $this->student_id = $student_id;
+        $this->program_label = trim((string)$program);
+        $this->program_code = self::resolveProgramCode($program);
+        $this->curriculum_program_labels = self::resolveCurriculumProgramLabels($this->program_label, $this->program_code);
+        $this->curriculum_year = function_exists('psResolveStudentCurriculumYear')
+            ? psResolveStudentCurriculumYear($this->conn, $this->student_id, $this->program_label, $this->program_code)
+            : '';
+        $this->loadStudentPolicyContext();
+        $this->loadStudentData();
+        $this->loadCurriculumData();
+        $this->loadCrossRegistrationCourses();
+        $this->calculateRetentionHistory();
+        $this->evaluateShiftTransfereePolicyGate();
+    }
+
+    /**
+     * Build a generator using the student's saved program.
+     * Keeps diagnostics aligned with the main study plan page.
+     */
+    public static function createForStudent($student_id) {
+        return new self($student_id, self::lookupStudentProgram($student_id));
+    }
+
+    /**
+     * Look up the student's stored program label.
+     */
+    public static function lookupStudentProgram($student_id) {
+        $conn = getDBConnection();
+        $program = '';
+
+        $stmt = $conn->prepare("
+            SELECT program
+            FROM student_info
+            WHERE student_number = ?
+            LIMIT 1
+        ");
+
+        if ($stmt) {
+            $stmt->bind_param("s", $student_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                $program = trim((string)($row['program'] ?? ''));
+            }
+            $stmt->close();
+        }
+
+        closeDBConnection($conn);
+        return $program;
+    }
+
+    private function normalizeCourseCode($value) {
+        if (function_exists('psNormalizeCourseCode')) {
+            return psNormalizeCourseCode($value);
+        }
+
+        $code = trim((string)$value);
+        if ($code === '') {
+            return '';
+        }
+
+        foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
+            if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
+                return trim(substr($code, 0, -strlen($suffix)));
+            }
+        }
+
+        return $code;
+    }
+    
+    /**
+     * Resolve a program name or code to the short code used in curriculum lookup
+     */
+    private static function normalizeProgramLabel($value) {
+        $value = strtoupper(trim((string)$value));
+        $value = preg_replace('/[^A-Z0-9]+/', ' ', $value);
+        return trim(preg_replace('/\s+/', ' ', $value));
+    }
+
+    private static function resolveProgramCode($program) {
+        $program = trim((string)$program);
+        if ($program === '') {
+            return ''; // Do not default to an unrelated curriculum
+        }
+
+        // If it's already a short code (exists as a value in the map), use it directly
+        if (in_array($program, self::$programCodeMap, true)) {
+            return $program;
+        }
+
+        $normalized = self::normalizeProgramLabel($program);
+
+        // Handle common short-code aliases and variants stored in DB.
+        $aliasMap = [
+            'BSBA MM' => 'BSBA-MM',
+            'BSBA HRM' => 'BSBA-HRM',
+            'BSCPE' => 'BSCpE',
+            'BSINDT' => 'BSIndT',
+            'BSED ENGLISH' => 'BSEd-English',
+            'BSED MATH' => 'BSEd-Math',
+            'BSED SCIENCE' => 'BSEd-Science',
+        ];
+        if (isset($aliasMap[$normalized])) {
+            return $aliasMap[$normalized];
+        }
+
+        // Handle full-name variations (e.g. missing hyphen before MAJOR).
+        if (strpos($normalized, 'BUSINESS ADMINISTRATION') !== false && strpos($normalized, 'MARKETING') !== false) {
+            return 'BSBA-MM';
+        }
+        if (strpos($normalized, 'BUSINESS ADMINISTRATION') !== false &&
+            (strpos($normalized, 'HUMAN RESOURCE') !== false || strpos($normalized, 'HRM') !== false)) {
+            return 'BSBA-HRM';
+        }
+
+        // Look up normalized full-name labels.
+        foreach (self::$programCodeMap as $fullName => $code) {
+            if (self::normalizeProgramLabel($fullName) === $normalized) {
+                return $code;
+            }
+        }
+
+        return '';
+    }
+
+    private static function resolveCurriculumProgramLabels($program, $programCode = '') {
+        if (function_exists('psResolveChecklistProgramLabels')) {
+            return psResolveChecklistProgramLabels($program, $programCode);
+        }
+
+        $labels = [];
+        $program = trim((string)$program);
+        if ($program !== '') {
+            $labels[$program] = true;
+        }
+
+        return array_keys($labels);
+    }
+
+    private function curriculumCoursesTableExists() {
+        return function_exists('psTableExists')
+            ? psTableExists($this->conn, 'curriculum_courses')
+            : false;
+    }
+
+    private function legacyProgramTokens() {
+        if (function_exists('psResolveProgramTokens')) {
+            return psResolveProgramTokens($this->program_code !== '' ? $this->program_code : $this->program_label);
+        }
+
+        $token = strtoupper(trim((string)$this->program_code));
+        return $token !== '' ? [$token] : [];
+    }
+
+    private function buildCurriculumProgramCondition($columnExpression = 'UPPER(TRIM(program))') {
+        $conditions = [];
+        $params = [];
+        $types = '';
+
+        foreach ($this->curriculum_program_labels as $label) {
+            $conditions[] = $columnExpression . ' = ?';
+            $params[] = strtoupper(trim((string)$label));
+            $types .= 's';
+        }
+
+        return [
+            'sql' => !empty($conditions) ? '(' . implode(' OR ', $conditions) . ')' : '1 = 0',
+            'params' => $params,
+            'types' => $types,
+        ];
+    }
+
+    private function buildLegacyProgramCondition($columnExpression = 'programs') {
+        $conditions = [];
+        $params = [];
+        $types = '';
+
+        foreach ($this->legacyProgramTokens() as $token) {
+            $conditions[] = 'FIND_IN_SET(?, REPLACE(UPPER(' . $columnExpression . '), " ", "")) > 0';
+            $params[] = strtoupper(trim((string)$token));
+            $types .= 's';
+        }
+
+        return [
+            'sql' => !empty($conditions) ? '(' . implode(' OR ', $conditions) . ')' : '1 = 0',
+            'params' => $params,
+            'types' => $types,
+        ];
+    }
+
+    private function buildCurriculumYearCondition($columnExpression, $legacyPrefixExpression = '') {
+        if ($this->curriculum_year === '') {
+            return [
+                'sql' => '',
+                'params' => [],
+                'types' => '',
+            ];
+        }
+
+        $expression = $legacyPrefixExpression !== '' ? $legacyPrefixExpression : $columnExpression;
+        return [
+            'sql' => ' AND ' . $expression . ' = ?',
+            'params' => [$this->curriculum_year],
+            'types' => 's',
+        ];
+    }
+
+    /**
+     * Determine whether a stored final grade should count as passed for
+     * completion/progression logic.
+     */
+    private function isPassingFinalGrade($grade) {
+        $normalized = strtoupper(trim((string)$grade));
+        if ($normalized === 'S' || $normalized === 'PASSED') {
+            return true;
+        }
+
+        if (is_numeric($grade)) {
+            $numeric_grade = (float)$grade;
+            return $numeric_grade >= 1.0 && $numeric_grade <= 3.0;
+        }
+
+        return false;
+    }
+    
+    /**
+     * Load student's completed AND failed courses from database
+     * Tracks:
+     * - Completed courses (passing grades 1.0-3.0)
+     * - Failed courses (grades > 3.0 or 5.0)
+     * - INC courses (Incomplete)
+     * - Dropped courses (DRP/W)
+     * Also builds semester-by-semester grade history for retention policy
+     */
+    private function loadStudentData() {
+        // Check if grade_approved column exists
+        $columns_check = $this->conn->query("SHOW COLUMNS FROM student_checklists LIKE 'grade_approved'");
+        $has_approval_column = ($columns_check && $columns_check->num_rows > 0);
+        
+        // Load ALL grades (not just passing) for retention policy calculation
+        $this->loadAllGrades($has_approval_column);
+        
+        if ($has_approval_column) {
+            // Use the proper query that requires adviser approval
+            $query = $this->conn->prepare("
+                SELECT course_code, final_grade, grade_submitted_at, grade_approved
+                FROM student_checklists 
+                WHERE student_id = ? 
+                AND final_grade IS NOT NULL 
+                AND final_grade != '' 
+                AND final_grade != 'INC' 
+                AND final_grade != 'DRP'
+                AND grade_submitted_at IS NOT NULL
+                AND grade_approved = 1
+            ");
+            $query->bind_param("s", $this->student_id);
+            $query->execute();
+            $result = $query->get_result();
+            
+            while ($row = $result->fetch_assoc()) {
+                if ($this->isPassingFinalGrade($row['final_grade'] ?? null)) {
+                    $this->completed_courses[] = $this->normalizeCourseCode($row['course_code'] ?? '');
+                }
+            }
+            $query->close();
+            return;
+        }
+        
+        // Fallback ONLY if grade_approved column doesn't exist (legacy systems)
+        $fallback_query = $this->conn->prepare("
+            SELECT course_code, final_grade 
+            FROM student_checklists 
+            WHERE student_id = ? 
+            AND final_grade IS NOT NULL 
+            AND final_grade != '' 
+            AND final_grade != 'INC' 
+            AND final_grade != 'DRP'
+            AND final_grade != 'N/A'
+            AND final_grade != '0'
+            AND final_grade != '0.0'
+        ");
+        $fallback_query->bind_param("s", $this->student_id);
+        $fallback_query->execute();
+        $fallback_result = $fallback_query->get_result();
+        
+        while ($row = $fallback_result->fetch_assoc()) {
+            if ($this->isPassingFinalGrade($row['final_grade'] ?? null)) {
+                $this->completed_courses[] = $this->normalizeCourseCode($row['course_code'] ?? '');
+            }
+        }
+        $fallback_query->close();
+    }
+
+    private function loadStudentPolicyContext() {
+        $stmt = $this->conn->prepare("
+            SELECT stud_classification, general_weighted_average
+            FROM student_info
+            WHERE student_number = ?
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param("s", $this->student_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                $this->student_classification = trim((string)($row['stud_classification'] ?? ''));
+                $gwa = $row['general_weighted_average'] ?? null;
+                if ($gwa !== null && $gwa !== '' && is_numeric($gwa)) {
+                    $this->student_gwa = (float)$gwa;
+                }
+            }
+            $stmt->close();
+        }
+
+        $tableExists = $this->conn->query("SHOW TABLES LIKE 'program_shift_requests'");
+        if ($tableExists && $tableExists->num_rows > 0) {
+            $shiftStmt = $this->conn->prepare("
+                SELECT id
+                FROM program_shift_requests
+                WHERE student_number = ?
+                AND status IN ('pending_adviser', 'pending_coordinator')
+                LIMIT 1
+            ");
+            if ($shiftStmt) {
+                $shiftStmt->bind_param("s", $this->student_id);
+                $shiftStmt->execute();
+                $shiftResult = $shiftStmt->get_result();
+                $this->has_active_shift_request = $shiftResult && $shiftResult->num_rows > 0;
+                $shiftStmt->close();
+            }
+        }
+    }
+    
+    /**
+     * Load ALL grades including failed/INC/dropped for retention policy and back-subject tracking
+     */
+    private function loadAllGrades($has_approval_column) {
+        // Build base query to get all graded courses with their curriculum info
+        $approval_condition = $has_approval_column ? "AND (sc.grade_approved = 1 OR sc.final_grade IN ('INC', 'DRP', 'W'))" : "";
+
+        if ($this->curriculumCoursesTableExists()) {
+            $condition = $this->buildCurriculumProgramCondition('UPPER(TRIM(cb.program))');
+            $yearCondition = $this->buildCurriculumYearCondition('cb.curriculum_year');
+            $sql = "
+                SELECT
+                    sc.course_code,
+                    sc.final_grade,
+                    CASE cb.year_level
+                        WHEN 'First Year' THEN '1st Yr'
+                        WHEN 'Second Year' THEN '2nd Yr'
+                        WHEN 'Third Year' THEN '3rd Yr'
+                        WHEN 'Fourth Year' THEN '4th Yr'
+                        ELSE cb.year_level
+                    END AS year,
+                    CASE cb.semester
+                        WHEN 'First Semester' THEN '1st Sem'
+                        WHEN 'Second Semester' THEN '2nd Sem'
+                        WHEN 'Mid Year' THEN 'Mid Year'
+                        WHEN 'Midyear' THEN 'Mid Year'
+                        WHEN 'Summer' THEN 'Mid Year'
+                        ELSE cb.semester
+                    END AS semester,
+                    (cb.credit_units_lec + cb.credit_units_lab) AS total_units,
+                    sc.evaluator_remarks
+                FROM student_checklists sc
+                JOIN curriculum_courses cb
+                    ON sc.course_code = TRIM(cb.course_code)
+                WHERE sc.student_id = ?
+                AND sc.final_grade IS NOT NULL
+                AND sc.final_grade != ''
+                AND sc.final_grade != 'No Grade'
+                $approval_condition
+                AND {$condition['sql']}" . $yearCondition['sql'] . "
+                ORDER BY
+                    FIELD(cb.year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                    FIELD(cb.semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer')
+            ";
+
+            $stmt = $this->conn->prepare($sql);
+            $params = array_merge([$this->student_id], $condition['params'], $yearCondition['params']);
+            $types = 's' . $condition['types'] . $yearCondition['types'];
+            $stmt->bind_param($types, ...$params);
+        } else {
+            $condition = $this->buildLegacyProgramCondition('cb.programs');
+            $yearCondition = $this->buildCurriculumYearCondition('', "TRIM(SUBSTRING_INDEX(cb.curriculumyear_coursecode, '_', 1))");
+            $sql = "
+                SELECT 
+                    sc.course_code,
+                    sc.final_grade,
+                    CASE cb.year_level
+                        WHEN 'First Year' THEN '1st Yr'
+                        WHEN 'Second Year' THEN '2nd Yr'
+                        WHEN 'Third Year' THEN '3rd Yr'
+                        WHEN 'Fourth Year' THEN '4th Yr'
+                        ELSE cb.year_level
+                    END AS year,
+                    CASE cb.semester
+                        WHEN 'First Semester' THEN '1st Sem'
+                        WHEN 'Second Semester' THEN '2nd Sem'
+                        WHEN 'Mid Year' THEN 'Mid Year'
+                        WHEN 'Midyear' THEN 'Mid Year'
+                        WHEN 'Summer' THEN 'Mid Year'
+                        ELSE cb.semester
+                    END AS semester,
+                    (cb.credit_units_lec + cb.credit_units_lab) AS total_units,
+                    sc.evaluator_remarks
+                FROM student_checklists sc
+                JOIN cvsucarmona_courses cb 
+                    ON sc.course_code = TRIM(SUBSTRING_INDEX(cb.curriculumyear_coursecode, '_', -1))
+                WHERE sc.student_id = ?
+                AND sc.final_grade IS NOT NULL 
+                AND sc.final_grade != ''
+                AND sc.final_grade != 'No Grade'
+                $approval_condition
+                AND {$condition['sql']}" . $yearCondition['sql'] . "
+                ORDER BY
+                    FIELD(cb.year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                    FIELD(cb.semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer')
+            ";
+
+            $stmt = $this->conn->prepare($sql);
+            $params = array_merge([$this->student_id], $condition['params'], $yearCondition['params']);
+            $types = 's' . $condition['types'] . $yearCondition['types'];
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        // Track processed course codes to prevent double-counting from duplicate DB rows
+        $processed_grade_codes = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $course_code = $this->normalizeCourseCode($row['course_code'] ?? '');
+            
+            // Skip duplicate rows caused by same course_code in multiple curriculum entries
+            if (isset($processed_grade_codes[$course_code])) continue;
+            $processed_grade_codes[$course_code] = true;
+            
+            $grade = $row['final_grade'];
+            $year = $row['year'];
+            $semester = $row['semester'];
+            
+            // Build semester-by-semester grade history for retention calculation
+            $term_key = $year . '|' . $semester;
+            if (!isset($this->semester_grade_history[$term_key])) {
+                $this->semester_grade_history[$term_key] = [
+                    'year' => $year,
+                    'semester' => $semester,
+                    'total_subjects' => 0,
+                    'failed_subjects' => 0,
+                    'courses' => []
+                ];
+            }
+            
+            $is_failed = false;
+            
+            if ($grade === 'INC') {
+                $this->inc_courses[] = $course_code;
+                $is_failed = true;
+            } elseif ($grade === 'DRP' || $grade === 'W') {
+                $this->dropped_courses[] = $course_code;
+                $is_failed = true;
+            } elseif (is_numeric($grade)) {
+                $numeric_grade = floatval($grade);
+                if ($numeric_grade > 3.0 || $numeric_grade === 0.0) {
+                    $this->failed_courses[] = $course_code;
+                    $is_failed = true;
+                }
+            }
+            
+            $this->semester_grade_history[$term_key]['total_subjects']++;
+            if ($is_failed) {
+                $this->semester_grade_history[$term_key]['failed_subjects']++;
+                // Track per-course failure count for triple-failure detection
+                $this->course_failure_counts[$course_code] = ($this->course_failure_counts[$course_code] ?? 0) + 1;
+            }
+            $this->semester_grade_history[$term_key]['courses'][] = [
+                'code' => $course_code,
+                'grade' => $grade,
+                'failed' => $is_failed
+            ];
+        }
+        // Identify courses that have been failed 3 or more times
+        foreach ($this->course_failure_counts as $code => $count) {
+            if ($count >= 3) {
+                $this->thrice_failed_courses[$code] = $count;
+            }
+        }
+
+        $stmt->close();
+    }
+    
+    /**
+     * Calculate retention status history per semester
+     * Implements:
+     * - Warning: 30-50% failure rate
+     * - Probation: 51%+ failure rate OR two consecutive warnings
+     * - Disqualification: 75%+ failure rate OR two consecutive probations
+     */
+    private function calculateRetentionHistory() {
+        $year_order = ['1st Yr' => 1, '2nd Yr' => 2, '3rd Yr' => 3, '4th Yr' => 4];
+        $sem_order = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3];
+        
+        // Sort semesters chronologically
+        $sorted_terms = $this->semester_grade_history;
+        uksort($sorted_terms, function($a, $b) use ($year_order, $sem_order) {
+            list($ya, $sa) = explode('|', $a);
+            list($yb, $sb) = explode('|', $b);
+            $ya_ord = $year_order[$ya] ?? 0;
+            $yb_ord = $year_order[$yb] ?? 0;
+            if ($ya_ord !== $yb_ord) return $ya_ord - $yb_ord;
+            return ($sem_order[$sa] ?? 0) - ($sem_order[$sb] ?? 0);
+        });
+        
+        $prev_status = 'None';
+        $consecutive_warning = 0;
+        $consecutive_probation = 0;
+        $disqualification_count = 0;
+        
+        foreach ($sorted_terms as $term_key => $term_data) {
+            $total = $term_data['total_subjects'];
+            $failed = $term_data['failed_subjects'];
+            
+            if ($total === 0) {
+                $this->retention_history[$term_key] = 'None';
+                continue;
+            }
+            
+            $fail_percentage = ($failed / $total) * 100;
+            $status = 'None';
+            
+            // Determine base status from failure percentage
+            if ($fail_percentage >= 75) {
+                $status = 'Disqualification';
+            } elseif ($fail_percentage >= 51) {
+                $status = 'Probation';
+            } elseif ($fail_percentage >= 30) {
+                $status = 'Warning';
+            }
+            
+            // Escalation: Two consecutive warnings → Probation
+            if ($status === 'Warning') {
+                $consecutive_warning++;
+                $consecutive_probation = 0;
+                if ($consecutive_warning >= 2) {
+                    $status = 'Probation';
+                    $consecutive_warning = 0;
+                }
+            } elseif ($status === 'Probation') {
+                $consecutive_probation++;
+                $consecutive_warning = 0;
+                // Two consecutive probations → Disqualification
+                if ($consecutive_probation >= 2) {
+                    $status = 'Disqualification';
+                    $consecutive_probation = 0;
+                }
+            } elseif ($status === 'Disqualification') {
+                $disqualification_count++;
+                $consecutive_warning = 0;
+                $consecutive_probation = 0;
+            } else {
+                // Reset consecutive counters on clean semester
+                $consecutive_warning = 0;
+                $consecutive_probation = 0;
+            }
+            
+            $this->retention_history[$term_key] = $status;
+            $prev_status = $status;
+        }
+        
+        // Determine current retention status (from latest semester)
+        if (!empty($this->retention_history)) {
+            $this->retention_status = end($this->retention_history);
+        }
+        
+        // Store disqualification count for study plan generation
+        $this->disqualification_count = $disqualification_count;
+    }
+    
+    /**
+     * Load courses available via cross-registration from other programs
+     * If a course is not offered in the student's program for a given semester
+     * but is offered in another program's same semester, it can be cross-registered
+     */
+    private function loadCrossRegistrationCourses() {
+        if ($this->curriculumCoursesTableExists()) {
+            $condition = $this->buildCurriculumProgramCondition('UPPER(TRIM(program))');
+            $yearCondition = $this->buildCurriculumYearCondition('curriculum_year');
+            $sql = "
+                SELECT
+                    TRIM(course_code) AS course_code,
+                    course_title,
+                    credit_units_lec AS credit_unit_lec,
+                    credit_units_lab AS credit_unit_lab,
+                    pre_requisite,
+                    program AS programs,
+                    CASE year_level
+                        WHEN 'First Year' THEN '1st Yr'
+                        WHEN 'Second Year' THEN '2nd Yr'
+                        WHEN 'Third Year' THEN '3rd Yr'
+                        WHEN 'Fourth Year' THEN '4th Yr'
+                        ELSE year_level
+                    END AS year,
+                    CASE semester
+                        WHEN 'First Semester' THEN '1st Sem'
+                        WHEN 'Second Semester' THEN '2nd Sem'
+                        WHEN 'Mid Year' THEN 'Mid Year'
+                        WHEN 'Midyear' THEN 'Mid Year'
+                        WHEN 'Summer' THEN 'Mid Year'
+                        ELSE semester
+                    END AS semester
+                FROM curriculum_courses
+                WHERE NOT {$condition['sql']}
+                " . $yearCondition['sql'] . "
+                AND course_title IS NOT NULL
+                AND course_title != ''
+                AND (credit_units_lec > 0 OR credit_units_lab > 0)
+                ORDER BY
+                    FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                    FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                    id
+            ";
+            $stmt = $this->conn->prepare($sql);
+            $params = array_merge($condition['params'], $yearCondition['params']);
+            $types = $condition['types'] . $yearCondition['types'];
+            $stmt->bind_param($types, ...$params);
+        } else {
+            $condition = $this->buildLegacyProgramCondition('programs');
+            $yearCondition = $this->buildCurriculumYearCondition('', "TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1))");
+            $sql = "
+                SELECT 
+                    TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)) AS course_code,
+                    course_title,
+                    credit_units_lec AS credit_unit_lec,
+                    credit_units_lab AS credit_unit_lab,
+                    pre_requisite,
+                    programs,
+                    CASE year_level
+                        WHEN 'First Year' THEN '1st Yr'
+                        WHEN 'Second Year' THEN '2nd Yr'
+                        WHEN 'Third Year' THEN '3rd Yr'
+                        WHEN 'Fourth Year' THEN '4th Yr'
+                        ELSE year_level
+                    END AS year,
+                    CASE semester
+                        WHEN 'First Semester' THEN '1st Sem'
+                        WHEN 'Second Semester' THEN '2nd Sem'
+                        WHEN 'Mid Year' THEN 'Mid Year'
+                        WHEN 'Midyear' THEN 'Mid Year'
+                        WHEN 'Summer' THEN 'Mid Year'
+                        ELSE semester
+                    END AS semester
+                FROM cvsucarmona_courses
+                WHERE NOT {$condition['sql']}
+                " . $yearCondition['sql'] . "
+                AND course_title IS NOT NULL
+                AND course_title != ''
+                AND (credit_units_lec > 0 OR credit_units_lab > 0)
+                ORDER BY
+                    FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                    FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                    curriculumyear_coursecode
+            ";
+            $stmt = $this->conn->prepare($sql);
+            $params = array_merge($condition['params'], $yearCondition['params']);
+            $types = $condition['types'] . $yearCondition['types'];
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        while ($row = $result->fetch_assoc()) {
+            $course_code = $this->normalizeCourseCode($row['course_code'] ?? '');
+            if ($course_code === '' || isset($this->cross_reg_courses[$course_code])) {
+                continue;
+            }
+            // Only add if this course_code is in the student's curriculum (needs to be taken)
+            // and not already loaded in all_courses
+            // Cross-reg is for when a course IS in your curriculum but the offering
+            // for your semester is in another program's schedule
+            $this->cross_reg_courses[$course_code] = [
+                'code' => $course_code,
+                'title' => $row['course_title'],
+                'units' => ($row['credit_unit_lec'] ?? 0) + ($row['credit_unit_lab'] ?? 0),
+                'prerequisite' => $row['pre_requisite'],
+                'year' => $row['year'],
+                'semester' => $row['semester'],
+                'programs' => $row['programs'],
+                'cross_registered' => true
+            ];
+        }
+        $stmt->close();
+    }
+    
+    /**
+     * Load complete curriculum with prerequisites
+     * Only loads actual courses (excludes empty/placeholder records)
+     * Also marks failed/INC/dropped courses for retake scheduling
+     */
+    private function loadCurriculumData() {
+        if ($this->curriculumCoursesTableExists()) {
+            $condition = $this->buildCurriculumProgramCondition('UPPER(TRIM(program))');
+            $yearCondition = $this->buildCurriculumYearCondition('curriculum_year');
+            $sql = "
+                SELECT 
+                    TRIM(course_code) AS course_code,
+                    course_title,
+                    credit_units_lec AS credit_unit_lec,
+                    credit_units_lab AS credit_unit_lab,
+                    pre_requisite,
+                    CASE year_level
+                        WHEN 'First Year' THEN '1st Yr'
+                        WHEN 'Second Year' THEN '2nd Yr'
+                        WHEN 'Third Year' THEN '3rd Yr'
+                        WHEN 'Fourth Year' THEN '4th Yr'
+                        ELSE year_level
+                    END AS year,
+                    CASE semester
+                        WHEN 'First Semester' THEN '1st Sem'
+                        WHEN 'Second Semester' THEN '2nd Sem'
+                        WHEN 'Mid Year' THEN 'Mid Year'
+                        WHEN 'Midyear' THEN 'Mid Year'
+                        WHEN 'Summer' THEN 'Mid Year'
+                        ELSE semester
+                    END AS semester
+                FROM curriculum_courses
+                WHERE {$condition['sql']}
+                " . $yearCondition['sql'] . "
+                AND course_title IS NOT NULL
+                AND course_title != ''
+                AND (credit_units_lec > 0 OR credit_units_lab > 0)
+                ORDER BY 
+                    FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                    FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                    IFNULL(curriculum_year, 0),
+                    id
+            ";
+            $stmt = $this->conn->prepare($sql);
+            $params = array_merge($condition['params'], $yearCondition['params']);
+            $types = $condition['types'] . $yearCondition['types'];
+            $stmt->bind_param($types, ...$params);
+        } else {
+            $condition = $this->buildLegacyProgramCondition('programs');
+            $yearCondition = $this->buildCurriculumYearCondition('', "TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1))");
+            $sql = "
+                SELECT 
+                    TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)) AS course_code,
+                    course_title,
+                    credit_units_lec AS credit_unit_lec,
+                    credit_units_lab AS credit_unit_lab,
+                    pre_requisite,
+                    CASE year_level
+                        WHEN 'First Year' THEN '1st Yr'
+                        WHEN 'Second Year' THEN '2nd Yr'
+                        WHEN 'Third Year' THEN '3rd Yr'
+                        WHEN 'Fourth Year' THEN '4th Yr'
+                        ELSE year_level
+                    END AS year,
+                    CASE semester
+                        WHEN 'First Semester' THEN '1st Sem'
+                        WHEN 'Second Semester' THEN '2nd Sem'
+                        WHEN 'Mid Year' THEN 'Mid Year'
+                        WHEN 'Midyear' THEN 'Mid Year'
+                        WHEN 'Summer' THEN 'Mid Year'
+                        ELSE semester
+                    END AS semester
+                FROM cvsucarmona_courses
+                WHERE {$condition['sql']}
+                " . $yearCondition['sql'] . "
+                AND course_title IS NOT NULL
+                AND course_title != ''
+                AND (credit_units_lec > 0 OR credit_units_lab > 0)
+                ORDER BY 
+                    FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                    FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                    curriculumyear_coursecode
+            ";
+            $stmt = $this->conn->prepare($sql);
+            $params = array_merge($condition['params'], $yearCondition['params']);
+            $types = $condition['types'] . $yearCondition['types'];
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $query = $stmt->get_result();
+        
+        // Track term max units separately (includes all rows, even duplicates)
+        $this->term_max_units = [];
+        
+        while ($row = $query->fetch_assoc()) {
+            $course_code = $this->normalizeCourseCode($row['course_code'] ?? '');
+            $units = ($row['credit_unit_lec'] ?? 0) + ($row['credit_unit_lab'] ?? 0);
+            $year = $row['year'];
+            $semester = $row['semester'];
+            
+            // Always count units toward term max (even for duplicate course codes)
+            $term_key = $year . '|' . $semester;
+            if (!isset($this->term_max_units[$term_key])) {
+                $this->term_max_units[$term_key] = 0;
+            }
+            $this->term_max_units[$term_key] += $units;
+            
+            // For duplicate course codes within a program, keep the first (lowest year/sem) entry
+            // since ORDER BY ensures chronological order. The student takes it at the earliest offering.
+            if (isset($this->all_courses[$course_code])) {
+                continue;
+            }
+            
+            $is_failed = in_array($course_code, $this->failed_courses);
+            $is_inc = in_array($course_code, $this->inc_courses);
+            $is_dropped = in_array($course_code, $this->dropped_courses);
+            $needs_retake = $is_failed || $is_inc || $is_dropped;
+            
+            $this->all_courses[$course_code] = [
+                'code' => $course_code,
+                'title' => $row['course_title'],
+                'units' => $units,
+                'prerequisite' => $row['pre_requisite'],
+                'year' => $year,
+                'semester' => $semester,
+                'completed' => in_array($course_code, $this->completed_courses),
+                'is_failed' => $is_failed,
+                'is_inc' => $is_inc,
+                'is_dropped' => $is_dropped,
+                'needs_retake' => $needs_retake,
+                'cross_registered' => false
+            ];
+            
+            // Build prerequisite map
+            $this->prerequisite_map[$course_code] = $this->parsePrerequisites($row['pre_requisite']);
+            $this->standing_constraint_map[$course_code] = $this->extractStandingConstraint($row['pre_requisite']);
+        }
+        $stmt->close();
+    }
+
+    private function evaluateShiftTransfereePolicyGate() {
+        $classification = strtolower(trim($this->student_classification));
+        $is_transferee = ($classification !== '' && strpos($classification, 'transferee') !== false);
+        $applies = $is_transferee || $this->has_active_shift_request;
+
+        $active_failed = array_diff($this->failed_courses, $this->completed_courses);
+        $active_inc = array_diff($this->inc_courses, $this->completed_courses);
+        $active_dropped = array_diff($this->dropped_courses, $this->completed_courses);
+        $failed_course_count = count($active_failed) + count($active_inc) + count($active_dropped);
+
+        $average_grade = $this->calculatePolicyAverageGrade();
+        $reasons = [];
+
+        if ($failed_course_count > 0) {
+            $reasons[] = 'Student has failing, INC, or dropped courses on record.';
+        }
+
+        if ($average_grade !== null && $average_grade > 2.0) {
+            $reasons[] = 'Average grade is above 2.00.';
+        }
+
+        $this->policy_gate_status = [
+            'applies' => $applies,
+            'eligible' => (!$applies || empty($reasons)),
+            'reasons' => $reasons,
+            'average_grade' => $average_grade,
+            'failed_course_count' => $failed_course_count,
+            'classification' => $this->student_classification,
+            'has_active_shift_request' => $this->has_active_shift_request,
+        ];
+    }
+
+    private function calculatePolicyAverageGrade() {
+        $columns_check = $this->conn->query("SHOW COLUMNS FROM student_checklists LIKE 'grade_approved'");
+        $has_approval_column = ($columns_check && $columns_check->num_rows > 0);
+
+        $sql = "
+            SELECT final_grade
+            FROM student_checklists
+            WHERE student_id = ?
+            AND final_grade IS NOT NULL
+            AND final_grade != ''
+            AND final_grade REGEXP '^[0-9]+(\\.[0-9]+)?$'
+        ";
+        if ($has_approval_column) {
+            $sql .= " AND grade_approved = 1";
+        }
+
+        $stmt = $this->conn->prepare($sql);
+        if (!$stmt) {
+            return $this->student_gwa;
+        }
+
+        $stmt->bind_param("s", $this->student_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $grades = [];
+        while ($row = $result->fetch_assoc()) {
+            $grades[] = (float)$row['final_grade'];
+        }
+        $stmt->close();
+
+        if (!empty($grades)) {
+            return round(array_sum($grades) / count($grades), 2);
+        }
+
+        return $this->student_gwa;
+    }
+    
+    /**
+     * Parse prerequisite string into array of course codes
+     * Filters out non-course prerequisites (year standing, percentage requirements, etc.)
+     * Handles "&" separators (e.g., "GNED 11 & 12" → ["GNED 11", "GNED 12"])
+     */
+    private function parsePrerequisites($prereq_string) {
+        if (empty($prereq_string) || strtoupper(trim($prereq_string)) === 'NONE') {
+            return [];
+        }
+        
+        // Normalize "&" separators to commas before splitting
+        // Handle "GNED 11 & 12" → "GNED 11, GNED 12" by expanding abbreviated codes
+        $prereq_string = preg_replace_callback('/(\b[A-Z]+\s+\d+\w*)\s*&\s*(\d+\w*)/', function($m) {
+            // Extract prefix from first code (e.g., "GNED" from "GNED 11")
+            $prefix = preg_replace('/\s+\d+\w*$/', '', $m[1]);
+            return $m[1] . ', ' . $prefix . ' ' . $m[2];
+        }, $prereq_string);
+        
+        // Split by comma and clean up
+        $prereqs = array_map('trim', explode(',', $prereq_string));
+        $valid_prereqs = [];
+        
+        foreach ($prereqs as $prereq) {
+            if (empty($prereq)) continue;
+            
+            // Skip non-course-code prerequisites
+            if (stripos($prereq, 'year') !== false || stripos($prereq, 'standing') !== false) continue;
+            if (stripos($prereq, 'incoming') !== false) continue;
+            if (stripos($prereq, '%') !== false) continue; // "70% Total Units taken"
+            if (stripos($prereq, 'All ') === 0) continue;  // "All Subjects", "All Major Subjects"
+            if (stripos($prereq, 'Graduating') !== false) continue;
+            if (stripos($prereq, 'PROF Ed') !== false || stripos($prereq, 'PROF ed') !== false) continue;
+            if (stripos($prereq, 'HS ') === 0) continue; // "HS Physics-Mechanics"
+            if (stripos($prereq, 'Total') !== false) continue;
+            
+            // Handle abbreviated lists like "EDUC 75, 80, 85" → "80" and "85" are number-only
+            // These get expanded by matching against the previous valid prereq's prefix
+            if (preg_match('/^\d+\w*$/', $prereq) && !empty($valid_prereqs)) {
+                // Get prefix from last valid prereq
+                $last = end($valid_prereqs);
+                if (preg_match('/^([A-Z]+\s+)\d/', $last, $pm)) {
+                    $prereq = $pm[1] . $prereq;
+                }
+            }
+            
+            $valid_prereqs[] = $prereq;
+        }
+        
+        return $valid_prereqs;
+    }
+
+    /**
+     * Extract explicit year-standing constraints from raw prerequisite text.
+     * Examples:
+     * - "Incoming 4th yr."
+     * - "4th Year Standing"
+     */
+    private function extractStandingConstraint($prereq_string) {
+        $prereq_string = trim((string)$prereq_string);
+        if ($prereq_string === '') {
+            return null;
+        }
+
+        if (preg_match('/incoming\s+(\d)(?:st|nd|rd|th)?\s*(?:yr|year)/i', $prereq_string, $m)) {
+            return [
+                'type' => 'incoming',
+                'year' => (int)$m[1],
+            ];
+        }
+
+        if (preg_match('/(\d)(?:st|nd|rd|th)?\s*year\s*standing/i', $prereq_string, $m)) {
+            return [
+                'type' => 'standing',
+                'year' => (int)$m[1],
+            ];
+        }
+
+        return null;
+    }
+
+    private function yearLabelToOrder($year_label) {
+        if (preg_match('/(\d+)/', (string)$year_label, $m)) {
+            return (int)$m[1];
+        }
+
+        $year_order = ['1st Yr' => 1, '2nd Yr' => 2, '3rd Yr' => 3, '4th Yr' => 4];
+        return $year_order[$year_label] ?? 0;
+    }
+
+    /**
+     * Enforce explicit year-standing constraints while still allowing
+     * transferees/credited students to take any same-semester course whose
+     * true blockers are already cleared.
+     */
+    private function standingConstraintSatisfied($course_code, $target_year, $target_semester) {
+        $constraint = $this->standing_constraint_map[$course_code] ?? null;
+        if (empty($constraint) || empty($constraint['year'])) {
+            return true;
+        }
+
+        $term_year_order = $this->yearLabelToOrder($target_year);
+        $required_year = (int)$constraint['year'];
+        $constraint_type = (string)($constraint['type'] ?? 'standing');
+
+        if ($constraint_type === 'incoming') {
+            if ($term_year_order >= $required_year) {
+                return true;
+            }
+
+            return $term_year_order === ($required_year - 1) && $target_semester === 'Mid Year';
+        }
+
+        return $term_year_order >= $required_year;
+    }
+    
+    /**
+     * CSP PHASE: Check if all prerequisites are satisfied for a course
+     * Enforces prerequisites for ALL courses regardless if minor or major
+     */
+    private function prerequisitesSatisfied($course_code) {
+        if (!isset($this->prerequisite_map[$course_code])) {
+            return true;
+        }
+        
+        $prereqs = $this->prerequisite_map[$course_code];
+        
+        if (empty($prereqs)) {
+            return true;
+        }
+        
+        // Normalize completed courses for comparison
+        $normalized_completed = array_map('trim', $this->completed_courses);
+        $normalized_completed = array_map('strtoupper', $normalized_completed);
+        
+        foreach ($prereqs as $prereq) {
+            $prereq_normalized = strtoupper(trim($prereq));
+            
+            if (!in_array($prereq_normalized, $normalized_completed)) {
+                if (!in_array($prereq, $this->completed_courses)) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * GREEDY PHASE: Prioritize courses for optimal scheduling
+    * Priority factors (enhanced with back and failed course rules):
+     * 1. HIGHEST: Failed/INC/dropped courses that need retake (back subjects)
+     * 2. HIGH: Lower-year back subjects prioritized over higher-year ones
+     * 3. Courses with pre-requisites (regardless if minor or major) 
+     * 4. Courses with more dependents (critical path)
+     * 5. Courses matching current term's year
+     * 6. Higher unit courses (maximize progress)
+     * 7. Year level progression (lower years first)
+     */
+    private function prioritizeCourses($courses, $target_year = null, $simulated_completed = []) {
+        $priority_scores = [];
+        
+        foreach ($courses as $course_code => $course) {
+            $score = 0;
+            
+            // HIGHEST PRIORITY: Back and failed courses that need retake
+            if (!empty($course['needs_retake'])) {
+                $score += 200; // Enormous bonus for retake courses
+                
+                // Within retakes, prioritize lower year levels first
+                $year_retake_priority = [
+                    '1st Yr' => 80,
+                    '2nd Yr' => 60,
+                    '3rd Yr' => 40,
+                    '4th Yr' => 20
+                ];
+                $score += $year_retake_priority[$course['year']] ?? 0;
+            }
+            
+            // HIGH PRIORITY: Courses that have prerequisites (they're harder to schedule)
+            $prereqs = $this->prerequisite_map[$course_code] ?? [];
+            if (!empty($prereqs)) {
+                $score += 25; // Bonus for courses with prerequisites
+            }
+            
+            // Factor: Count dependent chain (recursive - counts all downstream courses)
+            $dependent_count = $this->countDependentChain($course_code, $simulated_completed);
+            $score += $dependent_count * 15;
+            
+            // Factor: Bonus for matching current term's year
+            if ($target_year !== null && $course['year'] === $target_year) {
+                $score += 50;
+            }
+            
+            // Factor: Unit weight (more units = higher priority)
+            $score += $course['units'] * 2;
+            
+            // Factor: Year level progression (complete lower years first)
+            $year_priority = [
+                '1st Yr' => 40,
+                '2nd Yr' => 30,
+                '3rd Yr' => 20,
+                '4th Yr' => 10
+            ];
+            $score += $year_priority[$course['year']] ?? 0;
+            
+            // Factor: 1st sem before 2nd sem
+            if ($course['semester'] === '1st Sem') {
+                $score += 5;
+            }
+            
+            // Small penalty for cross-registered courses (prefer own program courses)
+            if (!empty($course['cross_registered'])) {
+                $score -= 10;
+            }
+            
+            $priority_scores[$course_code] = $score;
+        }
+        
+        // Sort by priority score (descending)
+        arsort($priority_scores);
+        
+        $prioritized = [];
+        foreach ($priority_scores as $course_code => $score) {
+            $prioritized[$course_code] = $courses[$course_code];
+        }
+        
+        return $prioritized;
+    }
+    
+    /**
+     * Count ALL courses that depend on this course (recursive chain)
+     * This properly identifies critical path courses
+     * Uses simulated_completed to reflect courses already planned in earlier terms
+     */
+    private function countDependentChain($course_code, $simulated_completed = [], &$visited = []) {
+        if (isset($visited[$course_code])) {
+            return 0;
+        }
+        $visited[$course_code] = true;
+        
+        $count = 0;
+        foreach ($this->prerequisite_map as $other_course => $prereqs) {
+            if (in_array($other_course, $simulated_completed)) {
+                continue;
+            }
+            
+            if (in_array($course_code, $prereqs)) {
+                $count++;
+                $count += $this->countDependentChain($other_course, $simulated_completed, $visited);
+            }
+        }
+        
+        return $count;
+    }
+    
+    /**
+     * Determine the max units allowed for a term based on curriculum and retention policy
+     * Uses curriculum total units per year/semester as the baseline max.
+     * Retention policy may reduce the limit further.
+     */
+    private function getMaxUnitsForTerm($retention_status, $year = null, $semester = null) {
+        // Get curriculum-based max units for this term
+        $curriculum_max = 21; // fallback for extra terms beyond curriculum
+        if ($year !== null && $semester !== null) {
+            $key = $year . '|' . $semester;
+            if (isset($this->term_max_units[$key])) {
+                $curriculum_max = $this->term_max_units[$key];
+            }
+        }
+        
+        // Apply retention policy limits
+        $retention_limit = $curriculum_max;
+        switch ($retention_status) {
+            case 'Probation':
+            case 'Disqualification':
+                $retention_limit = 15;
+                break;
+            case 'Warning':
+                $statuses = array_values($this->retention_history);
+                $len = count($statuses);
+                if ($len >= 2 && $statuses[$len - 1] === 'Warning' && $statuses[$len - 2] === 'Warning') {
+                    $retention_limit = 15;
+                }
+                break;
+        }
+        
+        return min($curriculum_max, $retention_limit);
+    }
+    
+    /**
+     * Check if a term should be skipped due to Disqualification
+     * Disqualified students are ineligible to enroll for one semester
+     */
+    private function shouldSkipTerm($term_index, &$skip_tracker) {
+        if ($this->retention_status === 'Disqualification') {
+            if (!isset($skip_tracker['disq_skip_done'])) {
+                $skip_tracker['disq_skip_done'] = true;
+                return true; // Skip this semester
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Check if study plan generation should stop completely
+     * Two disqualification statuses = no longer eligible
+     */
+    private function shouldStopGeneration() {
+        if (!empty($this->policy_gate_status['applies']) && empty($this->policy_gate_status['eligible'])) {
+            return true;
+        }
+        // Stop if disqualified twice
+        if (isset($this->disqualification_count) && $this->disqualification_count >= 2) {
+            return true;
+        }
+        // Stop if any course has been failed 3 or more times
+        if (!empty($this->thrice_failed_courses)) {
+            return true;
+        }
+        return false;
+    }
+
+    private function applyNearGraduationForceAdd(&$study_plan, &$simulated_completed, &$simulated_all_courses, $current_term) {
+        if (($current_term['year'] ?? '') !== '4th Yr' || ($current_term['semester'] ?? '') !== '2nd Sem') {
+            return;
+        }
+
+        $remaining = array_filter($simulated_all_courses, function($course) {
+            return !$course['completed'];
+        });
+
+        if (empty($remaining) || count($remaining) > 3) {
+            return;
+        }
+
+        $target_index = null;
+        foreach ($study_plan as $index => $term) {
+            if (($term['year'] ?? '') === '4th Yr' && ($term['semester'] ?? '') === '2nd Sem') {
+                $target_index = $index;
+                break;
+            }
+        }
+
+        if ($target_index === null) {
+            $study_plan[] = [
+                'year' => '4th Yr',
+                'semester' => '2nd Sem',
+                'courses' => [],
+                'total_units' => 0,
+                'max_units' => $this->getMaxUnitsForTerm('None', '4th Yr', '2nd Sem'),
+                'retention_status' => 'None',
+                'retake_count' => 0,
+                'cross_reg_count' => 0,
+                'forced_add_count' => 0,
+                'skipped' => false
+            ];
+            $target_index = count($study_plan) - 1;
+        }
+
+        $forced_courses = $this->prioritizeCourses($remaining, '4th Yr', $simulated_completed);
+        $added_count = 0;
+
+        foreach ($forced_courses as $course_code => $course) {
+            if (isset($study_plan[$target_index]['courses'][$course_code])) {
+                continue;
+            }
+
+            $course['forced_added'] = true;
+            $course['forced_reason'] = 'Forced Added - Near Graduation';
+            $study_plan[$target_index]['courses'][$course_code] = $course;
+            $study_plan[$target_index]['total_units'] += (float)($course['units'] ?? 0);
+            $study_plan[$target_index]['forced_add_count'] = ($study_plan[$target_index]['forced_add_count'] ?? 0) + 1;
+
+            $simulated_completed[] = $course_code;
+            $simulated_all_courses[$course_code]['completed'] = true;
+            $simulated_all_courses[$course_code]['forced_added'] = true;
+            $simulated_all_courses[$course_code]['forced_reason'] = 'Forced Added - Near Graduation';
+            $added_count++;
+        }
+
+        if ($added_count > 0) {
+            if (!isset($study_plan[$target_index]['retake_count'])) {
+                $study_plan[$target_index]['retake_count'] = 0;
+            }
+            if (!isset($study_plan[$target_index]['cross_reg_count'])) {
+                $study_plan[$target_index]['cross_reg_count'] = 0;
+            }
+        }
+    }
+
+    /**
+     * Brand-new students with no validated academic history should see the
+     * curriculum exactly as defined, without cross-registration or greedy
+     * substitutions from other terms.
+     */
+    private function shouldUseExactCurriculumPlan() {
+        return empty($this->semester_grade_history)
+            && empty($this->completed_courses)
+            && empty($this->failed_courses)
+            && empty($this->inc_courses)
+            && empty($this->dropped_courses);
+    }
+
+    /**
+     * Build a term-by-term plan that mirrors the student's curriculum/checklist
+     * exactly, preserving the original year and semester of each course.
+     */
+    private function buildExactCurriculumPlan() {
+        $terms = [
+            ['year' => '1st Yr', 'semester' => '1st Sem'],
+            ['year' => '1st Yr', 'semester' => '2nd Sem'],
+            ['year' => '1st Yr', 'semester' => 'Mid Year'],
+            ['year' => '2nd Yr', 'semester' => '1st Sem'],
+            ['year' => '2nd Yr', 'semester' => '2nd Sem'],
+            ['year' => '2nd Yr', 'semester' => 'Mid Year'],
+            ['year' => '3rd Yr', 'semester' => '1st Sem'],
+            ['year' => '3rd Yr', 'semester' => '2nd Sem'],
+            ['year' => '3rd Yr', 'semester' => 'Mid Year'],
+            ['year' => '4th Yr', 'semester' => '1st Sem'],
+            ['year' => '4th Yr', 'semester' => '2nd Sem'],
+            ['year' => '4th Yr', 'semester' => 'Mid Year'],
+        ];
+
+        $study_plan = [];
+        foreach ($terms as $term) {
+            $term_courses = [];
+            foreach ($this->all_courses as $course_code => $course) {
+                if ($course['completed']) {
+                    continue;
+                }
+                if (($course['year'] ?? '') !== $term['year'] || ($course['semester'] ?? '') !== $term['semester']) {
+                    continue;
+                }
+                $term_courses[$course_code] = $course;
+            }
+
+            if (empty($term_courses)) {
+                continue;
+            }
+
+            $study_plan[] = [
+                'year' => $term['year'],
+                'semester' => $term['semester'],
+                'courses' => $term_courses,
+                'total_units' => array_sum(array_column($term_courses, 'units')),
+                'max_units' => $this->getMaxUnitsForTerm('None', $term['year'], $term['semester']),
+                'retention_status' => 'None',
+                'retake_count' => 0,
+                'cross_reg_count' => 0,
+                'forced_add_count' => 0,
+                'skipped' => false
+            ];
+        }
+
+        return $study_plan;
+    }
+    
+    /**
+     * Generate complete study plan using CSP + Greedy Algorithm
+     * Enhanced with:
+     * - Retention policy enforcement (unit limits, semester skips, stop generation)
+    * - Back and failed course prioritization (lower years first)
+     * - Cross-registration support
+     * - No overloading constraint
+     */
+    public function generateOptimizedPlan() {
+        // Check if student has been disqualified twice - stop generation
+        if ($this->shouldStopGeneration()) {
+            return [];
+        }
+
+        if ($this->shouldUseExactCurriculumPlan()) {
+            return $this->buildExactCurriculumPlan();
+        }
+        
+        $study_plan = [];
+        
+        // IMPORTANT: Use copies for simulation, don't modify original data
+        $simulated_completed = $this->completed_courses;
+        $simulated_all_courses = $this->all_courses;
+        
+        // Determine starting year/semester based on completed courses
+        $current_term = $this->determineCurrentTerm();
+        
+        $terms = [
+            ['year' => '1st Yr', 'semester' => '1st Sem'],
+            ['year' => '1st Yr', 'semester' => '2nd Sem'],
+            ['year' => '1st Yr', 'semester' => 'Mid Year'],
+            ['year' => '2nd Yr', 'semester' => '1st Sem'],
+            ['year' => '2nd Yr', 'semester' => '2nd Sem'],
+            ['year' => '2nd Yr', 'semester' => 'Mid Year'],
+            ['year' => '3rd Yr', 'semester' => '1st Sem'],
+            ['year' => '3rd Yr', 'semester' => '2nd Sem'],
+            ['year' => '3rd Yr', 'semester' => 'Mid Year'],
+            ['year' => '4th Yr', 'semester' => '1st Sem'],
+            ['year' => '4th Yr', 'semester' => '2nd Sem'],
+            ['year' => '4th Yr', 'semester' => 'Mid Year'],
+        ];
+        
+        // Start from current term
+        $start_index = 0;
+        foreach ($terms as $index => $term) {
+            if ($term['year'] === $current_term['year'] && $term['semester'] === $current_term['semester']) {
+                $start_index = $index;
+                break;
+            }
+        }
+        
+        // Retention policy: Determine initial retention status
+        $initial_max = $this->getMaxUnitsForTerm($this->retention_status, $terms[$start_index]['year'] ?? '1st Yr', $terms[$start_index]['semester'] ?? '1st Sem');
+        $retention_limited = ($this->retention_status !== 'None' && $this->retention_status !== '' && $initial_max < ($this->term_max_units[($terms[$start_index]['year'] ?? '1st Yr') . '|' . ($terms[$start_index]['semester'] ?? '1st Sem')] ?? 21));
+        $retention_terms_remaining = $retention_limited ? 2 : 0;
+        $skip_tracker = [];
+        $is_first_term = true;
+        
+        // Generate plan for remaining terms
+        for ($i = $start_index; $i < count($terms); $i++) {
+            $term = $terms[$i];
+            
+            // RETENTION: Check if this term should be skipped (Disqualification)
+            if ($is_first_term && $this->shouldSkipTerm($i, $skip_tracker)) {
+                $study_plan[] = [
+                    'year' => $term['year'],
+                    'semester' => $term['semester'],
+                    'courses' => [],
+                    'total_units' => 0,
+                    'skipped' => true,
+                    'skip_reason' => 'Disqualification - Ineligible to enroll this semester'
+                ];
+                $is_first_term = false;
+                // After skip, next terms are retention-limited
+                $retention_terms_remaining = 2;
+                continue;
+            }
+            $is_first_term = false;
+            
+            // Determine max units for this specific term from curriculum
+            $max_units = $this->getMaxUnitsForTerm(
+                ($retention_terms_remaining > 0) ? $this->retention_status : 'None',
+                $term['year'],
+                $term['semester']
+            );
+            
+            // CSP PHASE: Get available courses for this semester
+            $available = $this->applyConstraintsForSimulation($term['semester'], $simulated_completed, $simulated_all_courses);
+
+            // Keep higher-year courses that already satisfy prerequisites.
+            // This is important for transferees and students with credited subjects:
+            // once lower-year blockers are cleared, the plan should fill the term with
+            // any same-semester course that is truly available instead of leaving it underloaded.
+            $course_year_order = ['1st Yr' => 1, '2nd Yr' => 2, '3rd Yr' => 3, '4th Yr' => 4];
+            $term_year_order = $course_year_order[$term['year']] ?? 4;
+
+            // Include backlog courses from prior years/semesters, but only if their original semester matches the current semester,
+            // or if cross-registration is possible for this semester.
+            $backlog = $this->applyConstraintsForSimulation(null, $simulated_completed, $simulated_all_courses);
+            foreach ($backlog as $code => $course) {
+                $course_year = $course_year_order[$course['year']] ?? 1;
+                // Only allow if course is from a lower year and its semester matches the current semester
+                if ($course_year < $term_year_order && $course['semester'] === $term['semester']) {
+                    $available[$code] = $course;
+                } else if ($course_year < $term_year_order && isset($this->cross_reg_courses[$code])) {
+                    $cross_course = $this->cross_reg_courses[$code];
+                    // Only cross-register if the course is offered in the current semester by another program
+                    if ($cross_course['semester'] === $term['semester']) {
+                        // Check prerequisites (case-insensitive)
+                        $prereqs = $this->prerequisite_map[$code] ?? [];
+                        $prereqs_met = true;
+                        $completed_upper = array_map('strtoupper', $simulated_completed);
+                        foreach ($prereqs as $prereq) {
+                            if (!in_array(strtoupper($prereq), $completed_upper)) {
+                                $prereqs_met = false;
+                                break;
+                            }
+                        }
+                        if ($prereqs_met) {
+                            $available[$code] = $simulated_all_courses[$code];
+                            $available[$code]['cross_registered'] = true;
+                        }
+                    }
+                }
+            }
+            
+            // CROSS-REGISTRATION: Check for courses available in other programs
+            // Only if the course is in the student's curriculum but not available in their program this semester
+            $remaining_course_codes = array_keys(array_filter($simulated_all_courses, function($c) {
+                return !$c['completed'];
+            }));
+            
+            foreach ($remaining_course_codes as $needed_code) {
+                // If course is not already available and not yet planned
+                if (!isset($available[$needed_code]) && isset($this->cross_reg_courses[$needed_code])) {
+                    $cross_course = $this->cross_reg_courses[$needed_code];
+                    // Only cross-register if the course is offered in the current semester by another program
+                    if ($cross_course['semester'] === $term['semester']) {
+                        // Check prerequisites (case-insensitive)
+                        $prereqs = $this->prerequisite_map[$needed_code] ?? [];
+                        $prereqs_met = true;
+                        $completed_upper = array_map('strtoupper', $simulated_completed);
+                        foreach ($prereqs as $prereq) {
+                            if (!in_array(strtoupper($prereq), $completed_upper)) {
+                                $prereqs_met = false;
+                                break;
+                            }
+                        }
+                        if ($prereqs_met) {
+                            $available[$needed_code] = $simulated_all_courses[$needed_code];
+                            $available[$needed_code]['cross_registered'] = true;
+                        }
+                    }
+                }
+            }
+
+            foreach (array_keys($available) as $code) {
+                if (!$this->standingConstraintSatisfied($code, $term['year'], $term['semester'])) {
+                    unset($available[$code]);
+                }
+            }
+            
+            if (empty($available)) {
+                // Check if there are any remaining courses at all
+                $remaining_check = array_filter($simulated_all_courses, function($c) {
+                    return !$c['completed'];
+                });
+                if (empty($remaining_check)) {
+                    break; // All courses completed
+                }
+                continue; // No courses available this semester, try next
+            }
+            
+            // GREEDY PHASE: Build optimal course selection respecting unit limits
+            $term_courses = $this->buildTermPlanFromAvailable($available, $max_units, $term['year'], $simulated_completed);
+            
+            if (!empty($term_courses)) {
+                // Count retake courses in this term
+                $retake_count = 0;
+                $cross_reg_count = 0;
+                foreach ($term_courses as $tc) {
+                    if (!empty($tc['needs_retake'])) $retake_count++;
+                    if (!empty($tc['cross_registered'])) $cross_reg_count++;
+                }
+                
+                $study_plan[] = [
+                    'year' => $term['year'],
+                    'semester' => $term['semester'],
+                    'courses' => $term_courses,
+                    'total_units' => array_sum(array_column($term_courses, 'units')),
+                    'max_units' => $max_units,
+                    'retention_status' => ($max_units < 21) ? $this->retention_status : 'None',
+                    'retake_count' => $retake_count,
+                    'cross_reg_count' => $cross_reg_count,
+                    'forced_add_count' => 0,
+                    'skipped' => false
+                ];
+                
+                // Mark as completed in simulation
+                foreach ($term_courses as $course_code => $course) {
+                    $simulated_completed[] = $course_code;
+                    $simulated_all_courses[$course_code]['completed'] = true;
+                }
+            }
+            
+            // Track retention-limited terms countdown
+            if ($retention_terms_remaining > 0) {
+                $retention_terms_remaining--;
+            }
+            
+            // Check if all courses are completed in simulation
+            $remaining = array_filter($simulated_all_courses, function($course) {
+                return !$course['completed'];
+            });
+            
+            if (empty($remaining)) {
+                break;
+            }
+        }
+        
+        // If there are still remaining courses after all standard terms,
+        // force-add the final 1 to 3 courses into 4th Yr / 2nd Sem for
+        // students who are already entering that term so they do not
+        // extend one more semester just for a very small remainder.
+        $this->applyNearGraduationForceAdd($study_plan, $simulated_completed, $simulated_all_courses, $current_term);
+
+        // If there are still remaining courses after all standard terms,
+        // add extra terms to accommodate them
+        $remaining = array_filter($simulated_all_courses, function($course) {
+            return !$course['completed'];
+        });
+        
+        $extra_term_count = 0;
+        $consecutive_empty = 0;
+        $sem_cycle = ['1st Sem', '2nd Sem', 'Mid Year'];
+        $extra_max_units = !empty($this->term_max_units) ? max($this->term_max_units) : 21;
+        while (!empty($remaining) && $extra_term_count < 9 && $consecutive_empty < 3) {
+            $semester = $sem_cycle[$extra_term_count % 3];
+            
+            $available = $this->applyConstraintsForSimulation($semester, $simulated_completed, $simulated_all_courses);
+            
+            // Include backlog courses from all prior semesters
+            $backlog = $this->applyConstraintsForSimulation(null, $simulated_completed, $simulated_all_courses);
+            foreach ($backlog as $code => $course) {
+                if (!isset($available[$code])) {
+                    $available[$code] = $course;
+                }
+            }
+            
+            // Cross-registration for extra terms
+            $remaining_codes = array_keys(array_filter($simulated_all_courses, function($c) {
+                return !$c['completed'];
+            }));
+            foreach ($remaining_codes as $needed_code) {
+                if (!isset($available[$needed_code]) && isset($this->cross_reg_courses[$needed_code])) {
+                    $cross_course = $this->cross_reg_courses[$needed_code];
+                    if ($cross_course['semester'] === $semester) {
+                        $prereqs = $this->prerequisite_map[$needed_code] ?? [];
+                        $prereqs_met = true;
+                        $completed_upper = array_map('strtoupper', $simulated_completed);
+                        foreach ($prereqs as $prereq) {
+                            if (!in_array(strtoupper($prereq), $completed_upper)) {
+                                $prereqs_met = false;
+                                break;
+                            }
+                        }
+                        if ($prereqs_met) {
+                            $available[$needed_code] = $simulated_all_courses[$needed_code];
+                            $available[$needed_code]['cross_registered'] = true;
+                        }
+                    }
+                }
+            }
+
+            foreach (array_keys($available) as $code) {
+                if (!$this->standingConstraintSatisfied($code, $year_label ?? '4th Yr', $semester)) {
+                    unset($available[$code]);
+                }
+            }
+            
+            if (empty($available)) {
+                $consecutive_empty++;
+                $extra_term_count++;
+                continue;
+            }
+            
+            $term_courses = $this->buildTermPlanFromAvailable($available, $extra_max_units, '4th Yr', $simulated_completed);
+            if (empty($term_courses)) {
+                $consecutive_empty++;
+                $extra_term_count++;
+                continue;
+            }
+            $consecutive_empty = 0;
+            
+            // Count retake and cross-reg courses
+            $retake_count = 0;
+            $cross_reg_count = 0;
+            foreach ($term_courses as $tc) {
+                if (!empty($tc['needs_retake'])) $retake_count++;
+                if (!empty($tc['cross_registered'])) $cross_reg_count++;
+            }
+            
+            // Proper year label: 5th Yr for first trio, 6th Yr for second trio, etc.
+            $extra_year_num = 5 + intval($extra_term_count / 3);
+            $year_label = $extra_year_num . 'th Yr';
+            
+            $study_plan[] = [
+                'year' => $year_label,
+                'semester' => $semester,
+                'courses' => $term_courses,
+                'total_units' => array_sum(array_column($term_courses, 'units')),
+                'max_units' => $extra_max_units,
+                'retention_status' => 'None',
+                'retake_count' => $retake_count,
+                'cross_reg_count' => $cross_reg_count,
+                'forced_add_count' => 0,
+                'skipped' => false
+            ];
+            
+            foreach ($term_courses as $course_code => $course) {
+                $simulated_completed[] = $course_code;
+                $simulated_all_courses[$course_code]['completed'] = true;
+            }
+            
+            $remaining = array_filter($simulated_all_courses, function($course) {
+                return !$course['completed'];
+            });
+            $extra_term_count++;
+        }
+        
+        return $study_plan;
+    }
+    
+    /**
+     * Apply constraints for simulation (doesn't modify class properties)
+     */
+    private function applyConstraintsForSimulation($target_semester, $simulated_completed, $simulated_all_courses) {
+        $available = [];
+        
+        foreach ($simulated_all_courses as $code => $course) {
+            if ($course['completed']) {
+                continue;
+            }
+            
+            // Check semester constraint
+            if ($target_semester !== null && $course['semester'] !== $target_semester) {
+                continue;
+            }
+            
+            // Check prerequisites using simulated completed courses (case-insensitive)
+            $prereqs = $this->prerequisite_map[$code] ?? [];
+            $prereqs_met = true;
+            $completed_upper = array_map('strtoupper', $simulated_completed);
+            foreach ($prereqs as $prereq) {
+                if (!in_array(strtoupper($prereq), $completed_upper)) {
+                    $prereqs_met = false;
+                    break;
+                }
+            }
+            
+            if ($prereqs_met) {
+                $available[$code] = $course;
+            }
+        }
+        
+        return $available;
+    }
+    
+    /**
+     * Build term plan from available courses (doesn't modify class properties)
+     * Uses prioritizeCourses with target_year for better scheduling
+     * Enforces NO OVERLOADING constraint (respects max_units strictly)
+     */
+    private function buildTermPlanFromAvailable($available, $max_units, $target_year = null, $simulated_completed = []) {
+        // Use the greedy prioritization algorithm
+        $prioritized = $this->prioritizeCourses($available, $target_year, $simulated_completed);
+        
+        $selected = [];
+        $total_units = 0;
+        
+        foreach ($prioritized as $code => $course) {
+            // NO OVERLOADING: Strict unit limit enforcement
+            if ($total_units + $course['units'] <= $max_units) {
+                $selected[$code] = $course;
+                $total_units += $course['units'];
+            }
+        }
+        
+        return $selected;
+    }
+    
+    /**
+     * A semester is completed only when all curriculum courses in that term are passed
+     * and there are no active back subjects (failed/INC/dropped not yet passed) in that term.
+     */
+    private function isSemesterCompleted($year, $semester) {
+        $term_courses = [];
+        foreach ($this->all_courses as $code => $course) {
+            if ($course['year'] === $year && $course['semester'] === $semester) {
+                $term_courses[$code] = $course;
+            }
+        }
+
+        // If no curriculum rows exist for the term, treat it as complete.
+        if (empty($term_courses)) {
+            return true;
+        }
+
+        // Active back subjects are failed/INC/dropped courses that are not yet passed.
+        $active_failed = array_flip(array_map('strtoupper', array_diff($this->failed_courses, $this->completed_courses)));
+        $active_inc = array_flip(array_map('strtoupper', array_diff($this->inc_courses, $this->completed_courses)));
+        $active_dropped = array_flip(array_map('strtoupper', array_diff($this->dropped_courses, $this->completed_courses)));
+
+        foreach ($term_courses as $code => $course) {
+            if (empty($course['completed'])) {
+                return false;
+            }
+
+            $upper_code = strtoupper($code);
+            if (isset($active_failed[$upper_code]) || isset($active_inc[$upper_code]) || isset($active_dropped[$upper_code])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine student's current term based on semester completion progression.
+     * Returns the first semester that is not yet completed.
+     */
+    private function determineCurrentTerm() {
+        $terms = [
+            ['year' => '1st Yr', 'semester' => '1st Sem'],
+            ['year' => '1st Yr', 'semester' => '2nd Sem'],
+            ['year' => '1st Yr', 'semester' => 'Mid Year'],
+            ['year' => '2nd Yr', 'semester' => '1st Sem'],
+            ['year' => '2nd Yr', 'semester' => '2nd Sem'],
+            ['year' => '2nd Yr', 'semester' => 'Mid Year'],
+            ['year' => '3rd Yr', 'semester' => '1st Sem'],
+            ['year' => '3rd Yr', 'semester' => '2nd Sem'],
+            ['year' => '3rd Yr', 'semester' => 'Mid Year'],
+            ['year' => '4th Yr', 'semester' => '1st Sem'],
+            ['year' => '4th Yr', 'semester' => '2nd Sem'],
+            ['year' => '4th Yr', 'semester' => 'Mid Year'],
+        ];
+
+        foreach ($terms as $term) {
+            if (!$this->isSemesterCompleted($term['year'], $term['semester'])) {
+                return $term;
+            }
+        }
+
+        // All terms are completed.
+        return ['year' => '4th Yr', 'semester' => 'Mid Year'];
+    }
+    
+    /**
+     * Get student's completion statistics
+     * Enhanced with retention and back-subject info
+     */
+    public function getCompletionStats() {
+        $valid_courses = array_filter($this->all_courses, function($course) {
+            return !empty($course['code']) && $course['units'] > 0;
+        });
+        
+        $total_courses = count($valid_courses);
+        $completed_count = count($this->completed_courses);
+        $remaining_count = max(0, $total_courses - $completed_count);
+        // Exclude courses that were failed/INC/dropped but later passed
+        $active_failed = array_diff($this->failed_courses, $this->completed_courses);
+        $active_inc = array_diff($this->inc_courses, $this->completed_courses);
+        $active_dropped = array_diff($this->dropped_courses, $this->completed_courses);
+        $failed_count = count($active_failed);
+        $inc_count = count($active_inc);
+        $dropped_count = count($active_dropped);
+        
+        $total_units = 0;
+        $completed_units = 0;
+        
+        foreach ($valid_courses as $course) {
+            $total_units += $course['units'];
+            if ($course['completed']) {
+                $completed_units += $course['units'];
+            }
+        }
+        
+        $completion_percentage = 0;
+        if ($total_courses > 0) {
+            $raw_percentage = ($completed_count / $total_courses) * 100;
+            $completion_percentage = min(100, max(0, round($raw_percentage, 1)));
+        }
+        
+        return [
+            'total_courses' => $total_courses,
+            'completed_courses' => min($completed_count, $total_courses),
+            'remaining_courses' => $remaining_count,
+            'completion_percentage' => $completion_percentage,
+            'total_units' => $total_units,
+            'completed_units' => min($completed_units, $total_units),
+            'remaining_units' => max(0, $total_units - $completed_units),
+            'failed_courses' => $failed_count,
+            'inc_courses' => $inc_count,
+            'dropped_courses' => $dropped_count,
+            'back_subjects' => $failed_count + $inc_count + $dropped_count,
+            'retention_status' => $this->retention_status,
+            'retention_history' => $this->retention_history,
+            'thrice_failed_courses' => $this->thrice_failed_courses,
+            'thrice_failed_count' => count($this->thrice_failed_courses),
+            'policy_gate' => $this->policy_gate_status,
+        ];
+    }
+    
+    /**
+     * Get current retention status
+     */
+    public function getRetentionStatus() {
+        return $this->retention_status;
+    }
+    
+    /**
+     * Get retention history per semester
+     */
+    public function getRetentionHistory() {
+        return $this->retention_history;
+    }
+
+    public function getPolicyGateStatus() {
+        return $this->policy_gate_status;
+    }
+    
+    /**
+     * Get completed (past) terms with course details for display
+     * Returns semesters that have graded courses, sorted chronologically
+     */
+    public function getCompletedTerms() {
+        $year_order = ['1st Yr' => 1, '2nd Yr' => 2, '3rd Yr' => 3, '4th Yr' => 4];
+        $sem_order = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3];
+        
+        $terms = [];
+        foreach ($this->semester_grade_history as $term_key => $term_data) {
+            // Only mark/display a semester as completed when all curriculum
+            // courses in that semester are passed.
+            if (!$this->isSemesterCompleted($term_data['year'], $term_data['semester'])) {
+                continue;
+            }
+
+            $courses = [];
+            foreach ($term_data['courses'] as $c) {
+                $course_info = $this->all_courses[$c['code']] ?? null;
+                $prerequisite = trim((string)($course_info['prerequisite'] ?? ''));
+                if ($prerequisite === '' || strtoupper($prerequisite) === 'NONE') {
+                    $prerequisite = 'None';
+                }
+                $courses[] = [
+                    'code' => $c['code'],
+                    'title' => $course_info['title'] ?? $c['code'],
+                    'units' => $course_info['units'] ?? 0,
+                    'prerequisite' => $prerequisite,
+                    'grade' => $c['grade'],
+                    'failed' => $c['failed']
+                ];
+            }
+            $terms[] = [
+                'year' => $term_data['year'],
+                'semester' => $term_data['semester'],
+                'courses' => $courses,
+                'total_units' => array_sum(array_column($courses, 'units')),
+                'retention_status' => $this->retention_history[$term_key] ?? 'None'
+            ];
+        }
+        
+        // Sort chronologically
+        usort($terms, function($a, $b) use ($year_order, $sem_order) {
+            $ya = $year_order[$a['year']] ?? 0;
+            $yb = $year_order[$b['year']] ?? 0;
+            if ($ya !== $yb) return $ya - $yb;
+            return ($sem_order[$a['semester']] ?? 0) - ($sem_order[$b['semester']] ?? 0);
+        });
+        
+        return $terms;
+    }
+    
+    /**
+     * Get all curriculum courses grouped by term (year + semester),
+     * split into completed vs uncomplete lists for popup display.
+     */
+    public function getAllCoursesGroupedByTerm() {
+        $year_order = ['1st Yr' => 1, '2nd Yr' => 2, '3rd Yr' => 3, '4th Yr' => 4];
+        $sem_order  = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3];
+
+        // Build course_code -> grade info map from grade history
+        $course_grade_map = [];
+        foreach ($this->semester_grade_history as $term_data) {
+            foreach ($term_data['courses'] as $c) {
+                // Keep the most recent grade if a course appears multiple times
+                $course_grade_map[$c['code']] = [
+                    'grade'  => $c['grade'],
+                    'failed' => $c['failed']
+                ];
+            }
+        }
+
+        $terms = [];
+        foreach ($this->all_courses as $code => $course) {
+            $term_key = $course['year'] . '|' . $course['semester'];
+            if (!isset($terms[$term_key])) {
+                $terms[$term_key] = [
+                    'year'       => $course['year'],
+                    'semester'   => $course['semester'],
+                    'completed'  => [],
+                    'uncomplete' => []
+                ];
+            }
+
+            $grade_info = $course_grade_map[$code] ?? null;
+
+            if ($course['completed']) {
+                $prerequisite = trim((string)($course['prerequisite'] ?? ''));
+                if ($prerequisite === '' || strtoupper($prerequisite) === 'NONE') {
+                    $prerequisite = 'None';
+                }
+                $terms[$term_key]['completed'][] = [
+                    'code'  => $code,
+                    'title' => $course['title'],
+                    'units' => $course['units'],
+                    'prerequisite' => $prerequisite,
+                    'grade' => $grade_info['grade'] ?? ''
+                ];
+            } else {
+                $prerequisite = trim((string)($course['prerequisite'] ?? ''));
+                if ($prerequisite === '' || strtoupper($prerequisite) === 'NONE') {
+                    $prerequisite = 'None';
+                }
+                $reason = 'Not Yet Taken';
+                $grade  = '';
+                if ($course['is_failed']) {
+                    $reason = 'Failed';
+                    $grade  = $grade_info['grade'] ?? '5.0';
+                } elseif ($course['is_inc']) {
+                    $reason = 'INC';
+                    $grade  = 'INC';
+                } elseif ($course['is_dropped']) {
+                    $reason = 'Dropped';
+                    $grade  = 'DRP';
+                }
+                $terms[$term_key]['uncomplete'][] = [
+                    'code'   => $code,
+                    'title'  => $course['title'],
+                    'units'  => $course['units'],
+                    'prerequisite' => $prerequisite,
+                    'grade'  => $grade,
+                    'reason' => $reason
+                ];
+            }
+        }
+
+        // Sort terms chronologically
+        uksort($terms, function ($a, $b) use ($year_order, $sem_order) {
+            list($ya, $sa) = explode('|', $a);
+            list($yb, $sb) = explode('|', $b);
+            $ya_ord = $year_order[$ya] ?? 0;
+            $yb_ord = $year_order[$yb] ?? 0;
+            if ($ya_ord !== $yb_ord) return $ya_ord - $yb_ord;
+            return ($sem_order[$sa] ?? 0) - ($sem_order[$sb] ?? 0);
+        });
+
+        return $terms;
+    }
+
+    /**
+     * Get courses that have been failed 3 or more times.
+     * These trigger plan generation to stop.
+     */
+    public function getThriceFailedCourses() {
+        $result = [];
+        foreach ($this->thrice_failed_courses as $code => $count) {
+            $course_info = $this->all_courses[$code] ?? null;
+            $result[$code] = [
+                'code'       => $code,
+                'title'      => $course_info['title'] ?? $code,
+                'units'      => $course_info['units'] ?? 0,
+                'fail_count' => $count
+            ];
+        }
+        return $result;
+    }
+
+    /**
+    * Get list of back and failed subjects
+     */
+    public function getBackSubjects() {
+        $back = [];
+        foreach ($this->all_courses as $code => $course) {
+            if ($course['needs_retake']) {
+                $back[$code] = $course;
+            }
+        }
+        return $back;
+    }
+    
+    public function __destruct() {
+        if ($this->conn) {
+            closeDBConnection($this->conn);
+        }
+    }
+}

@@ -1,0 +1,770 @@
+-- phpMyAdmin SQL Dump
+-- Database: osas_db
+-- Generated: 2026-02-19
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+-- --------------------------------------------------------
+-- Database: `osas_db`
+-- --------------------------------------------------------
+
+CREATE DATABASE IF NOT EXISTS `osas_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `osas_db`;
+
+-- --------------------------------------------------------
+-- Table structure for table `student_info`
+-- --------------------------------------------------------
+
+CREATE TABLE `student_info` (
+  `student_number` INT NOT NULL,
+  `last_name` VARCHAR(255) DEFAULT NULL,
+  `first_name` VARCHAR(255) DEFAULT NULL,
+  `middle_name` VARCHAR(255) DEFAULT NULL,
+  `contact_number` INT(11) DEFAULT NULL,
+  `date_of_admission` DATE DEFAULT NULL,
+  `stud_landline` VARCHAR(255) DEFAULT NULL,
+  `program` VARCHAR(255) DEFAULT NULL,
+  `cvsu_email` VARCHAR(255) DEFAULT NULL,
+  `if_ojt` VARCHAR(255) DEFAULT NULL,
+  `house_number_street` VARCHAR(255) DEFAULT NULL,
+  `brgy` VARCHAR(255) DEFAULT NULL,
+  `town` VARCHAR(255) DEFAULT NULL,
+  `province` VARCHAR(255) DEFAULT NULL,
+  `zip_code` INT(10) DEFAULT NULL,
+  `prefix` VARCHAR(255) DEFAULT NULL,
+  `suffix` VARCHAR(255) DEFAULT NULL,
+  `stud_classification` VARCHAR(255) DEFAULT NULL,
+  `reg_status` VARCHAR(255) DEFAULT NULL,
+  `date_of_birth` DATE DEFAULT NULL,
+  `place_of_birth` VARCHAR(255) DEFAULT NULL,
+  `age` INT DEFAULT NULL,
+  `sex` VARCHAR(255) DEFAULT NULL,
+  `religion` VARCHAR(255) DEFAULT NULL,
+  `nationality` VARCHAR(255) DEFAULT NULL,
+  `civil_status` VARCHAR(255) DEFAULT NULL,
+  `parent_guardian` VARCHAR(255) DEFAULT NULL,
+  `parent_guardian_addrs` VARCHAR(255) DEFAULT NULL,
+  `parent_guardian_occup` VARCHAR(255) DEFAULT NULL,
+  `parent_guardian_landline` VARCHAR(255) DEFAULT NULL,
+  `parent_guardian_number` INT(11) DEFAULT NULL,
+  `student_special_popu` VARCHAR(255) DEFAULT NULL,
+  `password` VARCHAR(255) DEFAULT NULL,
+  `email` VARCHAR(100) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT NULL,
+  `status` VARCHAR(255) DEFAULT NULL,
+  `approved_by` VARCHAR(255) DEFAULT NULL,
+  `year_level` TINYINT DEFAULT NULL,
+  `remember_token` VARCHAR(255) DEFAULT NULL,
+  `remember_token_expiry` DATETIME DEFAULT NULL,
+  `ojt_completed` BOOLEAN DEFAULT NULL,
+  `ojt_eligible` BOOLEAN DEFAULT NULL,
+  `general_weighted_average` DECIMAL(3,2) DEFAULT NULL,
+  `course` VARCHAR(100) DEFAULT NULL,
+  `section` VARCHAR(20) DEFAULT NULL,
+  `honors` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`student_number`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `admin`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `admin`;
+CREATE TABLE `admin` (
+  `last_name` VARCHAR(255) DEFAULT NULL,
+  `first_name` VARCHAR(255) DEFAULT NULL,
+  `middle_name` VARCHAR(255) DEFAULT NULL,
+  `username` VARCHAR(255) NOT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `prefix` VARCHAR(255) DEFAULT NULL,
+  `suffix` VARCHAR(255) DEFAULT NULL,
+  `admin_email` VARCHAR(255) DEFAULT NULL,
+  `can_manage_job` BOOLEAN DEFAULT NULL,
+  `can_manage_user` BOOLEAN DEFAULT NULL,
+  `can_manage_announcement` BOOLEAN DEFAULT NULL,
+  `can_view_reports` BOOLEAN DEFAULT NULL,
+  `admin_id` INT DEFAULT NULL,
+  `department` VARCHAR(255) DEFAULT NULL,
+  `position` VARCHAR(255) DEFAULT NULL,
+  `office_location` VARCHAR(255) DEFAULT NULL,
+  `internal_phone` VARCHAR(255) DEFAULT NULL,
+  `admin_level` ENUM('super_admin', 'admin', 'moderator') DEFAULT NULL,
+  `can_manage_users` BOOLEAN DEFAULT NULL,
+  `can_manage_jobs` BOOLEAN DEFAULT NULL,
+  `can_manage_announcements` BOOLEAN DEFAULT NULL,
+  `last_activity` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `stud_educ_background`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `stud_educ_background`;
+CREATE TABLE `stud_educ_background` (
+  `educ_id` INT NOT NULL AUTO_INCREMENT,
+  `student_number` INT DEFAULT NULL,
+  `elem_school_name` VARCHAR(255) DEFAULT NULL,
+  `elem_yr_graduated` INT(4) DEFAULT NULL,
+  `elem_address` VARCHAR(255) DEFAULT NULL,
+  `elem_type_of_school` VARCHAR(255) DEFAULT NULL,
+  `high_school_name` VARCHAR(255) DEFAULT NULL,
+  `highschool_yr_graduated` INT(4) DEFAULT NULL,
+  `highschool_address` VARCHAR(255) DEFAULT NULL,
+  `hs_type_of_school` VARCHAR(255) DEFAULT NULL,
+  `shs_school_name` VARCHAR(255) DEFAULT NULL,
+  `shs_yr_graduated` INT(4) DEFAULT NULL,
+  `shs_address` VARCHAR(255) DEFAULT NULL,
+  `shs_type_of_school` VARCHAR(255) DEFAULT NULL,
+  `transferee` BOOLEAN DEFAULT NULL,
+  `school_last_attended` VARCHAR(255) DEFAULT NULL,
+  `last_school_address` VARCHAR(255) DEFAULT NULL,
+  `college_school_name` VARCHAR(255) DEFAULT NULL,
+  `college_yr_graduated` INT(4) DEFAULT NULL,
+  `college_address` VARCHAR(255) DEFAULT NULL,
+  `college_type_of_school` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`educ_id`),
+  KEY `fk_educ_student` (`student_number`),
+  CONSTRAINT `fk_educ_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `certificate`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `certificate`;
+CREATE TABLE `certificate` (
+  `cert_id` INT NOT NULL AUTO_INCREMENT,
+  `student_number` INT DEFAULT NULL,
+  `cert_type` VARCHAR(255) DEFAULT NULL,
+  `req_date` DATE DEFAULT NULL,
+  `status` VARCHAR(255) DEFAULT NULL,
+  `issued_date` DATE DEFAULT NULL,
+  `remarks` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`cert_id`),
+  KEY `fk_certificate_student` (`student_number`),
+  CONSTRAINT `fk_certificate_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `notification`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `notification`;
+CREATE TABLE `notification` (
+  `notif_id` INT NOT NULL AUTO_INCREMENT,
+  `student_number` INT DEFAULT NULL,
+  `title` VARCHAR(255) DEFAULT NULL,
+  `message` VARCHAR(255) DEFAULT NULL,
+  `date_sent` DATE DEFAULT NULL,
+  `is_red` BOOLEAN DEFAULT NULL,
+  PRIMARY KEY (`notif_id`),
+  KEY `fk_notification_student` (`student_number`),
+  CONSTRAINT `fk_notification_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `counseling_req`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `counseling_req`;
+CREATE TABLE `counseling_req` (
+  `counseling_req_id` INT NOT NULL AUTO_INCREMENT,
+  `student_number` INT DEFAULT NULL,
+  `req_date` DATE DEFAULT NULL,
+  `status` VARCHAR(255) DEFAULT NULL,
+  `counselor_assigned` VARCHAR(255) DEFAULT NULL,
+  `session_date` DATE DEFAULT NULL,
+  `remarks` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`counseling_req_id`),
+  KEY `fk_counseling_student` (`student_number`),
+  CONSTRAINT `fk_counseling_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `event_req`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `event_req`;
+CREATE TABLE `event_req` (
+  `event_req` VARCHAR(255) NOT NULL,
+  `student_number` INT DEFAULT NULL,
+  `event_name` VARCHAR(255) DEFAULT NULL,
+  `req_date` DATE DEFAULT NULL,
+  `status` VARCHAR(255) DEFAULT NULL,
+  `remarks` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`event_req`),
+  KEY `fk_event_student` (`student_number`),
+  CONSTRAINT `fk_event_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `scholarship`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `scholarship`;
+CREATE TABLE `scholarship` (
+  `scho_id` INT NOT NULL AUTO_INCREMENT,
+  `description` VARCHAR(255) DEFAULT NULL,
+  `number_of_slots` VARCHAR(255) DEFAULT NULL,
+  `scho_name` VARCHAR(255) DEFAULT NULL,
+  `sponsor` VARCHAR(255) DEFAULT NULL,
+  `acad_yr` VARCHAR(255) DEFAULT NULL,
+  `scholarship_sem` VARCHAR(255) DEFAULT NULL,
+  `date_created` DATE DEFAULT NULL,
+  PRIMARY KEY (`scho_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `good_moral_req`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `good_moral_req`;
+CREATE TABLE `good_moral_req` (
+  `good_moral_req_id` INT NOT NULL AUTO_INCREMENT,
+  `student_id` INT DEFAULT NULL,
+  `req_date` DATE DEFAULT NULL,
+  `req_time` TIME DEFAULT NULL,
+  `status` VARCHAR(255) DEFAULT NULL,
+  `purpose` VARCHAR(255) DEFAULT NULL,
+  `remarks` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`good_moral_req_id`),
+  KEY `fk_goodmoral_student` (`student_id`),
+  CONSTRAINT `fk_goodmoral_student` FOREIGN KEY (`student_id`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `eligilibity_cond`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `eligilibity_cond`;
+CREATE TABLE `eligilibity_cond` (
+  `cond_id` INT NOT NULL AUTO_INCREMENT,
+  `scholarship_id` INT DEFAULT NULL,
+  `field_name` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`cond_id`),
+  KEY `fk_eligibility_scholarship` (`scholarship_id`),
+  CONSTRAINT `fk_eligibility_scholarship` FOREIGN KEY (`scholarship_id`) REFERENCES `scholarship` (`scho_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `student_checklists`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `student_checklists`;
+CREATE TABLE `student_checklists` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `student_id` INT DEFAULT NULL,
+  `course_code` VARCHAR(50) DEFAULT NULL,
+  `status` VARCHAR(50) DEFAULT NULL,
+  `grade` VARCHAR(10) DEFAULT NULL,
+  `semester` VARCHAR(50) DEFAULT NULL,
+  `school_year` VARCHAR(20) DEFAULT NULL,
+  `final_grade` VARCHAR(10) DEFAULT NULL,
+  `evaluator_remarks` TEXT DEFAULT NULL,
+  `professor_instructor` VARCHAR(255) DEFAULT NULL,
+  `grade_submitted_at` DATETIME DEFAULT NULL,
+  `updated_at` DATETIME DEFAULT NULL,
+  `submitted_by` VARCHAR(255) DEFAULT NULL,
+  `grade_approved` BOOLEAN DEFAULT NULL,
+  `approved_at` DATETIME DEFAULT NULL,
+  `approved_by` VARCHAR(255) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_checklist_student` (`student_id`),
+  KEY `idx_student_course` (`student_id`, `course_code`),
+  CONSTRAINT `fk_checklist_student` FOREIGN KEY (`student_id`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `system_settings`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `system_settings`;
+CREATE TABLE `system_settings` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `setting_name` VARCHAR(255) DEFAULT NULL,
+  `setting_value` INT DEFAULT NULL,
+  `updated_by` VARCHAR(255) DEFAULT NULL,
+  `updated_at` VARCHAR(255) DEFAULT NULL,
+  `created_at` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `placement_repo`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `placement_repo`;
+CREATE TABLE `placement_repo` (
+  `report_id` INT NOT NULL AUTO_INCREMENT,
+  `report_type` ENUM('monthly', 'quarterly', 'annual', 'custom') DEFAULT NULL,
+  `period_start` DATE DEFAULT NULL,
+  `period_end` DATE DEFAULT NULL,
+  `total_students` INT DEFAULT NULL,
+  `total_employers` INT DEFAULT NULL,
+  `total_jobs` INT DEFAULT NULL,
+  `total_applications` INT DEFAULT NULL,
+  `total_hires` INT DEFAULT NULL,
+  `ojt_count` INT DEFAULT NULL,
+  `avg_match_score` DECIMAL(5,2) DEFAULT NULL,
+  `top_industry` VARCHAR(255) DEFAULT NULL,
+  `top_course` VARCHAR(255) DEFAULT NULL,
+  `generated_by` INT DEFAULT NULL,
+  `generated_at` TIMESTAMP NULL DEFAULT NULL,
+  `report_url` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`report_id`),
+  KEY `fk_placement_admin` (`generated_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `job_approvals`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `job_approvals`;
+CREATE TABLE `job_approvals` (
+  `approval_id` INT NOT NULL AUTO_INCREMENT,
+  `job_id` INT DEFAULT NULL,
+  `admin_id` INT DEFAULT NULL,
+  `status` ENUM('pending', 'approved', 'rejected', 'revision') DEFAULT NULL,
+  `review_date` TIMESTAMP NULL DEFAULT NULL,
+  `comments` TEXT DEFAULT NULL,
+  `required_changes` TEXT DEFAULT NULL,
+  `reviewed_by` INT DEFAULT NULL,
+  `reviewed_at` TIMESTAMP NULL DEFAULT NULL,
+  `is_urgent` BOOLEAN DEFAULT NULL,
+  PRIMARY KEY (`approval_id`),
+  KEY `fk_approval_job` (`job_id`),
+  KEY `fk_approval_admin` (`admin_id`),
+  KEY `fk_approval_reviewer` (`reviewed_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `student_skills`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `student_skills`;
+CREATE TABLE `student_skills` (
+  `student_skill_id` INT NOT NULL AUTO_INCREMENT,
+  `student_id` INT DEFAULT NULL,
+  `skill_name` VARCHAR(255) DEFAULT NULL,
+  `proficiency_level` ENUM('beginner', 'intermediate', 'advanced', 'expert') DEFAULT NULL,
+  `years_experience` DECIMAL(4,2) DEFAULT NULL,
+  `certification` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`student_skill_id`),
+  KEY `fk_student_skills_student` (`student_id`),
+  CONSTRAINT `fk_student_skills_student` FOREIGN KEY (`student_id`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `required_skills`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `required_skills`;
+CREATE TABLE `required_skills` (
+  `skill_id` INT NOT NULL AUTO_INCREMENT,
+  `job_id` INT DEFAULT NULL,
+  `skill_name` VARCHAR(255) DEFAULT NULL,
+  `importance_level` ENUM('required', 'preferred', 'optional') DEFAULT NULL,
+  PRIMARY KEY (`skill_id`),
+  KEY `fk_required_skills_job` (`job_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `ojt_records`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `ojt_records`;
+CREATE TABLE `ojt_records` (
+  `ojt_record_id` INT NOT NULL AUTO_INCREMENT,
+  `student_id` INT DEFAULT NULL,
+  `employer_id` INT DEFAULT NULL,
+  `job_id` INT DEFAULT NULL,
+  `start_date` DATE DEFAULT NULL,
+  `end_date` DATE DEFAULT NULL,
+  `total_hours` INT DEFAULT NULL,
+  `supervisor_name` VARCHAR(255) DEFAULT NULL,
+  `supervisor_contact` VARCHAR(255) DEFAULT NULL,
+  `status` ENUM('ongoing', 'completed', 'terminated', 'on_hold') DEFAULT NULL,
+  `final_grade` DECIMAL(3,2) DEFAULT NULL,
+  `evaluation_form_url` VARCHAR(255) DEFAULT NULL,
+  `certificate_url` VARCHAR(255) DEFAULT NULL,
+  `student_feedback` TEXT DEFAULT NULL,
+  `employer_feedback` TEXT DEFAULT NULL,
+  PRIMARY KEY (`ojt_record_id`),
+  KEY `fk_ojt_student` (`student_id`),
+  KEY `fk_ojt_employer` (`employer_id`),
+  KEY `fk_ojt_job` (`job_id`),
+  CONSTRAINT `fk_ojt_student` FOREIGN KEY (`student_id`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `adviser`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `adviser`;
+CREATE TABLE `adviser` (
+  `last_name` VARCHAR(255) DEFAULT NULL,
+  `first_name` VARCHAR(255) DEFAULT NULL,
+  `middle_name` VARCHAR(255) DEFAULT NULL,
+  `username` VARCHAR(255) NOT NULL,
+  `password` VARCHAR(255) DEFAULT NULL,
+  `prefix` VARCHAR(255) DEFAULT NULL,
+  `suffix` VARCHAR(255) DEFAULT NULL,
+  `id` int(11) DEFAULT NULL,
+  `adviser_email` varchar(255) DEFAULT NULL,
+  `sex` enum('Male','Female') DEFAULT NULL,
+  `pronoun` enum('Mr.','Ms.','Mrs.') DEFAULT NULL,
+  PRIMARY KEY (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `employers`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `employers`;
+CREATE TABLE `employers` (
+  `employer_id` INT NOT NULL AUTO_INCREMENT,
+  `company_name` VARCHAR(255) NOT NULL,
+  `company_description` TEXT DEFAULT NULL,
+  `industry` VARCHAR(255) DEFAULT NULL,
+  `company_size` ENUM('1-10', '11-50', '51-200', '201-500', '500+') DEFAULT NULL,
+  `website` VARCHAR(255) DEFAULT NULL,
+  `logo_url` VARCHAR(255) DEFAULT NULL,
+  `address` VARCHAR(255) DEFAULT NULL,
+  `city` VARCHAR(100) DEFAULT NULL,
+  `province` VARCHAR(100) DEFAULT NULL,
+  `zip_code` VARCHAR(20) DEFAULT NULL,
+  `contact_person` VARCHAR(255) DEFAULT NULL,
+  `contact_email` VARCHAR(255) DEFAULT NULL,
+  `contact_phone` VARCHAR(50) DEFAULT NULL,
+  `is_verified` BOOLEAN DEFAULT FALSE,
+  `is_ojt_partner` BOOLEAN DEFAULT FALSE,
+  `partnership_start_date` DATE DEFAULT NULL,
+  `partnership_end_date` DATE DEFAULT NULL,
+  `status` ENUM('pending', 'active', 'inactive', 'blacklisted') DEFAULT 'pending',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`employer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `job_postings`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `job_postings`;
+CREATE TABLE `job_postings` (
+  `job_id` INT NOT NULL AUTO_INCREMENT,
+  `employer_id` INT DEFAULT NULL,
+  `title` VARCHAR(255) DEFAULT NULL,
+  `description` TEXT DEFAULT NULL,
+  `requirements` TEXT DEFAULT NULL,
+  `responsibilities` TEXT DEFAULT NULL,
+  `job_type` ENUM('full-time', 'part-time', 'contract', 'internship', 'ojt') DEFAULT NULL,
+  `industry` VARCHAR(255) DEFAULT NULL,
+  `location` VARCHAR(255) DEFAULT NULL,
+  `salary_range_min` DECIMAL(12,2) DEFAULT NULL,
+  `salary_range_max` DECIMAL(12,2) DEFAULT NULL,
+  `min_gwa` DECIMAL(3,2) DEFAULT NULL,
+  `min_year_level` TINYINT DEFAULT NULL,
+  `is_ojt` BOOLEAN DEFAULT NULL,
+  `ojt_duration` VARCHAR(255) DEFAULT NULL,
+  `ojt_credits` INT DEFAULT NULL,
+  `posted_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `deadline_date` DATE DEFAULT NULL,
+  `status` ENUM('draft', 'active', 'closed', 'expired') DEFAULT NULL,
+  `views_count` INT DEFAULT 0,
+  `applications_count` INT DEFAULT 0,
+  PRIMARY KEY (`job_id`),
+  KEY `fk_job_employer` (`employer_id`),
+  CONSTRAINT `fk_job_employer` FOREIGN KEY (`employer_id`) REFERENCES `employers` (`employer_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `job_applications`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `job_applications`;
+CREATE TABLE `job_applications` (
+  `application_id` INT NOT NULL AUTO_INCREMENT,
+  `job_id` INT DEFAULT NULL,
+  `student_id` INT DEFAULT NULL,
+  `application_date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `status` ENUM('pending', 'reviewed', 'shortlisted', 'interviewed', 'offered', 'hired', 'rejected', 'withdrawn') DEFAULT 'pending',
+  `cover_letter` TEXT DEFAULT NULL,
+  `resume_url` VARCHAR(255) DEFAULT NULL,
+  `match_score` DECIMAL(5,2) DEFAULT NULL,
+  `employer_notes` TEXT DEFAULT NULL,
+  `interview_date` DATETIME DEFAULT NULL,
+  `interview_location` VARCHAR(255) DEFAULT NULL,
+  `interview_notes` TEXT DEFAULT NULL,
+  `offer_salary` DECIMAL(12,2) DEFAULT NULL,
+  `offer_date` DATE DEFAULT NULL,
+  `response_date` DATE DEFAULT NULL,
+  `rejection_reason` VARCHAR(255) DEFAULT NULL,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`application_id`),
+  KEY `fk_application_job` (`job_id`),
+  KEY `fk_application_student` (`student_id`),
+  CONSTRAINT `fk_application_job` FOREIGN KEY (`job_id`) REFERENCES `job_postings` (`job_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_application_student` FOREIGN KEY (`student_id`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `batches`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `batches`;
+CREATE TABLE `batches` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `batches` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `adviser_batch`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `adviser_batch`;
+CREATE TABLE `adviser_batch` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `batch` INT DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_adviser_batch` (`batch`),
+  CONSTRAINT `fk_adviser_batch` FOREIGN KEY (`batch`) REFERENCES `batches` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `employment_history`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `employment_history`;
+CREATE TABLE `employment_history` (
+  `employment_id` INT NOT NULL AUTO_INCREMENT,
+  `student_number` INT DEFAULT NULL,
+  `company_name` VARCHAR(255) DEFAULT NULL,
+  `job_position` VARCHAR(255) DEFAULT NULL,
+  `job_status` VARCHAR(255) DEFAULT NULL,
+  `monthly_earning` DECIMAL(12,2) DEFAULT NULL,
+  `means_of_finding` VARCHAR(255) DEFAULT NULL,
+  `is_first_job` BOOLEAN DEFAULT NULL,
+  `stay_duration` VARCHAR(255) DEFAULT NULL,
+  `change_reason` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`employment_id`),
+  KEY `fk_employment_student` (`student_number`),
+  CONSTRAINT `fk_employment_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `accounts`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `accounts`;
+CREATE TABLE `accounts` (
+  `account_id` INT NOT NULL AUTO_INCREMENT,
+  `student_number` INT DEFAULT NULL,
+  `username` VARCHAR(255) DEFAULT NULL,
+  `password_hash` VARCHAR(255) DEFAULT NULL,
+  `role` VARCHAR(255) DEFAULT NULL,
+  `program_scope` VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`account_id`),
+  KEY `fk_accounts_student` (`student_number`),
+  CONSTRAINT `fk_accounts_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `curriculum_feedback`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `curriculum_feedback`;
+CREATE TABLE `curriculum_feedback` (
+  `feedback_id` INT NOT NULL AUTO_INCREMENT,
+  `student_number` INT DEFAULT NULL,
+  `relevance_level` VARCHAR(255) DEFAULT NULL,
+  `useful_competencies` TEXT DEFAULT NULL,
+  `suggestions` TEXT DEFAULT NULL,
+  PRIMARY KEY (`feedback_id`),
+  KEY `fk_curriculum_student` (`student_number`),
+  CONSTRAINT `fk_curriculum_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `event`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `event`;
+CREATE TABLE `event` (
+  `event_id` INT NOT NULL AUTO_INCREMENT,
+  `account_id` INT DEFAULT NULL,
+  `event_title` VARCHAR(255) DEFAULT NULL,
+  `event_date` DATE DEFAULT NULL,
+  `description` TEXT DEFAULT NULL,
+  PRIMARY KEY (`event_id`),
+  KEY `fk_event_account` (`account_id`),
+  CONSTRAINT `fk_event_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `forum_posts`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `forum_posts`;
+CREATE TABLE `forum_posts` (
+  `post_id` INT NOT NULL AUTO_INCREMENT,
+  `account_id` INT DEFAULT NULL,
+  `title` VARCHAR(255) DEFAULT NULL,
+  `content` TEXT DEFAULT NULL,
+  `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`post_id`),
+  KEY `fk_forum_account` (`account_id`),
+  CONSTRAINT `fk_forum_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `comments`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `comments`;
+CREATE TABLE `comments` (
+  `comment_id` INT NOT NULL AUTO_INCREMENT,
+  `post_id` INT DEFAULT NULL,
+  `account_id` INT DEFAULT NULL,
+  `content` TEXT DEFAULT NULL,
+  `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`comment_id`),
+  KEY `fk_comment_post` (`post_id`),
+  KEY `fk_comment_account` (`account_id`),
+  CONSTRAINT `fk_comment_post` FOREIGN KEY (`post_id`) REFERENCES `forum_posts` (`post_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_comment_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`account_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `graduates`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `graduates`;
+CREATE TABLE `graduates` (
+  `graduate_id` INT NOT NULL AUTO_INCREMENT,
+  `student_number` INT DEFAULT NULL,
+  `last_name` VARCHAR(255) DEFAULT NULL,
+  `first_name` VARCHAR(255) DEFAULT NULL,
+  `middle_name` VARCHAR(255) DEFAULT NULL,
+  `sex` VARCHAR(255) DEFAULT NULL,
+  `civil_status` VARCHAR(255) DEFAULT NULL,
+  `date_of_birth` DATE DEFAULT NULL,
+  `program` VARCHAR(255) DEFAULT NULL,
+  `major` VARCHAR(255) DEFAULT NULL,
+  `year_graduated` INT DEFAULT NULL,
+  PRIMARY KEY (`graduate_id`),
+  KEY `fk_graduates_student` (`student_number`),
+  CONSTRAINT `fk_graduates_student` FOREIGN KEY (`student_number`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `announcements`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `announcements`;
+CREATE TABLE `announcements` (
+  `announcement_id` INT NOT NULL AUTO_INCREMENT,
+  `title` VARCHAR(255) DEFAULT NULL,
+  `content` TEXT DEFAULT NULL,
+  `announcement_type` ENUM('general', 'job', 'event', 'scholarship', 'urgent') DEFAULT NULL,
+  `target_audience` ENUM('all', 'students', 'graduates', 'employers') DEFAULT NULL,
+  `course_filter` VARCHAR(255) DEFAULT NULL,
+  `start_date` DATETIME DEFAULT NULL,
+  `end_date` DATETIME DEFAULT NULL,
+  `location` VARCHAR(255) DEFAULT NULL,
+  `attachment_url` VARCHAR(255) DEFAULT NULL,
+  `is_published` BOOLEAN DEFAULT NULL,
+  `created_by` INT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `views_count` INT DEFAULT 0,
+  PRIMARY KEY (`announcement_id`),
+  KEY `fk_announcement_creator` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `recommendations`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `recommendations`;
+CREATE TABLE `recommendations` (
+  `recommendation_id` INT NOT NULL AUTO_INCREMENT,
+  `student_id` INT DEFAULT NULL,
+  `job_id` INT DEFAULT NULL,
+  `algorithm_type` VARCHAR(255) DEFAULT NULL,
+  `match_score` DECIMAL(5,2) DEFAULT NULL,
+  `score_breakdown` JSON DEFAULT NULL,
+  `reason` TEXT DEFAULT NULL,
+  `generated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `viewed` BOOLEAN DEFAULT FALSE,
+  `clicked` BOOLEAN DEFAULT FALSE,
+  `applied` BOOLEAN DEFAULT FALSE,
+  PRIMARY KEY (`recommendation_id`),
+  KEY `fk_recommendation_student` (`student_id`),
+  KEY `fk_recommendation_job` (`job_id`),
+  CONSTRAINT `fk_recommendation_student` FOREIGN KEY (`student_id`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_recommendation_job` FOREIGN KEY (`job_id`) REFERENCES `job_postings` (`job_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `matching_algorithm`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `matching_algorithm`;
+CREATE TABLE `matching_algorithm` (
+  `config_id` INT NOT NULL AUTO_INCREMENT,
+  `algorithm_name` VARCHAR(255) DEFAULT NULL,
+  `skill_weight` DECIMAL(5,2) DEFAULT NULL,
+  `gwa_weight` DECIMAL(5,2) DEFAULT NULL,
+  `course_weight` DECIMAL(5,2) DEFAULT NULL,
+  `experience_weight` DECIMAL(5,2) DEFAULT NULL,
+  `certification_weight` DECIMAL(5,2) DEFAULT NULL,
+  `ojt_preference_boos` DECIMAL(5,2) DEFAULT NULL,
+  `min_match_thresho` DECIMAL(5,2) DEFAULT NULL,
+  `max_recommendati` INT DEFAULT NULL,
+  `is_active` BOOLEAN DEFAULT NULL,
+  `created_by` INT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`config_id`),
+  KEY `fk_algorithm_creator` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `profile_completion_trac`
+-- --------------------------------------------------------
+
+DROP TABLE IF EXISTS `profile_completion_trac`;
+CREATE TABLE `profile_completion_trac` (
+  `tracking_id` INT NOT NULL AUTO_INCREMENT,
+  `student_id` INT DEFAULT NULL,
+  `personal_info_complete` BOOLEAN DEFAULT NULL,
+  `education_complete` BOOLEAN DEFAULT NULL,
+  `skills_complete` BOOLEAN DEFAULT NULL,
+  `certifications_complete` BOOLEAN DEFAULT NULL,
+  `resume_uploaded` BOOLEAN DEFAULT NULL,
+  `profile_photo_uploaded` BOOLEAN DEFAULT NULL,
+  `last_updated_section` VARCHAR(255) DEFAULT NULL,
+  `last_updated` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `completion_score` TINYINT DEFAULT NULL,
+  `reminder_sent` BOOLEAN DEFAULT NULL,
+  PRIMARY KEY (`tracking_id`),
+  KEY `fk_profile_student` (`student_id`),
+  CONSTRAINT `fk_profile_student` FOREIGN KEY (`student_id`) REFERENCES `student_info` (`student_number`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

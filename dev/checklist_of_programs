@@ -1,0 +1,782 @@
+-- BS Industrial Technology Curriculum 2018
+-- Database structure for course checklist
+
+CREATE TABLE IF NOT EXISTS `curriculum_courses` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `curriculum_year` int(4) NOT NULL,
+  `program` varchar(255) NOT NULL,
+  `year_level` varchar(50) NOT NULL,
+  `semester` varchar(50) NOT NULL,
+  `course_code` varchar(20) NOT NULL,
+  `course_title` varchar(255) NOT NULL,
+  `credit_units_lec` int(2) DEFAULT 0,
+  `credit_units_lab` int(2) DEFAULT 0,
+  `lect_hrs_lec` int(2) DEFAULT 0,
+  `lect_hrs_lab` int(2) DEFAULT 0,
+  `pre_requisite` varchar(255) DEFAULT 'NONE',
+  PRIMARY KEY (`id`),
+  KEY `curriculum_year` (`curriculum_year`),
+  KEY `program` (`program`),
+  KEY `course_code` (`course_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Insert BS Industrial Technology 2018 Curriculum Data
+
+-- FIRST YEAR - First Semester
+INSERT INTO `curriculum_courses` (`curriculum_year`, `program`, `year_level`, `semester`, `course_code`, `course_title`, `credit_units_lec`, `credit_units_lab`, `lect_hrs_lec`, `lect_hrs_lab`, `pre_requisite`) VALUES
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'GNED 11', 'Kontextwalisadong Komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'ELEX 50', 'Electronics Devices, Instruments and Circuit', 2, 3, 2, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'ELEX 55', 'Electronics Design and Fabrication', 2, 1, 2, 3, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'DRAW 24', 'Technology Drawing 1 (CADD 2D)', 0, 1, 0, 3, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'INDT 21', 'Basic Occupational Health and Safety', 2, 0, 2, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'NSTP 1', 'National Service Training Program I', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'First Semester', 'CVSU 101', 'Institutional Orientation', 1, 0, 1, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'ELEX 60', 'Electronics Communication 1', 2, 3, 2, 9, 'ELEX 50, 55'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'ELEX 65', 'Semiconductor Devices', 2, 1, 2, 3, 'ELEX 50, 55'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'DRAW 25', 'Industrial Technology Drawing II (CADD 3D)', 0, 1, 0, 3, 'DRAW 24'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'GNED 06', 'Science, Technology and Society', 3, 0, 3, 0, ' NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'GNED 12', 'Dalumat ng/sa Filipino', 3, 0, 3, 0, 'GNED 10'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'CpEN 21', 'Programming Logic and Design', 0, 2, 0, 6, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'INDT 22', 'Digital Electronics', 1, 1, 1, 3, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Second Semester', 'NSTP 2', 'National Service Training Program 2', 3, 0, 3, 0, 'NSTP 1'),
+
+-- Mid Year
+(2018, 'Bachelor of Science in Industrial Technology', 'First Year', 'Mid Year', 'ELEX 199a', 'Supervised Industrial Training 1', 0, 3, 0, 240, 'ELEX 50, 55, 60, 65'),
+
+-- SECOND YEAR - First Semester
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'First Semester', 'ELEX 70', 'Electronics Communication 2', 2, 3, 2, 9, 'ELEX 60, 65'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'First Semester', 'ELEX 75', 'Advanced Electronics', 2, 1, 2, 3, 'INDT 22, ELEX 65'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'First Semester', 'ENGS 32', 'Technopreneurship 101', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'First Semester', 'GNED 04', 'Mga Babasahin Hinggil sa Kasaysayan', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'First Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'First Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'First Semester', 'MATH 11', 'Differential and Integral Calculus', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities Towards Health and Fitness I', 2, 0, 2, 0, 'FITT 1'),
+
+-- SECOND YEAR - Second Semester
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'ELEX 80', 'Instrumentation and Process Control', 2, 3, 2, 9, 'ELEX 70, 75'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'ELEX 85', 'Sensor and Interfacing', 2, 1, 2, 3, 'ELEX 70, 75'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'INDT 23', 'Programmable Controls', 1, 1, 1, 3, 'INDT 22'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'ENOS 24b', 'Mechanics of Deformable Bodies', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'GNED 01', 'Art Appreciation', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'GNED 14', 'Panitikan Filipino', 3, 0, 3, 0, 'GNED 11'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities Towards Health and Fitness II', 2, 0, 2, 0, 'FITT 1'),
+
+-- THIRD YEAR - First Semester
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'ELEX 90', 'Microprocessor and Interfacing', 2, 3, 2, 9, 'ELEX 80, 85'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'ELEX 95', 'Industrial Electronics', 2, 1, 2, 3, 'ELEX 80, 85'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'ELEX 200a','ELEX Design Project 1', 0, 1, 0, 3, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'ALAN 21', 'Foreign Language', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'ENGS 33', 'Environmental Science', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'INDT 24', 'Pneumatics and Hydraulics (P&H)', 1, 1, 1, 3, 'INDT 23'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'INDT 25', 'Intellectual Property Rights', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'INDT 26', 'Human Resources Management for Technology', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'First Semester', 'INDT 27', 'Materials and Business Technology Management', 3, 0, 3, 0, 'NONE'),
+
+-- THIRD YEAR - Second Semester
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'Second Semester', 'ELEX 100', 'Programmable Controller Application', 2, 3, 2, 9, 'ELEX 90, 95'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'Second Semester', 'ELEX 105', 'Industrial Robotics', 2, 1, 2, 3, 'ELEX 90, 95'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'Second Semester', 'ELEX 200b','ELEX Design Project 2', 0, 1, 0, 3, 'ELEX 200a'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'Second Semester', 'ENGS 29', 'Applied Thermodynamics', 1, 1, 1, 3, 'INDT 24'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Second Year','Second Semester', 'GNED 09', 'Life and Works of Rizal', 3, 0, 3, 0, 'GNED 04'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'Second Semester', 'INDT 28', 'Industrial Organization and Management Practice', 3, 0, 3, 0, 'INDT 26'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'Second Semester', 'INDT 29', 'Quality Control', 3, 0, 3, 0, 'INDT 27'),
+(2018, 'Bachelor of Science in Industrial Technology', 'Third Year', 'Second Semester', 'INDT 30', 'Production Technology Management', 3, 0, 3, 0, 'INDT 27'),
+
+-- FOURTH YEAR - First Semester
+(2018, 'Bachelor of Science in Industrial Technology', 'Fourth Year', 'First Semester', 'ELEX 199b', 'Supervised Industrial Training 2', 0, 8, 0, 640, 'All Major Subjects ELEX 199a'),
+
+-- FOURTH YEAR - Second Semester
+(2018, 'Bachelor of Science in Industrial Technology', 'Fourth Year', 'Second Semester', 'ELEX 199c', 'Supervised Industrial Training 3', 0, 8, 0, 640, 'ELEX 199b'),
+
+-- ============================================
+-- BS COMPUTER ENGINEERING CURRICULUM 2018
+-- ============================================
+
+-- FIRST YEAR - First Semester
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'CHEM 14', 'Chemistry for Engineers', 3, 1, 3, 3, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'CPEN 21', 'Programming Logic and Design', 0, 2, 0, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'CPEN 50', 'Computer Engineering as Discipline', 1, 0, 1, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'CVSU 101', 'Institutional Orientation', 1, 0, 1, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong Komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'MATH 11', 'Calculus 1', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'First Semester', 'NSTP 1', 'National Service Training Program I', 3, 0, 3, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'Second Semester', 'CPEN 60', 'Object Oriented Programming', 0, 2, 0, 6, 'CPEN 21'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'Second Semester', 'DCEE 21', 'Discrete Mathematics', 3, 0, 3, 0, 'MATH 11'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'Second Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'Second Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'Second Semester', 'MATH 12', 'Calculus 2', 3, 0, 3, 0, 'MATH 11'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'Second Semester', 'PHYS 14', 'Physics for Engineers', 3, 1, 3, 3, 'CHEM 14'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2018, 'Bachelor of Science in Computer Engineering', 'First Year', 'Second Semester', 'NSTP 2', 'National Service Training Program II', 3, 0, 3, 0, 'NSTP 1'),
+
+-- SECOND YEAR - First Semester
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'First Semester', 'CPEN 65', 'Data Structures and Algorithms', 0, 2, 0, 6, 'CPEN 60'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'First Semester', 'EENG 50', 'Electrical Circuits 1', 3, 1, 3, 3, 'PHYS 14'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'First Semester', 'ENGS 31', 'Engineering Economics', 3, 0, 3, 0, '2nd Year Standing'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'First Semester', 'GNED 06', 'Science, Technology and Society', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'First Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'First Semester', 'MATH 13', 'Differential Equations', 3, 0, 3, 0, 'MATH 12'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'First Semester', 'DRAW 23', 'Computer Aided Drafting and Design(CADD)', 0, 1, 0, 3, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities Towards Health and Fitness I', 2, 0, 2, 0, 'FITT 2'),
+
+-- SECOND YEAR - Second Semester
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'Second Semester', 'CPEN 70', 'Fundamentals of Information Systems', 0, 1, 0, 3, 'CPEN 65'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'Second Semester', 'DCEE 23', 'Numerical Methods and Analysis', 2, 1, 2, 3, 'MATH 13'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'Second Semester', 'ECEN 60', 'Electronics 1 (Electronic Devices and Circuits)', 3, 1, 3, 3, 'EENG 50'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'Second Semester', 'GNED 01', 'Art Appreciation', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'Second Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'Second Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'MATH 12'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities Towards Health and Fitness II', 2, 0, 2, 0, 'FITT 1'),
+
+-- THIRD YEAR - First Semester
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'First Semester', 'CPEN 75', 'Logic Circuits and Design', 3, 1, 3, 3, 'ECEN 60'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'First Semester', 'CPEN 80', 'Data and Digital Communications', 3, 0, 3, 0, 'ECEN 60'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'First Semester', 'CPEN 85', 'Microprocessors of Network Routing and Sensors', 2, 1, 2, 3, 'ECEN 60'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'First Semester', 'CPEN 90', 'Fundamentals of Engineering Drafting and Design', 0, 1, 0, 3, 'ECEN 60'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'First Semester', 'CPEN 101','Elective Course #1', 3, 0, 3, 0, '3rd year standing'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'First Semester', 'DCEE 24', 'Feedback and Control Systems', 3, 1, 3, 3, 'ECEN 60,DCEE 23'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'First Semester', 'DCEE 25', 'Basic Occupational Health and Safety (BOSH)', 3, 0, 3, 0, '3rd year standing, EENG 50'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'First Semester', 'MATH 14', 'Engineering Data Analysis', 3, 0, 3, 0, 'MATH 11'),
+
+-- THIRD YEAR - Second Semester
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Second Semester', 'CPEN 95', 'Operating Systems', 2, 1, 2, 3, 'CPEN 65'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Second Semester', 'CPEN 100', 'Microprocessors and Microcontrollers Systems', 3, 1, 3, 3, 'CPEN 75'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Second Semester', 'CPEN 105', 'Computer Networks and Security', 3, 1, 3, 3, 'CPEN 85'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Second Semester', 'CPEN 110', 'CpE Laws and Professional Practice', 2, 0, 2, 0, '3rd year standing'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Second Semester', 'CPEN 115', 'Introduction to HDL', 0, 1, 0, 3, 'CPEN 101,ECEN 60'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Second Semester', 'CPEN 106', 'Elective Course #2', 3, 0, 3, 0, 'CPEN 101'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Second Semester', 'DCEE 26', 'Methods of Research', 2, 0, 2, 0, 'CPEN 75, GNED 05, MATH 14'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Second Semester', 'ENGS 35', 'Technopreneurship 101', 3, 0, 3, 0, '3rd year standing'),
+
+-- SUMMER
+(2018, 'Bachelor of Science in Computer Engineering', 'Third Year', 'Summer', 'CPEN 199', 'On-the-Job Training/CpE Practice (240 Hrs)', 3, 0, 0, 240, '3rd Year Stading'),
+
+-- FOURTH YEAR - First Semester
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'First Semester', 'CPEN 111', 'Elective Course #3', 3, 0, 3, 0, 'CPEN 106'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'First Semester', 'CPEN 120', 'Embedded Systems', 3, 1, 3, 3, 'CPEN 100'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'First Semester', 'CPEN 125', 'Computer Architecture and Organization', 3, 1, 3, 3, 'CPEN 100'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'First Semester', 'CPEN 130', 'Emerging Technologies in CpE', 3, 0, 3, 0, '4th year standing'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'First Semester', 'CPEN 135', 'Digital Signal Processing', 3, 1, 0, 3, 'DCEE 23'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'First Semester', 'CPEN 200a', 'CpE Design Project 1', 0, 1, 0, 3, 'CPEN 100, DCEE 25'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'First Semester', 'GNED 14', 'Mga Babasahin Hinggil Sa Kasaysayan', 3, 0, 3, 0, 'NONE'),
+
+-- FOURTH YEAR - Second Semester
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'Second Semester', 'CPEN 140', 'Extreme Project Training', 1, 0, 1, 0, 'Graduating Only'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'Second Semester', 'CPEN 190', 'Seminars and Fieldtrips', 0, 1, 0, 3, '4th Year Standing'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'Second Semester', 'CPEN 200b', 'CpE Design Project 2', 0, 2, 0, 6, 'CPEN 200a'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'Second Semester', 'GNED 09', 'Life and Works of Rizal', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Engineering', 'Fourth Year', 'Second Semester', 'GNED 11', 'Panitikang Panlipunan', 3, 0, 3, 0, 'GNED 04'),
+
+-- ============================================
+-- BS INFORMATION TECHNOLOGY CURRICULUM 2018
+-- ============================================
+
+-- FIRST YEAR - First Semester
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong Komunikasyon', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'COSC 50', 'Discrete Structure', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'DCIT 21', 'Introduction to Computing', 2, 1, 2, 3, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'DCIT 22', 'Computer Programming 1', 1, 2, 1, 6, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'NSTP 1', 'National Service Training Program 1', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'First Semester', 'CVSU 101', 'Institutional Orientation', 1, 0, 1, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'Second Semester', 'GNED 01', 'Arts Appreciation', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'Second Semester', 'GNED 06', 'Science, Technology, and Society', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'Second Semester', 'GNED 14', 'Panitikan Panlipunan', 3, 0, 3, 0, 'GNED 11'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'Second Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'Second Semester', 'DCIT 23', 'Computer Programming 2', 1, 2, 1, 6, 'DCIT 22'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'Second Semester', 'ITEC 50', 'Web System and Technologies 1', 2, 1, 2, 3, 'DCIT 21'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercise', 2, 0, 2, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'First Year', 'Second Semester', 'NSTP 2', 'National Service Training Program 2', 3, 0, 3, 0, 'NONE'),
+
+-- SECOND YEAR - First Semester
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'First Semester', 'GNED 04', 'Mga Babasahin Hinggil sa Kasaysayan ng Pilipinas', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'First Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'First Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'First Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'GNED 11'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'First Semester', 'ITEC 55', 'Platform Technologies', 2, 1, 2, 3, 'DCIT 23'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'First Semester', 'DCIT 24', 'Information Management', 2, 1, 2, 3, 'DCIT 23'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'First Semester', 'DCIT 50', 'Object Oriented Programming', 2, 1, 2, 3, 'DCIT 23'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities towards Health and Fitness I', 2, 0, 2, 0, 'FITT 1'),
+ 
+-- SECOND YEAR - Second Semester
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Second Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Second Semester', 'DCIT 25', 'Data Structures and Algorithms', 2, 1, 2, 3, 'DCIT 50'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Second Semester', 'ITEC 60', 'Integrated Programming and Technologies 1', 2, 1, 2, 3, 'DCIT 50, ITEC 50'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Second Semester', 'ITEC 65', 'Open Source Technology', 2, 1, 2, 3, '2nd Year Standing'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Second Semester', 'DCIT 55', 'Advanced Database System', 2, 1, 2, 3, 'DCIT 24'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Second Semester', 'ITEC 70', 'Multimedia Systems', 2, 1, 2, 3, '2nd Year Standing'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities towards Health and Fitness II', 2, 0, 2, 0, 'FITT 1'),
+
+-- MID YEAR
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Mid Year', 'STAT 2', 'Applied Statistics', 3, 0, 3, 0, '2nd Year Standing'),
+(2018, 'Bachelor of Science in Information Technology', 'Second Year', 'Mid Year', 'ITEC 75', 'System Integration and Architecture 1', 2, 1, 2, 3, 'ITEC 60'),
+
+-- THIRD YEAR - First Semester 
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'First Semester', 'ITEC 80', 'Introduction to Human Computer Interaction', 2, 1, 2, 3, '3rd Year Standing'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'First Semester', 'ITEC 85', 'Information Assurance and Security 1', 2, 1, 2, 3, 'ITEC 75'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'First Semester', 'ITEC 90', 'Network Fundamentals', 2, 1, 2, 3, 'ITEC 55'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'First Semester', 'INSY 55', 'System Analysis and Design', 2, 1, 2, 3, '3rd Year Standing'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'First Semester', 'DCIT 26', 'Application Development and Emerging Technologies', 2, 1, 2, 3, 'DCIT 55'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'First Semester', 'DCIT 60', 'Methods of Research', 3, 0, 3, 0, '3rd Year Standing  '),
+
+-- THIRD YEAR - Second Semester
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'Second Semester', 'GNED 09', 'Rizals Life, Works, and Writings', 3, 0, 3, 0, 'GNED 04'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'Second Semester', 'ITEC 95', 'Quantitative Methods (Modeling & Simulation)', 3, 0, 3, 3, 'COSC 50, STAT 2'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'Second Semester', 'ITEC 101', 'IT Elective 1 (Human Computer Interaction 2)', 2, 1, 2, 3, 'ITEC 80'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'Second Semester', 'ITEC 106', 'IT Elective 2 (Web System and Technologies 2)', 2, 1, 2, 3, 'ITEC 50'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'Second Semester', 'ITEC 100', 'Information Assurance and Security 2', 2, 1, 2, 3, 'ITEC 85'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'Second Semester', 'ITEC 105', 'Network Management', 2, 1, 2, 3, 'ITEC 90'),
+(2018, 'Bachelor of Science in Information Technology', 'Third Year', 'Second Semester', 'ITEC 200A', 'Capstone Project and Research 1', 3, 0, 3, 0, 'DCIT 60, DCIT 26, ITEC 85, 70% Total Units taken'),
+
+-- FOURTH YEAR - First Semester
+(2018, 'Bachelor of Science in Information Technology', 'Fourth Year', 'First Semester', 'DCIT 65', 'Social and Professional Issues', 3, 0, 3, 0, '4th Year Standing'),
+(2018, 'Bachelor of Science in Information Technology', 'Fourth Year', 'First Semester', 'ITEC 111', 'IT Elective 3 (Integrated Programming and Technologies 2)', 2, 1, 2, 3, 'ITEC 101'),
+(2018, 'Bachelor of Science in Information Technology', 'Fourth Year', 'First Semester', 'ITEC 116', 'IT Elective 4 (Systems Integration and Architecture 2)', 2, 1, 2, 3, 'ITEC 75'),
+(2018, 'Bachelor of Science in Information Technology', 'Fourth Year', 'First Semester', 'ITEC 110', 'Systems Administration and Maintenance', 2, 1, 2, 3, 'ITEC 101'),
+(2018, 'Bachelor of Science in Information Technology', 'Fourth Year', 'First Semester', 'ITEC 200B', 'Capstone Project and Research 2', 3, 0, 3, 0, 'ITEC 200A'),
+
+
+-- FOURTH YEAR - Second Semester
+(2018, 'Bachelor of Science in Information Technology', 'Fourth Year', 'Second Semester', 'ITEC 199', 'Practicum (minimum 486 hours)', 6, 0, 0, 0, 'DCIT 26, ITEC 85, 70% Total Units taken'),
+
+-- ============================================
+-- BS COMPUTER SCIENCE CURRICULUM 2018
+-- ============================================
+
+-- FIRST YEAR - First Semester
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong Komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'COSC 50', 'Discrete Structures I', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'DCIT 21', 'Introduction to Computing', 2, 1, 2, 3, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'DCIT 22', 'Computer Programming I', 1, 2, 1, 6, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'NSTP 1', 'National Service Training Program 1', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'First Semester', 'CVSU 101', 'Institutional Orientation (non-credit)', 1, 0, 1, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'Second Semester', 'GNED 01', 'Art Appreciation', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'Second Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'Second Semester', 'GNED 06', 'Science, Technology and Society', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'Second Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'GNED 11'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'Second Semester', 'DCIT 23', 'Computer Programming II', 1, 2, 1, 6, 'DCIT 22'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'Second Semester', 'ITEC 50', 'Web Systems and Technologies', 2, 1, 2, 3, 'DCIT 21'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2018, 'Bachelor of Science in Computer Science', 'First Year', 'Second Semester', 'NSTP 2', 'National Service Training Program 2', 3, 0, 3, 0, 'NSTP 1'),
+
+-- SECOND YEAR - First Semester
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'First Semester', 'GNED 04', 'Mga Babasahin Hinggil sa Kasaysayan ng Pilipinas', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'First Semester', 'MATH 1', 'Analytic Geometry', 3, 0, 3, 0, 'GNED 03'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'First Semester', 'COSC 55', 'Discrete Structures II', 3, 0, 3, 0, 'COSC 50'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'First Semester', 'COSC 60', 'Digital Logic Design', 2, 1, 2, 3, 'COSC 50, DCIT 23'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'First Semester', 'DCIT 50', 'Object Oriented Programming', 2, 1, 2, 3, 'DCIT 23'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'First Semester', 'DCIT 24', 'Information Management', 2, 1, 2, 3, 'DCIT 23'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'First Semester', 'INSY 50', 'Fundamentals of Information Systems', 3, 0, 3, 0, 'DCIT 21'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities towards Health and Fitness 1', 2, 0, 2, 0, 'FITT 1'),
+
+-- SECOND YEAR - Second Semester
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'Second Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'Second Semester', 'GNED 14', 'Panitikang Panlipunan', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'Second Semester', 'MATH 2', 'Calculus', 3, 0, 3, 0, 'MATH 1'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'Second Semester', 'COSC 65', 'Architecture and Organization', 2, 1, 2, 3, 'COSC 60'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'Second Semester', 'COSC 70', 'Software Engineering I', 3, 0, 3, 0, 'DCIT 50, DCIT 24'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'Second Semester', 'DCIT 25', 'Data Structures and Algorithms', 2, 1, 2, 3, 'DCIT 23'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'Second Semester', 'DCIT 55', 'Advanced Database Management System', 2, 1, 2, 3, 'DCIT 24'),
+(2018, 'Bachelor of Science in Computer Science', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities towards Health and Fitness 2', 2, 0, 2, 0, 'FITT 1'),
+
+-- THIRD YEAR - First Semester
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'First Semester', 'MATH 3', 'Linear Algebra', 3, 0, 3, 0, 'MATH 2'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'First Semester', 'COSC 75', 'Software Engineering II', 2, 1, 2, 3, 'COSC 70'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'First Semester', 'COSC 80', 'Operating Systems', 2, 1, 2, 3, 'DCIT 25'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'First Semester', 'COSC 85', 'Networks and Communication', 2, 1, 2, 3, 'ITEC 50'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'First Semester', 'COSC 101', 'CS Elective 1 (Computer Graphics and Visual Computing)', 2, 1, 2, 3, 'DCIT 23'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'First Semester', 'DCIT 26', 'Applications Development and Emerging Technologies', 2, 1, 2, 3, 'ITEC 50'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'First Semester', 'DCIT 65', 'Social and Professional Issues', 3, 0, 3, 0, 'NONE'),
+
+-- THIRD YEAR - Second Semester
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'Second Semester', 'GNED 09', 'Life and Works of Rizal', 3, 0, 3, 0, 'GNED 04'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'Second Semester', 'MATH 4', 'Experimental Statistics', 2, 1, 2, 3, 'MATH 2'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'Second Semester', 'COSC 90', 'Design and Analysis of Algorithm', 3, 0, 3, 0, 'DCIT 25'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'Second Semester', 'COSC 95', 'Programming Languages', 3, 0, 3, 0, 'DCIT 25'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'Second Semester', 'COSC 106', 'CS Elective 2 (Introduction to Game Development)', 2, 1, 2, 3, 'MATH 3, COSC 101'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'Second Semester', 'DCIT 60', 'Methods of Research', 3, 0, 3, 0, '3rd Year Standing'),
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'Second Semester', 'ITEC 85', 'Information Assurance and Security', 3, 0, 3, 0, 'DCIT 24'),
+
+-- -----------Mid Year ------------
+(2018, 'Bachelor of Science in Computer Science', 'Third Year', 'Mid Year', 'COSC 199', 'Practicum (minimum of 240 hrs.)', 3, 0, 0, 0, 'Incoming 4th yr.'),
+
+-- FOURTH YEAR - First Semester
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'First Semester', 'ITEC 80', 'Human Computer Interaction', 3, 0, 3, 0, 'ITEC 85'),
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'First Semester', 'COSC 100', 'Automata Theory and Formal Languages', 3, 0, 3, 0, 'COSC 90'),
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'First Semester', 'COSC 105', 'Intelligent Systems', 2, 1, 2, 3, 'MATH 4, COSC 55, DCIT 50'),
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'First Semester', 'COSC 111', 'CS Elective 3 (Internet of Things)', 2, 1, 2, 3, 'COSC 60'),
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'First Semester', 'COSC 200A', 'Undergraduate Thesis I', 3, 0, 3, 0, '4th Year Standing'),
+
+-- FOURTH YEAR - Second Semester
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'Second Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'Second Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'Second Semester', 'COSC 110', 'Numerical and Symbolic Computation', 2, 1, 2, 3, 'COSC 60'),
+(2018, 'Bachelor of Science in Computer Science', 'Fourth Year', 'Second Semester', 'COSC 200B', 'Undergraduate Thesis II', 3, 0, 3, 0, 'COSC 200A'),
+
+-- ============================================
+-- BS HOSPITALITY MANAGEMENT CURRICULUM 2017
+-- ============================================
+
+-- FIRST YEAR - First Semester
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'GNED 01', 'Arts Appreciation', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'BSHM 21', 'Fundamentals in Lodging Operations', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'BSHM 50', 'Macro Perspective of Tourism & Hospitality', 3, 1, 2, 3, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'BSHM 55', 'Risk Management as Applied to Safety, Security and Sanitation', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'CVSU 101', 'Institutional Orientation', 1, 0, 1, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'First Semester', 'NSTP 1', 'CWTS/LTS/ROTC', 3, 0, 3, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'Second Semester', 'GNED 03', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'Second Semester', 'GNED 04', 'Mathematics in Modern World', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'Second Semester', 'BSHM 60', 'Philippine Tourism, Geography and Culture', 3, 0, 3, 0, 'BSHM 50'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'Second Semester', 'BSHM 65', 'Micro Perspective of Tourism and Hospitality', 3, 0, 3, 0, 'BSHM 50'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'Second Semester', 'BSHM 22', 'Kitchen Essentials & Basic Food Preparation', 2, 1, 2, 3, 'BSHM 55'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'Second Semester', 'BSHM 101', 'Food and Beverage Service', 2, 1, 2, 3, 'BSHM 55'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2017, 'Bachelor of Science in Hospitality Management', 'First Year', 'Second Semester', 'NSTP 2', 'CWTS/LTS/ROTC', 3, 0, 3, 0, 'NSTP 1'),
+
+-- SECOND YEAR - First Semester
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'First Semester', 'GNED 14', 'Panitikang Panlipunan', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'First Semester', 'ALAN 1', 'Asian Language 1', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'First Semester', 'BSHM 23', 'Applied Business Tools and Technologies (GDS) with Lab', 2, 1, 2, 3, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'First Semester', 'BSHM 141', 'Cost Control', 2, 1, 2, 3, 'GNED 03'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'First Semester', 'BSHM 24', 'Supply Chain/Logistics Purchasing Management', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'First Semester', 'BSHM 26', 'Bar and Beverage Management with Lab', 2, 1, 2, 3, 'BSHM 101'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'First Semester', 'BSHM 111', 'Front Office Operation', 2, 1, 2, 3, 'BSHM 21'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities toward Health and Fitness 1', 2, 0, 2, 0, 'FITT 1'),
+
+-- SECOND YEAR - Second Semester
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'Second Semester', 'BSHM 199-A', 'Hospitality Practicum 1-Housekeeping and Food and Beverage', 0, 3, 0, 300, 'All 1st and 2nd year'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities toward Health and Fitness 2', 2, 0, 2, 0, 'NONE'),
+
+-- THIRD YEAR - First Semester
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'First Semester', 'GNED 04', 'Mga Babasahin hinggil sa kasaysayan ng Pilipinas', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'First Semester', 'ALAN 2', 'Asian Language 2', 3, 0, 3, 0, 'ALAN 1'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'First Semester', 'BSHM 29', 'Introduction to MICE as applied in Hospitality', 2, 1, 2, 3, 'BSHM 55'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'First Semester', 'BSHM 70', 'Professional Development & Applied Ethics', 3, 0, 3, 0, 'GNED 02'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'First Semester', 'BSHM 75', 'Tourism and Hospitality Marketing', 3, 0, 3, 0, 'BSHM 23'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'First Semester', 'BSHM 121', 'Sustainable Hospitality Management', 3, 0, 3, 0, 'NONE'),
+
+-- THIRD YEAR - Second Semester
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'Second Semester', 'GNED 06', 'Science, Technology World', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'Second Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'GNED 11'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'Second Semester', 'BSHM 80', 'Legal Aspect in Tourism and Hospitality', 3, 0, 3, 0, 'BSHM 121'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'Second Semester', 'BSHM 85', 'Multicultural Diversity in Workplace for the Tourism and Professional', 3, 0, 3, 0, 'BSHM 70'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'Second Semester', 'BSHM 90', 'Enterpreneurship in Tourism and Hospitality', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'Second Semester', 'BSHM 27', 'Ergonomics & Facilities Planning for the Hospitality Industry', 2, 1, 2, 3, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Third Year', 'Second Semester', 'BSHM 131', 'Bread and Pastry Production', 1, 2, 1, 6, 'BSHM 55, BSHM 22'),
+
+-- FOURTH YEAR - First Semester
+(2017, 'Bachelor of Science in Hospitality Management', 'Fourth Year', 'First Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Fourth Year', 'First Semester', 'GNED 09', 'Life and Works of Rizal', 3, 0, 3, 0, 'GNED 04'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Fourth Year', 'First Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Fourth Year', 'First Semester', 'BSHM 28', 'Research in Hospitality', 2, 1, 2, 3, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Fourth Year', 'First Semester', 'BSHM 151', 'Strategic management in Tourism and Hospitality', 3, 0, 3, 0, 'NONE'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Fourth Year', 'First Semester', 'BSHM 161', 'Operations Management in Tourism and Hospitality Industry', 3, 0, 3, 0, 'BSHM 23'),
+(2017, 'Bachelor of Science in Hospitality Management', 'Fourth Year', 'First Semester', 'BSHM 100', 'Tourism and Hospitality Service Quality Management', 3, 0, 3, 0, 'BSHM 80'),
+
+-- FOURTH YEAR - Second Semester
+(2017, 'Bachelor of Science in Hospitality Management', 'Fourth Year', 'Second Semester', 'BSHM 199-B', 'PRACTICUM 2- Hotel Operations', 0, 6, 0, 600, 'All Subjects'),
+
+-- ============================================
+-- BS BUSINESS ADMINISTRATION MAJOR IN HUMAN RESOURCE MANAGEMENT CURRICULUM 2023
+-- ============================================
+
+-- FIRST YEAR - First Semester
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'GNED 04', 'Mga Babasahin Hinggil sa Kasaysayan ng Pilipinas', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong Komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'ECON 23', 'Basic Microeconomics', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'NSTP 1', 'National Service Training Program', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'First Semester', 'ORNT 1', 'Institutional Orientation', 1, 0, 1, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'Second Semester', 'GNED 01', 'Art Appreciation', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'Second Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'Second Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'Second Semester', 'BADM 21', 'Quantitative Techniques in Business', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'Second Semester', 'BADM 22', 'Human Resource Management', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'Second Semester', 'BADM 23', 'Business Law (Obligations and Contracts)', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'First Year', 'Second Semester', 'NSTP 2', 'National Service Training Program', 3, 0, 3, 0, 'NSTP 1'),
+
+-- SECOND YEAR - First Semester
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'First Semester', 'GNED 06', 'Science, Technology and Society', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'First Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'First Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'GNED 11'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'First Semester', 'BADM 24', 'Operations Management', 3, 0, 3, 0, 'BADM 21'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'First Semester', 'ECON 24', 'International Trade and Agreements', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'First Semester', 'HRMT 50', 'Administrative Office Management', 3, 0, 3, 0, 'BADM 22'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'First Semester', 'HRMT 55', 'Recruitment and Selection', 3, 0, 3, 0, 'BADM 22'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities towards Health and Fitness I', 2, 0, 2, 0, 'FITT 1'),
+
+-- SECOND YEAR - Second Semester
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'Second Semester', 'GNED 14', 'Panitikang Panlipunan', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'Second Semester', 'BADM 25', 'Good Governance and Social Responsibility', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'Second Semester', 'TAXN 21', 'Taxation (Income and Taxation)', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'Second Semester', 'HRMT 60', 'Training and Development', 3, 0, 3, 0, 'BADM 22'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'Second Semester', 'HRMT 65', 'Labor Law and Legislation', 3, 0, 3, 0, 'BADM 22'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'Second Semester', 'HRMT 70', 'Compensation Administration', 3, 0, 3, 0, 'BADM 22'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities towards Health and Fitness II', 2, 0, 2, 0, 'FITT 1'),
+
+-- THIRD YEAR - First Semester
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Third Year', 'First Semester', 'GNED 09', 'Rizal''s Life and Works', 3, 0, 3, 0, 'GNED 04'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Third Year', 'First Semester', 'BADM 26', 'Business Research', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Third Year', 'First Semester', 'HRMT 75', 'Organizational Development', 3, 0, 3, 0, 'BADM 22'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Third Year', 'First Semester', 'HRMT 80', 'Labor Relation and Negotiations', 3, 0, 3, 0, 'BADM 22'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Third Year', 'Second Semester', 'HRMT 85', 'Special Topics in Human Resource Management', 3, 0, 3, 0, '3rd Year Standing'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Third Year', 'Second Semester', 'ELEC 1', 'Human Resource Management System', 3, 0, 3, 0, '3rd Year Standing'),
+
+-- THIRD YEAR - Second Semester
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Fourth Year', 'First Semester', 'BADM 27', 'Strategic Management', 3, 0, 3, 0, 'All Major Subjects'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Fourth Year', 'First Semester', 'BADM 200', 'Research/EDP Proposal', 1, 0, 1, 0, 'All Major Subjects'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Fourth Year', 'First Semester', 'ELEC 2', 'Logistic Management', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Fourth Year', 'First Semester', 'ELEC 3', 'Marketing Management', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Fourth Year', 'First Semester', 'ELEC 4', 'Strategic Human Resource Management', 3, 0, 3, 0, 'NONE'),
+
+-- FOURTH YEAR - First Semester
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Fourth Year', 'Second Semester', 'BMGT 200b', 'Research/EDP Final Manuscript', 2, 0, 2, 0, 'BADM 200'),
+
+-- FOURTH YEAR - Second Semester
+(2023, 'Bachelor of Science in Business Administration Major in Human Resource Management', 'Fourth Year', 'Second Semester', 'BADM 199', 'Practicum Integrated Learning 2 (600 hours)', 6, 0, 6, 0, 'All Subjects'),
+
+-- ============================================
+-- BS BUSINESS ADMINISTRATION MAJOR IN MARKETING MANAGEMENT CURRICULUM 2023
+-- ============================================
+
+-- FIRST YEAR - First Semester
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'GNED 04', 'Mga Babasahin Hinggil sa Kasaysayan ng Pilipinas', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong Komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'ECON 23', 'Basic Microeconomics', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'NSTP 1', 'National Service Training Program', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'First Semester', 'ORNT 1', 'Institutional Orientation', 1, 0, 1, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'Second Semester', 'GNED 01', 'Art Appreciation', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'Second Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'Second Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'Second Semester', 'BADM 21', 'Quantitative Techniques in Business', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'Second Semester', 'BADM 22', 'Human Resource Management', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'Second Semester', 'BADM 23', 'Business Law (Obligations and Contracts)', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'First Year', 'Second Semester', 'NSTP 2', 'National Service Training Program', 3, 0, 3, 0, 'NSTP 1'),
+
+-- SECOND YEAR - First Semester
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'First Semester', 'GNED 06', 'Science, Technology and Society', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'First Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'First Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'GNED 11'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'First Semester', 'BADM 24', 'Operations Management', 3, 0, 3, 0, 'BADM 21'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'First Semester', 'ECON 24', 'International Trade and Agreements', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'First Semester', 'MKTG 50', 'Consumer and Behavior', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'First Semester', 'MKTG 55', 'Market Research', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities towards Health and Fitness I', 2, 0, 2, 0, 'FITT 1'),
+
+-- SECOND YEAR - Second Semester
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'Second Semester', 'GNED 14', 'Panitikang Panlipunan', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'Second Semester', 'BADM 25', 'Good Governance and Social Responsibility', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'Second Semester', 'TAXN 21', 'Taxation (Income and Taxation)', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'Second Semester', 'MKTG 60', 'Product Management', 3, 0, 3, 0, 'MKTG 50, MKTG 55'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'Second Semester', 'MKTG 65', 'Retail Management', 3, 0, 3, 0, 'MKTG 50, MKTG 55'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'Second Semester', 'MKTG 70', 'Advertising', 3, 0, 3, 0, 'MKTG 50, MKTG 55'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities towards Health and Fitness II', 2, 0, 2, 0, 'FITT 1'),
+
+-- THIRD YEAR - First Semester
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'First Semester', 'GNED 09', 'Rizal''s Life and Works', 3, 0, 3, 0, 'GNED 04'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'First Semester', 'BADM 26', 'Business Research', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'First Semester', 'MKTG 75', 'Professional Salesmanship', 3, 0, 3, 0, 'MKTG 50, MKTG 55'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'First Semester', 'MKTG 80', 'Marketing Management', 3, 0, 3, 0, 'MKTG 50, MKTG 55'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'First Semester', 'MKTG 85', 'Special Topics in Marketing Management', 3, 0, 3, 0, 'MKTG 50, MKTG 55'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'Second Semester', 'ELEC 1', 'Distribution Management', 3, 0, 3, 0, '3rd Year Standing'),
+
+-- THIRD YEAR - Second Semester
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'Second Semester', 'BADM 27', 'Strategic Management', 3, 0, 3, 0, 'All Major Subjects'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'Second Semester', 'BADM 200', 'Research/EDP Proposal', 1, 0, 1, 0, 'All Major Subjects'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'Second Semester', 'ELEC 2', 'International Marketing', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'Second Semester', 'ELEC 3', 'E-commerce and Internet Marketing', 3, 0, 3, 0, 'NONE'),
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Third Year', 'Second Semester', 'ELEC 4', 'Service Marketing', 3, 0, 3, 0, 'NONE'),
+
+-- FOURTH YEAR - First Semester
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Fourth Year', 'First Semester', 'BMGT 200b', 'Research/EDP Final Manuscript', 2, 0, 2, 0, 'BADM 200'),
+
+-- FOURTH YEAR - Second Semester
+(2023, 'Bachelor of Science in Business Administration Major in Marketing Management', 'Fourth Year', 'Second Semester', 'BADM 199', 'Practicum Integrated Learning 2 (600 hours)', 6, 0, 600, 0, 'All Subjects'),
+
+-- ============================================
+-- BACHELOR OF SECONDARY EDUCATION MAJOR IN ENGLISH CURRICULUM 2021
+-- ============================================
+
+-- FIRST YEAR - First Semester
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong Komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'EDUC 55', 'The Teaching Profession', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'EDUC 60', 'The Teacher and The Community, School Culture and Organizational Leadership', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'BSEE 21', 'Introduction to Linguistics', 2, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'NSTP 1', 'CWTS/LTS/ROTC', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'First Semester', 'CVSU 101', 'Institutional Orientation', 1, 0, 1, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Second Semester', 'GNED 06', 'Science, Technology and Society', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Second Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Second Semester', 'GNED 14', 'Panitikang Panlipunan', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Second Semester', 'EDUC 65', 'Foundation of Special and Inclusive Education', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Second Semester', 'BSEE 22', 'Language Culture and Society', 3, 0, 3, 0, 'BSEE 21'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Second Semester', 'EDUC 85', 'Technology for Teaching and Learning 1', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Second Semester', 'NSTP 2', 'CWTS/LTS/ROTC', 3, 0, 3, 0, 'NSTP 1'),
+
+-- Bachelor of Secondary Education Major in English - Midyear 
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Midyear', 'EDUC 50', 'Child and Adolescent Learner and Learning Principles', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'First Year', 'Midyear', 'EDUC 70', 'Facilitating Learner-Centered Teaching', 3, 0, 3, 0, 'NONE'),
+
+-- Second Year First Semester 
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'First Semester', 'EDUC 75', 'Assessment in Learning 1', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'First Semester', 'EDUC 90', 'The Teacher and The School Curriculum', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'First Semester', 'BSEE 23', 'Structure of English', 3, 0, 3, 0, 'BSEE 21'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'First Semester', 'BSEE 24', 'Principles and Theories of Language Acquisition and Learning', 3, 0, 3, 0, 'BSEE 22'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'First Semester', 'BSEE 33', 'Mythology and Folklore', 3, 0, 3, 0, 'BSEE 22'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'First Semester', 'BSEE 110', 'Stylistics and Discourse Analysis', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'First Semester', 'GNED 04', 'Mga Babasahin Hinggil sa Kasaysayan ng Pilipinas', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities towards Health and Fitness I', 2, 0, 2, 0, 'FITT 1'),
+
+-- Second Year Second Semester 
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Second Semester', 'EDUC 80', 'Assessment in Learning 2', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Second Semester', 'EDUC 95', 'Building and Enhancing New Literacies Across the Curriculum', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Second Semester', 'BSEE 25', 'Language Programs and Policies in Multilingual Society', 3, 0, 3, 0, 'BSEE 24'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Second Semester', 'BSEE 26', 'Language Learning Materials Development', 3, 0, 3, 0, 'BSEE 24, EDUC 85'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Second Semester', 'BSEE 32', 'Children and Adolescent Literature', 3, 0, 3, 0, 'BSEE 24'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Second Semester', 'BSEE 39', 'Technical Writing', 3, 0, 3, 0, 'BSEE 23'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Second Semester', 'GNED 15', 'World Literature', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities towards Health and Fitness II', 2, 0, 2, 0, 'FITT 1'),
+
+-- Second Year Midyear 
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Midyear', 'BSEE 30', 'Speech and Theater Arts', 3, 0, 3, 0, 'BSEE 23'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Midyear', 'BSEE 34', 'Survey of Philippine Literature in English', 3, 0, 3, 0, 'BSEE 32'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Second Year', 'Midyear', 'BSEE 35', 'Survey of Afro-Asian Literature', 3, 0, 3, 0, 'BSEE 32'),
+
+-- Third Year First Semester 
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'First Semester', 'EDFS 21', 'Field Study 1 - Observations of Teaching-Learning in Actual School Environment', 3, 0, 3, 0, 'PROF Ed Courses'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'First Semester', 'BSEE 28', 'Teaching and Assessment of Macroskills', 3, 0, 3, 0, 'BSEE 22'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'First Semester', 'BSEE 29', 'Teaching and Assessment of Grammar', 3, 0, 3, 0, 'BSEE 23'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'First Semester', 'BSEE 36', 'Survey of English and American Literature', 3, 0, 3, 0, 'BSEE 32'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'First Semester', 'BSEE 37', 'Contemporary, Popular, and Emergent Literature', 3, 0, 3, 0, 'BSEE 32'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'First Semester', 'BSEE 111', 'English for Specific Purposes', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'First Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'GNED 11'),
+
+-- Third Year Second Semester 
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'Second Semester', 'EDFS 22', 'Field Study 2 - Participation and Teaching Assistantship', 3, 0, 3, 0, 'EDFS 21'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'Second Semester', 'BSEE 27', 'Teaching and Assessment of Literature', 3, 0, 3, 0, 'BSEE 38'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'Second Semester', 'BSEE 31', 'Language and Education Research', 3, 0, 3, 0, 'BSEE 24'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'Second Semester', 'BSEE 38', 'Literary Criticism', 3, 0, 3, 0, 'BSEE 32, BSEE 33, BSEE 34, BSEE 35, BSEE 36, BSEE 37'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'Second Semester', 'BSEE 40', 'Campus Journalism', 3, 0, 3, 0, 'BSEE 39'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'Second Semester', 'BSEE 41', 'Technology for Teaching and Learning 2 (Technology in Secondary Language Education)', 2, 0, 3, 0, 'EDUC 85'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Third Year', 'Second Semester', 'EDUC 197', 'Competency Appraisal 1', 3, 0, 3, 0, 'PROF Ed Courses'),
+
+-- Fourth Year First Semester 
+(2021, 'Bachelor of Secondary Education Major in English', 'Fourth Year', 'First Semester', 'EDFS 23', 'Teaching Internship', 6, 0, 0, 40, 'EDFS 21, EDFS 22'),
+
+-- Fourth Year Second Semester 
+(2021, 'Bachelor of Secondary Education Major in English', 'Fourth Year', 'Second Semester', 'GNED 01', 'Art Appreciation', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Fourth Year', 'Second Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Fourth Year', 'Second Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Fourth Year', 'Second Semester', 'GNED 09', 'Life and Works of Rizal', 3, 0, 3, 0, 'GNED 04'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Fourth Year', 'Second Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Fourth Year', 'Second Semester', 'GNED 13', 'Retorika: Masining na Pagpapahayag', 3, 0, 3, 0, 'GNED 11, GNED 12'),
+(2021, 'Bachelor of Secondary Education Major in English', 'Fourth Year', 'Second Semester', 'EDUC 198', 'Competency Appraisal 2', 3, 0, 3, 0, 'EDUC 197'),
+
+-- ============================================
+-- BACHELOR OF SECONDARY EDUCATION MAJOR IN SCIENCE CURRICULUM 2021
+-- ============================================
+
+-- First Year First Semester
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong Komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'EDUC 50', 'Child and Adolescent Learner and Learning Principles', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'EDUC 55', 'The Teaching Profession', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'EDUC 60', 'The Teacher and The Community, School Culture and Organizational Leadership', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'NSTP 1', 'CWTS/LTS/ROTC', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'First Semester', 'CVSU 101', 'Institutional Orientation', 1, 0, 1, 0, 'NONE'),
+
+-- First Year Second Semester
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'GNED 06', 'Science, Technology, and Society', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'GNED 14', 'Panitikang Panlipunan', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'EDUC 65', 'Foundation of Special and Inclusive Education', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'EDUC 70', 'Facilitating Learner-Centered Teaching', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'EDUC 85', 'Technology for Teaching and Learning 1', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'BSES 30', 'Fluid Mechanics', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Second Semester', 'NSTP 2', 'CWTS/LTS/ROTC', 3, 0, 3, 0, 'NSTP 1'),
+
+-- Midyear
+(2021, 'Bachelor of Secondary Education Major in Science', 'First Year', 'Midyear', 'BSES 25', 'Inorganic Chemistry', 3, 2, 3, 6, 'NONE'),
+
+-- Second Year First Semester
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'First Semester', 'EDUC 75', 'Assessment in Learning 1', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'First Semester', 'EDUC 90', 'The Teacher and The School Curriculum', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'First Semester', 'BSES 21', 'Genetics', 3, 1, 3, 3, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'First Semester', 'BSES 26', 'Organic Chemistry', 3, 2, 3, 6, 'BSES 25'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'First Semester', 'BSES 29', 'Thermodynamics', 3, 1, 3, 3, 'HS Physics-Mechanics'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'First Semester', 'GNED 04', 'Mga Babasahin Hinggil sa Kasaysayan ng Pilipinas', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities towards Health and Fitness I', 2, 0, 2, 0, 'FITT 1'),
+
+-- Second Year Second Semester
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Second Semester', 'EDUC 80', 'Assessment in Learning 2', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Second Semester', 'EDUC 95', 'Building and Enhancing New Literacies Across the Curriculum', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Second Semester', 'BSES 27', 'Biochemistry', 3, 0, 3, 0, 'BSES 26'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Second Semester', 'BSES 31', 'Electricity and Magnetism', 3, 1, 3, 3, 'BSES 30'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Second Semester', 'BSES 34', 'Earth Science', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Second Semester', 'BSES 36', 'Environmental Science', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Second Semester', 'GNED 15', 'World Literature', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities towards Health and Fitness II', 2, 0, 2, 0, 'FITT 1'),
+
+-- Second Year Midyear
+(2021, 'Bachelor of Secondary Education Major in Science', 'Second Year', 'Midyear', 'BSES 28', 'Analytical Chemistry', 3, 2, 3, 6, 'BSES 25'),
+
+-- THIRD YEAR - First Semester
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'First Semester', 'EDFS 21', 'Field Study 1 - Observations of Teaching Learning in Actual School Environment', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'First Semester', 'BSES 22', 'Cell and Molecular Biology', 3, 1, 3, 3, 'BSES 21 & 27'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'First Semester', 'BSES 32', 'Waves and Optics', 3, 1, 3, 3, 'BSES 30 & 31'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'First Semester', 'BSES 38', 'Technology for Teaching and Learning 2 (for Science)', 3, 0, 3, 0, 'EDUC 75, 80, 85'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'First Semester', 'BSES 39', 'Research in Teaching', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'First Semester', 'BSES 40', 'Meteorology', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'First Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'GNED 11'),
+
+-- THIRD YEAR - Second Semester
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'Second Semester', 'EDFS 22', 'Field Study 2 - Participation and Teaching Assistantship', 3, 0, 3, 0, 'PROF Ed Courses'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'Second Semester', 'BSES 23', 'Microbiology and Parasitology', 3, 1, 3, 3, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'Second Semester', 'BSES 24', 'Anatomy and Physiology', 3, 1, 3, 3, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'Second Semester', 'BSES 33', 'Modern Physics', 3, 0, 3, 0, 'BSES 30 & 31'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'Second Semester', 'BSES 35', 'Astronomy', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'Second Semester', 'BSES 37', 'The Teaching of Science', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Third Year', 'Second Semester', 'EDUC 197', 'Competency Appraisal 1', 3, 0, 3, 0, 'PROF Ed'),
+
+-- FOURTH YEAR - First Semester
+(2021, 'Bachelor of Secondary Education Major in Science', 'Fourth Year', 'First Semester', 'EDFS 23', 'Teaching Internship', 6, 0, 0, 40, 'EDFS 21, EDFS 22'),
+
+-- FOURTH YEAR - Second Semester
+(2021, 'Bachelor of Secondary Education Major in Science', 'Fourth Year', 'Second Semester', 'GNED 01', 'Art Appreciation', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Fourth Year', 'Second Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Fourth Year', 'Second Semester', 'GNED 07', 'The Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Fourth Year', 'Second Semester', 'GNED 09', 'Life and Works of Rizal', 3, 0, 3, 0, 'GNED 04'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Fourth Year', 'Second Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Fourth Year', 'Second Semester', 'GNED 13', 'Retorika/Masining na Pagpapahayag', 3, 0, 3, 0, 'GNED 11 & 12'),
+(2021, 'Bachelor of Secondary Education Major in Science', 'Fourth Year', 'Second Semester', 'EDUC 198', 'Competency Appraisal 2', 3, 0, 3, 0, 'EDUC 197'),
+
+-- ============================================
+-- BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS CURRICULUM 2021
+-- ============================================
+
+-- FIRST YEAR - First Semester
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'GNED 03', 'Mathematics in the Modern World', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'GNED 05', 'Purposive Communication', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'GNED 11', 'Kontekstwalisadong Komunikasyon sa Filipino', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'EDUC 50', 'Child and Adolescent Learner and Learning Principles', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'EDUC 55', 'The Teaching Profession', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'EDUC 60', 'The Teacher and The Community, School Culture and Organizational Leadership', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'FITT 1', 'Movement Enhancement', 2, 0, 2, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'NSTP 1', 'CWTS/LTS/ROTC', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'First Semester', 'CVSU 101', 'Institutional Orientation 1', 1, 0, 1, 0, 'NONE'),
+
+-- FIRST YEAR - Second Semester
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Second Semester', 'GNED 06', 'Science, Technology, and Society', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Second Semester', 'GNED 08', 'Understanding the Self', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Second Semester', 'GNED 14', 'Panitikang Panlipunan', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Second Semester', 'EDUC 65', 'Foundation of Special and Inclusive Education', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Second Semester', 'EDUC 70', 'Facilitating Learner-Centered Teaching', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Second Semester', 'EDUC 85', 'Technology for Teaching and Learning 1', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Second Semester', 'FITT 2', 'Fitness Exercises', 2, 0, 2, 0, 'FITT 1'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Second Semester', 'NSTP 2', 'CWTS/LTS/ROTC', 3, 0, 3, 0, 'NSTP 1'),
+
+-- First Year Midyear
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Midyear', 'BSEM 21', 'History of Mathematics', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'First Year', 'Midyear', 'BSEM 22', 'College and Advanced Algebra', 3, 0, 3, 0, 'NONE'),
+
+-- SECOND YEAR - First Semester
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'First Semester', 'EDUC 75', 'Assessment in Learning 1', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'First Semester', 'EDUC 90', 'The Teacher and The School Curriculum', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'First Semester', 'BSEM 23', 'Trigonometry', 3, 0, 3, 0, 'BSEM 22'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'First Semester', 'BSEM 24', 'Plane and Solid Geometry', 3, 0, 3, 0, 'BSEM 22'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'First Semester', 'BSEM 25', 'Logic and Set Theory', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'First Semester', 'BSEM 26', 'Elementary Statistics and Probability', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'First Semester', 'GNED 04', 'Mga Babasahin Hinggil sa Kasaysayan ng Pilipinas', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'First Semester', 'FITT 3', 'Physical Activities towards Health and Fitness I', 2, 0, 2, 0, 'FITT 1'),
+
+-- SECOND YEAR - Second Semester
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'Second Semester', 'EDUC 80', 'Assessment in Learning 2', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'Second Semester', 'EDUC 95', 'Building and Enhancing New Literacies Across the Curriculum', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'Second Semester', 'BSEM 30', 'Modern Geometry', 3, 0, 3, 0, 'BSEM 24, BSEM 25'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'Second Semester', 'BSEM 33', 'Linear Algebra', 3, 0, 3, 0, 'BSEM 25'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'Second Semester', 'BSEM 34', 'Advanced Statistics', 3, 0, 3, 0, 'BSEM 26'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'Second Semester', 'BSEM 36', 'Principles and Methods of Teaching Mathematics', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'Second Semester', 'GNED 15', 'World Literature', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Second Year', 'Second Semester', 'FITT 4', 'Physical Activities towards Health and Fitness II', 2, 0, 2, 0, 'FITT 1'),
+
+-- THIRD YEAR - First Semester
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'First Semester', 'EDFS 21', 'Field Study 1 - Observations of Teaching-Learning in Actual School Environment', 3, 0, 3, 0, 'PROF Ed Courses'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'First Semester', 'BSEM 27', 'Calculus 1 with Analytic Geometry', 4, 0, 4, 0, 'BSEM 22, BSEM 23,BSEM 30'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'First Semester', 'BSEM 32', 'Number Theory', 3, 0, 3, 0, 'BSEM 22, BSEM 25'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'First Semester', 'BSEM 35', 'Problem-Solving, Mathematical Investigations and Modelling', 3, 0, 3, 0, 'BSEM 22, BSEM 25, BSEM 30'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'First Semester', 'BSEM 38', 'Research in Mathematics', 4, 0, 4, 0, 'BSEM 34'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'First Semester', 'BSEM 39', 'Technology for Teaching and Learning 2 (Instrumentation & Technology in Mathematics)', 3, 0, 3, 0, 'EDUC 75, EDUC 80, EDUC 85'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'First Semester', 'GNED 12', 'Dalumat Ng/Sa Filipino', 3, 0, 3, 0, 'GNED 11'),
+
+-- THIRD YEAR - Second Semester
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'Second Semester', 'EDFS 22', 'Field Study 2 - Participation and Teaching Assistantship', 3, 0, 3, 0, 'EDFS 21'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'Second Semester', 'BSEM 28', 'Calculus 2', 4, 0, 4, 0, 'BSEM 27'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'Second Semester', 'BSEM 31', 'Mathematics of Investment', 3, 0, 3, 0, 'BSEM 22'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'Second Semester', 'BSEM 37', 'Abstract Algebra', 3, 0, 3, 0, 'BSEM 25'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'Second Semester', 'BSEM 40', 'Assessment and Evaluation in Mathematics', 3, 0, 3, 0, 'BSEM 34'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'Second Semester', 'EDUC 197', 'Competency Appraisal 1', 3, 0, 3, 0, 'PROF Ed Courses'),
+
+-- THIRD YEAR - Midyear
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Third Year', 'Midyear', 'BSEM 29', 'Calculus 3', 3, 0, 3, 0, 'BSEM 28'),
+
+-- FOURTH YEAR - First Semester
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Fourth Year', 'First Semester', 'EDFS 23', 'Teaching Internship', 6, 0, 0, 40, 'EDFS 21, EDFS 22'),
+
+-- FOURTH YEAR - Second Semester
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Fourth Year', 'Second Semester', 'GNED 01', 'Art Appreciation', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Fourth Year', 'Second Semester', 'GNED 02', 'Ethics', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Fourth Year', 'Second Semester', 'GNED 07', 'Contemporary World', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Fourth Year', 'Second Semester', 'GNED 09', 'Life and Works of Rizal', 3, 0, 3, 0, 'GNED 04'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Fourth Year', 'Second Semester', 'GNED 10', 'Gender and Society', 3, 0, 3, 0, 'NONE'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Fourth Year', 'Second Semester', 'GNED 13', 'Retorika/Masining na Pagpapahayag', 3, 0, 3, 0, 'GNED 11, GNED 12'),
+(2021, 'Bachelor of Secondary Education Major in Mathematics', 'Fourth Year', 'Second Semester', 'EDUC 198', 'Competency Appraisal 2', 3, 0, 3, 0, 'EDUC 197');

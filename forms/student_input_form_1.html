@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Input Form - Page 1</title>
+    <link rel="icon" type="image/png" href="../img/cav.png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: url('../pix/drone.png');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 90vh;
+            margin: 1;
+            margin-top: -35px;
+        }
+        .form-container {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 30px 40px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 360px;
+            margin-left: -700px;
+            margin-bottom: 250px;
+            text-align: center;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .form-container h2 {
+            margin-bottom: 20px;
+            margin-top:10px ;
+            font-size: 24px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .form-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .button-group button {
+            flex: 10;
+            padding: 10px 20px;
+            border: none;
+            background-color:#206018;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .button-group button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+<div class="form-container">
+    <h2>STUDENT INPUT FORM (1/2)</h2>
+    <form id="form1">
+        <div class="form-group">
+            <label for="student-id">Student I.D</label>
+            <input type="text" id="student-id" name="student_id" placeholder="ex. 220100064" required>
+            <div id="student-id-message" style="color: red; font-size: 13px; margin-top: 3px; display: none;"></div>
+        </div>
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" placeholder="ex. juan.delacruz@email.com" required>
+        </div>
+        <div class="form-group">
+            <label for="last-name">Last Name</label>
+            <input type="text" id="last-name" name="last_name" placeholder="ex. Dela Cruz" required>
+        </div>
+        <div class="form-group">
+            <label for="first-name">First Name</label>
+            <input type="text" id="first-name" name="first_name" placeholder="ex. Juan" required>
+        </div>
+        <div class="form-group">
+            <label for="middle-name">Middle Name <span style="color: #666; font-size: 12px;">(Optional)</span></label>
+            <input type="text" id="middle-name" name="middle_name" placeholder="ex. Reyes (Leave blank if no middle name)">
+        </div>
+        <div class="button-group">
+            <button type="button" onclick="saveAndNext()">Next</button>
+            <button type="button" onclick="window.location.href='../index.php'">Back</button>
+        </div>
+    </form>
+</div>
+<script>
+    // Prefill fields if data exists
+    window.onload = function() {
+        const data = JSON.parse(localStorage.getItem('studentFormPage1') || '{}');
+        if (data.student_id) document.getElementById('student-id').value = data.student_id;
+        if (data.last_name) document.getElementById('last-name').value = data.last_name;
+        if (data.first_name) document.getElementById('first-name').value = data.first_name;
+        if (data.middle_name) document.getElementById('middle-name').value = data.middle_name;
+        if (data.email) document.getElementById('email').value = data.email;
+    };
+    // Live check for student number uniqueness
+    let studentIdCheckTimeout = null;
+    const studentIdInput = document.getElementById('student-id');
+    const emailInput = document.getElementById('email');
+    const lastNameInput = document.getElementById('last-name');
+    let isStudentIdValid = false;
+
+    studentIdInput.addEventListener('input', function() {
+        const studentId = this.value.trim();
+        const messageDiv = document.getElementById('student-id-message');
+        messageDiv.style.display = 'none';
+        messageDiv.textContent = '';
+        isStudentIdValid = false;
+
+        if (!studentId) return;
+        // Check if not 9 digits
+        if (!/^\d{9}$/.test(studentId)) {
+            messageDiv.textContent = 'Must be 9 digit student number';
+            messageDiv.style.display = 'block';
+            return;
+        }
+        
+        clearTimeout(studentIdCheckTimeout);
+        studentIdCheckTimeout = setTimeout(() => {
+            // Show checking message while fetching
+            messageDiv.textContent = 'Checking student number...';
+            messageDiv.style.display = 'block';
+            
+            fetch('../api/check_student_id.php?student_id=' + encodeURIComponent(studentId))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.exists) {
+                        messageDiv.textContent = 'Student number already exist';
+                        messageDiv.style.display = 'block';
+                        isStudentIdValid = false;
+                        // Clear and disable subsequent fields
+                        emailInput.value = '';
+                        lastNameInput.value = '';
+                        document.getElementById('first-name').value = '';
+                        document.getElementById('middle-name').value = '';
+                    } else {
+                        messageDiv.style.display = 'none';
+                        isStudentIdValid = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking student ID:', error);
+                    messageDiv.textContent = 'Error checking student number';
+                    messageDiv.style.display = 'block';
+                });
+        }, 350);
+    });
+
+    // Prevent focus to email if student id is not valid
+    emailInput.addEventListener('focus', function(e) {
+        const studentId = studentIdInput.value.trim();
+        const messageDiv = document.getElementById('student-id-message');
+        
+        if (!/^\d{9}$/.test(studentId)) {
+            messageDiv.textContent = 'Must be 9 digit student number';
+            messageDiv.style.display = 'block';
+            studentIdInput.focus();
+            e.preventDefault();
+            return;
+        }
+
+        if (!isStudentIdValid) {
+            messageDiv.textContent = 'Please enter a valid student number that does not exist in the system';
+            messageDiv.style.display = 'block';
+            studentIdInput.focus();
+            e.preventDefault();
+        }
+    });
+
+    // Prevent focus to last name if student id is not 9 digits
+    lastNameInput.addEventListener('focus', function(e) {
+        const studentId = studentIdInput.value.trim();
+        const messageDiv = document.getElementById('student-id-message');
+        if (!/^\d{9}$/.test(studentId)) {
+            messageDiv.textContent = 'Must be 9 digit student number';
+            messageDiv.style.display = 'block';
+            studentIdInput.focus();
+            e.preventDefault();
+            return;
+        }
+
+        if (!isStudentIdValid) {
+            messageDiv.textContent = 'Please enter a valid student number that does not exist in the system';
+            messageDiv.style.display = 'block';
+            studentIdInput.focus();
+            e.preventDefault();
+        }
+    });
+
+    function saveAndNext() {
+        const form = document.getElementById('form1');
+        const studentId = form.student_id.value.trim();
+        const messageDiv = document.getElementById('student-id-message');
+        messageDiv.style.display = 'none';
+        messageDiv.textContent = '';
+        
+        // Validate Student ID
+        if (!studentId) {
+            messageDiv.textContent = 'Student I.D is required.';
+            messageDiv.style.display = 'block';
+            return;
+        }
+        if (!/^\d{9}$/.test(studentId)) {
+            messageDiv.textContent = 'Must be 9 digit';
+            messageDiv.style.display = 'block';
+            return;
+        }
+        
+        // Validate required name fields
+        const lastName = form.last_name.value.trim();
+        const firstName = form.first_name.value.trim();
+        const email = form.email.value.trim();
+        
+        if (!lastName) {
+            alert('Last name is required.');
+            form.last_name.focus();
+            return;
+        }
+        
+        if (!firstName) {
+            alert('First name is required.');
+            form.first_name.focus();
+            return;
+        }
+        
+        if (!email) {
+            alert('Email address is required.');
+            form.email.focus();
+            return;
+        }
+        
+        // Check student number uniqueness via AJAX
+        fetch('../api/check_student_id.php?student_id=' + encodeURIComponent(studentId))
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    messageDiv.textContent = 'Student number already exist';
+                    messageDiv.style.display = 'block';
+                } else {
+                    // Prepare data with proper formatting
+                    const middleName = form.middle_name.value.trim();
+                    const saveData = {
+                        student_id: studentId,
+                        last_name: lastName,
+                        first_name: firstName,
+                        middle_name: middleName || '', // Convert null/undefined to empty string for storage
+                        email: email
+                    };
+                    localStorage.setItem('studentFormPage1', JSON.stringify(saveData));
+                    window.location.href = 'student_input_form_2.html';
+                }
+            })
+            .catch(() => {
+                alert('Error checking Student I.D. Please try again.');
+            });
+    }
+</script>
+</body>
+</html> 

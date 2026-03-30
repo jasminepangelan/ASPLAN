@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Program Manager</title>
+    <link rel="icon" type="image/png" href="../img/cav.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('pix/school.jpg') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 80px 20px 20px;
+            margin: 0;
+        }
+
+        /* Main content wrapper */
+        .main-content {
+            margin-top: -100px;
+            margin-left: 100px;
+            min-height: calc(100vh - 30px);
+            width: calc(100vw - 250px);
+            overflow-x: hidden;
+            transition: margin-left 0.3s ease, width 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 80px 20px 20px;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+            width: 100vw;
+        }
+
+        /* Title bar styling */
+        .title-bar {
+            background: linear-gradient(135deg, #206018 0%, #2d8f22 100%);
+            color: #fff;
+            padding: 3px 15px;
+            text-align: left;
+            font-size: 18px;
+            font-weight: 800;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 44px;
+            box-sizing: border-box;
+        }
+
+        .title-content {
+            display: flex;
+            align-items: center;
+        }
+
+        .title-bar img {
+            height: 32px;
+            width: auto;
+            margin-right: 12px;
+            vertical-align: middle;
+            cursor: pointer;
+        }
+
+        /* Sidebar styling */
+        .sidebar {
+            width: 250px;
+            height: calc(100vh - 44px);
+            background: linear-gradient(135deg, #1a4f16 0%, #2d8f22 100%);
+            color: white;
+            position: fixed;
+            left: 0;
+            top: 44px;
+            padding: 20px 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 10px;
+        }
+
+        .sidebar-header h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .sidebar-menu {
+    list-style: none;
+    padding: 6px 0;
+    margin: 0;
+}
+
+        .sidebar-menu li {
+    margin: 0;
+}
+
+        .sidebar-menu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    color: #ffffff;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-size: 15px;
+    line-height: 1.2;
+}
+
+        .sidebar-menu a:hover {
+            background-color: rgba(255,255,255,0.1);
+            border-left-color: #4CAF50;
+        }
+
+        .sidebar-menu a.active {
+            background-color: rgba(255,255,255,0.15);
+            border-left-color: #4CAF50;
+        }
+
+        .sidebar-menu img {
+    width: 20px;
+    height: 20px;
+    margin-right: 0;
+    filter: brightness(0) invert(1);
+}
+
+        .menu-group {
+    margin: 8px 0;
+}
+
+        .menu-group-title {
+    padding: 6px 20px 2px 20px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+        
+
+        /* Container styling */
+        .container {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.5s ease;
+            border: 1px solid rgba(32, 96, 24, 0.1);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, #206018 0%, #4caf50 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Input section styling */
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            align-items: stretch;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        button#add-btn {
+            background: linear-gradient(135deg, #206018 0%, #4caf50 100%);
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        button#add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(32, 96, 24, 0.4);
+        }
+
+        button#add-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Programs list styling */
+        .programs-list {
+            list-style-type: none;
+            padding: 0;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 25px;
+            border-radius: 10px;
+        }
+
+        /* Custom scrollbar */
+        .programs-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .programs-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .programs-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #206018 0%, #4caf50 100%);
+            border-radius: 10px;
+        }
+
+        .programs-list::-webkit-scrollbar-thumb:hover {
+            background: #206018;
+        }
+
+        .programs-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            margin-bottom: 12px;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            animation: fadeIn 0.3s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .programs-list li:hover {
+            border-color: #4caf50;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+            transform: translateX(5px);
+        }
+
+        .program-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #206018;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .program-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #206018 0%, #4caf50 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(32, 96, 24, 0.3);
+        }
+
+        .programs-list li button {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .programs-list li button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+
+        .programs-list li button:active {
+            transform: translateY(0);
+        }
+
+        /* Save button styling */
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        button#save {
+            flex: 1;
+            background: linear-gradient(135deg, #206018 0%, #4caf50 100%);
+            color: white;
+            padding: 16px 30px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(32, 96, 24, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button#save:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(32, 96, 24, 0.4);
+        }
+
+        button#save:active {
+            transform: translateY(0);
+        }
+
+        /* Empty state styling */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Program count badge */
+        .program-count {
+            display: inline-block;
+            background: linear-gradient(135deg, #206018 0%, #4caf50 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(32, 96, 24, 0.2);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+                width: 95%;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .input-section {
+                flex-direction: column;
+            }
+
+            button#back {
+                top: 55px;
+                left: 10px;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+
+            .programs-list li {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            .program-name {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar:not(.collapsed) {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                width: 100vw;
+            }
+        }
+
+        /* Loading animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+    
+        .menu-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .menu-toggle:hover {
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: inline-flex;
+            }
+        }
+    
+        /* Sidebar normalization: consistent spacing and interaction across admin pages */
+        .sidebar-menu {
+            list-style: none;
+            padding: 6px 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            margin: 0;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            color: #ffffff;
+            text-decoration: none;
+            line-height: 1.2;
+            font-size: 15px;
+            border-left: 4px solid transparent;
+            transition: all 0.25s ease;
+        }
+
+        .sidebar-menu a:hover {
+            background: rgba(255, 255, 255, 0.10);
+            padding-left: 25px;
+            border-left-color: #4CAF50;
+        }
+
+        .sidebar-menu a.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-left-color: #4CAF50;
+        }
+
+        .sidebar-menu img {
+            width: 20px;
+            height: 20px;
+            margin-right: 0;
+            flex: 0 0 20px;
+            filter: brightness(0) invert(1);
+        }
+
+        .menu-group {
+            margin: 8px 0;
+        }
+
+        .menu-group-title {
+            padding: 6px 20px 2px 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            line-height: 1.2;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Title Bar -->
+    <div class="title-bar">
+        <div class="title-content">
+            <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">&#9776;</button>
+            <img src="../img/cav.png" alt="CvSU Logo" onclick="toggleSidebar()">
+            <span style="color: #d9e441;">ASPLAN</span>
+        </div>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Admin Panel</h3>
+        </div>
+                <ul class="sidebar-menu">
+            <div class="menu-group">
+                <div class="menu-group-title">Dashboard</div>
+                <li><a href="index.php"><img src="../pix/home1.png" alt="Dashboard" style="filter: brightness(0) invert(1);"> Dashboard</a></li>
+            </div>
+
+            <div class="menu-group">
+                <div class="menu-group-title">User Management</div>
+                <li><a href="account_module.php"><img src="../pix/account.png" alt="User Management"> User Management</a></li>
+                <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers"> Adviser Management</a></li>
+            </div>
+
+            <div class="menu-group">
+                <div class="menu-group-title">Student Management</div>
+                <li><a href="pending_accounts.php"><img src="../pix/pending.png" alt="Pending"> Pending Accounts</a></li>
+                <li><a href="list_of_students.php"><img src="../pix/checklist.png" alt="Students"> List of Students</a></li>
+            </div>
+
+            <div class="menu-group">
+                <div class="menu-group-title">System</div>
+                <li><a href="programs.html"><img src="../pix/update.png" alt="Programs"> Programs</a></li>
+                <li><a href="../program_coordinator/curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum"> Curriculum Management</a></li>
+            </div>            <div class="menu-group">
+                <div class="menu-group-title">Approval</div>
+                <li><a href="account_approval_settings.php"><img src="../pix/set.png" alt="Settings"> Settings</a></li>
+            </div>
+
+
+
+            <div class="menu-group">
+                <div class="menu-group-title">Account</div>
+                <li><a href="logout.php"><img src="../pix/singout.png" alt="Sign Out"> Sign Out</a></li>
+            </div>
+        </ul>
+    </div>
+
+    <div class="main-content" id="mainContent">
+
+    <div class="container">
+        <h1><i class="fas fa-graduation-cap"></i> Program Manager</h1>
+        
+        <div class="input-section">
+            <input type="text" id="program-name" placeholder="Enter new program name..." maxlength="100">
+            <button id="add-btn">
+                <i class="fas fa-plus"></i> Add Program
+            </button>
+        </div>
+
+        <div id="program-count-container" style="display: none;">
+            <span class="program-count">
+                <i class="fas fa-list"></i> <span id="program-count">0</span> Programs
+            </span>
+        </div>
+
+        <ul id="programs-list" class="programs-list">
+            <!-- Programs will be dynamically inserted here -->
+        </ul>
+
+        <div class="button-group">
+            <button id="save">
+                <i class="fas fa-save"></i> Save All Programs
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const logo = document.querySelector('.title-bar img');
+            
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(event.target) && 
+                !logo.contains(event.target)) {
+                sidebar.classList.add('collapsed');
+                document.getElementById('mainContent').classList.add('expanded');
+            }
+        });
+
+        // Handle responsive behavior
+        window.addEventListener('resize', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (window.innerWidth > 768) {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+            } else {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+            }
+        });
+
+        // Initialize mobile view
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.add('collapsed');
+            document.getElementById('mainContent').classList.add('expanded');
+        }
+
+        const addButton = document.getElementById("add-btn");
+        const programNameInput = document.getElementById("program-name");
+        const programsList = document.getElementById("programs-list");
+        const saveButton = document.getElementById("save");
+
+        let programs = [];
+
+        // Fetch existing programs from the database on page load
+        window.onload = function() {
+            fetchPrograms();
+        };
+
+        function fetchPrograms() {
+            // Show loading state
+            programsList.innerHTML = '<div class="empty-state"><i class="fas fa-spinner loading"></i><p>Loading programs...</p></div>';
+            
+            fetch("fetchPrograms.php")
+                .then(response => response.json())
+                .then(data => {
+                    programs = data.programs;
+                    renderPrograms();
+                })
+                .catch(error => {
+                    console.error("Error fetching programs:", error);
+                    programsList.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading programs</p></div>';
+                });
+        }
+
+        addButton.addEventListener("click", function () {
+            addProgram();
+        });
+
+        // Allow Enter key to add program
+        programNameInput.addEventListener("keypress", function(e) {
+            if (e.key === 'Enter') {
+                addProgram();
+            }
+        });
+
+        function addProgram() {
+            const programName = programNameInput.value.trim();
+            if (programName) {
+                // Check for duplicates
+                if (programs.some(p => p.toLowerCase() === programName.toLowerCase())) {
+                    alert("This program already exists!");
+                    return;
+                }
+                programs.push(programName);
+                renderPrograms();
+                programNameInput.value = ""; // Clear input
+                programNameInput.focus(); // Keep focus on input
+                
+                // Add success feedback
+                addButton.innerHTML = '<i class="fas fa-check"></i> Added!';
+                setTimeout(() => {
+                    addButton.innerHTML = '<i class="fas fa-plus"></i> Add Program';
+                }, 1500);
+            } else {
+                // Shake animation for empty input
+                programNameInput.style.animation = 'none';
+                setTimeout(() => {
+                    programNameInput.style.animation = 'shake 0.5s';
+                    programNameInput.focus();
+                }, 10);
+            }
+        }
+
+        function renderPrograms() {
+            const programCountContainer = document.getElementById('program-count-container');
+            const programCountSpan = document.getElementById('program-count');
+            
+            if (programs.length === 0) {
+                programsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <p>No programs added yet. Start by adding your first program above!</p>
+                    </div>
+                `;
+                programCountContainer.style.display = 'none';
+            } else {
+                programsList.innerHTML = "";
+                programs.forEach((program, index) => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `
+                        <div class="program-name">
+                            <div class="program-icon">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <span>${escapeHtml(program)}</span>
+                        </div>
+                        <button onclick="removeProgram(${index})">
+                            <i class="fas fa-trash"></i> Remove
+                        </button>
+                    `;
+                    programsList.appendChild(li);
+                });
+                
+                programCountContainer.style.display = 'block';
+                programCountSpan.textContent = programs.length;
+            }
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function removeProgram(index) {
+            const programName = programs[index];
+            if (confirm(`Are you sure you want to remove "${programName}"?`)) {
+                programs.splice(index, 1);
+                renderPrograms();
+                
+                // Show feedback
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+                    z-index: 1001;
+                    animation: slideIn 0.3s ease;
+                    font-weight: 600;
+                `;
+                notification.innerHTML = '<i class="fas fa-check-circle"></i> Program removed successfully!';
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => notification.remove(), 300);
+                }, 2000);
+            }
+        }
+
+        saveButton.addEventListener("click", function () {
+            if (programs.length === 0) {
+                alert("No programs to save. Please add at least one program.");
+                return;
+            }
+
+            if (confirm(`Are you sure you want to save ${programs.length} program(s)?`)) {
+                // Show loading state
+                const originalText = saveButton.innerHTML;
+                saveButton.disabled = true;
+                saveButton.innerHTML = '<i class="fas fa-spinner loading"></i> Saving...';
+                
+                // Send the programs to the server to save in the database
+                fetch("savePrograms.php", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ programs })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    saveButton.disabled = false;
+                    if (data.success) {
+                        saveButton.innerHTML = '<i class="fas fa-check"></i> Saved Successfully!';
+                        saveButton.style.background = 'linear-gradient(135deg, #28a745 0%, #218838 100%)';
+                        
+                        // Show success notification
+                        showNotification('Programs saved successfully!', 'success');
+                        
+                        setTimeout(() => {
+                            saveButton.innerHTML = originalText;
+                            saveButton.style.background = 'linear-gradient(135deg, #206018 0%, #4caf50 100%)';
+                        }, 2000);
+                    } else {
+                        saveButton.innerHTML = originalText;
+                        showNotification('Error saving programs. Please try again.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = originalText;
+                    showNotification('Network error. Please try again.', 'error');
+                });
+            }
+        });
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            const colors = {
+                success: 'linear-gradient(135deg, #28a745 0%, #218838 100%)',
+                error: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)'
+            };
+            
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: ${colors[type]};
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+                z-index: 1001;
+                animation: slideIn 0.3s ease;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            `;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(20px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
+
+
+
+
+

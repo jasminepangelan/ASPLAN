@@ -1,0 +1,86 @@
+# ===================================================
+# ASPLAN v9 - Apache Security Configuration
+# ===================================================
+
+# Process .html files as PHP so PHP code embedded in HTML files is executed
+AddType application/x-httpd-php .html
+
+# ===================================================
+# BLOCK SENSITIVE DIRECTORIES
+# ===================================================
+
+# .htaccess cannot use <Directory> or <DirectoryMatch>; use rewrite rules instead.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(dev|config|includes|var)(/|$) - [F,L,NC]
+</IfModule>
+
+# ===================================================
+# BLOCK SENSITIVE FILES
+# ===================================================
+
+# Block .env files
+<Files ".env*">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Block SQL dump files
+<FilesMatch "\.sql$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block backup files
+<FilesMatch "\.(bak|backup|old)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block Git and version control files
+<FilesMatch "\.(git|svn)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# ===================================================
+# DISABLE DIRECTORY LISTING
+# ===================================================
+Options -Indexes
+
+# ===================================================
+# SECURITY HEADERS
+# ===================================================
+
+# Prevent MIME type sniffing
+Header always set X-Content-Type-Options "nosniff"
+
+# Enable XSS Protection
+Header always set X-XSS-Protection "1; mode=block"
+
+# Prevent Clickjacking
+Header always set X-Frame-Options "SAMEORIGIN"
+
+# Referrer Policy
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Content Security Policy (basic)
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+
+# ===================================================
+# UPLOAD FOLDER SECURITY
+# ===================================================
+
+# Disable execution of script-like uploads when requested directly
+<IfModule mod_rewrite.c>
+    RewriteRule ^uploads/.*\.(php|phtml|php3|php4|php5|phar|phps|pht|phtm|asp|aspx|jsp|sh|bash|exe|bat|cmd|com)$ - [F,L,NC]
+</IfModule>
+
+# ===================================================
+# PREVENT ACCESS TO TEST/DEBUG FILES
+# ===================================================
+
+<FilesMatch "^(test_|debug_|raw_|check_db|check_schema|check_case|check_duplicates).*\.php$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
