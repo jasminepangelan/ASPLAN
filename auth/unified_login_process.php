@@ -47,14 +47,6 @@ if (!$rateLimit['allowed']) {
 
 $useLaravelAuthBridge = getenv('USE_LARAVEL_AUTH_BRIDGE') === '1';
 
-if (!$useLaravelAuthBridge) {
-    closeDBConnection($conn);
-    sendJsonResponse([
-        'status' => 'error',
-        'message' => 'Authentication bridge is disabled. Set USE_LARAVEL_AUTH_BRIDGE=1.',
-    ]);
-}
-
 // Validate the login CSRF token against the current PHP session before
 // delegating authentication to the Laravel bridge.
 $csrfToken = $_POST['csrf_token'] ?? '';
@@ -97,72 +89,72 @@ $payloadJson = json_encode([
     'remember_me' => $remember_me,
 ]);
 
-$bridgeResponse = false;
+if ($useLaravelAuthBridge) {
+    $bridgeResponse = false;
 
-if (function_exists('curl_init')) {
-    $ch = curl_init($bridgeUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $payloadJson,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 10,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-    ]);
-    $bridgeResponse = curl_exec($ch);
-    curl_close($ch);
-} else {
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/json\r\n",
-            'content' => $payloadJson,
-            'timeout' => 10,
-        ],
-    ]);
-    $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
-}
+    if (function_exists('curl_init')) {
+        $ch = curl_init($bridgeUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payloadJson,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        ]);
+        $bridgeResponse = curl_exec($ch);
+        curl_close($ch);
+    } else {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n",
+                'content' => $payloadJson,
+                'timeout' => 10,
+            ],
+        ]);
+        $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
+    }
 
-if ($bridgeResponse !== false) {
-    $bridgeData = json_decode($bridgeResponse, true);
-    if (is_array($bridgeData) && isset($bridgeData['status'])) {
-        if ($bridgeData['status'] === 'success') {
-            resetRateLimit('login');
-            clearAccountLockout($conn, $username);
-            session_regenerate_id(true);
+    if ($bridgeResponse !== false) {
+        $bridgeData = json_decode($bridgeResponse, true);
+        if (is_array($bridgeData) && isset($bridgeData['status'])) {
+            if ($bridgeData['status'] === 'success') {
+                resetRateLimit('login');
+                clearAccountLockout($conn, $username);
+                session_regenerate_id(true);
 
-            if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
-                foreach ($bridgeData['session'] as $key => $value) {
-                    $_SESSION[$key] = $value;
+                if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
+                    foreach ($bridgeData['session'] as $key => $value) {
+                        $_SESSION[$key] = $value;
+                    }
                 }
+
+                if ($remember_me && isset($bridgeData['remember']['cookie_value'], $bridgeData['remember']['expires'])) {
+                    setAppCookie('remember_me', (string)$bridgeData['remember']['cookie_value'], (int)$bridgeData['remember']['expires'], '/');
+                }
+
+                closeDBConnection($conn);
+                sendJsonResponse([
+                    'status' => 'success',
+                    'redirect' => $bridgeData['redirect'] ?? 'index.html',
+                    'user_type' => $bridgeData['user_type'] ?? 'unknown',
+                ]);
             }
 
-            if ($remember_me && isset($bridgeData['remember']['cookie_value'], $bridgeData['remember']['expires'])) {
-                setAppCookie('remember_me', (string)$bridgeData['remember']['cookie_value'], (int)$bridgeData['remember']['expires'], '/');
+            if ($bridgeData['status'] === 'error') {
+                recordAttempt('login');
+                registerFailedLoginAttempt($conn, $username);
+                closeDBConnection($conn);
+                sendJsonResponse($bridgeData);
             }
 
-            closeDBConnection($conn);
-            sendJsonResponse([
-                'status' => 'success',
-                'redirect' => $bridgeData['redirect'] ?? 'index.html',
-                'user_type' => $bridgeData['user_type'] ?? 'unknown',
-            ]);
+            if (in_array($bridgeData['status'], ['pending', 'rejected', 'rate_limited', 'session_expired'], true)) {
+                closeDBConnection($conn);
+                sendJsonResponse($bridgeData);
+            }
         }
-
-        if ($bridgeData['status'] === 'error') {
-            recordAttempt('login');
-            registerFailedLoginAttempt($conn, $username);
-        }
-
-        closeDBConnection($conn);
-        sendJsonResponse($bridgeData);
     }
 }
-
-closeDBConnection($conn);
-sendJsonResponse([
-    'status' => 'error',
-    'message' => 'Authentication service is temporarily unavailable. Please try again shortly.',
-]);
 
 // Function to check student credentials
 function checkStudentCredentials($conn, $username, $password) {

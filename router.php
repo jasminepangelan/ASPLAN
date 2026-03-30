@@ -47,6 +47,19 @@ if (is_dir($targetPath)) {
 }
 
 if (is_file($targetPath)) {
+    if (strtolower((string) pathinfo($targetPath, PATHINFO_EXTENSION)) === 'php') {
+        $previousCwd = getcwd();
+        $_SERVER['SCRIPT_FILENAME'] = $targetPath;
+        $_SERVER['SCRIPT_NAME'] = $normalizedPath;
+        $_SERVER['PHP_SELF'] = $normalizedPath;
+        chdir(dirname($targetPath));
+        require $targetPath;
+        if ($previousCwd !== false) {
+            chdir($previousCwd);
+        }
+        return;
+    }
+
     return false;
 }
 

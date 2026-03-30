@@ -10,23 +10,39 @@
 // Load environment variables from .env file
 require_once __DIR__ . '/../includes/env_loader.php';
 
-// Database credentials - loaded from environment variables
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: '');
-define('DB_NAME', getenv('DB_NAME') ?: 'osas_db');
+if (!function_exists('firstEnvValue')) {
+    function firstEnvValue(array $keys, $default = '') {
+        foreach ($keys as $key) {
+            $value = getenv($key);
+            if ($value !== false && $value !== null && $value !== '') {
+                return $value;
+            }
+        }
+
+        return $default;
+    }
+}
+
+// Database credentials - loaded from environment variables.
+// Railway always exposes MYSQL* variables on the database service, so we
+// fall back to those automatically when custom DB_* variables are missing.
+define('DB_HOST', firstEnvValue(['DB_HOST', 'MYSQLHOST'], 'localhost'));
+define('DB_PORT', (int) firstEnvValue(['DB_PORT', 'MYSQLPORT'], '3306'));
+define('DB_USER', firstEnvValue(['DB_USER', 'DB_USERNAME', 'MYSQLUSER'], 'root'));
+define('DB_PASS', firstEnvValue(['DB_PASS', 'DB_PASSWORD', 'MYSQLPASSWORD'], ''));
+define('DB_NAME', firstEnvValue(['DB_NAME', 'DB_DATABASE', 'MYSQLDATABASE'], 'osas_db'));
 
 /**
  * Get database connection
  * @return mysqli Database connection object
  */
 function getDBConnection() {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
     
     // Check connection
     if ($conn->connect_error) {
         // Log error to file instead of exposing to user
-        error_log("Database connection failed: " . $conn->connect_error);
+        error_log("Database connection failed: " . $conn->connect_error . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
         die(json_encode([
             'status' => 'error', 
             'message' => 'Database connection failed. Please try again later.'
