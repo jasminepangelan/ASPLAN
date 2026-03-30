@@ -7,6 +7,7 @@ RUN composer install \
     --no-dev \
     --prefer-dist \
     --no-interaction \
+    --no-scripts \
     --optimize-autoloader
 
 FROM php:8.2-apache
