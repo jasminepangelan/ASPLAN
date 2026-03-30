@@ -60,4 +60,3 @@ function getMailer() {
     
     return $mail;
 }
-?>

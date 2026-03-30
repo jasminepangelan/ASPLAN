@@ -74,4 +74,3 @@ if (DEBUG_MODE) {
 
 // Timezone
 date_default_timezone_set('Asia/Manila');
-?>

@@ -367,4 +367,3 @@ function elsPruneOldLogs(int $daysToKeep = 30): int {
 
     return $deleted;
 }
-?>

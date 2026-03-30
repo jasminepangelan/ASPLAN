@@ -6,6 +6,13 @@
  * Usage: require_once __DIR__ . '/config/config.php';
  */
 
+if (!defined('APP_BOOTSTRAP_BUFFERING')) {
+    define('APP_BOOTSTRAP_BUFFERING', true);
+    if (!headers_sent() && !ob_get_level()) {
+        ob_start();
+    }
+}
+
 if (!function_exists('isSecureRequest')) {
     function isSecureRequest() {
         if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') {
@@ -44,21 +51,25 @@ if (!function_exists('clearAppCookie')) {
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.use_only_cookies', '1');
-    ini_set('session.use_strict_mode', '1');
-    ini_set('session.cookie_httponly', '1');
-    ini_set('session.cookie_secure', isSecureRequest() ? '1' : '0');
-    ini_set('session.cookie_samesite', 'Lax');
+    if (!headers_sent()) {
+        ini_set('session.use_only_cookies', '1');
+        ini_set('session.use_strict_mode', '1');
+        ini_set('session.cookie_httponly', '1');
+        ini_set('session.cookie_secure', isSecureRequest() ? '1' : '0');
+        ini_set('session.cookie_samesite', 'Lax');
 
-    session_set_cookie_params([
-        'lifetime' => 0,
-        'path' => '/',
-        'secure' => isSecureRequest(),
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'secure' => isSecureRequest(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
 
-    session_start();
+        session_start();
+    } else {
+        @session_start();
+    }
 }
 
 // Load all configuration files
@@ -233,4 +244,3 @@ if (isset($_SESSION['login_time'])) {
 // You can add more config files here as needed
 // require_once __DIR__ . '/payment.php';
 // require_once __DIR__ . '/api.php';
-?>

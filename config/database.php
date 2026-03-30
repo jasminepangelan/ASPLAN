@@ -393,4 +393,3 @@ function closeDBConnection($conn) {
         $conn->close();
     }
 }
-?>
