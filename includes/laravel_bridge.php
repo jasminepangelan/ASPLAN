@@ -40,6 +40,48 @@ if (!function_exists('laravelBridgeBaseUrl')) {
     }
 }
 
+if (!function_exists('laravelBridgeCandidateBaseUrls')) {
+    /**
+     * Build a list of possible Laravel bridge base URLs, preferring the
+     * configured value and then falling back to Railway private networking.
+     *
+     * @return string[]
+     */
+    function laravelBridgeCandidateBaseUrls(): array
+    {
+        $candidates = [];
+        $configured = laravelBridgeBaseUrl();
+        if ($configured !== '') {
+            $candidates[] = $configured;
+        }
+
+        $internalConfigured = trim((string) (getenv('LARAVEL_BRIDGE_INTERNAL_URL') ?: ''));
+        if ($internalConfigured !== '') {
+            $candidates[] = rtrim($internalConfigured, '/');
+        }
+
+        $environmentName = trim((string) (getenv('RAILWAY_ENVIRONMENT_NAME') ?: ''));
+        $configuredHost = parse_url($configured, PHP_URL_HOST);
+
+        if (is_string($configuredHost) && str_ends_with($configuredHost, '.up.railway.app')) {
+            $serviceSlug = substr($configuredHost, 0, strpos($configuredHost, '.up.railway.app'));
+            if ($environmentName !== '' && str_ends_with($serviceSlug, '-' . $environmentName)) {
+                $serviceSlug = substr($serviceSlug, 0, -strlen('-' . $environmentName));
+            }
+
+            if ($serviceSlug !== '') {
+                $candidates[] = 'http://' . $serviceSlug . '.railway.internal:8080';
+            }
+        }
+
+        if ($environmentName !== '') {
+            $candidates[] = 'http://asplan.railway.internal:8080';
+        }
+
+        return array_values(array_unique(array_filter($candidates, static fn($url) => is_string($url) && $url !== '')));
+    }
+}
+
 if (!function_exists('laravelBridgeUrl')) {
     /**
      * Build a Laravel bridge URL from either a relative API path or a legacy absolute URL.
@@ -82,6 +124,52 @@ if (!function_exists('laravelBridgeUrl')) {
     }
 }
 
+if (!function_exists('laravelBridgeUrlsForPath')) {
+    /**
+     * Build all possible bridge URLs for a given path.
+     *
+     * @return string[]
+     */
+    function laravelBridgeUrlsForPath(string $path = ''): array
+    {
+        $path = trim($path);
+        $urls = [];
+
+        foreach (laravelBridgeCandidateBaseUrls() as $baseUrl) {
+            $resolvedPath = $path;
+
+            if ($resolvedPath !== '' && preg_match('#^https?://#i', $resolvedPath)) {
+                $parsedPath = (string) (parse_url($resolvedPath, PHP_URL_PATH) ?: '');
+                $parsedQuery = (string) (parse_url($resolvedPath, PHP_URL_QUERY) ?: '');
+                $resolvedPath = $parsedPath;
+                if ($parsedQuery !== '') {
+                    $resolvedPath .= '?' . $parsedQuery;
+                }
+            }
+
+            $resolvedPath = str_replace('\\', '/', $resolvedPath);
+
+            $publicPos = stripos($resolvedPath, '/public/');
+            if ($publicPos !== false) {
+                $resolvedPath = substr($resolvedPath, $publicPos + strlen('/public'));
+            } else {
+                $apiPos = stripos($resolvedPath, '/api/');
+                if ($apiPos !== false) {
+                    $resolvedPath = substr($resolvedPath, $apiPos);
+                }
+            }
+
+            if ($resolvedPath === '') {
+                $urls[] = $baseUrl;
+            } else {
+                $urls[] = rtrim($baseUrl, '/') . '/' . ltrim($resolvedPath, '/');
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+}
+
 if (!function_exists('postLaravelJsonBridge')) {
     /**
      * Send a JSON POST request to the Laravel sidecar and decode the JSON response.
@@ -90,43 +178,48 @@ if (!function_exists('postLaravelJsonBridge')) {
      */
     function postLaravelJsonBridge(string $url, array $payload, int $timeoutSeconds = 10): ?array
     {
-        $url = laravelBridgeUrl($url);
         $payloadJson = json_encode($payload);
         if ($payloadJson === false) {
             return null;
         }
 
-        $response = false;
+        foreach (laravelBridgeUrlsForPath($url) as $bridgeUrl) {
+            $response = false;
 
-        if (function_exists('curl_init')) {
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $payloadJson,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => $timeoutSeconds,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            ]);
-            $response = curl_exec($ch);
-            curl_close($ch);
-        } else {
-            $context = stream_context_create([
-                'http' => [
-                    'method' => 'POST',
-                    'header' => "Content-Type: application/json\r\n",
-                    'content' => $payloadJson,
-                    'timeout' => $timeoutSeconds,
-                ],
-            ]);
-            $response = @file_get_contents($url, false, $context);
+            if (function_exists('curl_init')) {
+                $ch = curl_init($bridgeUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $payloadJson,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => $timeoutSeconds,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                ]);
+                $response = curl_exec($ch);
+                curl_close($ch);
+            } else {
+                $context = stream_context_create([
+                    'http' => [
+                        'method' => 'POST',
+                        'header' => "Content-Type: application/json\r\n",
+                        'content' => $payloadJson,
+                        'timeout' => $timeoutSeconds,
+                    ],
+                ]);
+                $response = @file_get_contents($bridgeUrl, false, $context);
+            }
+
+            if (!is_string($response) || $response === '') {
+                continue;
+            }
+
+            $decoded = json_decode($response, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
         }
 
-        if (!is_string($response) || $response === '') {
-            return null;
-        }
-
-        $decoded = json_decode($response, true);
-        return is_array($decoded) ? $decoded : null;
+        return null;
     }
 }
 
@@ -145,8 +238,6 @@ if (!function_exists('postLaravelMultipartBridge')) {
         if (!function_exists('curl_init')) {
             return null;
         }
-
-        $url = laravelBridgeUrl($url);
 
         $payload = $fields;
 
@@ -171,23 +262,29 @@ if (!function_exists('postLaravelMultipartBridge')) {
             );
         }
 
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $payload,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => $timeoutSeconds,
-        ]);
+        foreach (laravelBridgeUrlsForPath($url) as $bridgeUrl) {
+            $ch = curl_init($bridgeUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $payload,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => $timeoutSeconds,
+            ]);
 
-        $response = curl_exec($ch);
-        curl_close($ch);
+            $response = curl_exec($ch);
+            curl_close($ch);
 
-        if (!is_string($response) || $response === '') {
-            return null;
+            if (!is_string($response) || $response === '') {
+                continue;
+            }
+
+            $decoded = json_decode($response, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
         }
 
-        $decoded = json_decode($response, true);
-        return is_array($decoded) ? $decoded : null;
+        return null;
     }
 }
 
@@ -197,37 +294,42 @@ if (!function_exists('postLaravelTextBridge')) {
      */
     function postLaravelTextBridge(string $url, array $payload, int $timeoutSeconds = 10): ?string
     {
-        $url = laravelBridgeUrl($url);
         $payloadJson = json_encode($payload);
         if ($payloadJson === false) {
             return null;
         }
 
-        $response = false;
+        foreach (laravelBridgeUrlsForPath($url) as $bridgeUrl) {
+            $response = false;
 
-        if (function_exists('curl_init')) {
-            $ch = curl_init($url);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $payloadJson,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => $timeoutSeconds,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            ]);
-            $response = curl_exec($ch);
-            curl_close($ch);
-        } else {
-            $context = stream_context_create([
-                'http' => [
-                    'method' => 'POST',
-                    'header' => "Content-Type: application/json\r\n",
-                    'content' => $payloadJson,
-                    'timeout' => $timeoutSeconds,
-                ],
-            ]);
-            $response = @file_get_contents($url, false, $context);
+            if (function_exists('curl_init')) {
+                $ch = curl_init($bridgeUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $payloadJson,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => $timeoutSeconds,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                ]);
+                $response = curl_exec($ch);
+                curl_close($ch);
+            } else {
+                $context = stream_context_create([
+                    'http' => [
+                        'method' => 'POST',
+                        'header' => "Content-Type: application/json\r\n",
+                        'content' => $payloadJson,
+                        'timeout' => $timeoutSeconds,
+                    ],
+                ]);
+                $response = @file_get_contents($bridgeUrl, false, $context);
+            }
+
+            if (is_string($response) && $response !== '') {
+                return $response;
+            }
         }
 
-        return is_string($response) ? $response : null;
+        return null;
     }
 }
