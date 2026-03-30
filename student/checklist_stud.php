@@ -1,4 +1,3 @@
-    
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/academic_hold_service.php';
@@ -10,11 +9,31 @@ require_once __DIR__ . '/../includes/laravel_bridge.php';
 // Get database connection
 $conn = getDBConnection();
 
-// Ensure 2nd and 3rd attempt grade columns exist
-$conn->query("ALTER TABLE student_checklists ADD COLUMN IF NOT EXISTS final_grade_2 VARCHAR(20) DEFAULT NULL");
-$conn->query("ALTER TABLE student_checklists ADD COLUMN IF NOT EXISTS evaluator_remarks_2 VARCHAR(50) DEFAULT NULL");
-$conn->query("ALTER TABLE student_checklists ADD COLUMN IF NOT EXISTS final_grade_3 VARCHAR(20) DEFAULT NULL");
-$conn->query("ALTER TABLE student_checklists ADD COLUMN IF NOT EXISTS evaluator_remarks_3 VARCHAR(50) DEFAULT NULL");
+if (!function_exists('ensureStudentChecklistColumn')) {
+    function ensureStudentChecklistColumn($conn, $columnName, $definition)
+    {
+        $stmt = $conn->prepare("SHOW COLUMNS FROM student_checklists LIKE ?");
+        if (!$stmt) {
+            return;
+        }
+
+        $stmt->bind_param('s', $columnName);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $exists = $result && $result->num_rows > 0;
+        $stmt->close();
+
+        if (!$exists) {
+            $conn->query("ALTER TABLE student_checklists ADD COLUMN {$columnName} {$definition}");
+        }
+    }
+}
+
+// Ensure 2nd and 3rd attempt grade columns exist in a MySQL-version-safe way
+ensureStudentChecklistColumn($conn, 'final_grade_2', 'VARCHAR(20) DEFAULT NULL');
+ensureStudentChecklistColumn($conn, 'evaluator_remarks_2', 'VARCHAR(50) DEFAULT NULL');
+ensureStudentChecklistColumn($conn, 'final_grade_3', 'VARCHAR(20) DEFAULT NULL');
+ensureStudentChecklistColumn($conn, 'evaluator_remarks_3', 'VARCHAR(50) DEFAULT NULL');
 
 // Get student_id from URL parameter if available, otherwise use session
 $student_id = '';
