@@ -10,4 +10,4 @@ RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 8080
 
-CMD ["php", "-S", "0.0.0.0:8080", "router.php"]
+CMD ["sh", "-lc", "php -S 0.0.0.0:${PORT:-8080} -t /var/www/html /var/www/html/router.php"]
