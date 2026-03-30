@@ -9,6 +9,24 @@ if ($requestPath === '') {
 
 $normalizedPath = '/' . ltrim(str_replace('\\', '/', $requestPath), '/');
 
+$routeAliases = [
+    '/api/check_student_id.php' => __DIR__ . '/auth/check_student_id.php',
+];
+
+if (isset($routeAliases[$normalizedPath]) && is_file($routeAliases[$normalizedPath])) {
+    $previousCwd = getcwd();
+    $aliasTarget = $routeAliases[$normalizedPath];
+    $_SERVER['SCRIPT_FILENAME'] = $aliasTarget;
+    $_SERVER['SCRIPT_NAME'] = $normalizedPath;
+    $_SERVER['PHP_SELF'] = $normalizedPath;
+    chdir(dirname($aliasTarget));
+    require $aliasTarget;
+    if ($previousCwd !== false) {
+        chdir($previousCwd);
+    }
+    return;
+}
+
 // Block direct access to sensitive directories/files that Apache previously handled in .htaccess.
 $denyPatterns = [
     '#^/(dev|config|includes|var)(/|$)#i',

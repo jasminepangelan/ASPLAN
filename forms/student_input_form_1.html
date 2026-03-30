@@ -143,7 +143,7 @@
             messageDiv.textContent = 'Checking student number...';
             messageDiv.style.display = 'block';
             
-            fetch('../api/check_student_id.php?student_id=' + encodeURIComponent(studentId))
+            fetch('../auth/check_student_id.php?student_id=' + encodeURIComponent(studentId))
                 .then(response => response.json())
                 .then(data => {
                     if (data.exists) {
@@ -252,7 +252,7 @@
         }
         
         // Check student number uniqueness via AJAX
-        fetch('../api/check_student_id.php?student_id=' + encodeURIComponent(studentId))
+        fetch('../auth/check_student_id.php?student_id=' + encodeURIComponent(studentId))
             .then(response => response.json())
             .then(data => {
                 if (data.exists) {

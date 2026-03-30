@@ -36,129 +36,141 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     sendJsonResponse(['status' => 'error', 'message' => 'Invalid request method.']);
 }
 
-// Check rate limit (settings-backed defaults if configured)
-$rateLimit = checkRateLimit('login');
-if (!$rateLimit['allowed']) {
-    sendJsonResponse([
-        'status' => 'rate_limited', 
-        'message' => $rateLimit['message']
-    ]);
-}
-
-$useLaravelAuthBridge = getenv('USE_LARAVEL_AUTH_BRIDGE') === '1';
-
-// Validate the login CSRF token against the current PHP session before
-// delegating authentication to the Laravel bridge.
-$csrfToken = $_POST['csrf_token'] ?? '';
-if (!validateCSRFToken($csrfToken)) {
-    recordAttempt('login');
-    closeDBConnection($conn);
-    sendJsonResponse([
-        'status' => 'error',
-        'message' => 'Invalid security token. Please refresh the page and try again.'
-    ]);
-}
-
-// Get and sanitize input - accept both 'username' and 'student_id' for backward compatibility
-$username = trim($_POST['username'] ?? $_POST['student_id'] ?? '');
-$password = trim($_POST['password'] ?? '');
-$remember_me = isset($_POST['remember_me']) && $_POST['remember_me'] === '1';
-
-// Check if username or password is empty
-if (empty($username) || empty($password)) {
-    recordAttempt('login');
-    if (!empty($username)) {
-        registerFailedLoginAttempt($conn, $username);
-    }
-    sendJsonResponse(['status' => 'error', 'message' => 'Student ID/Username or password cannot be empty.']);
-}
-
-$accountLockStatus = getAccountLockoutStatus($conn, $username);
-if ($accountLockStatus['locked']) {
-    $minutes = (int)ceil($accountLockStatus['remaining_seconds'] / 60);
-    sendJsonResponse([
-        'status' => 'rate_limited',
-        'message' => 'This account is temporarily locked due to repeated failed logins. Try again in ' . max(1, $minutes) . ' minute(s).'
-    ]);
-}
-
-$bridgeUrl = laravelBridgeUrl('/api/unified-login');
-$payloadJson = json_encode([
-    'username' => $username,
-    'password' => $password,
-    'remember_me' => $remember_me,
-]);
-
-if ($useLaravelAuthBridge) {
-    $bridgeResponse = false;
-
-    if (function_exists('curl_init')) {
-        $ch = curl_init($bridgeUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $payloadJson,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 10,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+try {
+    // Check rate limit (settings-backed defaults if configured)
+    $rateLimit = checkRateLimit('login');
+    if (!$rateLimit['allowed']) {
+        sendJsonResponse([
+            'status' => 'rate_limited', 
+            'message' => $rateLimit['message']
         ]);
-        $bridgeResponse = curl_exec($ch);
-        curl_close($ch);
-    } else {
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
-                'content' => $payloadJson,
-                'timeout' => 10,
-            ],
-        ]);
-        $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
     }
 
-    if ($bridgeResponse !== false) {
-        $bridgeData = json_decode($bridgeResponse, true);
-        if (is_array($bridgeData) && isset($bridgeData['status'])) {
-            if ($bridgeData['status'] === 'success') {
-                resetRateLimit('login');
-                clearAccountLockout($conn, $username);
-                session_regenerate_id(true);
+    $useLaravelAuthBridge = getenv('USE_LARAVEL_AUTH_BRIDGE') === '1';
 
-                if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
-                    foreach ($bridgeData['session'] as $key => $value) {
-                        $_SESSION[$key] = $value;
+    // Validate the login CSRF token against the current PHP session before
+    // delegating authentication to the Laravel bridge.
+    $csrfToken = $_POST['csrf_token'] ?? '';
+    if (!validateCSRFToken($csrfToken)) {
+        recordAttempt('login');
+        closeDBConnection($conn);
+        sendJsonResponse([
+            'status' => 'error',
+            'message' => 'Invalid security token. Please refresh the page and try again.'
+        ]);
+    }
+
+    // Get and sanitize input - accept both 'username' and 'student_id' for backward compatibility
+    $username = trim($_POST['username'] ?? $_POST['student_id'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+    $remember_me = isset($_POST['remember_me']) && $_POST['remember_me'] === '1';
+
+    // Check if username or password is empty
+    if (empty($username) || empty($password)) {
+        recordAttempt('login');
+        if (!empty($username)) {
+            registerFailedLoginAttempt($conn, $username);
+        }
+        sendJsonResponse(['status' => 'error', 'message' => 'Student ID/Username or password cannot be empty.']);
+    }
+
+    $accountLockStatus = getAccountLockoutStatus($conn, $username);
+    if ($accountLockStatus['locked']) {
+        $minutes = (int)ceil($accountLockStatus['remaining_seconds'] / 60);
+        sendJsonResponse([
+            'status' => 'rate_limited',
+            'message' => 'This account is temporarily locked due to repeated failed logins. Try again in ' . max(1, $minutes) . ' minute(s).'
+        ]);
+    }
+
+    $bridgeUrl = laravelBridgeUrl('/api/unified-login');
+    $payloadJson = json_encode([
+        'username' => $username,
+        'password' => $password,
+        'remember_me' => $remember_me,
+    ]);
+
+    if ($useLaravelAuthBridge) {
+        $bridgeResponse = false;
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init($bridgeUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $payloadJson,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            ]);
+            $bridgeResponse = curl_exec($ch);
+            curl_close($ch);
+        } else {
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\n",
+                    'content' => $payloadJson,
+                    'timeout' => 10,
+                ],
+            ]);
+            $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
+        }
+
+        if ($bridgeResponse !== false) {
+            $bridgeData = json_decode($bridgeResponse, true);
+            if (is_array($bridgeData) && isset($bridgeData['status'])) {
+                if ($bridgeData['status'] === 'success') {
+                    resetRateLimit('login');
+                    clearAccountLockout($conn, $username);
+                    session_regenerate_id(true);
+
+                    if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
+                        foreach ($bridgeData['session'] as $key => $value) {
+                            $_SESSION[$key] = $value;
+                        }
                     }
+
+                    if ($remember_me && isset($bridgeData['remember']['cookie_value'], $bridgeData['remember']['expires'])) {
+                        setAppCookie('remember_me', (string)$bridgeData['remember']['cookie_value'], (int)$bridgeData['remember']['expires'], '/');
+                    }
+
+                    closeDBConnection($conn);
+                    sendJsonResponse([
+                        'status' => 'success',
+                        'redirect' => $bridgeData['redirect'] ?? 'index.html',
+                        'user_type' => $bridgeData['user_type'] ?? 'unknown',
+                    ]);
                 }
 
-                if ($remember_me && isset($bridgeData['remember']['cookie_value'], $bridgeData['remember']['expires'])) {
-                    setAppCookie('remember_me', (string)$bridgeData['remember']['cookie_value'], (int)$bridgeData['remember']['expires'], '/');
+                if ($bridgeData['status'] === 'error') {
+                    recordAttempt('login');
+                    registerFailedLoginAttempt($conn, $username);
+                    closeDBConnection($conn);
+                    sendJsonResponse($bridgeData);
                 }
 
-                closeDBConnection($conn);
-                sendJsonResponse([
-                    'status' => 'success',
-                    'redirect' => $bridgeData['redirect'] ?? 'index.html',
-                    'user_type' => $bridgeData['user_type'] ?? 'unknown',
-                ]);
-            }
-
-            if ($bridgeData['status'] === 'error') {
-                recordAttempt('login');
-                registerFailedLoginAttempt($conn, $username);
-                closeDBConnection($conn);
-                sendJsonResponse($bridgeData);
-            }
-
-            if (in_array($bridgeData['status'], ['pending', 'rejected', 'rate_limited', 'session_expired'], true)) {
-                closeDBConnection($conn);
-                sendJsonResponse($bridgeData);
+                if (in_array($bridgeData['status'], ['pending', 'rejected', 'rate_limited', 'session_expired'], true)) {
+                    closeDBConnection($conn);
+                    sendJsonResponse($bridgeData);
+                }
             }
         }
     }
+} catch (Throwable $e) {
+    error_log('Unified login runtime failure: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    closeDBConnection($conn);
+    sendJsonResponse([
+        'status' => 'error',
+        'message' => DEBUG_MODE ? $e->getMessage() : 'Login is temporarily unavailable. Please try again shortly.',
+    ]);
 }
 
 // Function to check student credentials
 function checkStudentCredentials($conn, $username, $password) {
     $query = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name, email, password, contact_number AS contact_no, CONCAT_WS(', ', house_number_street, brgy, town, province) AS address, date_of_admission AS admission_date, picture, status, program FROM student_info WHERE student_number = ?");
+    if (!$query) {
+        throw new RuntimeException('Student credentials query could not be prepared: ' . $conn->error);
+    }
     $query->bind_param("s", $username);
     $query->execute();
     $result = $query->get_result();
@@ -198,6 +210,9 @@ function checkStudentCredentials($conn, $username, $password) {
 // Function to check admin credentials
 function checkAdminCredentials($conn, $username, $password) {
     $query = $conn->prepare("SELECT username, CONCAT_WS(' ', first_name, middle_name, last_name) AS full_name, password FROM admin WHERE username = ?");
+    if (!$query) {
+        throw new RuntimeException('Admin credentials query could not be prepared: ' . $conn->error);
+    }
     $query->bind_param("s", $username);
     $query->execute();
     $result = $query->get_result();
@@ -217,6 +232,9 @@ function checkAdminCredentials($conn, $username, $password) {
 // Function to check adviser credentials
 function checkAdviserCredentials($conn, $username, $password) {
     $query = $conn->prepare("SELECT id, CONCAT_WS(' ', first_name, middle_name, last_name) AS full_name, username, password, sex, pronoun FROM adviser WHERE username = ?");
+    if (!$query) {
+        throw new RuntimeException('Adviser credentials query could not be prepared: ' . $conn->error);
+    }
     $query->bind_param("s", $username);
     $query->execute();
     $result = $query->get_result();
@@ -255,6 +273,9 @@ function checkProgramCoordinatorCredentials($conn, $username, $password) {
     }
 
     $query = $conn->prepare("SELECT id, CONCAT_WS(' ', first_name, middle_name, last_name) AS full_name, username, password, sex, pronoun FROM `$table` WHERE username = ?");
+    if (!$query) {
+        throw new RuntimeException('Program coordinator credentials query could not be prepared: ' . $conn->error);
+    }
     $query->bind_param("s", $username);
     $query->execute();
     $result = $query->get_result();
