@@ -11,15 +11,40 @@
 require_once __DIR__ . '/../includes/env_loader.php';
 
 if (!function_exists('firstEnvValue')) {
+    function normalizeEnvValue($value) {
+        if ($value === false || $value === null) {
+            return '';
+        }
+
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (
+            (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+            (str_starts_with($value, "'") && str_ends_with($value, "'"))
+        ) {
+            $value = substr($value, 1, -1);
+            $value = trim($value);
+        }
+
+        if (preg_match('/^\$\{\{.+\}\}$/', $value)) {
+            return '';
+        }
+
+        return $value;
+    }
+
     function firstEnvValue(array $keys, $default = '') {
         foreach ($keys as $key) {
-            $value = getenv($key);
-            if ($value !== false && $value !== null && $value !== '') {
+            $value = normalizeEnvValue(getenv($key));
+            if ($value !== '') {
                 return $value;
             }
         }
 
-        return $default;
+        return normalizeEnvValue($default);
     }
 }
 

@@ -2,7 +2,31 @@
 
 use Illuminate\Support\Str;
 
-$railwayDatabaseUrl = env('DATABASE_URL', env('MYSQL_URL', env('MYSQL_PUBLIC_URL', '')));
+$normalizeRailwayEnv = static function ($value, $default = null) {
+    if ($value === null) {
+        return $default;
+    }
+
+    $value = trim((string) $value);
+    if ($value === '') {
+        return $default;
+    }
+
+    if (
+        (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+        (str_starts_with($value, "'") && str_ends_with($value, "'"))
+    ) {
+        $value = trim(substr($value, 1, -1));
+    }
+
+    if ($value === '' || preg_match('/^\$\{\{.+\}\}$/', $value)) {
+        return $default;
+    }
+
+    return $value;
+};
+
+$railwayDatabaseUrl = $normalizeRailwayEnv(env('DATABASE_URL', env('MYSQL_URL', env('MYSQL_PUBLIC_URL', ''))), '');
 $railwayDatabaseParts = $railwayDatabaseUrl ? (parse_url($railwayDatabaseUrl) ?: []) : [];
 $railwayDbHost = $railwayDatabaseParts['host'] ?? null;
 $railwayDbPort = isset($railwayDatabaseParts['port']) ? (string) $railwayDatabaseParts['port'] : null;
@@ -54,11 +78,11 @@ return [
         'mysql' => [
             'driver' => 'mysql',
             'url' => $railwayDatabaseUrl,
-            'host' => env('DB_HOST', env('MYSQLHOST', $railwayDbHost ?: '127.0.0.1')),
-            'port' => env('DB_PORT', env('MYSQLPORT', $railwayDbPort ?: '3306')),
-            'database' => env('DB_DATABASE', env('MYSQLDATABASE', $railwayDbName ?: 'forge')),
-            'username' => env('DB_USERNAME', env('MYSQLUSER', $railwayDbUser ?: 'forge')),
-            'password' => env('DB_PASSWORD', env('MYSQLPASSWORD', $railwayDbPass ?: '')),
+            'host' => $normalizeRailwayEnv(env('DB_HOST', env('MYSQLHOST', $railwayDbHost ?: '127.0.0.1')), '127.0.0.1'),
+            'port' => $normalizeRailwayEnv(env('DB_PORT', env('MYSQLPORT', $railwayDbPort ?: '3306')), '3306'),
+            'database' => $normalizeRailwayEnv(env('DB_DATABASE', env('MYSQLDATABASE', $railwayDbName ?: 'forge')), 'forge'),
+            'username' => $normalizeRailwayEnv(env('DB_USERNAME', env('MYSQLUSER', $railwayDbUser ?: 'forge')), 'forge'),
+            'password' => $normalizeRailwayEnv(env('DB_PASSWORD', env('MYSQLPASSWORD', $railwayDbPass ?: '')), ''),
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
