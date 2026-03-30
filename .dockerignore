@@ -1,0 +1,14 @@
+.git
+.gitignore
+.vscode
+.env
+.env.*
+!.env.example
+laravel-app
+vendor
+tmp
+var
+uploads
+adviser/uploads
+dev/*.sql
+*.sql
