@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 
 if (!function_exists('psEnsureProgramShiftTables')) {
-    function psEnsureProgramShiftTables(mysqli $conn) {
+    function psEnsureProgramShiftTables($conn) {
         $conn->query("CREATE TABLE IF NOT EXISTS program_shift_requests (
             id INT AUTO_INCREMENT PRIMARY KEY,
             request_code VARCHAR(40) NOT NULL,
@@ -225,7 +225,7 @@ if (!function_exists('psParseProgramList')) {
 }
 
 if (!function_exists('psGetCurrentStudentInfo')) {
-    function psGetCurrentStudentInfo(mysqli $conn, $studentNumber) {
+    function psGetCurrentStudentInfo($conn, $studentNumber) {
         $stmt = $conn->prepare("SELECT student_number, last_name, first_name, middle_name, program, curriculum_year, email FROM student_info WHERE student_number = ? LIMIT 1");
         if (!$stmt) {
             return null;
@@ -267,7 +267,7 @@ if (!function_exists('psGenerateRequestCode')) {
 }
 
 if (!function_exists('psAddAuditLog')) {
-    function psAddAuditLog(mysqli $conn, $requestId, $eventKey, $eventMessage, $actorUsername = null, $actorRole = null, $metadata = null) {
+    function psAddAuditLog($conn, $requestId, $eventKey, $eventMessage, $actorUsername = null, $actorRole = null, $metadata = null) {
         $metadataJson = null;
         if ($metadata !== null) {
             $encoded = json_encode($metadata, JSON_UNESCAPED_SLASHES);
@@ -286,7 +286,7 @@ if (!function_exists('psAddAuditLog')) {
 }
 
 if (!function_exists('psTableExists')) {
-    function psTableExists(mysqli $conn, $tableName) {
+    function psTableExists($conn, $tableName) {
         $tableName = trim((string)$tableName);
         if ($tableName === '') {
             return false;
@@ -303,7 +303,7 @@ if (!function_exists('psTableExists')) {
 }
 
 if (!function_exists('psGetProgramOptions')) {
-    function psGetProgramOptions(mysqli $conn) {
+    function psGetProgramOptions($conn) {
         $sources = [
             ['table' => 'curriculum_courses', 'column' => 'program'],
             ['table' => 'student_info', 'column' => 'program'],
@@ -503,7 +503,7 @@ if (!function_exists('psResolveChecklistProgramLabels')) {
 }
 
 if (!function_exists('psResolveLatestCurriculumYear')) {
-    function psResolveLatestCurriculumYear(mysqli $conn, $programLabel, $programKey = '') {
+    function psResolveLatestCurriculumYear($conn, $programLabel, $programKey = '') {
         $programLabels = psResolveChecklistProgramLabels($programLabel, $programKey);
         if (psTableExists($conn, 'curriculum_courses') && !empty($programLabels)) {
             $conditions = [];
@@ -595,7 +595,7 @@ if (!function_exists('psResolveLatestCurriculumYear')) {
 }
 
 if (!function_exists('psResolveStudentCurriculumYear')) {
-    function psResolveStudentCurriculumYear(mysqli $conn, $studentId, $programLabel = '', $programKey = '') {
+    function psResolveStudentCurriculumYear($conn, $studentId, $programLabel = '', $programKey = '') {
         $studentId = trim((string)$studentId);
         $selectedProgramKey = psNormalizeProgramKey((string)($programKey !== '' ? $programKey : $programLabel));
         if ($studentId !== '' && psTableExists($conn, 'student_info')) {
@@ -685,7 +685,7 @@ if (!function_exists('psResolveStudentCurriculumYear')) {
 }
 
 if (!function_exists('psFetchChecklistCourses')) {
-    function psFetchChecklistCourses(mysqli $conn, $studentId, $programLabel, $programKey = '') {
+    function psFetchChecklistCourses($conn, $studentId, $programLabel, $programKey = '') {
         $studentId = trim((string)$studentId);
         if ($studentId === '') {
             return [];
@@ -862,7 +862,7 @@ if (!function_exists('psFetchChecklistCourses')) {
 }
 
 if (!function_exists('psFetchCurriculumCourses')) {
-    function psFetchCurriculumCourses(mysqli $conn, $programLabel, $curriculumYear = '') {
+    function psFetchCurriculumCourses($conn, $programLabel, $curriculumYear = '') {
         $curriculumYear = psNormalizeCurriculumYear($curriculumYear);
         if ($curriculumYear === '') {
             $curriculumYear = psResolveLatestCurriculumYear($conn, $programLabel);
@@ -959,7 +959,7 @@ if (!function_exists('psFetchCurriculumCourses')) {
 }
 
 if (!function_exists('psHasActiveShiftRequest')) {
-    function psHasActiveShiftRequest(mysqli $conn, $studentNumber) {
+    function psHasActiveShiftRequest($conn, $studentNumber) {
         $stmt = $conn->prepare("SELECT id FROM program_shift_requests WHERE student_number = ? AND status IN ('pending_adviser', 'pending_coordinator') LIMIT 1");
         if (!$stmt) {
             return false;
@@ -976,7 +976,7 @@ if (!function_exists('psHasActiveShiftRequest')) {
 }
 
 if (!function_exists('psCreateStudentRequest')) {
-    function psCreateStudentRequest(mysqli $conn, $studentNumber, $requestedProgram, $reason) {
+    function psCreateStudentRequest($conn, $studentNumber, $requestedProgram, $reason) {
         $studentRow = psGetCurrentStudentInfo($conn, $studentNumber);
         if (!$studentRow) {
             return ['ok' => false, 'message' => 'Student record not found.'];
@@ -1080,7 +1080,7 @@ if (!function_exists('psSendProgramShiftEmail')) {
 }
 
 if (!function_exists('psTableHasColumn')) {
-    function psTableHasColumn(mysqli $conn, $tableName, $columnName) {
+    function psTableHasColumn($conn, $tableName, $columnName) {
         $tableName = trim((string)$tableName);
         $columnName = trim((string)$columnName);
         if ($tableName === '' || $columnName === '') {
@@ -1099,7 +1099,7 @@ if (!function_exists('psTableHasColumn')) {
 }
 
 if (!function_exists('psNotifyAdvisersOfProgramShiftRequest')) {
-    function psNotifyAdvisersOfProgramShiftRequest(mysqli $conn, array $studentRow, string $requestCode, string $currentProgram, string $requestedProgram, string $reason = ''): int {
+    function psNotifyAdvisersOfProgramShiftRequest($conn, array $studentRow, string $requestCode, string $currentProgram, string $requestedProgram, string $reason = ''): int {
         if (!psTableExists($conn, 'adviser') || !psTableHasColumn($conn, 'adviser', 'email')) {
             return 0;
         }
@@ -1189,7 +1189,7 @@ if (!function_exists('psNotifyAdvisersOfProgramShiftRequest')) {
 }
 
 if (!function_exists('psResolveAdviserProgramKeys')) {
-    function psResolveAdviserProgramKeys(mysqli $conn, $adviserId, $username) {
+    function psResolveAdviserProgramKeys($conn, $adviserId, $username) {
         $keys = [];
 
         if ($adviserId !== null && $adviserId !== '') {
@@ -1231,7 +1231,7 @@ if (!function_exists('psResolveAdviserProgramKeys')) {
 }
 
 if (!function_exists('psResolveCoordinatorProgramKeys')) {
-    function psResolveCoordinatorProgramKeys(mysqli $conn, $username) {
+    function psResolveCoordinatorProgramKeys($conn, $username) {
         $username = trim((string)$username);
         if ($username === '') {
             return [];
@@ -1275,7 +1275,7 @@ if (!function_exists('psResolveCoordinatorProgramKeys')) {
 }
 
 if (!function_exists('psGetRequestById')) {
-    function psGetRequestById(mysqli $conn, $requestId) {
+    function psGetRequestById($conn, $requestId) {
         $stmt = $conn->prepare('SELECT * FROM program_shift_requests WHERE id = ? LIMIT 1');
         if (!$stmt) {
             return null;
@@ -1313,7 +1313,7 @@ if (!function_exists('psGradeIsPassing')) {
 }
 
 if (!function_exists('psFetchLatestChecklistGrade')) {
-    function psFetchLatestChecklistGrade(mysqli $conn, $studentNumber, $courseCode) {
+    function psFetchLatestChecklistGrade($conn, $studentNumber, $courseCode) {
         $stmt = $conn->prepare(
             "SELECT final_grade, evaluator_remarks, approved_by
              FROM student_checklists
@@ -1341,7 +1341,7 @@ if (!function_exists('psFetchLatestChecklistGrade')) {
 }
 
 if (!function_exists('psExecuteApprovedShift')) {
-    function psExecuteApprovedShift(mysqli $conn, array $requestRow, $actorUsername) {
+    function psExecuteApprovedShift($conn, array $requestRow, $actorUsername) {
         $requestId = (int)$requestRow['id'];
         $studentNumber = (string)$requestRow['student_number'];
         $sourceProgram = trim((string)$requestRow['current_program']);
@@ -1529,7 +1529,7 @@ if (!function_exists('psExecuteApprovedShift')) {
 }
 
 if (!function_exists('psHandleAdviserDecision')) {
-    function psHandleAdviserDecision(mysqli $conn, $requestId, $action, $actorUsername, $actorName, array $actorProgramKeys, $comment = '') {
+    function psHandleAdviserDecision($conn, $requestId, $action, $actorUsername, $actorName, array $actorProgramKeys, $comment = '') {
         $request = psGetRequestById($conn, $requestId);
         if (!$request) {
             return ['ok' => false, 'message' => 'Shift request not found.'];
@@ -1625,7 +1625,7 @@ if (!function_exists('psHandleAdviserDecision')) {
 }
 
 if (!function_exists('psHandleCoordinatorDecision')) {
-    function psHandleCoordinatorDecision(mysqli $conn, $requestId, $action, $actorUsername, $actorName, array $actorProgramKeys, $comment = '') {
+    function psHandleCoordinatorDecision($conn, $requestId, $action, $actorUsername, $actorName, array $actorProgramKeys, $comment = '') {
         $request = psGetRequestById($conn, $requestId);
         if (!$request) {
             return ['ok' => false, 'message' => 'Shift request not found.'];
@@ -1718,7 +1718,7 @@ if (!function_exists('psHandleCoordinatorDecision')) {
 }
 
 if (!function_exists('psFetchStudentRequestHistory')) {
-    function psFetchStudentRequestHistory(mysqli $conn, $studentNumber) {
+    function psFetchStudentRequestHistory($conn, $studentNumber) {
         $rows = [];
         $stmt = $conn->prepare('SELECT * FROM program_shift_requests WHERE student_number = ? ORDER BY requested_at DESC, id DESC');
         if (!$stmt) {
@@ -1739,7 +1739,7 @@ if (!function_exists('psFetchStudentRequestHistory')) {
 }
 
 if (!function_exists('psFetchAdviserQueue')) {
-    function psFetchAdviserQueue(mysqli $conn, array $programKeys) {
+    function psFetchAdviserQueue($conn, array $programKeys) {
         $rows = [];
         $result = $conn->query("SELECT * FROM program_shift_requests WHERE status = 'pending_adviser' ORDER BY requested_at ASC, id ASC");
         if (!$result) {
@@ -1757,7 +1757,7 @@ if (!function_exists('psFetchAdviserQueue')) {
 }
 
 if (!function_exists('psFetchCoordinatorQueue')) {
-    function psFetchCoordinatorQueue(mysqli $conn, array $programKeys) {
+    function psFetchCoordinatorQueue($conn, array $programKeys) {
         $rows = [];
         $result = $conn->query("SELECT * FROM program_shift_requests WHERE status = 'pending_coordinator' ORDER BY adviser_action_at ASC, requested_at ASC, id ASC");
         if (!$result) {
@@ -1773,7 +1773,7 @@ if (!function_exists('psFetchCoordinatorQueue')) {
 }
 
 if (!function_exists('psFetchAdviserActionLog')) {
-    function psFetchAdviserActionLog(mysqli $conn, $actorUsername, array $programKeys, $limit = 12) {
+    function psFetchAdviserActionLog($conn, $actorUsername, array $programKeys, $limit = 12) {
         $rows = [];
         $actorUsername = trim((string)$actorUsername);
         if ($actorUsername === '') {
@@ -1827,7 +1827,7 @@ if (!function_exists('psFetchAdviserActionLog')) {
 }
 
 if (!function_exists('psGetStudentShiftSummary')) {
-    function psGetStudentShiftSummary(mysqli $conn, $studentNumber) {
+    function psGetStudentShiftSummary($conn, $studentNumber) {
         $summary = [
             'total' => 0,
             'pending' => 0,
@@ -1884,7 +1884,7 @@ if (!function_exists('psGetStudentShiftSummary')) {
 }
 
 if (!function_exists('psGetAdviserShiftSummary')) {
-    function psGetAdviserShiftSummary(mysqli $conn, array $programKeys) {
+    function psGetAdviserShiftSummary($conn, array $programKeys) {
         $summary = [
             'pending' => 0,
             'forwarded' => 0,
@@ -1916,7 +1916,7 @@ if (!function_exists('psGetAdviserShiftSummary')) {
 }
 
 if (!function_exists('psGetCoordinatorShiftSummary')) {
-    function psGetCoordinatorShiftSummary(mysqli $conn, array $programKeys) {
+    function psGetCoordinatorShiftSummary($conn, array $programKeys) {
         $summary = [
             'pending' => 0,
             'approved' => 0,
