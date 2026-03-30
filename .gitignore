@@ -3,6 +3,7 @@
 
 # Sensitive Configuration Files
 config/email.php
+!config/email.php
 config/credentials.php
 .env
 .env.local
