@@ -60,6 +60,7 @@ laravel-app/storage/framework/sessions/*
 laravel-app/storage/framework/views/*
 composer.phar
 composer.lock
+!laravel-app/composer.lock
 
 # Session Files
 sessions/
