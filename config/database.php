@@ -32,27 +32,284 @@ define('DB_USER', firstEnvValue(['DB_USER', 'DB_USERNAME', 'MYSQLUSER'], 'root')
 define('DB_PASS', firstEnvValue(['DB_PASS', 'DB_PASSWORD', 'MYSQLPASSWORD'], ''));
 define('DB_NAME', firstEnvValue(['DB_NAME', 'DB_DATABASE', 'MYSQLDATABASE'], 'osas_db'));
 
+if (!defined('MYSQLI_ASSOC')) {
+    define('MYSQLI_ASSOC', 1);
+}
+
+if (!class_exists('LegacyDbResult')) {
+    class LegacyDbResult
+    {
+        public $num_rows = 0;
+        private $rows = [];
+        private $index = 0;
+
+        public function __construct(array $rows)
+        {
+            $this->rows = array_values($rows);
+            $this->num_rows = count($this->rows);
+        }
+
+        public function fetch_assoc()
+        {
+            if ($this->index >= $this->num_rows) {
+                return null;
+            }
+
+            return $this->rows[$this->index++];
+        }
+
+        public function fetch_all($mode = MYSQLI_ASSOC)
+        {
+            return $this->rows;
+        }
+
+        public function free()
+        {
+            $this->rows = [];
+            $this->num_rows = 0;
+            $this->index = 0;
+        }
+    }
+}
+
+if (!class_exists('LegacyDbStatement')) {
+    class LegacyDbStatement
+    {
+        public $num_rows = 0;
+        public $affected_rows = 0;
+        public $error = '';
+
+        private $pdoStatement;
+        private $connection;
+        private $boundValues = [];
+        private $resultRows = null;
+        private $executed = false;
+
+        public function __construct(PDOStatement $pdoStatement, LegacyDbConnection $connection)
+        {
+            $this->pdoStatement = $pdoStatement;
+            $this->connection = $connection;
+        }
+
+        public function bind_param($types, ...$values)
+        {
+            $this->boundValues = array_values($values);
+            return true;
+        }
+
+        public function execute()
+        {
+            try {
+                foreach ($this->boundValues as $index => $value) {
+                    $paramType = PDO::PARAM_STR;
+                    if (is_int($value)) {
+                        $paramType = PDO::PARAM_INT;
+                    } elseif (is_bool($value)) {
+                        $paramType = PDO::PARAM_BOOL;
+                    } elseif ($value === null) {
+                        $paramType = PDO::PARAM_NULL;
+                    }
+
+                    $this->pdoStatement->bindValue($index + 1, $value, $paramType);
+                }
+
+                $this->pdoStatement->execute();
+                $this->executed = true;
+                $this->affected_rows = $this->pdoStatement->rowCount();
+
+                if ($this->pdoStatement->columnCount() > 0) {
+                    $this->resultRows = $this->pdoStatement->fetchAll(PDO::FETCH_ASSOC);
+                    $this->num_rows = count($this->resultRows);
+                } else {
+                    $this->resultRows = [];
+                    $this->num_rows = 0;
+                    $this->connection->setAffectedRows($this->affected_rows);
+                    $this->connection->setInsertId((int) $this->connection->getPdo()->lastInsertId());
+                }
+
+                return true;
+            } catch (Throwable $e) {
+                $this->error = $e->getMessage();
+                $this->connection->setError($this->error);
+                return false;
+            }
+        }
+
+        public function get_result()
+        {
+            if (!$this->executed) {
+                $this->execute();
+            }
+
+            return new LegacyDbResult($this->resultRows ?? []);
+        }
+
+        public function store_result()
+        {
+            if (!$this->executed) {
+                $this->execute();
+            }
+
+            return true;
+        }
+
+        public function close()
+        {
+            $this->pdoStatement = null;
+        }
+    }
+}
+
+if (!class_exists('LegacyDbConnection')) {
+    class LegacyDbConnection
+    {
+        public $connect_error = '';
+        public $error = '';
+        public $insert_id = 0;
+        public $affected_rows = 0;
+
+        private $pdo;
+
+        public function __construct(PDO $pdo)
+        {
+            $this->pdo = $pdo;
+        }
+
+        public function getPdo()
+        {
+            return $this->pdo;
+        }
+
+        public function setError($message)
+        {
+            $this->error = (string) $message;
+        }
+
+        public function setInsertId($id)
+        {
+            $this->insert_id = (int) $id;
+        }
+
+        public function setAffectedRows($rows)
+        {
+            $this->affected_rows = (int) $rows;
+        }
+
+        public function set_charset($charset)
+        {
+            try {
+                $this->pdo->exec('SET NAMES ' . $this->pdo->quote((string) $charset));
+                return true;
+            } catch (Throwable $e) {
+                $this->error = $e->getMessage();
+                return false;
+            }
+        }
+
+        public function prepare($sql)
+        {
+            try {
+                $stmt = $this->pdo->prepare($sql);
+                if (!$stmt) {
+                    $this->error = 'Failed to prepare statement.';
+                    return false;
+                }
+
+                return new LegacyDbStatement($stmt, $this);
+            } catch (Throwable $e) {
+                $this->error = $e->getMessage();
+                return false;
+            }
+        }
+
+        public function query($sql)
+        {
+            try {
+                $stmt = $this->pdo->query($sql);
+                if ($stmt === false) {
+                    $this->error = 'Query failed.';
+                    return false;
+                }
+
+                if ($stmt->columnCount() > 0) {
+                    return new LegacyDbResult($stmt->fetchAll(PDO::FETCH_ASSOC));
+                }
+
+                $this->affected_rows = $stmt->rowCount();
+                $this->insert_id = (int) $this->pdo->lastInsertId();
+                return true;
+            } catch (Throwable $e) {
+                $this->error = $e->getMessage();
+                return false;
+            }
+        }
+
+        public function begin_transaction()
+        {
+            return $this->pdo->beginTransaction();
+        }
+
+        public function commit()
+        {
+            return $this->pdo->commit();
+        }
+
+        public function rollback()
+        {
+            return $this->pdo->rollBack();
+        }
+
+        public function real_escape_string($value)
+        {
+            return substr($this->pdo->quote((string) $value), 1, -1);
+        }
+
+        public function close()
+        {
+            $this->pdo = null;
+        }
+    }
+}
+
+if (!function_exists('createPdoFallbackConnection')) {
+    function createPdoFallbackConnection()
+    {
+        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', DB_HOST, DB_PORT, DB_NAME);
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => true,
+        ]);
+
+        return new LegacyDbConnection($pdo);
+    }
+}
+
 /**
  * Get database connection
  * @return mysqli Database connection object
  */
 function getDBConnection() {
-    $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
-    
-    // Check connection
-    if ($conn->connect_error) {
-        // Log error to file instead of exposing to user
-        error_log("Database connection failed: " . $conn->connect_error . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
+    try {
+        if (class_exists('mysqli')) {
+            $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
+
+            if (!$conn->connect_error) {
+                $conn->set_charset("utf8mb4");
+                return $conn;
+            }
+
+            error_log("MySQLi connection failed, falling back to PDO: " . $conn->connect_error . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
+        }
+
+        return createPdoFallbackConnection();
+    } catch (Throwable $e) {
+        error_log("Database connection failed: " . $e->getMessage() . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
         die(json_encode([
             'status' => 'error', 
             'message' => 'Database connection failed. Please try again later.'
         ]));
     }
-    
-    // Set charset to prevent encoding issues
-    $conn->set_charset("utf8mb4");
-    
-    return $conn;
 }
 
 /**
@@ -61,6 +318,11 @@ function getDBConnection() {
  */
 function closeDBConnection($conn) {
     if ($conn && $conn instanceof mysqli) {
+        $conn->close();
+        return;
+    }
+
+    if ($conn && method_exists($conn, 'close')) {
         $conn->close();
     }
 }

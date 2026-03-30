@@ -121,19 +121,28 @@ function srsProcessPictureUpload(): array {
  * Check if student ID already exists
  */
 function srsStudentIdExists($conn, string $student_id): bool {
-    if ($conn instanceof mysqli) {
-        $stmt = $conn->prepare("SELECT student_number FROM student_info WHERE student_number = ? LIMIT 1");
-        $stmt->bind_param("s", $student_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $exists = $result->num_rows > 0;
-        $stmt->close();
-        return $exists;
-    } elseif ($conn instanceof PDO) {
+    if ($conn instanceof PDO) {
         $stmt = $conn->prepare("SELECT student_number FROM student_info WHERE student_number = ? LIMIT 1");
         $stmt->execute([$student_id]);
         return $stmt->rowCount() > 0;
     }
+
+    if (is_object($conn) && method_exists($conn, 'prepare')) {
+        $stmt = $conn->prepare("SELECT student_number FROM student_info WHERE student_number = ? LIMIT 1");
+        if (!$stmt) {
+            return false;
+        }
+
+        if (method_exists($stmt, 'bind_param')) {
+            $stmt->bind_param("s", $student_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $exists = $result && (int)($result->num_rows ?? 0) > 0;
+            $stmt->close();
+            return $exists;
+        }
+    }
+
     return false;
 }
 
@@ -141,20 +150,22 @@ function srsStudentIdExists($conn, string $student_id): bool {
  * Get auto-approval setting
  */
 function srsIsAutoApprovalEnabled($conn): bool {
-    if ($conn instanceof mysqli) {
-        $query = "SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students' ORDER BY id DESC LIMIT 1";
-        $result = $conn->query($query);
-        if ($result && $result->num_rows > 0) {
-            $row = $result->fetch_assoc();
-            return (string)$row['setting_value'] === '1';
-        }
-        return false;
-    } elseif ($conn instanceof PDO) {
+    if ($conn instanceof PDO) {
         $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students' ORDER BY id DESC LIMIT 1");
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result && (string)$result['setting_value'] === '1';
     }
+
+    if (is_object($conn) && method_exists($conn, 'query')) {
+        $query = "SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students' ORDER BY id DESC LIMIT 1";
+        $result = $conn->query($query);
+        if ($result && (int)($result->num_rows ?? 0) > 0) {
+            $row = $result->fetch_assoc();
+            return (string)($row['setting_value'] ?? '') === '1';
+        }
+    }
+
     return false;
 }
 
@@ -162,7 +173,11 @@ function srsIsAutoApprovalEnabled($conn): bool {
  * Create student account in database
  */
 function srsCreateStudentAccount($conn, array $formData, string $hashedPassword, string $picturePath): array {
-    if ($conn instanceof mysqli) {
+    if ($conn instanceof PDO) {
+        return ['success' => false, 'error' => 'PDO registration path is not enabled for this handler.'];
+    }
+
+    if (is_object($conn) && method_exists($conn, 'prepare')) {
         $status = srsIsAutoApprovalEnabled($conn) ? 'approved' : 'pending';
         
         $student_id = $formData['student_id'];
@@ -189,7 +204,7 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
         );
         
         if (!$stmt) {
-            return ['success' => false, 'error' => 'Database error: ' . $conn->error];
+            return ['success' => false, 'error' => 'Database error: ' . ($conn->error ?? 'prepare failed')];
         }
         
         $bind_result = $stmt->bind_param(
@@ -199,11 +214,11 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
         );
         
         if (!$bind_result) {
-            return ['success' => false, 'error' => 'Database error: ' . $stmt->error];
+            return ['success' => false, 'error' => 'Database error: ' . ($stmt->error ?? 'bind failed')];
         }
         
         if (!$stmt->execute()) {
-            return ['success' => false, 'error' => 'Error saving data: ' . $stmt->error];
+            return ['success' => false, 'error' => 'Error saving data: ' . ($stmt->error ?? 'execute failed')];
         }
         
         $stmt->close();
