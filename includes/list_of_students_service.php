@@ -13,7 +13,7 @@ function losGetAvailablePrograms()
     $conn = getDBConnection();
     $programs = [];
     $programResult = $conn->query("SELECT DISTINCT TRIM(program) AS program FROM student_info WHERE program IS NOT NULL AND TRIM(program) != '' ORDER BY program ASC");
-    if ($programResult) {
+    if ($programResult && method_exists($programResult, 'fetch_assoc')) {
         while ($programRow = $programResult->fetch_assoc()) {
             $programs[] = $programRow['program'];
         }
@@ -31,11 +31,18 @@ function losGetAvailableBatches($selectedProgram)
     $conn = getDBConnection();
     $batches = [];
     $batchStmt = $conn->prepare("SELECT DISTINCT LEFT(student_number, 4) AS batch FROM student_info WHERE TRIM(program) = ? AND student_number IS NOT NULL AND student_number != '' ORDER BY batch DESC");
+    if (!$batchStmt) {
+        closeDBConnection($conn);
+        return $batches;
+    }
     $batchStmt->bind_param('s', $selectedProgram);
-    $batchStmt->execute();
-    $batchResult = $batchStmt->get_result();
-    while ($batchRow = $batchResult->fetch_assoc()) {
-        $batches[] = $batchRow['batch'];
+    if ($batchStmt->execute()) {
+        $batchResult = $batchStmt->get_result();
+        if ($batchResult && method_exists($batchResult, 'fetch_assoc')) {
+            while ($batchRow = $batchResult->fetch_assoc()) {
+                $batches[] = $batchRow['batch'];
+            }
+        }
     }
     $batchStmt->close();
     closeDBConnection($conn);
@@ -68,11 +75,15 @@ function losLoadStudents($search, $selectedProgram, $selectedBatch, $records_per
     }
     $count_sql = "SELECT COUNT(*) as total FROM student_info" . $where_clause;
     $count_result = $conn->query($count_sql);
-    $total_records = $count_result ? $count_result->fetch_assoc()['total'] : 0;
+    $total_records = 0;
+    if ($count_result && method_exists($count_result, 'fetch_assoc')) {
+        $countRow = $count_result->fetch_assoc();
+        $total_records = (int)($countRow['total'] ?? 0);
+    }
     $sql = "SELECT student_number, last_name, first_name, middle_name, program FROM student_info $where_clause ORDER BY last_name, first_name LIMIT $records_per_page OFFSET $offset";
     $result = $conn->query($sql);
     $students = [];
-    if ($result && $result->num_rows > 0) {
+    if ($result && method_exists($result, 'fetch_assoc') && (int)($result->num_rows ?? 0) > 0) {
         while ($row = $result->fetch_assoc()) {
             $students[] = $row;
         }
@@ -108,7 +119,7 @@ function losExportStudents($search, $selectedProgram, $selectedBatch)
     $export_sql = "SELECT student_number, last_name, first_name, middle_name, program FROM student_info $where_clause ORDER BY last_name, first_name";
     $export_result = $conn->query($export_sql);
     $students = [];
-    if ($export_result && $export_result->num_rows > 0) {
+    if ($export_result && method_exists($export_result, 'fetch_assoc') && (int)($export_result->num_rows ?? 0) > 0) {
         while ($row = $export_result->fetch_assoc()) {
             $students[] = $row;
         }

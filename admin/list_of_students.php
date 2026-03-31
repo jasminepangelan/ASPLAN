@@ -1,4 +1,3 @@
-
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/list_of_students_service.php';
@@ -97,55 +96,66 @@ $availableBatches = [];
 $students = [];
 $total_records = 0;
 $total_pages = 1;
+$pageError = '';
 
-$bridgeLoaded = false;
-if (getenv('USE_LARAVEL_BRIDGE') === '1') {
-    $bridgeData = postLaravelJsonBridge(
-        '/api/list-of-students/overview',
-        [
-            'bridge_authorized' => true,
-            'search' => $search,
-            'program' => $selectedProgram,
-            'batch' => $selectedBatch,
-            'page' => $current_page,
-            'records_per_page' => $records_per_page,
-        ]
-    );
+try {
+    $bridgeLoaded = false;
+    if (getenv('USE_LARAVEL_BRIDGE') === '1') {
+        $bridgeData = postLaravelJsonBridge(
+            '/api/list-of-students/overview',
+            [
+                'bridge_authorized' => true,
+                'search' => $search,
+                'program' => $selectedProgram,
+                'batch' => $selectedBatch,
+                'page' => $current_page,
+                'records_per_page' => $records_per_page,
+            ]
+        );
 
-    if (is_array($bridgeData) && !empty($bridgeData['success'])) {
-        $availablePrograms = isset($bridgeData['available_programs']) && is_array($bridgeData['available_programs'])
-            ? $bridgeData['available_programs']
-            : [];
-        $selectedProgram = (string) ($bridgeData['program'] ?? $selectedProgram);
-        $availableBatches = isset($bridgeData['available_batches']) && is_array($bridgeData['available_batches'])
-            ? $bridgeData['available_batches']
-            : [];
-        $selectedBatch = (string) ($bridgeData['batch'] ?? $selectedBatch);
-        $students = isset($bridgeData['students']) && is_array($bridgeData['students'])
-            ? $bridgeData['students']
-            : [];
-        $total_records = (int) ($bridgeData['total_records'] ?? 0);
-        $total_pages = max(1, (int) ($bridgeData['total_pages'] ?? 1));
-        $current_page = max(1, (int) ($bridgeData['current_page'] ?? $current_page));
-        $search = (string) ($bridgeData['search'] ?? $search);
-        $bridgeLoaded = true;
-    }
-}
-
-if (!$bridgeLoaded) {
-    $availablePrograms = losGetAvailablePrograms();
-    if ($selectedProgram !== '' && !in_array($selectedProgram, $availablePrograms, true)) {
-        $selectedProgram = '';
-    }
-    if ($selectedProgram !== '') {
-        $availableBatches = losGetAvailableBatches($selectedProgram);
-    }
-    if ($selectedBatch !== '' && !in_array($selectedBatch, $availableBatches, true)) {
-        $selectedBatch = '';
+        if (is_array($bridgeData) && !empty($bridgeData['success'])) {
+            $availablePrograms = isset($bridgeData['available_programs']) && is_array($bridgeData['available_programs'])
+                ? $bridgeData['available_programs']
+                : [];
+            $selectedProgram = (string) ($bridgeData['program'] ?? $selectedProgram);
+            $availableBatches = isset($bridgeData['available_batches']) && is_array($bridgeData['available_batches'])
+                ? $bridgeData['available_batches']
+                : [];
+            $selectedBatch = (string) ($bridgeData['batch'] ?? $selectedBatch);
+            $students = isset($bridgeData['students']) && is_array($bridgeData['students'])
+                ? $bridgeData['students']
+                : [];
+            $total_records = (int) ($bridgeData['total_records'] ?? 0);
+            $total_pages = max(1, (int) ($bridgeData['total_pages'] ?? 1));
+            $current_page = max(1, (int) ($bridgeData['current_page'] ?? $current_page));
+            $search = (string) ($bridgeData['search'] ?? $search);
+            $bridgeLoaded = true;
+        }
     }
 
-    list($students, $total_records) = losLoadStudents($search, $selectedProgram, $selectedBatch, $records_per_page, $offset);
-    $total_pages = ceil($total_records / $records_per_page);
+    if (!$bridgeLoaded) {
+        $availablePrograms = losGetAvailablePrograms();
+        if ($selectedProgram !== '' && !in_array($selectedProgram, $availablePrograms, true)) {
+            $selectedProgram = '';
+        }
+        if ($selectedProgram !== '') {
+            $availableBatches = losGetAvailableBatches($selectedProgram);
+        }
+        if ($selectedBatch !== '' && !in_array($selectedBatch, $availableBatches, true)) {
+            $selectedBatch = '';
+        }
+
+        list($students, $total_records) = losLoadStudents($search, $selectedProgram, $selectedBatch, $records_per_page, $offset);
+        $total_pages = max(1, (int) ceil($total_records / $records_per_page));
+    }
+} catch (Throwable $e) {
+    error_log('Admin list of students failed: ' . $e->getMessage());
+    $pageError = 'Unable to load the student list right now. Please try again later.';
+    $availablePrograms = [];
+    $availableBatches = [];
+    $students = [];
+    $total_records = 0;
+    $total_pages = 1;
 }
 ?>
 <!DOCTYPE html>
@@ -1110,6 +1120,11 @@ if (!$bridgeLoaded) {
     ?>
     
     <div class="container" id="mainContent">
+        <?php if ($pageError !== ''): ?>
+            <div style="margin-bottom:16px;padding:14px 16px;border:1px solid #f1b7b7;border-radius:10px;background:#fff4f4;color:#8a1f1f;font-weight:600;">
+                <?php echo htmlspecialchars($pageError); ?>
+            </div>
+        <?php endif; ?>
         <div class="page-header">
             <div class="title-section">
                 <h1>Student Directory</h1>
