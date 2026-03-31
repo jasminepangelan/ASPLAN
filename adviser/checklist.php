@@ -232,9 +232,8 @@ if (empty($all_courses)) {
     /* Existing body styles */
     body {
         font-family: Arial, sans-serif;
-        background-color: #f9f9f9;
-        background: url('../pix/school.jpg') no-repeat center center fixed;
-        background-size: cover;
+        background-color: #f5f7f4;
+        background: #f5f7f4;
         margin: 0;
         padding: 0;
         padding-top: 50px;
