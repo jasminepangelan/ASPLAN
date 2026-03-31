@@ -22,9 +22,11 @@ $courses = $input['courses'];
 
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
+    $bridgePayload = $input;
+    $bridgePayload['bridge_authorized'] = true;
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/curriculum/save',
-        $input
+        '/api/curriculum/save',
+        $bridgePayload
     );
     if (is_array($bridgeData)) {
         echo json_encode($bridgeData);

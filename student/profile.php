@@ -7,10 +7,9 @@ $student = null;
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/dashboard/overview',
+        '/api/student-profile/view',
         [
             'bridge_authorized' => true,
-            'role' => 'student',
             'student_id' => $student_id,
         ]
     );
