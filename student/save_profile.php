@@ -16,30 +16,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
+    $hasPictureUpload = isset($_FILES['picture']) && $_FILES['picture']['error'] === UPLOAD_ERR_OK;
 
-    if ($useLaravelBridge && isset($_POST['student_id'])) {
+    if ($useLaravelBridge && isset($_POST['student_id']) && !$hasPictureUpload) {
         $formFields = $_POST;
         $formFields['profile_context'] = 'student';
 
-        $bridgeData = null;
-        if (isset($_FILES['picture']) && $_FILES['picture']['error'] === UPLOAD_ERR_OK) {
-            $bridgeData = postLaravelMultipartBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',
-                $formFields,
-                [
-                    'picture' => [
-                        'path' => (string) $_FILES['picture']['tmp_name'],
-                        'name' => (string) $_FILES['picture']['name'],
-                        'mime' => (string) ($_FILES['picture']['type'] ?? 'application/octet-stream'),
-                    ],
-                ]
-            );
-        } else {
-            $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',
-                $formFields
-            );
-        }
+        $bridgeData = postLaravelJsonBridge(
+            '/api/student-profile/update',
+            $formFields
+        );
 
         if (is_array($bridgeData) && array_key_exists('success', $bridgeData)) {
             if (!empty($bridgeData['success'])) {
