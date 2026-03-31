@@ -34,7 +34,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     $bridgeLoaded = false;
     if (getenv('USE_LARAVEL_BRIDGE') === '1') {
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/list-of-students/overview',
+            '/api/list-of-students/overview',
             [
                 'bridge_authorized' => true,
                 'search' => $search,
@@ -101,7 +101,7 @@ $total_pages = 1;
 $bridgeLoaded = false;
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/list-of-students/overview',
+        '/api/list-of-students/overview',
         [
             'bridge_authorized' => true,
             'search' => $search,

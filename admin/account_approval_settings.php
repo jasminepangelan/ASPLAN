@@ -12,16 +12,24 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/account_approval_settings_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
-$host = DB_HOST;
-$db = DB_NAME;
-$user = DB_USER;
-$pass = DB_PASS;
+$useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
+$bridgeUpdateEndpoint = '/api/account-approval-settings/update';
+$bridgeOverviewEndpoint = '/api/account-approval-settings/overview';
+$error_message = '';
+$conn = null;
 
 try {
-    $conn = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
+    $legacyConnection = createPdoFallbackConnection();
+    if (method_exists($legacyConnection, 'getPdo')) {
+        $conn = $legacyConnection->getPdo();
+    } elseif ($legacyConnection instanceof PDO) {
+        $conn = $legacyConnection;
+    }
+} catch (Throwable $e) {
+    error_log('Admin settings DB bootstrap failed: ' . $e->getMessage());
+    if (!$useLaravelBridge) {
+        $error_message = 'Unable to load admin settings right now. Please try again later.';
+    }
 }
 
 $policySettings = [
@@ -159,14 +167,12 @@ $advancedSettings = [
 
 // Business logic functions are now in account_approval_settings_service.php
 
-$useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
-
 // Handle settings update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_policy_settings'])) {
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/account-approval-settings/update',
+                $bridgeUpdateEndpoint,
                 array_merge($_POST, [
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'action' => 'update_policy_settings',
@@ -180,6 +186,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error_message = (string)($bridgeData['message'] ?? 'Error updating policy settings.');
         } else {
+            if (!$conn instanceof PDO) {
+                $error_message = 'Unable to update policy settings right now.';
+            } else {
             try {
                 aasUpdatePolicySettings($conn, $_SESSION['admin_id'], $policySettings, $_POST);
                 header("Location: account_approval_settings.php?message=" . urlencode("Security and rate-limit settings updated."));
@@ -187,6 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (PDOException $e) {
                 error_log("Database error updating policy settings: " . $e->getMessage());
                 $error_message = "Error updating policy settings: " . $e->getMessage();
+            }
             }
         }
     }
@@ -196,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/account-approval-settings/update',
+                $bridgeUpdateEndpoint,
                 [
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'auto_approve' => $auto_approve,
@@ -212,6 +222,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error_message = (string)($bridgeData['message'] ?? 'Error updating setting.');
         } else {
+            if (!$conn instanceof PDO) {
+                $error_message = 'Unable to update approval settings right now.';
+            } else {
             if (aasIsFreezingEnabled($conn)) {
                 header("Location: account_approval_settings.php?message=" . urlencode("Approval actions are currently frozen. Disable freeze first to change auto-approval mode."));
                 exit();
@@ -233,13 +246,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Database error updating setting: " . $e->getMessage());
                 $error_message = "Error updating setting: " . $e->getMessage();
             }
+            }
         }
     }
 
     if (isset($_POST['update_advanced_settings'])) {
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/account-approval-settings/update',
+                $bridgeUpdateEndpoint,
                 array_merge($_POST, [
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'action' => 'update_advanced_settings',
@@ -253,11 +267,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error_message = (string)($bridgeData['message'] ?? 'Error updating advanced settings.');
         } else {
+            if (!$conn instanceof PDO) {
+                $error_message = 'Unable to update advanced settings right now.';
+            } else {
             try {
                 aasUpdateAdvancedSettings($conn, $_SESSION['admin_id'], $advancedSettings, $_POST);
             } catch (PDOException $e) {
                 error_log("Database error updating advanced settings: " . $e->getMessage());
                 $error_message = "Error updating advanced settings: " . $e->getMessage();
+            }
             }
         }
     }
@@ -269,7 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/account-approval-settings/update',
+                $bridgeUpdateEndpoint,
                 [
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'student_id' => $student_id,
@@ -285,6 +303,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error_message = (string)($bridgeData['message'] ?? 'Error updating account.');
         } else {
+            if (!$conn instanceof PDO) {
+                $error_message = 'Unable to process the account action right now.';
+            } else {
             $freezeCheckStmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_name = 'freeze_approvals' ORDER BY id DESC LIMIT 1");
             $freezeCheckStmt->execute();
             $freezeApprovalsEnabled = ((int)$freezeCheckStmt->fetchColumn() === 1);
@@ -319,6 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             header("Location: account_approval_settings.php?message=" . urlencode($message));
             exit();
+            }
         }
     }
     
@@ -329,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/account-approval-settings/update',
+                $bridgeUpdateEndpoint,
                 [
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'bulk_action' => $action,
@@ -345,6 +367,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $error_message = (string)($bridgeData['message'] ?? 'Error applying bulk action.');
         } else {
+            if (!$conn instanceof PDO) {
+                $error_message = 'Unable to process bulk actions right now.';
+            } else {
             $freezeCheckStmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_name = 'freeze_approvals' ORDER BY id DESC LIMIT 1");
             $freezeCheckStmt->execute();
             $freezeApprovalsEnabled = ((int)$freezeCheckStmt->fetchColumn() === 1);
@@ -385,11 +410,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: account_approval_settings.php?message=" . urlencode($message));
                 exit();
             }
+            }
         }
     }
 }
 
 // Create system_settings table if it doesn't exist
+if ($conn instanceof PDO) {
 try {
     $conn->exec("
         CREATE TABLE IF NOT EXISTS system_settings (
@@ -421,17 +448,20 @@ try {
 } catch (PDOException $e) {
     error_log('Failed to ensure admin_audit_logs table: ' . $e->getMessage());
 }
+}
 
 // Load current settings using service layer
-$auto_approve_enabled = aasLoadAutoApproveSetting($conn);
-$policySettingValues = aasLoadPolicySettingValues($conn, $policySettings);
-$advancedSettingValues = aasLoadAdvancedSettingValues($conn, $advancedSettings);
-$freezeApprovalsEnabled = aasIsFreezingEnabled($conn);
+$auto_approve_enabled = false;
+$policySettingValues = [];
+$advancedSettingValues = [];
+$freezeApprovalsEnabled = false;
+if ($conn instanceof PDO) {
+    $auto_approve_enabled = aasLoadAutoApproveSetting($conn);
+    $policySettingValues = aasLoadPolicySettingValues($conn, $policySettings);
+    $advancedSettingValues = aasLoadAdvancedSettingValues($conn, $advancedSettings);
+    $freezeApprovalsEnabled = aasIsFreezingEnabled($conn);
+}
 $defaultRecordsPerPage = (int)($advancedSettingValues['default_records_per_page'] ?? 10);
-
-// Debug: Add logging
-error_log("Auto-approval setting from DB: " . var_export($auto_approve_setting, true));
-error_log("Auto-approval enabled: " . var_export($auto_approve_enabled, true));
 
 // Get account statistics
 $stats_query = "
@@ -441,10 +471,14 @@ $stats_query = "
     FROM student_info 
     GROUP BY status
 ";
-$stats_result = $conn->query($stats_query);
 $stats = [];
-while ($row = $stats_result->fetch(PDO::FETCH_ASSOC)) {
-    $stats[$row['status']] = $row['count'];
+if ($conn instanceof PDO) {
+    $stats_result = $conn->query($stats_query);
+    if ($stats_result instanceof PDOStatement) {
+        while ($row = $stats_result->fetch(PDO::FETCH_ASSOC)) {
+            $stats[$row['status']] = $row['count'];
+        }
+    }
 }
 
 $pendingAlertThreshold = (int)($advancedSettingValues['pending_alert_threshold'] ?? 50);
@@ -478,12 +512,14 @@ if ((int)($advancedSettingValues['disable_new_registrations'] ?? '0') === 1) {
 }
 
 $auditLogs = [];
+if ($conn instanceof PDO) {
 try {
     $auditStmt = $conn->prepare('SELECT id, admin_id, action_type, action_target, summary, metadata_json, created_at FROM admin_audit_logs ORDER BY created_at DESC LIMIT 30');
     $auditStmt->execute();
     $auditLogs = $auditStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log('Failed to load admin audit logs: ' . $e->getMessage());
+}
 }
 
 $programShiftStats = [
@@ -495,6 +531,7 @@ $programShiftStats = [
 ];
 $programShiftRecent = [];
 
+if ($conn instanceof PDO) {
 try {
     $shiftTableExistsStmt = $conn->query("SHOW TABLES LIKE 'program_shift_requests'");
     $shiftTableExists = $shiftTableExistsStmt && $shiftTableExistsStmt->fetchColumn();
@@ -536,11 +573,11 @@ try {
 } catch (PDOException $e) {
     error_log('Failed to load program shift oversight data: ' . $e->getMessage());
 }
+}
 
-$useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/account-approval-settings/overview',
+        $bridgeOverviewEndpoint,
         [
             'admin_id' => (string) ($_SESSION['admin_id'] ?? ''),
         ]
@@ -619,16 +656,20 @@ $where_clause = implode(' AND ', $where_conditions);
 
 // Get total records for pagination
 $count_query = "SELECT COUNT(*) as total FROM student_info WHERE $where_clause";
-$count_stmt = $conn->prepare($count_query);
-if (!empty($search)) {
-    $count_stmt->bindValue(':search', $search_param, PDO::PARAM_STR);
+$total_records = 0;
+$total_pages = 1;
+if ($conn instanceof PDO) {
+    $count_stmt = $conn->prepare($count_query);
+    if (!empty($search)) {
+        $count_stmt->bindValue(':search', $search_param, PDO::PARAM_STR);
+    }
+    if (!empty($filter_status)) {
+        $count_stmt->bindValue(':filter_status', $filter_status, PDO::PARAM_STR);
+    }
+    $count_stmt->execute();
+    $total_records = (int)$count_stmt->fetchColumn();
+    $total_pages = max(1, (int)ceil($total_records / $records_per_page));
 }
-if (!empty($filter_status)) {
-    $count_stmt->bindValue(':filter_status', $filter_status, PDO::PARAM_STR);
-}
-$count_stmt->execute();
-$total_records = $count_stmt->fetchColumn();
-$total_pages = ceil($total_records / $records_per_page);
 
 // Get paginated accounts
 $pending_query = "
@@ -653,15 +694,18 @@ $pending_query = "
         created_at DESC
     LIMIT $records_per_page OFFSET $offset
 ";
-$pending_stmt = $conn->prepare($pending_query);
-if (!empty($search)) {
-    $pending_stmt->bindValue(':search', $search_param, PDO::PARAM_STR);
+$accounts = [];
+if ($conn instanceof PDO) {
+    $pending_stmt = $conn->prepare($pending_query);
+    if (!empty($search)) {
+        $pending_stmt->bindValue(':search', $search_param, PDO::PARAM_STR);
+    }
+    if (!empty($filter_status)) {
+        $pending_stmt->bindValue(':filter_status', $filter_status, PDO::PARAM_STR);
+    }
+    $pending_stmt->execute();
+    $accounts = $pending_stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-if (!empty($filter_status)) {
-    $pending_stmt->bindValue(':filter_status', $filter_status, PDO::PARAM_STR);
-}
-$pending_stmt->execute();
-$accounts = $pending_stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
