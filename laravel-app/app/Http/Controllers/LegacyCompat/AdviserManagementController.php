@@ -22,11 +22,22 @@ class AdviserManagementController extends Controller
             $requestedProgram = trim((string) $request->input('selected_program', ''));
 
             $selectedProgram = $requestedProgram;
+            $coordinatorPrograms = [];
             if ($userType === 'program_coordinator') {
-                $selectedProgram = $this->resolveCoordinatorProgramKey($username);
+                $coordinatorPrograms = $this->resolveCoordinatorProgramKeys($username);
+                $selectedProgram = $this->resolveScopedSelectedProgram($requestedProgram, $coordinatorPrograms);
             }
 
             $availablePrograms = $this->loadAvailablePrograms();
+            if ($userType === 'program_coordinator' && !empty($coordinatorPrograms)) {
+                $availablePrograms = array_intersect_key($availablePrograms, array_flip($coordinatorPrograms));
+                foreach ($coordinatorPrograms as $programKey) {
+                    if (!isset($availablePrograms[$programKey])) {
+                        $availablePrograms[$programKey] = $this->getProgramLabelFromKey($programKey);
+                    }
+                }
+                ksort($availablePrograms);
+            }
             if ($selectedProgram !== '' && !isset($availablePrograms[$selectedProgram])) {
                 $availablePrograms[$selectedProgram] = $this->getProgramLabelFromKey($selectedProgram);
             }
@@ -51,6 +62,7 @@ class AdviserManagementController extends Controller
 
             return $this->bridgeResponse(true, 'Adviser management overview loaded.', 200, [
                 'selected_program' => $selectedProgram,
+                'coordinator_programs' => $coordinatorPrograms,
                 'available_programs' => $availablePrograms,
                 'batches' => $batches,
                 'advisers' => $advisers,
@@ -80,7 +92,10 @@ class AdviserManagementController extends Controller
             }
 
             if ($userType === 'program_coordinator') {
-                $selectedProgram = $this->resolveCoordinatorProgramKey($username);
+                $selectedProgram = $this->resolveScopedSelectedProgram(
+                    $selectedProgram,
+                    $this->resolveCoordinatorProgramKeys($username)
+                );
                 if ($selectedProgram === '') {
                     return $this->bridgeResponse(false, 'Program is not configured for your coordinator account.');
                 }
@@ -162,7 +177,10 @@ class AdviserManagementController extends Controller
             $username = trim((string) $request->input('username', ''));
 
             if ($userType === 'program_coordinator') {
-                $selectedProgram = $this->resolveCoordinatorProgramKey($username);
+                $selectedProgram = $this->resolveScopedSelectedProgram(
+                    $selectedProgram,
+                    $this->resolveCoordinatorProgramKeys($username)
+                );
                 if ($selectedProgram === '') {
                     return $this->bridgeResponse(false, 'Program is not configured for your coordinator account.');
                 }
@@ -505,13 +523,14 @@ class AdviserManagementController extends Controller
         return $result;
     }
 
-    private function resolveCoordinatorProgramKey(string $username): string
+    private function resolveCoordinatorProgramKeys(string $username): array
     {
         $username = trim($username);
         if ($username === '') {
-            return '';
+            return [];
         }
 
+        $programKeys = [];
         foreach (['program_coordinator', 'program_coordinators'] as $table) {
             if (!DB::getSchemaBuilder()->hasTable($table)) {
                 continue;
@@ -521,21 +540,81 @@ class AdviserManagementController extends Controller
                 continue;
             }
 
-            $program = DB::table($table)
+            $programRows = DB::table($table)
                 ->where('username', $username)
-                ->value('program');
+                ->pluck('program')
+                ->all();
 
-            $normalized = $this->normalizeProgramKey((string) $program);
-            if ($normalized !== '') {
-                return $normalized;
+            foreach ($programRows as $program) {
+                foreach ($this->extractProgramKeys((string) $program) as $programKey) {
+                    $programKeys[$programKey] = true;
+                }
             }
         }
 
-        $program = DB::table('adviser')
+        $programRows = DB::table('adviser')
             ->where('username', $username)
-            ->value('program');
+            ->pluck('program')
+            ->all();
 
-        return $this->normalizeProgramKey((string) $program);
+        foreach ($programRows as $program) {
+            foreach ($this->extractProgramKeys((string) $program) as $programKey) {
+                $programKeys[$programKey] = true;
+            }
+        }
+
+        return array_values(array_keys($programKeys));
+    }
+
+    private function resolveScopedSelectedProgram(string $requestedProgram, array $allowedPrograms): string
+    {
+        if (empty($allowedPrograms)) {
+            return '';
+        }
+
+        $requestedProgram = $this->normalizeProgramKey($requestedProgram);
+        if ($requestedProgram !== '' && in_array($requestedProgram, $allowedPrograms, true)) {
+            return $requestedProgram;
+        }
+
+        return (string) ($allowedPrograms[0] ?? '');
+    }
+
+    private function extractProgramKeys(string $programText): array
+    {
+        $programText = trim($programText);
+        if ($programText === '') {
+            return [];
+        }
+
+        $normalized = strtoupper((string) preg_replace('/\s+/', ' ', $programText));
+        $keys = [];
+
+        if (str_contains($normalized, 'BSBA')) {
+            if (str_contains($normalized, 'MARKETING MANAGEMENT') || preg_match('/\bBSBA\s*-\s*MM\b|\bBSBA\s+MM\b|\bMM\b/', $normalized)) {
+                $keys['BSBA-MM'] = true;
+            }
+            if (str_contains($normalized, 'HUMAN RESOURCE MANAGEMENT') || preg_match('/\bBSBA\s*-\s*HRM\b|\bBSBA\s+HRM\b|\bHRM\b/', $normalized)) {
+                $keys['BSBA-HRM'] = true;
+            }
+        }
+
+        $segments = preg_split('/\s*(?:,|;|\/|\||&|\band\b)\s*/i', $programText) ?: [$programText];
+        foreach ($segments as $segment) {
+            $programKey = $this->normalizeProgramKey((string) $segment);
+            if ($programKey !== '') {
+                $keys[$programKey] = true;
+            }
+        }
+
+        if (empty($keys)) {
+            $programKey = $this->normalizeProgramKey($programText);
+            if ($programKey !== '') {
+                $keys[$programKey] = true;
+            }
+        }
+
+        return array_values(array_keys($keys));
     }
 
     private function normalizeUsernames(mixed $usernames): array

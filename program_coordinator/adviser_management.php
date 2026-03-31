@@ -1297,12 +1297,49 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
         return $programKey;
     }
 
-    function resolveCoordinatorProgramKey(PDO $conn, $username) {
-        $username = trim((string)$username);
-        if ($username === '') {
-            return '';
+    function extractProgramKeys($programText) {
+        $programText = trim((string)$programText);
+        if ($programText === '') {
+            return [];
         }
 
+        $normalized = strtoupper((string)preg_replace('/\s+/', ' ', $programText));
+        $keys = [];
+
+        if (strpos($normalized, 'BSBA') !== false) {
+            if (strpos($normalized, 'MARKETING MANAGEMENT') !== false || preg_match('/\bBSBA\s*-\s*MM\b|\bBSBA\s+MM\b|\bMM\b/', $normalized)) {
+                $keys['BSBA-MM'] = true;
+            }
+            if (strpos($normalized, 'HUMAN RESOURCE MANAGEMENT') !== false || preg_match('/\bBSBA\s*-\s*HRM\b|\bBSBA\s+HRM\b|\bHRM\b/', $normalized)) {
+                $keys['BSBA-HRM'] = true;
+            }
+        }
+
+        $segments = preg_split('/\s*(?:,|;|\/|\||&|\band\b)\s*/i', $programText) ?: [$programText];
+        foreach ($segments as $segment) {
+            $key = normalizeProgramKey((string)$segment);
+            if ($key !== '') {
+                $keys[$key] = true;
+            }
+        }
+
+        if (empty($keys)) {
+            $key = normalizeProgramKey($programText);
+            if ($key !== '') {
+                $keys[$key] = true;
+            }
+        }
+
+        return array_values(array_keys($keys));
+    }
+
+    function resolveCoordinatorProgramKeys(PDO $conn, $username) {
+        $username = trim((string)$username);
+        if ($username === '') {
+            return [];
+        }
+
+        $keys = [];
         $tables = ['program_coordinator', 'program_coordinators'];
         foreach ($tables as $table) {
             $check = $conn->prepare("SHOW TABLES LIKE ?");
@@ -1317,28 +1354,47 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
                 continue;
             }
 
-            $stmt = $conn->prepare("SELECT TRIM(program) AS program FROM `$table` WHERE username = ? LIMIT 1");
+            $stmt = $conn->prepare("SELECT TRIM(program) AS program FROM `$table` WHERE username = ?");
             $stmt->execute([$username]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($row && isset($row['program'])) {
-                $key = normalizeProgramKey((string)$row['program']);
-                if ($key !== '') {
-                    return $key;
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                if (!$row || !isset($row['program'])) {
+                    continue;
+                }
+                foreach (extractProgramKeys((string)$row['program']) as $programKey) {
+                    $keys[$programKey] = true;
                 }
             }
         }
 
-        $fallback = $conn->prepare("SELECT TRIM(program) AS program FROM adviser WHERE username = ? LIMIT 1");
+        $fallback = $conn->prepare("SELECT TRIM(program) AS program FROM adviser WHERE username = ?");
         $fallback->execute([$username]);
-        $fallbackRow = $fallback->fetch(PDO::FETCH_ASSOC);
-        if ($fallbackRow && isset($fallbackRow['program'])) {
-            return normalizeProgramKey((string)$fallbackRow['program']);
+        while ($fallbackRow = $fallback->fetch(PDO::FETCH_ASSOC)) {
+            if (!$fallbackRow || !isset($fallbackRow['program'])) {
+                continue;
+            }
+            foreach (extractProgramKeys((string)$fallbackRow['program']) as $programKey) {
+                $keys[$programKey] = true;
+            }
         }
 
-        return '';
+        return array_values(array_keys($keys));
+    }
+
+    function resolveScopedSelectedProgram($requestedProgram, array $allowedPrograms) {
+        if (empty($allowedPrograms)) {
+            return '';
+        }
+
+        $requestedProgram = normalizeProgramKey((string)$requestedProgram);
+        if ($requestedProgram !== '' && in_array($requestedProgram, $allowedPrograms, true)) {
+            return $requestedProgram;
+        }
+
+        return (string)($allowedPrograms[0] ?? '');
     }
 
     $bridgeLoaded = false;
+    $coordinatorPrograms = [];
     if (getenv('USE_LARAVEL_BRIDGE') === '1') {
         $bridgeData = postLaravelJsonBridge(
             'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser-management/overview',
@@ -1352,6 +1408,9 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
 
         if (is_array($bridgeData) && !empty($bridgeData['success'])) {
             $selectedProgram = (string) ($bridgeData['selected_program'] ?? '');
+            $coordinatorPrograms = isset($bridgeData['coordinator_programs']) && is_array($bridgeData['coordinator_programs'])
+                ? $bridgeData['coordinator_programs']
+                : [];
             $availablePrograms = isset($bridgeData['available_programs']) && is_array($bridgeData['available_programs'])
                 ? $bridgeData['available_programs']
                 : [];
@@ -1376,9 +1435,10 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
         $conn = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $selectedProgram = resolveCoordinatorProgramKey($conn, (string)$_SESSION['username']);
-        if ($selectedProgram !== '') {
-            $availablePrograms[$selectedProgram] = getProgramLabelFromKey($selectedProgram);
+        $coordinatorPrograms = resolveCoordinatorProgramKeys($conn, (string)$_SESSION['username']);
+        $selectedProgram = resolveScopedSelectedProgram((string)($_GET['program'] ?? ''), $coordinatorPrograms);
+        foreach ($coordinatorPrograms as $programKey) {
+            $availablePrograms[$programKey] = getProgramLabelFromKey($programKey);
         }
 
         if ($selectedProgram !== '') {
@@ -1480,6 +1540,18 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
                 Program is not configured for your coordinator account. Contact admin to set your program.
             <?php endif; ?>
         </div>
+        <?php if (count($availablePrograms) > 1): ?>
+            <form method="get" style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <label for="programSelect" style="font-weight:600;color:#206018;">Program Scope</label>
+                <select id="programSelect" name="program" onchange="this.form.submit()" style="padding:8px 12px;border:1px solid #cfe0cf;border-radius:8px;min-width:260px;">
+                    <?php foreach ($availablePrograms as $programKey => $programLabel): ?>
+                        <option value="<?php echo htmlspecialchars((string)$programKey); ?>" <?php echo $selectedProgram === (string)$programKey ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars((string)$programLabel); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+        <?php endif; ?>
     </div>
 
     <div class="table-container">
