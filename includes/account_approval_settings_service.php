@@ -8,7 +8,7 @@ function aasNormalizeSettingValue(array $meta, string $raw): string {
     $value = trim($raw);
     
     if ($meta['type'] === 'boolean') {
-        return ($value === '1' || $value === '1' || $value === 'true') ? '1' : '0';
+        return ($value === '1' || $value === 'true') ? '1' : '0';
     }
     
     if ($meta['type'] === 'number') {

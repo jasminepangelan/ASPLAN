@@ -47,6 +47,18 @@ class AccountManagementController extends Controller
     public function approvalSettingsOverview(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
+            $adminId = trim((string) $request->input('admin_id', ''));
+            if ($adminId === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Please log in as admin.',
+                ], 401);
+            }
+
             $policyKeys = [
                 'session_timeout_seconds' => 3600,
                 'min_password_length' => 8,
@@ -249,6 +261,10 @@ class AccountManagementController extends Controller
     public function approvalSettingsUpdate(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
             $adminId = trim((string) $request->input('admin_id', ''));
             if ($adminId === '') {
                 return response()->json([
@@ -421,6 +437,11 @@ class AccountManagementController extends Controller
                 'message' => 'Failed to update approval settings.',
             ], 500);
         }
+    }
+
+    private function isBridgeAuthorized(Request $request): bool
+    {
+        return filter_var($request->input('bridge_authorized', false), FILTER_VALIDATE_BOOL);
     }
 
     private function approvalSettingsSchema(): array

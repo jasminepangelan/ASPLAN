@@ -174,6 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bridgeData = postLaravelJsonBridge(
                 $bridgeUpdateEndpoint,
                 array_merge($_POST, [
+                    'bridge_authorized' => true,
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'action' => 'update_policy_settings',
                 ])
@@ -208,6 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bridgeData = postLaravelJsonBridge(
                 $bridgeUpdateEndpoint,
                 [
+                    'bridge_authorized' => true,
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'auto_approve' => $auto_approve,
                     'action' => 'update_setting',
@@ -255,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bridgeData = postLaravelJsonBridge(
                 $bridgeUpdateEndpoint,
                 array_merge($_POST, [
+                    'bridge_authorized' => true,
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'action' => 'update_advanced_settings',
                 ])
@@ -289,6 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bridgeData = postLaravelJsonBridge(
                 $bridgeUpdateEndpoint,
                 [
+                    'bridge_authorized' => true,
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'student_id' => $student_id,
                     'action' => $action,
@@ -353,6 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $bridgeData = postLaravelJsonBridge(
                 $bridgeUpdateEndpoint,
                 [
+                    'bridge_authorized' => true,
                     'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
                     'bulk_action' => $action,
                     'selected_students' => array_values((array)$selected_students),
@@ -579,6 +584,7 @@ if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
         $bridgeOverviewEndpoint,
         [
+            'bridge_authorized' => true,
             'admin_id' => (string) ($_SESSION['admin_id'] ?? ''),
         ]
     );
@@ -1923,7 +1929,7 @@ if ($conn instanceof PDO) {
             </div>
         <?php endif; ?>
         
-        <?php if (isset($error_message)): ?>
+        <?php if ($error_message !== ''): ?>
             <div class="message" style="background: #f8d7da; color: #721c24; border-color: #f1b0b7;">
                 <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
             </div>
