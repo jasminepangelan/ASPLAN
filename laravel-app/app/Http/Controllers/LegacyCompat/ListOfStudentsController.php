@@ -39,11 +39,13 @@ class ListOfStudentsController extends Controller
                 $selectedBatch = '';
             }
 
-            $allStudents = $this->loadStudents($search, $selectedProgram, $selectedBatch, false, 0, 0);
-            $totalRecords = count($allStudents);
+            $totalRecords = $this->countStudents($search, $selectedProgram, $selectedBatch);
             $totalPages = max(1, (int) ceil($totalRecords / $recordsPerPage));
             $offset = ($page - 1) * $recordsPerPage;
-            $students = $export ? $allStudents : array_slice($allStudents, $offset, $recordsPerPage);
+            $students = $this->loadStudents($search, $selectedProgram, $selectedBatch, !$export, $offset, $recordsPerPage);
+            $allStudents = $export
+                ? $this->loadStudents($search, $selectedProgram, $selectedBatch, false, 0, 0)
+                : [];
 
             return response()->json([
                 'success' => true,
@@ -97,8 +99,32 @@ class ListOfStudentsController extends Controller
 
     private function loadStudents(string $search, string $selectedProgram, string $selectedBatch, bool $paged, int $offset, int $limit): array
     {
-        $query = DB::table('student_info')
+        $query = $this->baseStudentQuery($search, $selectedProgram, $selectedBatch)
             ->select(['student_number', 'last_name', 'first_name', 'middle_name', 'program']);
+
+        $query->orderBy('last_name')->orderBy('first_name')->orderBy('student_number');
+
+        if ($paged && $limit > 0) {
+            $query->offset($offset)->limit($limit);
+        }
+
+        return $query->get()->map(static fn ($row): array => [
+            'student_number' => $row->student_number ?? '',
+            'last_name' => $row->last_name ?? '',
+            'first_name' => $row->first_name ?? '',
+            'middle_name' => $row->middle_name ?? '',
+            'program' => $row->program ?? '',
+        ])->all();
+    }
+
+    private function countStudents(string $search, string $selectedProgram, string $selectedBatch): int
+    {
+        return (int) $this->baseStudentQuery($search, $selectedProgram, $selectedBatch)->count();
+    }
+
+    private function baseStudentQuery(string $search, string $selectedProgram, string $selectedBatch)
+    {
+        $query = DB::table('student_info');
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search): void {
@@ -117,19 +143,7 @@ class ListOfStudentsController extends Controller
             $query->whereRaw('LEFT(student_number, 4) = ?', [$selectedBatch]);
         }
 
-        $query->orderBy('last_name')->orderBy('first_name');
-
-        if ($paged && $limit > 0) {
-            $query->offset($offset)->limit($limit);
-        }
-
-        return $query->get()->map(static fn ($row): array => [
-            'student_number' => $row->student_number ?? '',
-            'last_name' => $row->last_name ?? '',
-            'first_name' => $row->first_name ?? '',
-            'middle_name' => $row->middle_name ?? '',
-            'program' => $row->program ?? '',
-        ])->all();
+        return $query;
     }
 
     private function isBridgeAuthorized(Request $request): bool
