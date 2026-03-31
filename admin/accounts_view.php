@@ -56,6 +56,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
         exit();
     }
 
+    if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $studentId)) {
+        header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Invalid student ID format.'));
+        exit();
+    }
+
     $actionConn = getDBConnection();
     $freezeApprovalsEnabled = false;
     $freezeResult = $actionConn->query("SELECT setting_value FROM system_settings WHERE setting_name = 'freeze_approvals' ORDER BY id DESC LIMIT 1");
@@ -70,11 +75,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
     }
 
     $targetStatus = $statusMap[$statusAction]['status'];
-    $approvedBy = $targetStatus === 'pending' ? null : (string)$_SESSION['admin_id'];
-    $stmt = $actionConn->prepare("UPDATE student_info SET status = ?, approved_by = ? WHERE student_number = ?");
-    $stmt->bind_param('sss', $targetStatus, $approvedBy, $studentId);
-    $stmt->execute();
-    $updated = $stmt->affected_rows > 0;
+    $approvedBy = trim((string)($_SESSION['admin_id'] ?? $_SESSION['admin_username'] ?? ''));
+
+    if ($targetStatus === 'pending') {
+        $stmt = $actionConn->prepare("UPDATE student_info SET status = ?, approved_by = NULL WHERE student_number = ?");
+        if (!$stmt) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to prepare the account update.'));
+            exit();
+        }
+
+        $stmt->bind_param('ss', $targetStatus, $studentId);
+    } else {
+        $stmt = $actionConn->prepare("UPDATE student_info SET status = ?, approved_by = ? WHERE student_number = ?");
+        if (!$stmt) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to prepare the account update.'));
+            exit();
+        }
+
+        $stmt->bind_param('sss', $targetStatus, $approvedBy, $studentId);
+    }
+
+    $executed = $stmt->execute();
+    $updated = $executed && $stmt->affected_rows > 0;
     $stmt->close();
     closeDBConnection($actionConn);
 
@@ -107,7 +131,7 @@ closeDBConnection($settingsConn);
 $bridgeLoaded = false;
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/accounts-view/overview',
+        '/api/accounts-view/overview',
         [
             'bridge_authorized' => true,
             'type' => $type,
