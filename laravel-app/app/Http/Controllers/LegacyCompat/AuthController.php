@@ -91,7 +91,6 @@ class AuthController extends Controller
 
             if ($student !== null) {
                 $studentArray = (array) $student;
-                $this->autoApproveStudentIfEnabled($username, $studentArray);
                 return array_merge($studentArray, ['type' => 'student']);
             }
         }
@@ -144,25 +143,6 @@ class AuthController extends Controller
 
         return null;
     }
-
-    private function autoApproveStudentIfEnabled(string $studentNumber, array &$student): void
-    {
-        $enabled = DB::table('system_settings')
-            ->where('setting_name', 'auto_approve_students')
-            ->value('setting_value');
-
-        if ((string) $enabled === '1' && ($student['status'] ?? '') === 'pending') {
-            DB::table('student_info')
-                ->where('student_number', $studentNumber)
-                ->update([
-                    'status' => 'approved',
-                    'approved_by' => 'auto-system',
-                ]);
-
-            $student['status'] = 'approved';
-        }
-    }
-
     private function resolveProgramCoordinatorTable(): ?string
     {
         $tables = DB::select("SHOW TABLES LIKE 'program_coordinator'");

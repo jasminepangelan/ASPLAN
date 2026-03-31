@@ -40,24 +40,6 @@ function checkStudentCredentials($conn, $username, $password)
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
 
-        $autoApproveQuery = "SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students'";
-        $autoApproveResult = $conn->query($autoApproveQuery);
-        $autoApproveEnabled = false;
-
-        if ($autoApproveResult && $autoApproveResult->num_rows > 0) {
-            $autoRow = $autoApproveResult->fetch_assoc();
-            $autoApproveEnabled = (($autoRow['setting_value'] ?? '0') === '1');
-        }
-
-        if ($autoApproveEnabled && ($row['status'] ?? '') === 'pending') {
-            $updateQuery = $conn->prepare("UPDATE student_info SET status = 'approved', approved_by = 'auto-system' WHERE student_number = ?");
-            if ($updateQuery) {
-                $updateQuery->bind_param("s", $username);
-                $updateQuery->execute();
-                $row['status'] = 'approved';
-            }
-        }
-
         return [
             'found' => true,
             'data' => $row,
