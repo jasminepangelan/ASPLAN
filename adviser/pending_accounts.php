@@ -213,81 +213,78 @@ $adviserShellPayload = htmlspecialchars(json_encode([
         
         .content {
             position: relative;
-            text-align: center;
-            margin: 50px 20px 20px;
+            margin: 28px 24px 16px;
             animation: fadeInUp 0.6s ease-out;
         }
-        
-        .content h2 {
-            background: linear-gradient(135deg, #206018 0%, #4caf50 100%);
-            color: #fff;
-            display: inline-block;
-            padding: 10px 25px;
-            border-radius: 25px;
-            font-size: 20px;
+
+        .page-header {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.96);
+            padding: 18px 20px;
+            border-radius: 16px;
+            box-shadow: 0 12px 26px rgba(32, 96, 24, 0.08);
+            border: 1px solid rgba(32, 96, 24, 0.1);
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        .page-header h2 {
+            color: #206018;
+            font-size: 22px;
             font-weight: 800;
-            box-shadow: 0 8px 25px rgba(32, 96, 24, 0.3);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            letter-spacing: 1px;
-            margin-bottom: 20px;
-            position: relative;
-            top: 0;
-            overflow: hidden;
+            margin: 0 0 6px;
+            letter-spacing: 0.2px;
         }
-        
-        .content h2::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .content h2:hover::before {
-            left: 100%;
+
+        .page-header p {
+            color: #5f6f61;
+            font-size: 13px;
+            margin: 0;
+            line-height: 1.5;
         }
         
         .table-container {
-            margin: -40px auto;
-            width: 95%;
+            margin: 0 auto 20px;
+            width: min(95%, 1180px);
             max-width: 1200px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(32, 96, 24, 0.15);
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 16px 30px rgba(32, 96, 24, 0.1);
             overflow: hidden;
-            border: 1px solid rgba(32, 96, 24, 0.1);
-            backdrop-filter: blur(10px);
+            border: 1px solid rgba(32, 96, 24, 0.08);
             animation: slideInUp 0.7s ease-out;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .table-container:hover {
+            box-shadow: 0 18px 34px rgba(32, 96, 24, 0.12);
         }
         
         table {
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 16px;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 15px;
             background: transparent;
         }
         
         th, td {
-            padding: 18px 16px;
+            padding: 14px 16px;
             text-align: left;
             border-bottom: 1px solid rgba(32, 96, 24, 0.1);
             transition: all 0.3s ease;
         }
         
         th {
-            background: linear-gradient(135deg, #206018 0%, #2e7d32 100%);
+            background: #206018;
             color: #fff;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: 1px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
             border: none;
             position: relative;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            border-bottom: 2px solid #1a4d14;
         }
         
         th::after {
@@ -296,8 +293,8 @@ $adviserShellPayload = htmlspecialchars(json_encode([
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, #4caf50, #81c784);
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, #4CAF50 50%, transparent 100%);
         }
         
         tbody tr {
@@ -305,39 +302,52 @@ $adviserShellPayload = htmlspecialchars(json_encode([
         }
         
         tbody tr:nth-child(even) td {
-            background-color: rgba(244, 248, 244, 0.8);
+            background-color: #f8fcf8;
         }
         
         tbody tr:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(32, 96, 24, 0.15);
+            transform: none;
         }
         
         tbody tr:hover td {
-            background: linear-gradient(135deg, rgba(234, 246, 233, 0.9) 0%, rgba(200, 230, 201, 0.8) 100%);
+            background: #eef8ee;
             color: #1b5e20;
         }
         
         td {
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: #ffffff;
             font-weight: 500;
+            font-size: 14px;
+            vertical-align: middle;
         }
         
         .student-number {
             color: #206018;
             font-weight: 700;
-            font-size: 17px;
-            letter-spacing: 1px;
-            background: linear-gradient(135deg, rgba(32, 96, 24, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+            font-size: 15px;
+            letter-spacing: 0.4px;
+            text-align: center;
+        }
+
+        .student-name-cell {
+            color: #1d2c1f;
+            font-weight: 600;
+        }
+
+        .student-name-cell .name-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 40px;
             padding: 8px 12px;
-            border-radius: 8px;
-            border-left: 4px solid #206018;
+            border-radius: 12px;
+            background: rgba(32, 96, 24, 0.05);
+            border: 1px solid rgba(32, 96, 24, 0.08);
         }
         
         .action-icons {
             text-align: center;
             display: flex;
-            gap: 20px;
+            gap: 10px;
             justify-content: center;
             align-items: center;
         }
@@ -346,9 +356,9 @@ $adviserShellPayload = htmlspecialchars(json_encode([
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
             transition: all 0.3s ease;
             text-decoration: none;
             position: relative;
@@ -366,8 +376,8 @@ $adviserShellPayload = htmlspecialchars(json_encode([
         }
         
         .action-icons a:hover {
-            transform: translateY(-3px) scale(1.1);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.16);
         }
         
         .action-icons a::before {
@@ -386,7 +396,7 @@ $adviserShellPayload = htmlspecialchars(json_encode([
         }
         
         .action-icons i {
-            font-size: 18px;
+            font-size: 16px;
             color: white;
             z-index: 1;
             position: relative;
@@ -593,9 +603,8 @@ $adviserShellPayload = htmlspecialchars(json_encode([
                 margin: 20px 15px;
             }
             
-            .content h2 {
-                font-size: 16px;
-                padding: 8px 18px;
+            .page-header h2 {
+                font-size: 18px;
             }
             
             .table-container {
@@ -699,9 +708,17 @@ $adviserShellPayload = htmlspecialchars(json_encode([
                 margin: 15px 10px;
             }
             
-            .content h2 {
-                font-size: 14px;
-                padding: 7px 14px;
+            .page-header {
+                padding: 14px 12px;
+                border-radius: 12px;
+            }
+
+            .page-header h2 {
+                font-size: 16px;
+            }
+
+            .page-header p {
+                font-size: 12px;
             }
             
             .table-container {
@@ -763,6 +780,15 @@ $adviserShellPayload = htmlspecialchars(json_encode([
             .student-number {
                 width: auto;
                 text-align: right;
+            }
+
+            .student-name-cell .name-pill {
+                display: inline-block;
+                width: 100%;
+                text-align: right;
+                padding: 0;
+                background: transparent;
+                border: none;
             }
             
             .action-icons {
@@ -951,7 +977,10 @@ $adviserShellPayload = htmlspecialchars(json_encode([
     <div class="main-content" id="mainContent">
         <div class="adviser-react-shell-slot" data-adviser-shell="<?= $adviserShellPayload ?>"></div>
         <div class="content">
-            <h2>STUDENT PENDING ACCOUNTS</h2>
+            <div class="page-header">
+                <h2>Student Pending Accounts</h2>
+                <p>Review newly registered student accounts under your assigned batches and process approval actions from one clean queue.</p>
+            </div>
         </div>
         <?php
         if (!isset($_SESSION['id'])) {
@@ -1069,7 +1098,7 @@ $adviserShellPayload = htmlspecialchars(json_encode([
                 echo "
                     <tr>
                         <td data-label='Student ID' class='student-number'>" . htmlspecialchars($row['student_id']) . "</td>
-                        <td data-label='Student Name'>{$fullName}</td>
+                        <td data-label='Student Name' class='student-name-cell'><span class='name-pill'>{$fullName}</span></td>
                         <td data-label='Actions' class='action-icons'>
                             <a href='javascript:void(0);' class='approve-btn' onclick='showApproveModal(" . json_encode($row['student_id']) . ")' title='Approve Account'>
                                 <i class='fas fa-check'></i>
