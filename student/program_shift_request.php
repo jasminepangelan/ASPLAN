@@ -108,6 +108,21 @@ $studentShellPayload = htmlspecialchars(json_encode([
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
+$studentProgramShiftWorkspacePayload = htmlspecialchars(json_encode([
+    'title' => 'Program Shift Command Deck',
+    'note' => 'Use quick actions to jump into the request form, browse your history, or focus the destination program selector while the current PHP request workflow stays intact.',
+    'stats' => [
+        ['label' => 'Current Program', 'value' => $currentProgram !== '' ? (string)$currentProgram : 'Not set'],
+        ['label' => 'Pending', 'value' => (string)$historyStats['pending']],
+        ['label' => 'Approved', 'value' => (string)$historyStats['approved']],
+    ],
+    'reminders' => [
+        'Only one active request can stay pending at a time.',
+        'Be specific in your reason so adviser and coordinator review can move faster.',
+        'Strict course equivalency still decides which subjects can be credited after approval.',
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
 closeDBConnection($conn);
 ?>
 <!DOCTYPE html>
@@ -117,7 +132,7 @@ closeDBConnection($conn);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Program Shift Request</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
-    <?= renderLegacyViteTags(['resources/js/student-shell.jsx']) ?>
+    <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-program-shift-workspace.jsx']) ?>
     <style>
         :root {
             --brand-900: #164f14;
@@ -688,6 +703,7 @@ closeDBConnection($conn);
 
     <div class="main-content" id="mainContent">
     <div data-student-shell="<?= $studentShellPayload ?>"></div>
+    <div data-student-program-shift-workspace="<?= $studentProgramShiftWorkspacePayload ?>"></div>
     <div class="container">
         <section class="hero">
             <div class="hero-card">
@@ -716,7 +732,7 @@ closeDBConnection($conn);
         </section>
 
         <section class="layout">
-        <div class="card">
+        <div class="card" id="programShiftRequestCard">
             <h2>Request Program Shift</h2>
             <p class="muted">Fill in the required fields below to submit a new request.</p>
 
@@ -764,7 +780,7 @@ closeDBConnection($conn);
         </div>
         </section>
 
-        <div class="card history-card">
+        <div class="card history-card" id="programShiftHistoryCard">
             <h2>Your Request History</h2>
             <p class="muted">Track status changes and reviewer remarks for each submitted request.</p>
             <div class="status-inline">
@@ -827,6 +843,27 @@ closeDBConnection($conn);
     </div>
 
     <script>
+        document.addEventListener('student-program-shift:action', function (event) {
+            const action = event && event.detail ? event.detail.action : '';
+
+            if (action === 'request') {
+                const requestCard = document.getElementById('programShiftRequestCard');
+                if (requestCard) {
+                    requestCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } else if (action === 'history') {
+                const historyCard = document.getElementById('programShiftHistoryCard');
+                if (historyCard) {
+                    historyCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } else if (action === 'destination') {
+                const destinationField = document.getElementById('requested_program');
+                if (destinationField) {
+                    destinationField.focus();
+                }
+            }
+        });
+
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');

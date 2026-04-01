@@ -13,6 +13,7 @@ export default defineConfig({
                 'resources/js/student-profile-workspace.jsx',
                 'resources/js/student-checklist-workspace.jsx',
                 'resources/js/student-study-plan-workspace.jsx',
+                'resources/js/student-program-shift-workspace.jsx',
             ],
             refresh: true,
         }),

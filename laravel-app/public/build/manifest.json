@@ -39,6 +39,18 @@
       "assets/student-profile-workspace-BdL0Cq2V.css"
     ]
   },
+  "resources/js/student-program-shift-workspace.jsx": {
+    "file": "assets/student-program-shift-workspace-D7rQdzRj.js",
+    "name": "student-program-shift-workspace",
+    "src": "resources/js/student-program-shift-workspace.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-EfEd6_uT.js"
+    ],
+    "css": [
+      "assets/student-program-shift-workspace-CbdGd2Sl.css"
+    ]
+  },
   "resources/js/student-shell.jsx": {
     "file": "assets/student-shell-Dna_lRJ1.js",
     "name": "student-shell",
