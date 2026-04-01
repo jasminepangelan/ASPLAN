@@ -1,4 +1,3 @@
-
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/pending_accounts_service.php';
@@ -6,12 +5,53 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
 // Check if admin is logged in
-if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
+if (
+    (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) &&
+    (!isset($_SESSION['admin_username']) || empty($_SESSION['admin_username']))
+) {
     header("Location: login.php");
     exit();
 }
 
 $csrfToken = getCSRFToken();
+$adminSessionId = trim((string) ($_SESSION['admin_id'] ?? $_SESSION['admin_username'] ?? ''));
+$useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
+$pendingAccounts = [];
+$auto_approve_enabled = false;
+$loadedFromLaravel = false;
+$loadError = '';
+
+try {
+    $auto_approve_enabled = paIsAutoApproveEnabled();
+
+    if ($useLaravelBridge) {
+        $bridgeData = postLaravelJsonBridge(
+            '/api/admin/pending-accounts/list',
+            [
+                'bridge_authorized' => true,
+                'admin_id' => $adminSessionId,
+            ]
+        );
+
+        if (is_array($bridgeData) && array_key_exists('pending_accounts', $bridgeData)) {
+            $pendingAccounts = is_array($bridgeData['pending_accounts']) ? $bridgeData['pending_accounts'] : [];
+            $auto_approve_enabled = !empty($bridgeData['auto_approve_enabled']);
+            $loadedFromLaravel = true;
+        } elseif (is_array($bridgeData) && isset($bridgeData['message']) && $bridgeData['message'] !== '') {
+            $loadError = 'Unable to load pending accounts from the bridge right now.';
+        }
+    }
+
+    if (!$loadedFromLaravel) {
+        $pendingAccounts = paLoadPendingAccounts();
+    }
+} catch (Throwable $e) {
+    error_log('Admin pending accounts page failed: ' . $e->getMessage());
+    $pendingAccounts = [];
+    $loadError = 'Unable to load pending accounts right now. Please try again later.';
+}
+
+$pendingCount = count($pendingAccounts);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -826,10 +866,16 @@ $csrfToken = getCSRFToken();
             <p class="subtitle">Review and manage student account approval requests</p>
         </div>
 
+        <?php if ($loadError !== ''): ?>
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($loadError, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        <?php endif; ?>
+
         <div class="table-container">
             <div class="table-header">
                 <h3><i class="fas fa-clock"></i> Pending Approvals</h3>
-                <div class="table-stats" id="pendingCount">Loading...</div>
+                <div class="table-stats" id="pendingCount"><?php echo (int) $pendingCount; ?> pending</div>
             </div>
         <table>
             <thead>
@@ -854,27 +900,6 @@ $csrfToken = getCSRFToken();
                             <i class='fas fa-exclamation-circle'></i> {$errorText}
                           </div>";
                 }
-                $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
-                $pendingAccounts = [];
-                $auto_approve_enabled = paIsAutoApproveEnabled();
-                $loadedFromLaravel = false;
-
-                if ($useLaravelBridge) {
-                    $bridgeData = postLaravelJsonBridge(
-                        'http://localhost/ASPLAN_v10/laravel-app/public/api/admin/pending-accounts/list',
-                        []
-                    );
-
-                    if (is_array($bridgeData) && array_key_exists('pending_accounts', $bridgeData)) {
-                        $pendingAccounts = is_array($bridgeData['pending_accounts']) ? $bridgeData['pending_accounts'] : [];
-                        $auto_approve_enabled = !empty($bridgeData['auto_approve_enabled']);
-                        $loadedFromLaravel = true;
-                    }
-                }
-
-                if (!$loadedFromLaravel) {
-                    $pendingAccounts = paLoadPendingAccounts();
-                }
 
                 if ($auto_approve_enabled) {
                     echo "
@@ -889,9 +914,6 @@ $csrfToken = getCSRFToken();
                         </div>
                     ";
                 }
-
-                $pendingCount = count($pendingAccounts);
-                echo "<script>document.getElementById('pendingCount').innerHTML = '{$pendingCount} pending';</script>";
 
                 if ($pendingCount > 0) {
                     foreach ($pendingAccounts as $row) {
