@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/vite_legacy.php';
 
 // Check if the adviser is logged in
 if (!isset($_SESSION['username'])) {
@@ -11,6 +12,16 @@ if (!isset($_SESSION['username'])) {
 
 $adviser_name = isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : '';
 $csrfToken = getCSRFToken();
+$adviserShellPayload = htmlspecialchars(json_encode([
+    'title' => 'Pending Student Accounts',
+    'description' => 'Review the student accounts routed to your batches, then approve or reject them from the existing adviser workflow with less page hunting.',
+    'accent' => 'teal',
+    'pageKey' => 'pending-accounts',
+    'stats' => [
+        ['label' => 'Adviser', 'value' => html_entity_decode($adviser_name, ENT_QUOTES, 'UTF-8')],
+        ['label' => 'Queue', 'value' => 'Pending approvals'],
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,6 +31,10 @@ $csrfToken = getCSRFToken();
     <title>Pending Accounts</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <?= renderLegacyViteTags([
+        'resources/js/adviser-shell.jsx',
+        'resources/js/adviser-pending-accounts-workspace.jsx',
+    ], '../laravel-app/public/build/') ?>
     <style>
         * {
             margin: 0;
@@ -934,6 +949,7 @@ $csrfToken = getCSRFToken();
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
+        <div class="adviser-react-shell-slot" data-adviser-shell="<?= $adviserShellPayload ?>"></div>
         <div class="content">
             <h2>STUDENT PENDING ACCOUNTS</h2>
         </div>
@@ -1019,6 +1035,21 @@ $csrfToken = getCSRFToken();
             $stmt->close();
             closeDBConnection($conn);
         }
+
+        $adviserPendingAccountsWorkspacePayload = htmlspecialchars(json_encode([
+            'heading' => 'Approval command deck',
+            'description' => 'Refresh the queue, jump straight to the account table, or return to the adviser student list while keeping the original approve and reject actions intact.',
+            'actions' => [
+                ['key' => 'refresh', 'title' => 'Refresh queue', 'description' => 'Reload the pending-account list after approvals or batch changes.', 'type' => 'reload'],
+                ['key' => 'queue', 'title' => 'Jump to account queue', 'description' => 'Scroll to the pending account table rendered by the current page.', 'type' => 'scroll', 'selector' => '.table-container, table'],
+                ['key' => 'students', 'title' => 'Open student list', 'description' => 'Switch back to the adviser list of students without losing context.', 'href' => 'checklist_eval.php'],
+            ],
+            'notes' => [
+                count($pendingAccounts) . ' pending account(s) currently detected for your adviser scope.',
+                'Approve and reject actions below still use the existing PHP flow and confirmation modals.',
+            ],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+        echo '<div class="adviser-react-workspace-slot" data-adviser-pending-accounts-workspace="' . $adviserPendingAccountsWorkspacePayload . '"></div>';
 
         if (count($pendingAccounts) > 0) {
             // Show table with pending accounts

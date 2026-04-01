@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/vite_legacy.php';
 $csrfToken = getCSRFToken();
 
 // Check if the adviser is logged in
@@ -112,6 +113,33 @@ $program_abbr = resolveProgramAbbreviation($student_program_normalized);
 if ($program_abbr === null) {
   $program_abbr = '';
 }
+
+$adviserShellPayload = htmlspecialchars(json_encode([
+    'title' => 'Student Checklist Review',
+    'description' => 'Review academic standing, validate course attempts, and keep the adviser checklist workflow moving without changing the underlying evaluation logic.',
+    'accent' => 'evergreen',
+    'pageKey' => 'student-list',
+    'stats' => [
+        ['label' => 'Adviser', 'value' => html_entity_decode($adviser_name, ENT_QUOTES, 'UTF-8')],
+        ['label' => 'Student ID', 'value' => (string) $student_id],
+        ['label' => 'Program', 'value' => (string) ($program_abbr !== '' ? $program_abbr : $student_program_normalized)],
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+$adviserChecklistWorkspacePayload = htmlspecialchars(json_encode([
+    'heading' => 'Checklist command deck',
+    'description' => 'Use these shortcuts to move between the student list, print the checklist, and jump directly to the academic details already rendered by the legacy page.',
+    'actions' => [
+        ['key' => 'back', 'title' => 'Back to student list', 'description' => 'Return to the adviser list of students and choose another record.', 'href' => 'checklist_eval.php'],
+        ['key' => 'print', 'title' => 'Print checklist', 'description' => 'Open the browser print flow for the current checklist view.', 'type' => 'print'],
+        ['key' => 'overview', 'title' => 'Jump to overview', 'description' => 'Scroll to the student information summary at the top of the checklist.', 'type' => 'scroll', 'selector' => '.info'],
+        ['key' => 'table', 'title' => 'Jump to checklist table', 'description' => 'Move directly to the subject matrix below the profile summary.', 'type' => 'scroll', 'selector' => '.table-wrapper'],
+    ],
+    'notes' => [
+        'All grade handling and evaluator actions still use the original PHP and JavaScript logic.',
+        'This shell only adds quicker navigation for adviser review work.',
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
 
 // Helper: returns true when a grade is failing and unlocks the next attempt column
@@ -793,6 +821,10 @@ if (empty($all_courses)) {
       }
     }
   </style>
+  <?= renderLegacyViteTags([
+      'resources/js/adviser-shell.jsx',
+      'resources/js/adviser-checklist-workspace.jsx',
+  ], '../laravel-app/public/build/') ?>
 </head>
 <body>
   <!-- Title Bar -->
@@ -836,6 +868,8 @@ if (empty($all_courses)) {
 
   <!-- Main Content -->
   <div class="main-content">
+    <div class="adviser-react-shell-slot" data-adviser-shell="<?= $adviserShellPayload ?>"></div>
+    <div class="adviser-react-workspace-slot" data-adviser-checklist-workspace="<?= $adviserChecklistWorkspacePayload ?>"></div>
     
     <div class="container">
         <div class="header">

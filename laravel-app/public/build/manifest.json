@@ -1,4 +1,8 @@
 {
+  "_adviser-page-workspace-!~{00d}~.js": {
+    "file": "assets/adviser-page-workspace-tE5rcgq-.css",
+    "src": "_adviser-page-workspace-!~{00d}~.js"
+  },
   "_client-EfEd6_uT.js": {
     "file": "assets/client-EfEd6_uT.js",
     "name": "client"
@@ -8,6 +12,54 @@
     "name": "app",
     "src": "resources/css/app.css",
     "isEntry": true
+  },
+  "resources/js/adviser-checklist-workspace.jsx": {
+    "file": "assets/adviser-checklist-workspace-y0sTLaGo.js",
+    "name": "adviser-checklist-workspace",
+    "src": "resources/js/adviser-checklist-workspace.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-EfEd6_uT.js"
+    ],
+    "css": [
+      "assets/adviser-page-workspace-tE5rcgq-.css"
+    ]
+  },
+  "resources/js/adviser-pending-accounts-workspace.jsx": {
+    "file": "assets/adviser-pending-accounts-workspace-D_lhL79W.js",
+    "name": "adviser-pending-accounts-workspace",
+    "src": "resources/js/adviser-pending-accounts-workspace.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-EfEd6_uT.js"
+    ],
+    "css": [
+      "assets/adviser-page-workspace-tE5rcgq-.css"
+    ]
+  },
+  "resources/js/adviser-preenroll-workspace.jsx": {
+    "file": "assets/adviser-preenroll-workspace-DbxPu80y.js",
+    "name": "adviser-preenroll-workspace",
+    "src": "resources/js/adviser-preenroll-workspace.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-EfEd6_uT.js"
+    ],
+    "css": [
+      "assets/adviser-page-workspace-tE5rcgq-.css"
+    ]
+  },
+  "resources/js/adviser-shell.jsx": {
+    "file": "assets/adviser-shell-DKbV72U9.js",
+    "name": "adviser-shell",
+    "src": "resources/js/adviser-shell.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-EfEd6_uT.js"
+    ],
+    "css": [
+      "assets/adviser-shell-C_6N-rkH.css"
+    ]
   },
   "resources/js/app.js": {
     "file": "assets/app-BjqOcoUn.js",

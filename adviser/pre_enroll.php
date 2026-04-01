@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
+require_once __DIR__ . '/../includes/vite_legacy.php';
 
 // Check if adviser is logged in
 if (!isset($_SESSION['id'])) {
@@ -339,6 +340,34 @@ if ($latest_year !== '' && $latest_semester !== '') {
 }
 
 $conn->close();
+
+$adviserShellPayload = htmlspecialchars(json_encode([
+    'title' => 'Pre-Enrollment Assessment',
+    'description' => 'Guide the student through course loading, verify the next academic term, and keep the pre-enrollment paperwork organized in one adviser workspace.',
+    'accent' => 'amber',
+    'pageKey' => 'student-list',
+    'stats' => [
+        ['label' => 'Adviser', 'value' => html_entity_decode($adviser_name, ENT_QUOTES, 'UTF-8')],
+        ['label' => 'Student ID', 'value' => (string) $student_id],
+        ['label' => 'Year Level', 'value' => (string) $year_level],
+        ['label' => 'Next Term', 'value' => trim((string) $next_year . ' ' . (string) $next_semester)],
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+$adviserPreenrollWorkspacePayload = htmlspecialchars(json_encode([
+    'heading' => 'Pre-enrollment command deck',
+    'description' => 'Use these shortcuts to review the student summary, move to the subject grid, and print the current form without changing the enrollment flow underneath.',
+    'actions' => [
+        ['key' => 'back', 'title' => 'Back to student list', 'description' => 'Return to the adviser checklist list and choose another student.', 'href' => 'checklist_eval.php'],
+        ['key' => 'print', 'title' => 'Print form', 'description' => 'Open the browser print dialog for the current pre-enrollment form.', 'type' => 'print'],
+        ['key' => 'form', 'title' => 'Jump to student form', 'description' => 'Scroll to the student information block and the enrollment details fields.', 'type' => 'scroll', 'selector' => '.container'],
+        ['key' => 'subjects', 'title' => 'Jump to subject table', 'description' => 'Move directly to the pre-enrollment subject list for faster review.', 'type' => 'scroll', 'selector' => 'table'],
+    ],
+    'notes' => [
+        'The current PHP save and load handlers remain the source of truth for enrollment data.',
+        'This enhancement only adds a cleaner adviser command layer on top.',
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 ?>
 
 <!DOCTYPE html>
@@ -348,6 +377,10 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pre-Enrollment Form</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
+    <?= renderLegacyViteTags([
+        'resources/js/adviser-shell.jsx',
+        'resources/js/adviser-preenroll-workspace.jsx',
+    ], '../laravel-app/public/build/') ?>
     <style>
         /* Popup styles */
         .popup {
@@ -1666,6 +1699,9 @@ $conn->close();
         </div>
         <div class="adviser-name"><?= $adviser_name ; echo " | Adviser " ?></div>
     </div>
+
+    <div class="adviser-react-shell-slot" data-adviser-shell="<?= $adviserShellPayload ?>"></div>
+    <div class="adviser-react-workspace-slot" data-adviser-preenroll-workspace="<?= $adviserPreenrollWorkspacePayload ?>"></div>
 
     <!-- Add the logo -->
     <div class="container" style="position: relative;<?php if ($show_retention_status): ?> padding-top: 60px;<?php endif; ?>">
