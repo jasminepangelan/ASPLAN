@@ -141,8 +141,9 @@ class ProgramShiftController extends Controller
             }
 
             $programKeys = $this->resolveAdviserProgramKeys($adviserId, $username);
-            $queue = $this->loadAdviserQueue($programKeys);
-            $recentLogs = $this->loadAdviserActionLog($username, $programKeys, 12);
+            $adviserBatches = $this->resolveAdviserBatches($adviserId, $username);
+            $queue = $this->loadAdviserQueue($programKeys, $adviserBatches);
+            $recentLogs = $this->loadAdviserActionLog($username, $programKeys, $adviserBatches, 12);
 
             return $this->response(true, 'Program shift queue loaded.', 200, [
                 'queue' => $queue,
@@ -203,6 +204,7 @@ class ProgramShiftController extends Controller
             }
 
             $programKeys = $this->resolveAdviserProgramKeys($adviserId, $actorUsername);
+            $adviserBatches = $this->resolveAdviserBatches($adviserId, $actorUsername);
             $requestRow = $this->fetchShiftRequest($requestId);
             if ($requestRow === null) {
                 return $this->response(false, 'Shift request not found.', 404);
@@ -212,8 +214,8 @@ class ProgramShiftController extends Controller
                 return $this->response(false, 'This request is not pending adviser review.', 422);
             }
 
-            if (!$this->programMatchesActorKeys((string) ($requestRow['current_program'] ?? ''), $programKeys)) {
-                return $this->response(false, 'You are not assigned to review this program.', 403);
+            if (!$this->requestMatchesAdviserScope($requestRow, $programKeys, $adviserBatches)) {
+                return $this->response(false, 'You are not assigned to review this request for the selected program and batch scope.', 403);
             }
 
             $now = now()->toDateTimeString();
@@ -396,7 +398,7 @@ class ProgramShiftController extends Controller
         }
     }
 
-    private function loadAdviserQueue(array $programKeys): array
+    private function loadAdviserQueue(array $programKeys, array $adviserBatches): array
     {
         try {
             $rows = DB::table('program_shift_requests')
@@ -410,12 +412,12 @@ class ProgramShiftController extends Controller
             return [];
         }
 
-        if (empty($programKeys)) {
-            return $rows;
+        if (empty($programKeys) || empty($adviserBatches)) {
+            return [];
         }
 
-        return array_values(array_filter($rows, function (array $row) use ($programKeys): bool {
-            return $this->programMatchesActorKeys((string) ($row['requested_program'] ?? ''), $programKeys);
+        return array_values(array_filter($rows, function (array $row) use ($programKeys, $adviserBatches): bool {
+            return $this->requestMatchesAdviserScope($row, $programKeys, $adviserBatches);
         }));
     }
 
@@ -443,7 +445,7 @@ class ProgramShiftController extends Controller
         }
     }
 
-    private function loadAdviserActionLog(string $actorUsername, array $programKeys, int $limit = 12): array
+    private function loadAdviserActionLog(string $actorUsername, array $programKeys, array $adviserBatches, int $limit = 12): array
     {
         $actorUsername = trim($actorUsername);
         if ($actorUsername === '') {
@@ -478,12 +480,12 @@ class ProgramShiftController extends Controller
             return [];
         }
 
-        if (empty($programKeys)) {
-            return $rows;
+        if (empty($programKeys) || empty($adviserBatches)) {
+            return [];
         }
 
-        return array_values(array_filter($rows, function (array $row) use ($programKeys): bool {
-            return $this->programMatchesActorKeys((string) ($row['current_program'] ?? ''), $programKeys);
+        return array_values(array_filter($rows, function (array $row) use ($programKeys, $adviserBatches): bool {
+            return $this->requestMatchesAdviserScope($row, $programKeys, $adviserBatches);
         }));
     }
 
@@ -1124,7 +1126,7 @@ class ProgramShiftController extends Controller
             }
 
             $rows = DB::table('adviser')
-                ->select(['email', 'first_name', 'last_name', 'username', 'program'])
+                ->select(['id', 'email', 'first_name', 'last_name', 'username', 'program'])
                 ->get();
 
             $rootPath = dirname(base_path());
@@ -1150,6 +1152,11 @@ class ProgramShiftController extends Controller
             foreach ($rows as $row) {
                 $rowArray = (array) $row;
                 if (!$this->programMatchesActorKeys((string) ($rowArray['program'] ?? ''), $currentProgramKeys)) {
+                    continue;
+                }
+
+                $adviserBatches = $this->resolveAdviserBatches((int) ($rowArray['id'] ?? 0), (string) ($rowArray['username'] ?? ''));
+                if (!$this->studentMatchesAdviserBatches((string) ($student['student_number'] ?? ''), $adviserBatches)) {
                     continue;
                 }
 
@@ -1247,6 +1254,43 @@ class ProgramShiftController extends Controller
         try {
             $program = DB::table('adviser')->where('username', $username)->value('program');
             return $this->parseProgramList((string) $program);
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    private function resolveAdviserBatches(int $adviserId, string $username = ''): array
+    {
+        if (!Schema::hasTable('adviser_batch')) {
+            return [];
+        }
+
+        $resolvedAdviserId = $adviserId;
+        if ($resolvedAdviserId <= 0) {
+            $username = trim($username);
+            if ($username !== '' && Schema::hasTable('adviser')) {
+                try {
+                    $resolvedAdviserId = (int) DB::table('adviser')->where('username', $username)->value('id');
+                } catch (Throwable $e) {
+                    $resolvedAdviserId = 0;
+                }
+            }
+        }
+
+        if ($resolvedAdviserId <= 0) {
+            return [];
+        }
+
+        try {
+            return DB::table('adviser_batch')
+                ->where('adviser_id', $resolvedAdviserId)
+                ->orderBy('batch')
+                ->pluck('batch')
+                ->map(static fn ($batch): string => trim((string) $batch))
+                ->filter(static fn (string $batch): bool => $batch !== '')
+                ->unique()
+                ->values()
+                ->all();
         } catch (Throwable $e) {
             return [];
         }
@@ -1482,6 +1526,36 @@ class ProgramShiftController extends Controller
         $programKeysExpanded = $this->expandProgramKeyAliases([$programKey]);
 
         return !empty(array_intersect($programKeysExpanded, $actorKeysExpanded));
+    }
+
+    private function studentMatchesAdviserBatches(string $studentNumber, array $batches): bool
+    {
+        $studentNumber = trim($studentNumber);
+        if ($studentNumber === '' || empty($batches)) {
+            return false;
+        }
+
+        foreach ($batches as $batch) {
+            $batch = trim((string) $batch);
+            if ($batch !== '' && str_starts_with($studentNumber, $batch)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function requestMatchesAdviserScope(array $requestRow, array $programKeys, array $adviserBatches): bool
+    {
+        if (empty($programKeys) || empty($adviserBatches)) {
+            return false;
+        }
+
+        if (!$this->programMatchesActorKeys((string) ($requestRow['current_program'] ?? ''), $programKeys)) {
+            return false;
+        }
+
+        return $this->studentMatchesAdviserBatches((string) ($requestRow['student_number'] ?? ''), $adviserBatches);
     }
 
     private function isBridgeAuthorized(Request $request): bool

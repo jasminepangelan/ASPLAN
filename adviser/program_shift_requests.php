@@ -16,6 +16,7 @@ $adviserUsername = (string)($_SESSION['username'] ?? '');
 $adviserName = (string)($_SESSION['full_name'] ?? $adviserUsername);
 $adviserDisplayName = htmlspecialchars($adviserName !== '' ? $adviserName : $adviserUsername);
 $programKeys = psResolveAdviserProgramKeys($conn, $adviserId, $adviserUsername);
+$adviserBatches = psResolveAdviserBatches($conn, $adviserId, $adviserUsername);
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 
 $message = '';
@@ -49,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = (string) ($bridgeData['message'] ?? 'Unable to process request.');
             }
         } else {
-            $result = psHandleAdviserDecision($conn, $requestId, $action, $adviserUsername, $adviserName, $programKeys, $comment);
+            $result = psHandleAdviserDecision($conn, $requestId, $action, $adviserUsername, $adviserName, $programKeys, $adviserBatches, $comment);
             if (!empty($result['ok'])) {
                 $message = (string)$result['message'];
             } else {
@@ -61,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = (string)($_POST['action'] ?? '');
         $comment = trim((string)($_POST['comment'] ?? ''));
 
-        $result = psHandleAdviserDecision($conn, $requestId, $action, $adviserUsername, $adviserName, $programKeys, $comment);
+        $result = psHandleAdviserDecision($conn, $requestId, $action, $adviserUsername, $adviserName, $programKeys, $adviserBatches, $comment);
         if (!empty($result['ok'])) {
             $message = (string)$result['message'];
         } else {
@@ -70,8 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$queue = psFetchAdviserQueue($conn, $programKeys);
-$recentLogs = psFetchAdviserActionLog($conn, $adviserUsername, $programKeys, 10);
+$queue = psFetchAdviserQueue($conn, $programKeys, $adviserBatches);
+$recentLogs = psFetchAdviserActionLog($conn, $adviserUsername, $programKeys, $adviserBatches, 10);
 $bridgeData = null;
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(

@@ -1109,7 +1109,8 @@ if (!function_exists('psNotifyAdvisersOfProgramShiftRequest')) {
             return 0;
         }
 
-        $stmt = $conn->prepare('SELECT email, first_name, last_name, username, program FROM adviser');
+        $studentNumber = trim((string)($studentRow['student_number'] ?? ''));
+        $stmt = $conn->prepare('SELECT id, email, first_name, last_name, username, program FROM adviser');
         if (!$stmt) {
             return 0;
         }
@@ -1127,6 +1128,11 @@ if (!function_exists('psNotifyAdvisersOfProgramShiftRequest')) {
 
         while ($row = $result->fetch_assoc()) {
             if (!psProgramMatchesActorKeys((string)($row['program'] ?? ''), $currentProgramKeys)) {
+                continue;
+            }
+
+            $adviserBatches = psResolveAdviserBatches($conn, (int)($row['id'] ?? 0), (string)($row['username'] ?? ''));
+            if (!psStudentMatchesAdviserBatches($studentNumber, $adviserBatches)) {
                 continue;
             }
 
@@ -1227,6 +1233,87 @@ if (!function_exists('psResolveAdviserProgramKeys')) {
         }
 
         return $keys;
+    }
+}
+
+if (!function_exists('psResolveAdviserBatches')) {
+    function psResolveAdviserBatches($conn, $adviserId, $username = '') {
+        if (!psTableExists($conn, 'adviser_batch')) {
+            return [];
+        }
+
+        $resolvedAdviserId = (int)$adviserId;
+        if ($resolvedAdviserId <= 0) {
+            $username = trim((string)$username);
+            if ($username !== '') {
+                $stmt = $conn->prepare("SELECT id FROM adviser WHERE username = ? LIMIT 1");
+                if ($stmt) {
+                    $stmt->bind_param('s', $username);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    if ($result && $result->num_rows > 0) {
+                        $row = $result->fetch_assoc();
+                        $resolvedAdviserId = (int)($row['id'] ?? 0);
+                    }
+                    $stmt->close();
+                }
+            }
+        }
+
+        if ($resolvedAdviserId <= 0) {
+            return [];
+        }
+
+        $batches = [];
+        $stmt = $conn->prepare("SELECT batch FROM adviser_batch WHERE adviser_id = ? ORDER BY batch");
+        if (!$stmt) {
+            return [];
+        }
+
+        $stmt->bind_param('i', $resolvedAdviserId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($result && ($row = $result->fetch_assoc())) {
+            $batch = trim((string)($row['batch'] ?? ''));
+            if ($batch !== '') {
+                $batches[] = $batch;
+            }
+        }
+        $stmt->close();
+
+        return array_values(array_unique($batches, SORT_STRING));
+    }
+}
+
+if (!function_exists('psStudentMatchesAdviserBatches')) {
+    function psStudentMatchesAdviserBatches($studentNumber, array $batches) {
+        $studentNumber = trim((string)$studentNumber);
+        if ($studentNumber === '' || empty($batches)) {
+            return false;
+        }
+
+        foreach ($batches as $batch) {
+            $batch = trim((string)$batch);
+            if ($batch !== '' && strpos($studentNumber, $batch) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('psRequestMatchesAdviserScope')) {
+    function psRequestMatchesAdviserScope(array $requestRow, array $actorProgramKeys, array $adviserBatches) {
+        if (empty($actorProgramKeys) || empty($adviserBatches)) {
+            return false;
+        }
+
+        if (!psProgramMatchesActorKeys((string)($requestRow['current_program'] ?? ''), $actorProgramKeys)) {
+            return false;
+        }
+
+        return psStudentMatchesAdviserBatches((string)($requestRow['student_number'] ?? ''), $adviserBatches);
     }
 }
 
@@ -1529,7 +1616,7 @@ if (!function_exists('psExecuteApprovedShift')) {
 }
 
 if (!function_exists('psHandleAdviserDecision')) {
-    function psHandleAdviserDecision($conn, $requestId, $action, $actorUsername, $actorName, array $actorProgramKeys, $comment = '') {
+    function psHandleAdviserDecision($conn, $requestId, $action, $actorUsername, $actorName, array $actorProgramKeys, array $adviserBatches, $comment = '') {
         $request = psGetRequestById($conn, $requestId);
         if (!$request) {
             return ['ok' => false, 'message' => 'Shift request not found.'];
@@ -1539,8 +1626,8 @@ if (!function_exists('psHandleAdviserDecision')) {
             return ['ok' => false, 'message' => 'This request is not pending adviser review.'];
         }
 
-        if (!psProgramMatchesActorKeys((string)$request['current_program'], $actorProgramKeys)) {
-            return ['ok' => false, 'message' => 'You are not assigned to review this program.'];
+        if (!psRequestMatchesAdviserScope($request, $actorProgramKeys, $adviserBatches)) {
+            return ['ok' => false, 'message' => 'You are not assigned to review this request for the selected program and batch scope.'];
         }
 
         $action = strtolower(trim((string)$action));
@@ -1739,7 +1826,7 @@ if (!function_exists('psFetchStudentRequestHistory')) {
 }
 
 if (!function_exists('psFetchAdviserQueue')) {
-    function psFetchAdviserQueue($conn, array $programKeys) {
+    function psFetchAdviserQueue($conn, array $programKeys, array $adviserBatches) {
         $rows = [];
         $result = $conn->query("SELECT * FROM program_shift_requests WHERE status = 'pending_adviser' ORDER BY requested_at ASC, id ASC");
         if (!$result) {
@@ -1747,7 +1834,7 @@ if (!function_exists('psFetchAdviserQueue')) {
         }
 
         while ($row = $result->fetch_assoc()) {
-            if (psProgramMatchesActorKeys((string)$row['requested_program'], $programKeys)) {
+            if (psRequestMatchesAdviserScope($row, $programKeys, $adviserBatches)) {
                 $rows[] = $row;
             }
         }
@@ -1773,7 +1860,7 @@ if (!function_exists('psFetchCoordinatorQueue')) {
 }
 
 if (!function_exists('psFetchAdviserActionLog')) {
-    function psFetchAdviserActionLog($conn, $actorUsername, array $programKeys, $limit = 12) {
+    function psFetchAdviserActionLog($conn, $actorUsername, array $programKeys, array $adviserBatches, $limit = 12) {
         $rows = [];
         $actorUsername = trim((string)$actorUsername);
         if ($actorUsername === '') {
@@ -1815,7 +1902,7 @@ if (!function_exists('psFetchAdviserActionLog')) {
         $stmt->execute();
         $result = $stmt->get_result();
         while ($result && ($row = $result->fetch_assoc())) {
-            if (!psProgramMatchesActorKeys((string)($row['current_program'] ?? ''), $programKeys)) {
+            if (!psRequestMatchesAdviserScope($row, $programKeys, $adviserBatches)) {
                 continue;
             }
             $rows[] = $row;
