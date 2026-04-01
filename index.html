@@ -39,7 +39,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&display=swap" rel="stylesheet"></noscript>
   
   <!-- External CSS -->
-  <link rel="stylesheet" href="assets/css/login.css?v=2.0">
+  <link rel="stylesheet" href="assets/css/login.css?v=2.2">
   
   <script>
     // Ensure app is loaded through Apache/PHP, not directly via file://
@@ -75,17 +75,17 @@
   <main>
     <!-- Welcome Title -->
     <header class="welcome-title" role="banner">
-      <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; margin-bottom: 2px;">
-        <img src="img/cav.png" alt="Cavite State University Logo" style="height: calc(1.4em + 70px); margin-top: -20px; margin-right: 30px;">
+      <div class="brand-logo-row">
+        <img src="img/cav.png" alt="Cavite State University Logo" class="brand-logo">
       </div>
-      <div style="display: flex; flex-direction: column; align-items: flex-start; width: 150%;">
-        <span style="font-size: 4.5em; font-weight: 900; margin-bottom: 5px; margin-left: 40px; text-align: left; max-width: 150%;">ASPLAN</span>
-        <span style="font-size: 1.5em; font-weight: 900; text-align: left; max-width: 150%;">Automated Study Plan Generator</span>
+      <div class="brand-copy">
+        <span class="brand-name">ASPLAN</span>
+        <span class="brand-tagline">Automated Study Plan Generator</span>
       </div>
     </header>
     
     <!-- Login Container -->
-    <div class="container" style="margin-left: calc(7% + 90px) !important;">
+    <div class="container">
       <h2>LOGIN</h2>
       <form id="loginForm" method="POST" action="auth/unified_login_process.php" aria-label="Unified Login Form">
         <!-- CSRF token will be added dynamically by JavaScript -->

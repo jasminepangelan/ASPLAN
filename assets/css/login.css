@@ -1294,3 +1294,295 @@ input.invalid {
   }
 }
 
+/* ===================================================================
+   LANDING PAGE VISUAL REFRESH (FINAL OVERRIDES)
+   =================================================================== */
+:root {
+  --asplan-green-900: #0d3910;
+  --asplan-green-800: #14511a;
+  --asplan-green-700: #206018;
+  --asplan-leaf: #8ccf52;
+  --asplan-lime: #d9e441;
+  --asplan-mist: #f4ffe8;
+  --asplan-card: rgba(255, 255, 255, 0.92);
+  --asplan-card-border: rgba(255, 255, 255, 0.48);
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  min-height: 100dvh !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+  background:
+    url('../../pix/drone111.jpg') center center / cover no-repeat fixed,
+    linear-gradient(120deg, rgba(13, 57, 16, 0.82) 0%, rgba(20, 81, 26, 0.78) 42%, rgba(32, 96, 24, 0.74) 100%),
+    radial-gradient(circle at 16% 18%, rgba(217, 228, 65, 0.28) 0%, rgba(217, 228, 65, 0) 35%),
+    radial-gradient(circle at 85% 80%, rgba(140, 207, 82, 0.22) 0%, rgba(140, 207, 82, 0) 36%),
+    linear-gradient(120deg, rgba(10, 42, 13, 0.92) 0%, rgba(17, 70, 23, 0.88) 50%, rgba(30, 88, 26, 0.86) 100%) !important;
+  background-blend-mode: multiply, normal, screen, screen, normal;
+  overflow: hidden !important;
+  position: relative;
+}
+
+body:not(.modal-open) {
+  overflow-y: hidden !important;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::before {
+  width: min(40vw, 420px);
+  height: min(40vw, 420px);
+  top: -12vh;
+  left: -6vw;
+  background: radial-gradient(circle, rgba(217, 228, 65, 0.36) 0%, rgba(217, 228, 65, 0) 70%);
+  filter: blur(2px);
+  animation: auraFloat 12s ease-in-out infinite;
+}
+
+body::after {
+  width: min(45vw, 460px);
+  height: min(45vw, 460px);
+  right: -10vw;
+  bottom: -18vh;
+  background: radial-gradient(circle, rgba(84, 188, 88, 0.25) 0%, rgba(84, 188, 88, 0) 72%);
+  filter: blur(4px);
+  animation: auraFloat 16s ease-in-out infinite reverse;
+}
+
+main {
+  width: min(1220px, 100%) !important;
+  min-height: 100dvh !important;
+  height: 100dvh !important;
+  margin: 0 auto !important;
+  padding: clamp(26px, 5vw, 56px) clamp(16px, 4vw, 42px) !important;
+  display: grid !important;
+  grid-template-columns: minmax(320px, 1.15fr) minmax(320px, 0.85fr) !important;
+  align-items: center !important;
+  gap: clamp(24px, 6vw, 88px) !important;
+  position: relative;
+  z-index: 1;
+  overflow: hidden !important;
+}
+
+.welcome-title {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  width: auto !important;
+  max-width: 670px !important;
+  margin: 0 !important;
+  padding: clamp(20px, 2.8vw, 34px) clamp(20px, 3vw, 36px) !important;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(11, 46, 14, 0.66) 0%, rgba(23, 83, 28, 0.48) 100%);
+  border: 1px solid rgba(217, 228, 65, 0.24);
+  box-shadow: 0 28px 50px rgba(6, 24, 8, 0.42);
+  backdrop-filter: blur(3px);
+  text-shadow: none !important;
+}
+
+.welcome-title .brand-logo-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+.welcome-title .brand-logo {
+  height: clamp(86px, 11vw, 132px) !important;
+  width: auto;
+  margin: 0 !important;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.28));
+}
+
+.welcome-title .brand-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100% !important;
+}
+
+.welcome-title .brand-name {
+  margin: 0 !important;
+  font-size: clamp(2.8rem, 9.5vw, 5.6rem) !important;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 0.92;
+  color: #f7ffd5;
+}
+
+.welcome-title .brand-tagline {
+  margin: 0 !important;
+  font-size: clamp(1.02rem, 2.5vw, 1.72rem) !important;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #e7ffd6;
+}
+
+.container {
+  width: min(390px, 92vw) !important;
+  max-width: 390px !important;
+  margin: 0 !important;
+  padding: 28px 24px 20px !important;
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  border-radius: 24px;
+  border: 1px solid var(--asplan-card-border);
+  background: var(--asplan-card) !important;
+  box-shadow: 0 26px 54px rgba(5, 22, 7, 0.34);
+  backdrop-filter: blur(8px);
+}
+
+.container::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 0;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--asplan-green-800), var(--asplan-leaf), var(--asplan-lime));
+}
+
+.container h2 {
+  margin-top: 4px;
+  margin-bottom: 16px;
+  font-size: 1.15rem !important;
+  letter-spacing: 0.15em;
+  color: var(--asplan-green-800);
+}
+
+.container input[type="text"],
+.container input[type="password"] {
+  border-radius: 12px;
+  border: 1.5px solid #d8e6d8;
+  background: #fcfffb;
+  padding: 11px 12px;
+  font-size: 0.92rem;
+}
+
+.container input[type="text"]:focus,
+.container input[type="password"]:focus {
+  border-color: var(--asplan-green-700);
+  box-shadow: 0 0 0 4px rgba(32, 96, 24, 0.12);
+  outline: none;
+}
+
+.container .password-wrapper {
+  margin-bottom: 8px;
+}
+
+.container .password-toggle {
+  top: 50%;
+  right: 8px;
+}
+
+.container > form > button[type="submit"] {
+  margin-top: 2px;
+  border-radius: 12px;
+  border: none;
+  padding: 11px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: linear-gradient(135deg, var(--asplan-green-700) 0%, #2f8a2b 100%);
+  box-shadow: 0 12px 24px rgba(32, 96, 24, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.container > form > button[type="submit"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(32, 96, 24, 0.34);
+}
+
+.container .forgot-password {
+  margin-top: 10px;
+  color: #4f6950;
+}
+
+.container .forgot-password a {
+  color: var(--asplan-green-700);
+  font-weight: 600;
+}
+
+@media screen and (max-width: 1024px) {
+  main {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+    align-content: center;
+    gap: 16px !important;
+    padding-top: 14px !important;
+  }
+
+  .welcome-title {
+    max-width: 680px !important;
+    width: min(680px, 95vw) !important;
+  }
+
+  .welcome-title .brand-copy {
+    align-items: center;
+    text-align: center;
+  }
+
+  .welcome-title .brand-logo-row {
+    justify-content: center;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  body {
+    background-attachment: scroll !important;
+  }
+
+  main {
+    padding: 10px 10px 12px !important;
+    min-height: 100dvh !important;
+    height: 100dvh !important;
+  }
+
+  .welcome-title {
+    padding: 16px 14px !important;
+    border-radius: 18px;
+  }
+
+  .welcome-title .brand-name {
+    font-size: clamp(2.2rem, 12vw, 3.2rem) !important;
+  }
+
+  .welcome-title .brand-tagline {
+    font-size: clamp(0.92rem, 4.1vw, 1.1rem) !important;
+  }
+
+  .container {
+    width: min(360px, 95vw) !important;
+    padding: 22px 16px 16px !important;
+    border-radius: 18px;
+  }
+}
+
+@keyframes auraFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) scale(1.03);
+  }
+}
+
