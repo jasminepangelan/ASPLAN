@@ -215,12 +215,19 @@ function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = n
     if ($conn) {
         $stmt = $conn->prepare("UPDATE student_info SET picture = ? WHERE student_number = ?");
         if (!$stmt) {
-            return ['success' => true, 'path' => $dbPath, 'error' => 'File uploaded but database update failed: ' . $conn->error];
+            @unlink($filePath);
+            return ['success' => false, 'path' => null, 'error' => 'Database update failed: ' . $conn->error];
         }
 
         $stmt->bind_param('ss', $dbPath, $studentId);
         if (!$stmt->execute()) {
-            return ['success' => true, 'path' => $dbPath, 'error' => 'File uploaded but database update failed: ' . $stmt->error];
+            @unlink($filePath);
+            return ['success' => false, 'path' => null, 'error' => 'Database update failed: ' . $stmt->error];
+        }
+
+        if ($stmt->affected_rows < 0) {
+            @unlink($filePath);
+            return ['success' => false, 'path' => null, 'error' => 'Database update failed while saving the profile picture.'];
         }
     }
 

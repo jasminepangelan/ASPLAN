@@ -105,7 +105,7 @@ if (isset($_COOKIE['remember_me'])) {
             $conn = getDBConnection();
             
             // Get user data and remember token from database
-            $query = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name, email, contact_number AS contact_no, CONCAT_WS(', ', house_number_street, brgy, town, province) AS address, date_of_admission AS admission_date, NULL AS picture, remember_token FROM student_info WHERE student_number = ? AND remember_token IS NOT NULL AND remember_token_expiry > NOW()");
+            $query = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name, email, contact_number AS contact_no, CONCAT_WS(', ', house_number_street, brgy, town, province) AS address, date_of_admission AS admission_date, picture, remember_token FROM student_info WHERE student_number = ? AND remember_token IS NOT NULL AND remember_token_expiry > NOW()");
             $query->bind_param("s", $student_id);
             $query->execute();
             $result = $query->get_result();

@@ -48,7 +48,7 @@ class AutoLoginController extends Controller
                     DB::raw('contact_number as contact_no'),
                     DB::raw("CONCAT_WS(', ', house_number_street, brgy, town, province) as address"),
                     DB::raw('date_of_admission as admission_date'),
-                    DB::raw('NULL as picture'),
+                    'picture',
                     'remember_token',
                     'program',
                 ])
