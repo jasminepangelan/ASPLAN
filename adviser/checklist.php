@@ -515,9 +515,9 @@ if (empty($all_courses)) {
 
     /* Main content styling */
     .main-content {
-      margin-left: 250px;
+      margin-left: 0;
       min-height: calc(100vh - 46px);
-      width: calc(100vw - 250px);
+      width: 100vw;
       overflow-x: visible;
       transition: margin-left 0.3s ease, width 0.3s ease;
       padding: 20px;
@@ -537,7 +537,7 @@ if (empty($all_courses)) {
     .container {
       flex-shrink: 1;
       margin: 20px 0 40px;
-      width: min(100%, 1220px);
+      width: min(100%, calc(100vw - 430px), 1100px);
     }
 
     /* Action buttons panel */
