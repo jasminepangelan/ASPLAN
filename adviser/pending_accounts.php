@@ -1087,7 +1087,7 @@ $adviserShellPayload = htmlspecialchars(json_encode([
                 <thead>
                     <tr>
                         <th>STUDENT NUMBER</th>
-                        <th>FULL NAME</th>
+                        <th>LAST NAME, FIRST NAME, MIDDLE NAME</th>
                         <th>ACTION</th>
                     </tr>
                 </thead>
