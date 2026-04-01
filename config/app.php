@@ -40,6 +40,22 @@ if (!function_exists('resolveLegacyAppUrl')) {
     }
 }
 
+if (!function_exists('resolveUploadStorageDir')) {
+    function resolveUploadStorageDir() {
+        $configuredDir = trim((string) (getenv('APP_UPLOAD_STORAGE_DIR') ?: ''));
+        if ($configuredDir !== '') {
+            return rtrim($configuredDir, "/\\") . DIRECTORY_SEPARATOR;
+        }
+
+        $railwayVolumeMount = trim((string) (getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: ''));
+        if ($railwayVolumeMount !== '') {
+            return rtrim($railwayVolumeMount, "/\\") . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+        }
+
+        return __DIR__ . '/../uploads/';
+    }
+}
+
 // Application Settings
 define('APP_NAME', 'PEAS - Pre-Enrollment Assessment System');
 define('APP_VERSION', '1.0.0');
@@ -49,7 +65,8 @@ define('APP_URL', resolveLegacyAppUrl());
 define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
 
 // File Upload Settings
-define('UPLOAD_DIR', __DIR__ . '/../uploads/');
+define('UPLOAD_DIR', resolveUploadStorageDir());
+define('UPLOAD_PUBLIC_SUBDIR', 'uploads/');
 define('MAX_FILE_SIZE', 5242880); // 5MB in bytes
 define('ALLOWED_IMAGE_TYPES', ['jpg', 'jpeg', 'png', 'gif']);
 

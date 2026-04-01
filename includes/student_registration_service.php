@@ -9,8 +9,6 @@ require_once __DIR__ . '/program_shift_service.php';
 const SRS_MAX_PICTURE_SIZE = 5000000; // 5MB
 const SRS_ALLOWED_IMAGE_TYPES = ['jpg', 'png', 'jpeg', 'gif'];
 const SRS_DEFAULT_PICTURE = 'pix/anonymous.jpg';
-const SRS_UPLOAD_DIR = 'uploads/';
-
 /**
  * Validate all student registration fields
  */
@@ -98,7 +96,7 @@ function srsProcessPictureUpload(): array {
     }
 
     // Create upload directory if needed
-    $target_dir = __DIR__ . '/../' . SRS_UPLOAD_DIR;
+    $target_dir = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../uploads/');
     if (!is_dir($target_dir)) {
         if (!mkdir($target_dir, 0755, true)) {
             return ['success' => false, 'error' => 'Could not create upload directory.'];
@@ -107,14 +105,15 @@ function srsProcessPictureUpload(): array {
 
     // Generate unique filename to prevent overwrites
     $unique_filename = uniqid('student_', false) . '_' . bin2hex(random_bytes(4)) . '.' . $image_file_type;
-    $target_file = $target_dir . $unique_filename;
+    $target_file = rtrim($target_dir, "/\\") . DIRECTORY_SEPARATOR . $unique_filename;
 
     // Move uploaded file
     if (!move_uploaded_file($_FILES['picture']['tmp_name'], $target_file)) {
         return ['success' => false, 'error' => 'There was an error uploading your file. Please try again.'];
     }
 
-    return ['success' => true, 'path' => SRS_UPLOAD_DIR . $unique_filename];
+    $publicSubdir = defined('UPLOAD_PUBLIC_SUBDIR') ? trim((string) UPLOAD_PUBLIC_SUBDIR, "/\\") : 'uploads';
+    return ['success' => true, 'path' => $publicSubdir . '/' . $unique_filename];
 }
 
 /**

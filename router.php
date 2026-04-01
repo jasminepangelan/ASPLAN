@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/config/app.php';
+
 $requestUri = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
 $requestPath = rawurldecode($requestUri);
 
@@ -47,6 +49,17 @@ foreach ($denyPatterns as $pattern) {
 
 $documentRoot = __DIR__;
 $targetPath = $documentRoot . $normalizedPath;
+
+if (!is_file($targetPath) && str_starts_with($normalizedPath, '/uploads/')) {
+    $uploadStorageDir = defined('UPLOAD_DIR') ? (string) UPLOAD_DIR : (__DIR__ . '/uploads/');
+    $relativeUploadPath = ltrim(substr($normalizedPath, strlen('/uploads')), '/\\');
+    if ($relativeUploadPath !== '') {
+        $alternateUploadPath = rtrim($uploadStorageDir, "/\\") . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativeUploadPath);
+        if (is_file($alternateUploadPath)) {
+            $targetPath = $alternateUploadPath;
+        }
+    }
+}
 
 if (is_dir($targetPath)) {
     foreach (['index.php', 'index.html'] as $indexFile) {

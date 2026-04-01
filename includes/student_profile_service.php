@@ -194,7 +194,7 @@ function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = n
     }
 
     // Create uploads directory
-    $uploadDir = __DIR__ . '/../uploads/';
+    $uploadDir = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../uploads/');
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
             return ['success' => false, 'path' => null, 'error' => 'Failed to create uploads directory.'];
@@ -203,8 +203,9 @@ function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = n
 
     // Generate unique filename (uniqid + random bytes)
     $uniqueName = uniqid() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-    $filePath = $uploadDir . $uniqueName;
-    $dbPath = 'uploads/' . $uniqueName;
+    $filePath = rtrim($uploadDir, "/\\") . DIRECTORY_SEPARATOR . $uniqueName;
+    $publicSubdir = defined('UPLOAD_PUBLIC_SUBDIR') ? trim((string) UPLOAD_PUBLIC_SUBDIR, "/\\") : 'uploads';
+    $dbPath = $publicSubdir . '/' . $uniqueName;
 
     // Move uploaded file
     if (!move_uploaded_file($fileInput['tmp_name'], $filePath)) {
