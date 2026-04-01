@@ -3,6 +3,7 @@
 session_start();
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/vite_legacy.php';
 
 $password_display = '********';
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
@@ -96,6 +97,18 @@ if ($is_admin && $view_student_id) {
     $admission_date = htmlspecialchars($_SESSION['admission_date']);
   }
 }
+
+$studentShellPayload = htmlspecialchars(json_encode([
+  'title' => 'Profile & Account',
+  'description' => 'Manage your personal information, keep your contact details current, and update your student-facing account settings without leaving the legacy workflow.',
+  'accent' => 'emerald',
+  'pageKey' => 'profile',
+  'stats' => [
+    ['label' => 'Student ID', 'value' => (string)$student_id],
+    ['label' => 'Email', 'value' => $email !== '' ? (string)$email : 'Not set'],
+    ['label' => 'Admission', 'value' => $admission_date !== '' ? (string)$admission_date : 'Not set'],
+  ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -870,6 +883,7 @@ if ($is_admin && $view_student_id) {
       border-top: 4px solid #28a745;
     }
   </style>
+  <?= renderLegacyViteTags(['resources/js/student-shell.jsx']) ?>
 </head>
 <body>
   <!-- Title Bar -->
@@ -913,6 +927,7 @@ if ($is_admin && $view_student_id) {
 
   <!-- Main Content -->
   <div class="main-content" id="mainContent">
+  <div data-student-shell="<?= $studentShellPayload ?>"></div>
 
   <div class="container">
     <div class="title">Student Profile</div>

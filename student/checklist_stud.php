@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/academic_hold_service.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/vite_legacy.php';
 
 // Check if the student is logged in or if student_id is provided via URL parameter
 
@@ -265,6 +266,18 @@ $year_keys = array_keys($year_groups);
 $pages = array_chunk($year_keys, 2);
 $total_pages = count($pages);
 if ($total_pages === 0) $total_pages = 1;
+
+$studentShellPayload = htmlspecialchars(json_encode([
+    'title' => 'Checklist Workspace',
+    'description' => 'Review your course checklist, encode grades, and monitor evaluation remarks with the existing PHP saving flow still in place behind the page.',
+    'accent' => 'slate',
+    'pageKey' => 'checklist',
+    'stats' => [
+        ['label' => 'Program View', 'value' => (string)($selected_program_view !== '' ? $selected_program_view : 'Current')],
+        ['label' => 'Courses', 'value' => (string)count($all_courses)],
+        ['label' => 'Pages', 'value' => (string)$total_pages],
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 ?>
 
 <!DOCTYPE html>
@@ -1324,7 +1337,8 @@ if ($total_pages === 0) $total_pages = 1;
         cursor: not-allowed;
         box-shadow: none;
     }
-  </style>
+    </style>
+    <?= renderLegacyViteTags(['resources/js/student-shell.jsx']) ?>
 </head>
 <body>
   <!-- Title Bar -->
@@ -1368,6 +1382,7 @@ if ($total_pages === 0) $total_pages = 1;
 
   <!-- Main Content -->
   <div class="main-content" id="mainContent">
+    <div data-student-shell="<?= $studentShellPayload ?>"></div>
     <div class="content-wrapper">
       <div class="container">
         <div class="header">

@@ -1,0 +1,23 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-l0sNRNKZ.js",
+    "name": "app",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-BjqOcoUn.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/student-shell.jsx": {
+    "file": "assets/student-shell-BTtUPdlX.js",
+    "name": "student-shell",
+    "src": "resources/js/student-shell.jsx",
+    "isEntry": true,
+    "css": [
+      "assets/student-shell-BCnB9QLe.css"
+    ]
+  }
+}

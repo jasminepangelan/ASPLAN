@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/vite_legacy.php';
 
 if (!isset($_SESSION['student_id'])) {
     header('Location: ../index.php');
@@ -95,6 +96,18 @@ foreach ($historyAll as $item) {
     }
 }
 
+$studentShellPayload = htmlspecialchars(json_encode([
+    'title' => 'Program Shift Center',
+    'description' => 'Track your requests, review your current academic path, and submit a shift request through the existing adviser and coordinator approval flow.',
+    'accent' => 'slate',
+    'pageKey' => 'program-shift',
+    'stats' => [
+        ['label' => 'Current Program', 'value' => $currentProgram !== '' ? (string)$currentProgram : 'Not set'],
+        ['label' => 'Pending', 'value' => (string)$historyStats['pending']],
+        ['label' => 'Approved', 'value' => (string)$historyStats['approved']],
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
 closeDBConnection($conn);
 ?>
 <!DOCTYPE html>
@@ -104,6 +117,7 @@ closeDBConnection($conn);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Program Shift Request</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
+    <?= renderLegacyViteTags(['resources/js/student-shell.jsx']) ?>
     <style>
         :root {
             --brand-900: #164f14;
@@ -673,6 +687,7 @@ closeDBConnection($conn);
     </div>
 
     <div class="main-content" id="mainContent">
+    <div data-student-shell="<?= $studentShellPayload ?>"></div>
     <div class="container">
         <section class="hero">
             <div class="hero-card">
