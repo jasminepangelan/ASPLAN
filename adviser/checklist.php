@@ -523,9 +523,9 @@ if (empty($all_courses)) {
       padding: 20px;
       box-sizing: border-box;
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       align-items: flex-start;
-      gap: 15px;
+      gap: 12px;
     }
 
     .main-content.expanded {
@@ -536,6 +536,7 @@ if (empty($all_courses)) {
     /* Container wrapper */
     .container {
       flex-shrink: 1;
+      margin: 20px 0 40px;
     }
 
     /* Action buttons panel */
