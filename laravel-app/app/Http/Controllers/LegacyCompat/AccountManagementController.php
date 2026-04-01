@@ -184,6 +184,10 @@ class AccountManagementController extends Controller
                 'total' => 0,
             ];
             $programShiftRecent = [];
+            $adminAccount = [
+                'username' => $adminId,
+                'full_name' => '',
+            ];
 
             $shiftTableExists = !empty(DB::select("SHOW TABLES LIKE 'program_shift_requests'"));
             if ($shiftTableExists) {
@@ -225,6 +229,21 @@ class AccountManagementController extends Controller
                     ->all();
             }
 
+            $adminRow = DB::table('admin')
+                ->select([
+                    'username',
+                    DB::raw("CONCAT_WS(' ', first_name, middle_name, last_name) as full_name"),
+                ])
+                ->where('username', $adminId)
+                ->first();
+
+            if ($adminRow !== null) {
+                $adminAccount = [
+                    'username' => (string) ($adminRow->username ?? $adminId),
+                    'full_name' => (string) ($adminRow->full_name ?? ''),
+                ];
+            }
+
             return response()->json([
                 'success' => true,
                 'auto_approve_enabled' => $autoApproveEnabled,
@@ -249,6 +268,7 @@ class AccountManagementController extends Controller
                 'audit_logs' => $auditLogs,
                 'program_shift_stats' => $programShiftStats,
                 'program_shift_recent' => $programShiftRecent,
+                'admin_account' => $adminAccount,
             ]);
         } catch (Throwable $e) {
             return response()->json([
@@ -367,6 +387,126 @@ class AccountManagementController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Advanced admin controls updated.',
+                ]);
+            }
+
+            if ($request->has('update_admin_account') || $action === 'update_admin_account') {
+                $currentPassword = (string) $request->input('current_password', '');
+                $newUsername = trim((string) $request->input('new_username', ''));
+                $newPassword = (string) $request->input('new_password', '');
+                $confirmPassword = (string) $request->input('confirm_password', '');
+
+                if ($currentPassword === '') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Current password is required to update admin credentials.',
+                    ], 422);
+                }
+
+                if ($newUsername === '' && $newPassword === '') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Provide a new username or a new password before saving changes.',
+                    ], 422);
+                }
+
+                if ($newUsername !== '' && !preg_match('/^[A-Za-z0-9._-]{3,64}$/', $newUsername)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Username must be 3 to 64 characters and may only use letters, numbers, periods, underscores, and hyphens.',
+                    ], 422);
+                }
+
+                $minPasswordLength = (int) ($this->getSettingValue('min_password_length') ?? 8);
+                $minPasswordLength = max(6, min(64, $minPasswordLength));
+
+                if ($newPassword !== '' && strlen($newPassword) < $minPasswordLength) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'New password must be at least ' . $minPasswordLength . ' characters long.',
+                    ], 422);
+                }
+
+                if ($newPassword !== '' && $newPassword !== $confirmPassword) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'New password and confirmation password do not match.',
+                    ], 422);
+                }
+
+                $admin = DB::table('admin')
+                    ->select([
+                        'username',
+                        'password',
+                        DB::raw("CONCAT_WS(' ', first_name, middle_name, last_name) as full_name"),
+                    ])
+                    ->where('username', $adminId)
+                    ->first();
+
+                if ($admin === null) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Admin account could not be found.',
+                    ], 404);
+                }
+
+                if (!password_verify($currentPassword, (string) ($admin->password ?? ''))) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Current password is incorrect.',
+                    ], 422);
+                }
+
+                $targetUsername = $newUsername !== '' ? $newUsername : (string) ($admin->username ?? $adminId);
+                if (strcasecmp($targetUsername, (string) ($admin->username ?? '')) !== 0) {
+                    $duplicateExists = DB::table('admin')
+                        ->where('username', $targetUsername)
+                        ->where('username', '<>', (string) ($admin->username ?? ''))
+                        ->exists();
+
+                    if ($duplicateExists) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'That username is already in use by another admin account.',
+                        ], 422);
+                    }
+                }
+
+                $changedFields = [];
+                if (strcasecmp($targetUsername, (string) ($admin->username ?? '')) !== 0) {
+                    $changedFields[] = 'username';
+                }
+
+                $targetPasswordHash = (string) ($admin->password ?? '');
+                if ($newPassword !== '') {
+                    $targetPasswordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+                    $changedFields[] = 'password';
+                }
+
+                DB::table('admin')
+                    ->where('username', (string) ($admin->username ?? $adminId))
+                    ->update([
+                        'username' => $targetUsername,
+                        'password' => $targetPasswordHash,
+                    ]);
+
+                if (!empty($changedFields)) {
+                    $this->writeAdminAuditLog(
+                        $targetUsername,
+                        'account_security_update',
+                        'admin_account',
+                        'Updated admin account credentials.',
+                        ['changed_fields' => $changedFields]
+                    );
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Admin account credentials updated successfully.',
+                    'admin_account' => [
+                        'username' => $targetUsername,
+                        'full_name' => (string) ($admin->full_name ?? ''),
+                    ],
                 ]);
             }
 

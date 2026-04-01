@@ -230,4 +230,88 @@ function aasUpdateAdvancedSettings(PDO $conn, string $adminId, array $advancedSe
         );
     }
 }
+
+function aasLoadAdminAccountProfile(PDO $conn, string $adminId): array {
+    $stmt = $conn->prepare("
+        SELECT
+            username,
+            CONCAT_WS(' ', first_name, middle_name, last_name) AS full_name,
+            password
+        FROM admin
+        WHERE username = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$adminId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!is_array($row)) {
+        throw new RuntimeException('Admin account profile could not be found.');
+    }
+
+    return $row;
+}
+
+function aasResolveMinPasswordLength(PDO $conn): int {
+    $value = aasGetCurrentSettingValue($conn, 'min_password_length');
+    $minLength = is_numeric($value) ? (int)$value : 8;
+    return max(6, min(64, $minLength));
+}
+
+function aasUpdateAdminAccountCredentials(PDO $conn, string $adminId, string $currentPassword, string $newUsername, string $newPassword): array {
+    $profile = aasLoadAdminAccountProfile($conn, $adminId);
+    $existingUsername = trim((string)($profile['username'] ?? ''));
+    $storedHash = (string)($profile['password'] ?? '');
+
+    if ($existingUsername === '' || $storedHash === '') {
+        throw new RuntimeException('Admin account record is incomplete.');
+    }
+
+    if (!password_verify($currentPassword, $storedHash)) {
+        throw new RuntimeException('Current password is incorrect.');
+    }
+
+    $targetUsername = trim($newUsername) !== '' ? trim($newUsername) : $existingUsername;
+    if (!preg_match('/^[A-Za-z0-9._-]{3,64}$/', $targetUsername)) {
+        throw new RuntimeException('Username must be 3 to 64 characters and may only use letters, numbers, periods, underscores, and hyphens.');
+    }
+
+    if (strcasecmp($targetUsername, $existingUsername) !== 0) {
+        $duplicateStmt = $conn->prepare('SELECT COUNT(*) FROM admin WHERE username = ? AND username <> ?');
+        $duplicateStmt->execute([$targetUsername, $existingUsername]);
+        if ((int)$duplicateStmt->fetchColumn() > 0) {
+            throw new RuntimeException('That username is already in use by another admin account.');
+        }
+    }
+
+    $passwordChanged = trim($newPassword) !== '';
+    $targetHash = $passwordChanged ? password_hash($newPassword, PASSWORD_BCRYPT) : $storedHash;
+
+    $updateStmt = $conn->prepare('UPDATE admin SET username = ?, password = ? WHERE username = ?');
+    $updateStmt->execute([$targetUsername, $targetHash, $existingUsername]);
+
+    $changedFields = [];
+    if (strcasecmp($targetUsername, $existingUsername) !== 0) {
+        $changedFields[] = 'username';
+    }
+    if ($passwordChanged) {
+        $changedFields[] = 'password';
+    }
+
+    if (!empty($changedFields)) {
+        aasWriteAdminAuditLog(
+            $conn,
+            $targetUsername,
+            'account_security_update',
+            'admin_account',
+            'Updated admin account credentials.',
+            ['changed_fields' => $changedFields]
+        );
+    }
+
+    return [
+        'username' => $targetUsername,
+        'full_name' => (string)($profile['full_name'] ?? ''),
+        'changed_fields' => $changedFields,
+    ];
+}
 ?>

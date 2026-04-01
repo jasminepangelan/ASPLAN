@@ -165,6 +165,12 @@ $advancedSettings = [
     ],
 ];
 
+$adminAccount = [
+    'username' => (string)($_SESSION['admin_username'] ?? $_SESSION['admin_id'] ?? ''),
+    'full_name' => (string)($_SESSION['admin_full_name'] ?? ''),
+];
+$adminCredentialMinLength = 8;
+
 // Business logic functions are now in account_approval_settings_service.php
 
 // Handle settings update
@@ -279,6 +285,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Database error updating advanced settings: " . $e->getMessage());
                 $error_message = "Error updating advanced settings: " . $e->getMessage();
             }
+            }
+        }
+    }
+
+    if (isset($_POST['update_admin_account'])) {
+        $currentPassword = (string)($_POST['current_password'] ?? '');
+        $newUsername = trim((string)($_POST['new_username'] ?? ''));
+        $newPassword = (string)($_POST['new_password'] ?? '');
+        $confirmPassword = (string)($_POST['confirm_password'] ?? '');
+
+        if ($useLaravelBridge) {
+            $bridgeData = postLaravelJsonBridge(
+                $bridgeUpdateEndpoint,
+                [
+                    'bridge_authorized' => true,
+                    'admin_id' => (string)($_SESSION['admin_id'] ?? ''),
+                    'action' => 'update_admin_account',
+                    'update_admin_account' => 1,
+                    'current_password' => $currentPassword,
+                    'new_username' => $newUsername,
+                    'new_password' => $newPassword,
+                    'confirm_password' => $confirmPassword,
+                ]
+            );
+
+            if (is_array($bridgeData) && !empty($bridgeData['success'])) {
+                $updatedUsername = trim((string)($bridgeData['admin_account']['username'] ?? $newUsername ?? $_SESSION['admin_id'] ?? ''));
+                if ($updatedUsername !== '') {
+                    $_SESSION['admin_id'] = $updatedUsername;
+                    $_SESSION['admin_username'] = $updatedUsername;
+                }
+                if (isset($bridgeData['admin_account']['full_name'])) {
+                    $_SESSION['admin_full_name'] = (string)$bridgeData['admin_account']['full_name'];
+                }
+
+                header("Location: account_approval_settings.php?message=" . urlencode((string)($bridgeData['message'] ?? 'Admin account credentials updated successfully.')));
+                exit();
+            }
+
+            $error_message = (string)($bridgeData['message'] ?? 'Unable to update admin account credentials right now.');
+        } else {
+            if (!$conn instanceof PDO) {
+                $error_message = 'Unable to update admin account credentials right now.';
+            } else {
+                try {
+                    $minPasswordLength = aasResolveMinPasswordLength($conn);
+
+                    if (trim($currentPassword) === '') {
+                        throw new RuntimeException('Current password is required to update admin credentials.');
+                    }
+
+                    if ($newUsername === '' && trim($newPassword) === '') {
+                        throw new RuntimeException('Provide a new username or a new password before saving changes.');
+                    }
+
+                    if ($newPassword !== '' && strlen($newPassword) < $minPasswordLength) {
+                        throw new RuntimeException('New password must be at least ' . $minPasswordLength . ' characters long.');
+                    }
+
+                    if ($newPassword !== '' && $newPassword !== $confirmPassword) {
+                        throw new RuntimeException('New password and confirmation password do not match.');
+                    }
+
+                    $updatedAdminAccount = aasUpdateAdminAccountCredentials(
+                        $conn,
+                        (string)$_SESSION['admin_id'],
+                        $currentPassword,
+                        $newUsername,
+                        $newPassword
+                    );
+
+                    if (!empty($updatedAdminAccount['username'])) {
+                        $_SESSION['admin_id'] = (string)$updatedAdminAccount['username'];
+                        $_SESSION['admin_username'] = (string)$updatedAdminAccount['username'];
+                    }
+                    if (isset($updatedAdminAccount['full_name'])) {
+                        $_SESSION['admin_full_name'] = (string)$updatedAdminAccount['full_name'];
+                    }
+
+                    header("Location: account_approval_settings.php?message=" . urlencode('Admin account credentials updated successfully.'));
+                    exit();
+                } catch (Throwable $e) {
+                    error_log('Failed to update admin account credentials: ' . $e->getMessage());
+                    $error_message = $e->getMessage();
+                }
             }
         }
     }
@@ -452,6 +543,13 @@ try {
     ");
 } catch (PDOException $e) {
     error_log('Failed to ensure admin_audit_logs table: ' . $e->getMessage());
+}
+
+try {
+    $adminAccount = aasLoadAdminAccountProfile($conn, (string)($_SESSION['admin_id'] ?? ''));
+    $adminCredentialMinLength = aasResolveMinPasswordLength($conn);
+} catch (Throwable $e) {
+    error_log('Failed to load admin account settings profile: ' . $e->getMessage());
 }
 }
 
@@ -632,8 +730,15 @@ if ($useLaravelBridge) {
         if (isset($bridgeData['program_shift_recent']) && is_array($bridgeData['program_shift_recent'])) {
             $programShiftRecent = $bridgeData['program_shift_recent'];
         }
+        if (isset($bridgeData['admin_account']) && is_array($bridgeData['admin_account'])) {
+            $adminAccount = array_merge($adminAccount, $bridgeData['admin_account']);
+        }
     }
 }
+
+$adminCredentialMinLength = isset($policySettingValues['min_password_length'])
+    ? max(6, min(64, (int)$policySettingValues['min_password_length']))
+    : $adminCredentialMinLength;
 
 // Pagination settings
 $records_per_page = max(5, min(100, $defaultRecordsPerPage));
@@ -1023,6 +1128,16 @@ if ($conn instanceof PDO) {
             align-items: start;
         }
 
+        .settings-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .settings-column .settings-card {
+            margin-bottom: 0;
+        }
+
         .settings-card {
             background: var(--surface-1);
             border-radius: 10px;
@@ -1213,6 +1328,100 @@ if ($conn instanceof PDO) {
             opacity: 0;
             width: 0;
             height: 0;
+        }
+
+        .admin-account-shell {
+            display: grid;
+            gap: 12px;
+        }
+
+        .admin-account-summary {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .admin-account-pill {
+            background: var(--surface-2);
+            border: 1px solid var(--line-soft);
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .admin-account-pill span {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.45px;
+            text-transform: uppercase;
+            color: var(--text-700);
+            margin-bottom: 4px;
+        }
+
+        .admin-account-pill strong {
+            display: block;
+            font-size: 14px;
+            line-height: 1.35;
+            color: var(--brand-700);
+            word-break: break-word;
+        }
+
+        .admin-account-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .admin-account-field {
+            background: #fff;
+            border: 1px solid var(--line-soft);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .admin-account-field.full-span {
+            grid-column: 1 / -1;
+        }
+
+        .admin-account-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--brand-700);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.35px;
+        }
+
+        .admin-account-field input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #cfd9cf;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .admin-account-field input[readonly] {
+            background: #f7faf7;
+            color: var(--text-700);
+        }
+
+        .admin-account-field small {
+            display: block;
+            margin-top: 6px;
+            font-size: 11px;
+            color: #5f6d62;
+            line-height: 1.4;
+        }
+
+        .admin-account-note {
+            padding: 10px 12px;
+            background: #f7faf7;
+            border: 1px dashed #c9d7c9;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-700);
+            line-height: 1.45;
         }
 
         .slider {
@@ -1810,6 +2019,11 @@ if ($conn instanceof PDO) {
             .settings-layout {
                 grid-template-columns: 1fr;
             }
+
+            .admin-account-summary,
+            .admin-account-grid {
+                grid-template-columns: 1fr;
+            }
             
             .toggle-container {
                 flex-direction: column;
@@ -1988,25 +2202,118 @@ if ($conn instanceof PDO) {
                 </form>
             </div>
 
-            <div class="settings-card">
-                <form method="POST" id="settingsForm">
-                    <h2><i class="fas fa-toggle-on"></i> Account Approval Control</h2>
-                    <p class="card-note">Choose whether student registrations are automatically approved or queued for manual review.</p>
-                    <div class="toggle-container">
-                        <div class="toggle-info">
-                            <h3>Auto-Approval Mode</h3>
-                            <p>When enabled, new student accounts can login immediately after registration.</p>
-                            <div class="status-chip <?php echo $auto_approve_enabled ? 'enabled' : 'disabled'; ?>">
-                                Status: <?php echo $auto_approve_enabled ? 'AUTO-APPROVAL ENABLED' : 'AUTO-APPROVAL DISABLED'; ?>
+            <div class="settings-column">
+                <div class="settings-card">
+                    <form method="POST" id="settingsForm">
+                        <h2><i class="fas fa-toggle-on"></i> Account Approval Control</h2>
+                        <p class="card-note">Choose whether student registrations are automatically approved or queued for manual review.</p>
+                        <div class="toggle-container">
+                            <div class="toggle-info">
+                                <h3>Auto-Approval Mode</h3>
+                                <p>When enabled, new student accounts can login immediately after registration.</p>
+                                <div class="status-chip <?php echo $auto_approve_enabled ? 'enabled' : 'disabled'; ?>">
+                                    Status: <?php echo $auto_approve_enabled ? 'AUTO-APPROVAL ENABLED' : 'AUTO-APPROVAL DISABLED'; ?>
+                                </div>
+                            </div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" name="auto_approve" id="auto_approve" <?php echo $auto_approve_enabled ? 'checked' : ''; ?> <?php echo $freezeApprovalsEnabled ? 'disabled' : ''; ?>>
+                                <label for="auto_approve" class="slider"></label>
                             </div>
                         </div>
-                        <div class="toggle-switch">
-                            <input type="checkbox" name="auto_approve" id="auto_approve" <?php echo $auto_approve_enabled ? 'checked' : ''; ?> <?php echo $freezeApprovalsEnabled ? 'disabled' : ''; ?>>
-                            <label for="auto_approve" class="slider"></label>
+                        <input type="hidden" name="update_setting" value="1">
+                    </form>
+                </div>
+
+                <div class="settings-card">
+                    <form method="POST">
+                        <h2><i class="fas fa-user-shield"></i> Admin Account Security</h2>
+                        <p class="card-note">Update your admin username or password from the same settings workspace. Use your current password to confirm the change.</p>
+
+                        <div class="admin-account-shell">
+                            <div class="admin-account-summary">
+                                <div class="admin-account-pill">
+                                    <span>Current Username</span>
+                                    <strong><?php echo htmlspecialchars((string)($adminAccount['username'] ?? $_SESSION['admin_id'] ?? '')); ?></strong>
+                                </div>
+                                <div class="admin-account-pill">
+                                    <span>Account Holder</span>
+                                    <strong><?php echo htmlspecialchars((string)($adminAccount['full_name'] ?? $_SESSION['admin_full_name'] ?? 'Administrator')); ?></strong>
+                                </div>
+                            </div>
+
+                            <div class="admin-account-grid">
+                                <div class="admin-account-field full-span">
+                                    <label for="current_admin_username">Current Username</label>
+                                    <input
+                                        type="text"
+                                        id="current_admin_username"
+                                        value="<?php echo htmlspecialchars((string)($adminAccount['username'] ?? $_SESSION['admin_id'] ?? '')); ?>"
+                                        readonly
+                                    >
+                                    <small>This reflects the username currently tied to your admin session.</small>
+                                </div>
+
+                                <div class="admin-account-field full-span">
+                                    <label for="current_password">Current Password</label>
+                                    <input
+                                        type="password"
+                                        id="current_password"
+                                        name="current_password"
+                                        autocomplete="current-password"
+                                        required
+                                    >
+                                    <small>Enter your current password to authorize username or password updates.</small>
+                                </div>
+
+                                <div class="admin-account-field">
+                                    <label for="new_username">New Username</label>
+                                    <input
+                                        type="text"
+                                        id="new_username"
+                                        name="new_username"
+                                        autocomplete="username"
+                                        placeholder="Leave blank to keep current username"
+                                    >
+                                    <small>Allowed: letters, numbers, periods, underscores, and hyphens.</small>
+                                </div>
+
+                                <div class="admin-account-field">
+                                    <label for="new_password">New Password</label>
+                                    <input
+                                        type="password"
+                                        id="new_password"
+                                        name="new_password"
+                                        autocomplete="new-password"
+                                        placeholder="Leave blank to keep current password"
+                                    >
+                                    <small>Use at least <?php echo (int)$adminCredentialMinLength; ?> characters for stronger protection.</small>
+                                </div>
+
+                                <div class="admin-account-field full-span">
+                                    <label for="confirm_password">Confirm New Password</label>
+                                    <input
+                                        type="password"
+                                        id="confirm_password"
+                                        name="confirm_password"
+                                        autocomplete="new-password"
+                                        placeholder="Repeat the new password only if you are changing it"
+                                    >
+                                    <small>Only required when you enter a new password.</small>
+                                </div>
+                            </div>
+
+                            <div class="admin-account-note">
+                                Changing the username updates the current admin session too, so you can continue working without logging in again.
+                            </div>
                         </div>
-                    </div>
-                    <input type="hidden" name="update_setting" value="1">
-                </form>
+
+                        <div class="settings-actions">
+                            <button type="submit" name="update_admin_account" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
+                                <i class="fas fa-user-edit"></i> Save Admin Credentials
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
