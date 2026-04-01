@@ -523,7 +523,7 @@ if (empty($all_courses)) {
       padding: 20px;
       box-sizing: border-box;
       display: flex;
-      justify-content: flex-start;
+      justify-content: center;
       align-items: flex-start;
       gap: 12px;
     }
@@ -537,6 +537,7 @@ if (empty($all_courses)) {
     .container {
       flex-shrink: 1;
       margin: 20px 0 40px;
+      width: min(100%, 1220px);
     }
 
     /* Action buttons panel */
