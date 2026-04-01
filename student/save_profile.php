@@ -114,7 +114,10 @@ try {
     }
 
     elsInfo('Student profile updated successfully', ['student_id' => $student_id, 'fields_updated' => array_keys($validatedFields)], 'student_profile');
-    echo json_encode(['success' => true]);
+    echo json_encode([
+        'success' => true,
+        'picture_path' => $_SESSION['picture'] ?? null,
+    ]);
     closeDBConnection($conn);
 
 } catch (Exception $e) {

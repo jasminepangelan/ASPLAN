@@ -86,15 +86,38 @@ if ($is_admin && $view_student_id) {
     $address = htmlspecialchars((string) ($row['address'] ?? ''));
     $admission_date = htmlspecialchars((string) ($row['admission_date'] ?? ''));
   } else {
-    $last_name = htmlspecialchars($_SESSION['last_name']);
-    $first_name = htmlspecialchars($_SESSION['first_name']);
-    $middle_name = htmlspecialchars($_SESSION['middle_name']);
-    $email = htmlspecialchars($_SESSION['email'] ?? '');
-    $picture = !empty($_SESSION['picture']) ? htmlspecialchars($_SESSION['picture']) : '';
-    $student_id = htmlspecialchars($_SESSION['student_id']);
-    $contact_no = htmlspecialchars($_SESSION['contact_no']);
-    $address = htmlspecialchars($_SESSION['address']);
-    $admission_date = htmlspecialchars($_SESSION['admission_date']);
+    $conn = getDBConnection();
+    $currentStudentId = (string) $_SESSION['student_id'];
+    $stmt = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name, email, contact_number AS contact_no, CONCAT_WS(', ', house_number_street, brgy, town, province) AS address, date_of_admission AS admission_date, picture FROM student_info WHERE student_number = ?");
+    $stmt->bind_param("s", $currentStudentId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($dbRow = $result->fetch_assoc()) {
+      $last_name = htmlspecialchars($dbRow['last_name'] ?? '');
+      $first_name = htmlspecialchars($dbRow['first_name'] ?? '');
+      $middle_name = htmlspecialchars($dbRow['middle_name'] ?? '');
+      $email = htmlspecialchars($dbRow['email'] ?? '');
+      $picture = !empty($dbRow['picture']) ? htmlspecialchars($dbRow['picture']) : '';
+      $student_id = htmlspecialchars((string) ($dbRow['student_id'] ?? ''));
+      $contact_no = htmlspecialchars((string) ($dbRow['contact_no'] ?? ''));
+      $address = htmlspecialchars((string) ($dbRow['address'] ?? ''));
+      $admission_date = htmlspecialchars((string) ($dbRow['admission_date'] ?? ''));
+      $_SESSION['picture'] = $dbRow['picture'] ?? '';
+    } else {
+      $last_name = htmlspecialchars($_SESSION['last_name']);
+      $first_name = htmlspecialchars($_SESSION['first_name']);
+      $middle_name = htmlspecialchars($_SESSION['middle_name']);
+      $email = htmlspecialchars($_SESSION['email'] ?? '');
+      $picture = !empty($_SESSION['picture']) ? htmlspecialchars($_SESSION['picture']) : '';
+      $student_id = htmlspecialchars($_SESSION['student_id']);
+      $contact_no = htmlspecialchars($_SESSION['contact_no']);
+      $address = htmlspecialchars($_SESSION['address']);
+      $admission_date = htmlspecialchars($_SESSION['admission_date']);
+    }
+
+    $stmt->close();
+    closeDBConnection($conn);
   }
 }
 

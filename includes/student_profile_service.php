@@ -164,6 +164,33 @@ function spsUpdateSessionFromFields(array $fields): void {
 }
 
 /**
+ * Read the currently stored picture path for a student.
+ *
+ * @param mysqli $conn Database connection
+ * @param string $studentId Student ID
+ * @return string|null
+ */
+function spsGetStoredPicturePath($conn, string $studentId): ?string {
+    $stmt = $conn->prepare("SELECT picture FROM student_info WHERE student_number = ? LIMIT 1");
+    if (!$stmt) {
+        return null;
+    }
+
+    $stmt->bind_param('s', $studentId);
+    if (!$stmt->execute()) {
+        return null;
+    }
+
+    $result = $stmt->get_result();
+    if (!$result || $result->num_rows === 0) {
+        return null;
+    }
+
+    $row = $result->fetch_assoc();
+    return isset($row['picture']) ? (string) $row['picture'] : null;
+}
+
+/**
  * Update student profile picture
  * 
  * @param string $studentId Student ID
@@ -230,6 +257,14 @@ function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = n
             @unlink($filePath);
             return ['success' => false, 'path' => null, 'error' => 'Database update failed while saving the profile picture.'];
         }
+
+        $storedPath = spsGetStoredPicturePath($conn, $studentId);
+        if ($storedPath === null || trim($storedPath) === '') {
+            @unlink($filePath);
+            return ['success' => false, 'path' => null, 'error' => 'Profile picture path was not saved to the database.'];
+        }
+
+        $dbPath = $storedPath;
     }
 
     return ['success' => true, 'path' => $dbPath, 'error' => null];
