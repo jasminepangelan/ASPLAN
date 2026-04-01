@@ -109,6 +109,25 @@ $studentShellPayload = htmlspecialchars(json_encode([
     ['label' => 'Admission', 'value' => $admission_date !== '' ? (string)$admission_date : 'Not set'],
   ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+$studentProfileWorkspacePayload = htmlspecialchars(json_encode([
+  'studentName' => trim($first_name . ' ' . ($middle_name !== '' ? $middle_name . ' ' : '') . $last_name),
+  'roleLabel' => 'Student profile center',
+  'note' => 'This page keeps your current PHP save flow intact while giving you faster access to the profile actions you use most often.',
+  'chips' => [
+    ['label' => 'Student ID', 'value' => (string)$student_id],
+    ['label' => 'Email', 'value' => $email !== '' ? (string)$email : 'Not set'],
+    ['label' => 'Contact', 'value' => $contact_no !== '' ? (string)$contact_no : 'Not set'],
+    ['label' => 'Admission', 'value' => $admission_date !== '' ? (string)$admission_date : 'Not set'],
+  ],
+  'actionCards' => [
+    ['key' => 'picture', 'title' => 'Update photo', 'description' => 'Choose a new profile image using the existing upload flow.'],
+    ['key' => 'email', 'title' => 'Edit email', 'description' => 'Jump directly to the email field and enable editing.'],
+    ['key' => 'contact', 'title' => 'Edit contact number', 'description' => 'Quickly unlock your contact field for updates.'],
+    ['key' => 'password', 'title' => 'Change password', 'description' => 'Open the password panel without hunting through the form.'],
+    ['key' => 'save', 'title' => 'Save all changes', 'description' => 'Run the current PHP save handler with your latest form values.'],
+  ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -883,7 +902,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
       border-top: 4px solid #28a745;
     }
   </style>
-  <?= renderLegacyViteTags(['resources/js/student-shell.jsx']) ?>
+  <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-profile-workspace.jsx']) ?>
 </head>
 <body>
   <!-- Title Bar -->
@@ -932,14 +951,10 @@ $studentShellPayload = htmlspecialchars(json_encode([
   <div class="container">
     <div class="title">Student Profile</div>
     <div class="content-wrapper">
+      <div data-student-profile-workspace="<?= $studentProfileWorkspacePayload ?>"></div>
       <div class="subtitle">View and manage your account details</div>
-      <div class="profile-summary">
-        <div class="summary-pill"><strong>ID</strong> <?= $student_id ?></div>
-        <div class="summary-pill"><strong>Email</strong> <?= $email !== '' ? $email : 'Not set' ?></div>
-        <div class="summary-pill"><strong>Admission</strong> <?= $admission_date !== '' ? $admission_date : 'Not set' ?></div>
-      </div>
-      <div class="profile">
-        <div class="photo">
+      <div class="profile" id="student-profile-form">
+        <div class="photo" id="student-profile-photo-panel">
           <div class="photo-container">
             <img id="profile-pic" src="<?= !empty($picture) ? '../' . $picture : '../pix/anonymous.jpg' ?>" alt="Profile Photo" />
           </div>
@@ -952,7 +967,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
           </form>
           <button type="button" onclick="document.getElementById('file-input').click()">Change Picture</button>
         </div>
-      <div class="details">
+      <div class="details" id="student-profile-details-panel">
         <div class="details-heading">
           <div>
             <h3>Account Details</h3>
@@ -1071,7 +1086,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
           <div class="field-note">Keep your current residence updated for student communications.</div>
         </div>
       </div>
-      <div class="buttons">
+      <div class="buttons" id="student-profile-actions">
         <button onclick="saveChanges()">SAVE CHANGES</button>
         <button type="button" onclick="window.history.back();" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">BACK</button>
       </div>

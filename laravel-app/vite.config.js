@@ -10,6 +10,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/student-shell.jsx',
+                'resources/js/student-profile-workspace.jsx',
             ],
             refresh: true,
         }),
