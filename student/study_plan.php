@@ -297,6 +297,21 @@ $studentShellPayload = htmlspecialchars(json_encode([
         ['label' => 'Remaining', 'value' => (string)($stats['remaining_courses'] ?? 0)],
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+$studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
+    'title' => 'Study Plan Command Deck',
+    'note' => 'Use quick actions to print, review the academic-year overview, or jump back to your progress summary while the current planner output stays server-generated.',
+    'stats' => [
+        ['label' => 'Completion', 'value' => (string)($stats['completion_percentage'] ?? 0) . '%'],
+        ['label' => 'Completed', 'value' => (string)($stats['completed_courses'] ?? 0) . '/' . (string)($stats['total_courses'] ?? 0)],
+        ['label' => 'Remaining', 'value' => (string)($stats['remaining_courses'] ?? 0)],
+    ],
+    'insights' => [
+        ['title' => 'Program', 'value' => (string)$program],
+        ['title' => 'Projected completion', 'value' => $estimated_graduation ? (string)$estimated_graduation : 'In progress'],
+        ['title' => 'Semesters to go', 'value' => (string)$remaining_semesters],
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 ?>
 
 <!DOCTYPE html>
@@ -309,7 +324,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
     <meta http-equiv="Expires" content="0">
     <title>Study Plan - Student</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
-    <?= renderLegacyViteTags(['resources/js/student-shell.jsx']) ?>
+    <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-study-plan-workspace.jsx']) ?>
     <style>
         * {
             margin: 0;
@@ -1155,6 +1170,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
         <div data-student-shell="<?= $studentShellPayload ?>"></div>
+        <div data-student-study-plan-workspace="<?= $studentStudyPlanWorkspacePayload ?>"></div>
         <div class="page-header">
             <h1>📚 AI-Generated Study Plan</h1>
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>
@@ -2041,6 +2057,20 @@ $studentShellPayload = htmlspecialchars(json_encode([
         });
 
         // ===== A.Y. Course Overview Modal =====
+        document.addEventListener('student-study-plan:action', function(event) {
+            const action = event && event.detail ? event.detail.action : '';
+            if (action === 'print') {
+                window.print();
+            } else if (action === 'overview') {
+                openAYModal();
+            } else if (action === 'progress') {
+                const overview = document.querySelector('.academic-overview');
+                if (overview) {
+                    overview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        });
+
         function openAYModal() {
             const overlay = document.getElementById('ay-modal-overlay');
             overlay.classList.add('open');

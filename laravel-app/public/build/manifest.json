@@ -50,5 +50,17 @@
     "css": [
       "assets/student-shell-BCnB9QLe.css"
     ]
+  },
+  "resources/js/student-study-plan-workspace.jsx": {
+    "file": "assets/student-study-plan-workspace-CHq3G3fl.js",
+    "name": "student-study-plan-workspace",
+    "src": "resources/js/student-study-plan-workspace.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-EfEd6_uT.js"
+    ],
+    "css": [
+      "assets/student-study-plan-workspace-BUFxmYc0.css"
+    ]
   }
 }
