@@ -7,79 +7,151 @@
     <link rel="icon" type="image/png" href="../img/cav.png">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: url('../pix/drone.png');
-            background-size: cover;
-            background-position: center;
+            font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+            background:
+                url('../pix/drone111.jpg') center center / cover no-repeat fixed,
+                linear-gradient(120deg, rgba(13, 57, 16, 0.82) 0%, rgba(20, 81, 26, 0.78) 42%, rgba(32, 96, 24, 0.74) 100%),
+                radial-gradient(circle at 16% 18%, rgba(217, 228, 65, 0.28) 0%, rgba(217, 228, 65, 0) 35%),
+                radial-gradient(circle at 85% 80%, rgba(140, 207, 82, 0.22) 0%, rgba(140, 207, 82, 0) 36%),
+                linear-gradient(120deg, rgba(10, 42, 13, 0.92) 0%, rgba(17, 70, 23, 0.88) 50%, rgba(30, 88, 26, 0.86) 100%);
+            background-blend-mode: multiply, normal, screen, screen, normal;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 90vh;
-            margin: 1;
-            margin-top: -35px;
+            margin: 0;
+            padding: 24px 16px;
+            box-sizing: border-box;
         }
         .form-container {
-            background-color: rgba(255, 255, 255, 0.9);
-            padding: 30px 40px;
-            border-radius: 10px;
-            width: 100%;
-            max-width: 400px;
-            margin-top: 378px;
-            margin-left: -700px;
-            margin-bottom: 250px;
+            width: min(100%, 560px);
+            max-height: calc(100vh - 48px);
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(7px);
+            padding: 30px 28px;
+            border-radius: 20px;
             text-align: center;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 24px 45px rgba(8, 28, 10, 0.28);
+            box-sizing: border-box;
         }
         .form-container h2 {
-            margin-bottom: 20px;
-            margin-top:10px ;
+            margin: 4px 0 24px 0;
             font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            color: #14511a;
         }
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 14px;
             text-align: left;
         }
         .form-group label {
-            font-weight: bold;
+            font-weight: 600;
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
             font-size: 14px;
+            color: #1e2d1f;
         }
         .form-group input[type="text"],
         .form-group input[type="password"],
-        .form-group input[type="date"] {
+        .form-group input[type="date"],
+        .form-group select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            padding: 11px 12px;
+            border: 1px solid #c6d7c7;
+            border-radius: 10px;
             box-sizing: border-box;
+            font-size: 14px;
+            color: #132214;
+            background: #fcfffc;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .form-group input[type="file"] {
             width: 100%;
             margin-top: 5px;
+            font-size: 13px;
+            color: #2d3c2f;
+        }
+        .form-group input[type="text"]:focus,
+        .form-group input[type="password"]:focus,
+        .form-group input[type="date"]:focus,
+        .form-group select:focus {
+            border-color: #2c7a2a;
+            box-shadow: 0 0 0 4px rgba(44, 122, 42, 0.14);
+            outline: none;
         }
         .button-group {
             display: flex;
-            justify-content: space-between;
             gap: 10px;
-            margin-top: 20px;
+            margin-top: 24px;
+            flex-wrap: wrap;
         }
         .button-group button {
-            flex: 10;
-            padding: 10px 20px;
-            border: none;
-            background-color:#206018;
+            flex: 1 1 150px;
+            min-height: 44px;
+            padding: 10px 16px;
+            border: 1px solid transparent;
             color: white;
             cursor: pointer;
-            border-radius: 5px;
-            font-size: 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        .button-group .btn-primary {
+            background: linear-gradient(135deg, #206018 0%, #2f8a2b 100%);
+            box-shadow: 0 10px 18px rgba(32, 96, 24, 0.25);
+        }
+        .button-group .btn-secondary {
+            background: #eef2ef;
+            color: #1f3b22;
+            border-color: #d3ddd3;
         }
         .button-group button:hover {
-            opacity: 0.9;
+            transform: translateY(-1px);
         }
-        .btn-back { background: #888 !important; }
-        .btn-back:hover { background: #444 !important; }
-        #error-message { color: red; display: none; font-size: smaller; margin-left: 10px; }
+        .button-group .btn-primary:hover {
+            box-shadow: 0 12px 20px rgba(32, 96, 24, 0.34);
+        }
+        .button-group .btn-secondary:hover {
+            background: #e3eae4;
+        }
+        .btn-back {
+            background: #eef2ef !important;
+            color: #1f3b22 !important;
+            border-color: #d3ddd3 !important;
+        }
+        .btn-back:hover {
+            background: #e3eae4 !important;
+        }
+        #error-message {
+            color: #d93025;
+            display: none;
+            font-size: 12px;
+            margin-left: 4px;
+            margin-top: 4px;
+        }
+        @media screen and (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+            .form-container {
+                padding: 22px 16px;
+                border-radius: 16px;
+            }
+            .form-container h2 {
+                font-size: 20px;
+                margin-bottom: 18px;
+            }
+            .button-group {
+                flex-direction: column;
+            }
+            .button-group button {
+                flex-basis: auto;
+            }
+        }
         
         /* Success Message Modal Styles */
         .success-modal {
@@ -196,7 +268,7 @@
         </div>
         <div class="form-group">
             <label for="strand">Strand</label>
-            <select id="strand" name="strand" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+            <select id="strand" name="strand" required>
                 <option value="">Select a strand</option>
                 <option value="STEM">STEM (Science, Technology, Engineering, and Mathematics)</option>
                 <option value="ABM">ABM (Accountancy, Business, and Management)</option>
@@ -212,7 +284,7 @@
         </div>
         <div class="form-group">
             <label for="program">Program</label>
-            <select id="program" name="program" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+            <select id="program" name="program" required>
                 <option value="">Select a program</option>
                 <option value="Bachelor of Science in Business Administration - Major in Marketing Management">Bachelor of Science in Business Administration - Major in Marketing Management</option>
                 <option value="Bachelor of Science in Business Administration - Major in Human Resource Management">Bachelor of Science in Business Administration - Major in Human Resource Management</option>
@@ -235,9 +307,9 @@
             <input type="file" id="upload-picture" name="picture">
         </div>
         <div class="button-group">
-            <button type="button" class="btn-back" onclick="goBack()">Back</button>
-            <button type="submit">Submit</button>
-            <button type="button" onclick="window.location.href='../index.html'">Go to Login</button>
+            <button type="button" class="btn-back btn-secondary" onclick="goBack()">Back</button>
+            <button type="submit" class="btn-primary">Submit</button>
+            <button type="button" class="btn-secondary" onclick="window.location.href='../index.html'">Go to Login</button>
         </div>
     </form>
 </div>
