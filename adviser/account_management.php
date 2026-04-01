@@ -250,19 +250,25 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
     }
 
     .menu-toggle {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      font-size: 18px;
       cursor: pointer;
-      padding: 5px 10px;
       margin-right: 10px;
-      transition: background 0.3s ease;
-      border-radius: 4px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      line-height: 1;
+      padding: 0;
     }
 
     .menu-toggle:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.22);
     }
 
     /* Sidebar styling */
@@ -631,7 +637,7 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
   <!-- Title Bar -->
   <div class="title-bar">
     <div class="title-content">
-      <button type="button" class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar" style="display:inline-flex;align-items:center;justify-content:center;margin-right:8px;border:0;background:transparent;color:#fff;font-size:20px;cursor:pointer;">&#9776;</button>
+      <button type="button" class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">&#9776;</button>
       <img src="../img/cav.png" alt="CvSU Logo" onclick="toggleSidebar()">
       PRE - ENROLLMENT ASSESSMENT
     </div>

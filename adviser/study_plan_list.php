@@ -357,6 +357,26 @@ $result = $stmt->get_result();
             border-radius: 7px;
             border: 1px solid rgba(250, 204, 65, 0.3);
         }
+        .menu-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            line-height: 1;
+            padding: 0;
+        }
+        .menu-toggle:hover {
+            background: rgba(255, 255, 255, 0.22);
+        }
         .sidebar {
             width: 250px;
             height: calc(100vh - 46px);
@@ -484,7 +504,7 @@ $result = $stmt->get_result();
 <body>
     <div class="header">
         <div class="title-content">
-            <button type="button" class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar" style="display:inline-flex;align-items:center;justify-content:center;margin-right:8px;border:0;background:transparent;color:#fff;font-size:20px;cursor:pointer;">&#9776;</button>
+            <button type="button" class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">&#9776;</button>
             <img src="../img/cav.png" alt="CvSU Logo" onclick="toggleSidebar()">
             <span style="color:#d9e441;">ASPLAN</span>
         </div>
