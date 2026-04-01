@@ -329,7 +329,8 @@ $adviserShellPayload = htmlspecialchars(json_encode([
             text-align: center;
         }
 
-        .student-name-cell {
+        .student-name-cell,
+        .student-name-part {
             color: #1d2c1f;
             font-weight: 600;
         }
@@ -1087,18 +1088,21 @@ $adviserShellPayload = htmlspecialchars(json_encode([
                 <thead>
                     <tr>
                         <th>STUDENT NUMBER</th>
-                        <th>LAST NAME, FIRST NAME, MIDDLE NAME</th>
+                        <th>LAST NAME</th>
+                        <th>FIRST NAME</th>
+                        <th>MIDDLE NAME</th>
                         <th>ACTION</th>
                     </tr>
                 </thead>
                 <tbody>';
             
             foreach ($pendingAccounts as $row) {
-                $fullName = htmlspecialchars($row['last_name'] . ', ' . $row['first_name'] . (!empty($row['middle_name']) ? ' ' . $row['middle_name'] : ''));
                 echo "
                     <tr>
                         <td data-label='Student ID' class='student-number'>" . htmlspecialchars($row['student_id']) . "</td>
-                        <td data-label='Student Name' class='student-name-cell'><span class='name-pill'>{$fullName}</span></td>
+                        <td data-label='Last Name' class='student-name-part'>" . htmlspecialchars((string) $row['last_name']) . "</td>
+                        <td data-label='First Name' class='student-name-part'>" . htmlspecialchars((string) $row['first_name']) . "</td>
+                        <td data-label='Middle Name' class='student-name-part'>" . htmlspecialchars((string) ($row['middle_name'] ?? '')) . "</td>
                         <td data-label='Actions' class='action-icons'>
                             <a href='javascript:void(0);' class='approve-btn' onclick='showApproveModal(" . json_encode($row['student_id']) . ")' title='Approve Account'>
                                 <i class='fas fa-check'></i>
