@@ -263,9 +263,9 @@ if (!$bridgeLoaded) {
         .menu-group-title { padding: 6px 20px 2px 20px; color: rgba(255,255,255,.7); font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
 
         .container {
-            width: calc(100% - 315px);
+            width: min(1480px, calc(100vw - 64px));
             max-width: 1480px;
-            margin: 25px 25px 30px 270px;
+            margin: 25px auto 30px;
             background: rgba(255,255,255,.95);
             backdrop-filter: blur(10px);
             border-radius: 12px;
@@ -274,9 +274,9 @@ if (!$bridgeLoaded) {
             transition: all .3s ease;
         }
         .container.expanded {
-            width: calc(100% - 50px);
-            margin-left: 25px;
-            margin-right: 25px;
+            width: min(1480px, calc(100vw - 64px));
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .title { color: #206018; font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
