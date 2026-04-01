@@ -11,6 +11,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/student-shell.jsx',
                 'resources/js/student-profile-workspace.jsx',
+                'resources/js/student-checklist-workspace.jsx',
             ],
             refresh: true,
         }),

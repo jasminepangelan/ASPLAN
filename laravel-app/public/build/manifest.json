@@ -1,6 +1,6 @@
 {
-  "_client-Bw_8El9V.js": {
-    "file": "assets/client-Bw_8El9V.js",
+  "_client-EfEd6_uT.js": {
+    "file": "assets/client-EfEd6_uT.js",
     "name": "client"
   },
   "resources/css/app.css": {
@@ -15,25 +15,37 @@
     "src": "resources/js/app.js",
     "isEntry": true
   },
+  "resources/js/student-checklist-workspace.jsx": {
+    "file": "assets/student-checklist-workspace-CCnMZ1X_.js",
+    "name": "student-checklist-workspace",
+    "src": "resources/js/student-checklist-workspace.jsx",
+    "isEntry": true,
+    "imports": [
+      "_client-EfEd6_uT.js"
+    ],
+    "css": [
+      "assets/student-checklist-workspace-D8A7OVpa.css"
+    ]
+  },
   "resources/js/student-profile-workspace.jsx": {
-    "file": "assets/student-profile-workspace-CiAMEw4e.js",
+    "file": "assets/student-profile-workspace-u3qnHK_G.js",
     "name": "student-profile-workspace",
     "src": "resources/js/student-profile-workspace.jsx",
     "isEntry": true,
     "imports": [
-      "_client-Bw_8El9V.js"
+      "_client-EfEd6_uT.js"
     ],
     "css": [
       "assets/student-profile-workspace-BdL0Cq2V.css"
     ]
   },
   "resources/js/student-shell.jsx": {
-    "file": "assets/student-shell-B6aZ2yqi.js",
+    "file": "assets/student-shell-Dna_lRJ1.js",
     "name": "student-shell",
     "src": "resources/js/student-shell.jsx",
     "isEntry": true,
     "imports": [
-      "_client-Bw_8El9V.js"
+      "_client-EfEd6_uT.js"
     ],
     "css": [
       "assets/student-shell-BCnB9QLe.css"

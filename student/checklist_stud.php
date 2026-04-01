@@ -278,6 +278,19 @@ $studentShellPayload = htmlspecialchars(json_encode([
         ['label' => 'Pages', 'value' => (string)$total_pages],
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+$studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
+    'title' => 'Checklist Control Deck',
+    'note' => 'Navigate checklist pages, jump into archived checklist views, and use the existing print flow without disturbing the current grade-encoding and autosave logic.',
+    'programLabel' => (string)($selected_program_label !== '' ? $selected_program_label : 'Current Program'),
+    'stats' => [
+        ['label' => 'Student ID', 'value' => (string)$student_id],
+        ['label' => 'Program View', 'value' => (string)($selected_program_view !== '' ? $selected_program_view : 'Current')],
+        ['label' => 'Courses', 'value' => (string)count($all_courses)],
+    ],
+    'initialPage' => 1,
+    'totalPages' => (int)$total_pages,
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 ?>
 
 <!DOCTYPE html>
@@ -1338,7 +1351,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
         box-shadow: none;
     }
     </style>
-    <?= renderLegacyViteTags(['resources/js/student-shell.jsx']) ?>
+    <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-checklist-workspace.jsx']) ?>
 </head>
 <body>
   <!-- Title Bar -->
@@ -1383,6 +1396,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
   <!-- Main Content -->
   <div class="main-content" id="mainContent">
     <div data-student-shell="<?= $studentShellPayload ?>"></div>
+    <div data-student-checklist-workspace="<?= $studentChecklistWorkspacePayload ?>"></div>
     <div class="content-wrapper">
       <div class="container">
         <div class="header">
@@ -1697,6 +1711,19 @@ $studentShellPayload = htmlspecialchars(json_encode([
       popup.classList.toggle('open');
     }
 
+    document.addEventListener('student-checklist:action', function(event) {
+      const action = event && event.detail ? event.detail.action : '';
+      if (action === 'prev-page') {
+        changePage(-1);
+      } else if (action === 'next-page') {
+        changePage(1);
+      } else if (action === 'print') {
+        window.print();
+      } else if (action === 'archive') {
+        toggleArchiveChecklistPopup();
+      }
+    });
+
     // Pagination functionality
     let currentPage = 1;
     const totalPages = <?= $total_pages ?>;
@@ -1726,6 +1753,13 @@ $studentShellPayload = htmlspecialchars(json_encode([
         const currentPageBottomEl = document.getElementById('currentPageBottom');
         if (currentPageEl) currentPageEl.textContent = currentPage;
         if (currentPageBottomEl) currentPageBottomEl.textContent = currentPage;
+
+        document.dispatchEvent(new CustomEvent('student-checklist:page-change', {
+            detail: {
+                currentPage: currentPage,
+                totalPages: totalPages
+            }
+        }));
 
         // Update button states
         const prevBtn = document.getElementById('prevBtn');
@@ -2132,6 +2166,7 @@ window.addEventListener('afterprint', function() {
 // Attach auto-save listeners to all grade selects
 document.addEventListener('DOMContentLoaded', function() {
     applyAcademicReadOnlyState();
+    updatePageDisplay();
 
     document.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
         gradeSelect.addEventListener('change', function() {
