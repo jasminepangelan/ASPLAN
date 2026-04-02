@@ -49,6 +49,7 @@ foreach ($denyPatterns as $pattern) {
 
 $documentRoot = __DIR__;
 $targetPath = $documentRoot . $normalizedPath;
+$resolvedViaAlternateStorage = false;
 
 if (!is_file($targetPath) && str_starts_with($normalizedPath, '/uploads/')) {
     $relativeUploadPath = ltrim(substr($normalizedPath, strlen('/uploads')), '/\\');
@@ -61,6 +62,7 @@ if (!is_file($targetPath) && str_starts_with($normalizedPath, '/uploads/')) {
             $alternateUploadPath = rtrim((string) $uploadStorageDir, "/\\") . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativeUploadPath);
             if (is_file($alternateUploadPath)) {
                 $targetPath = $alternateUploadPath;
+                $resolvedViaAlternateStorage = true;
                 break;
             }
         }
@@ -94,6 +96,19 @@ if (is_file($targetPath)) {
         if ($previousCwd !== false) {
             chdir($previousCwd);
         }
+        return;
+    }
+
+    if ($resolvedViaAlternateStorage) {
+        $mimeType = function_exists('mime_content_type') ? @mime_content_type($targetPath) : false;
+        if (!$mimeType) {
+            $mimeType = 'application/octet-stream';
+        }
+
+        header('Content-Type: ' . $mimeType);
+        header('Content-Length: ' . (string) filesize($targetPath));
+        header('Cache-Control: public, max-age=86400');
+        readfile($targetPath);
         return;
     }
 
