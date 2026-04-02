@@ -51,12 +51,18 @@ $documentRoot = __DIR__;
 $targetPath = $documentRoot . $normalizedPath;
 
 if (!is_file($targetPath) && str_starts_with($normalizedPath, '/uploads/')) {
-    $uploadStorageDir = defined('UPLOAD_DIR') ? (string) UPLOAD_DIR : (__DIR__ . '/uploads/');
     $relativeUploadPath = ltrim(substr($normalizedPath, strlen('/uploads')), '/\\');
     if ($relativeUploadPath !== '') {
-        $alternateUploadPath = rtrim($uploadStorageDir, "/\\") . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativeUploadPath);
-        if (is_file($alternateUploadPath)) {
-            $targetPath = $alternateUploadPath;
+        $candidateDirs = function_exists('resolveUploadStorageCandidates')
+            ? resolveUploadStorageCandidates()
+            : [defined('UPLOAD_DIR') ? (string) UPLOAD_DIR : (__DIR__ . '/uploads/')];
+
+        foreach ($candidateDirs as $uploadStorageDir) {
+            $alternateUploadPath = rtrim((string) $uploadStorageDir, "/\\") . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativeUploadPath);
+            if (is_file($alternateUploadPath)) {
+                $targetPath = $alternateUploadPath;
+                break;
+            }
         }
     }
 }

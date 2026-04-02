@@ -74,6 +74,40 @@ if (!function_exists('resolveUploadStorageDir')) {
     }
 }
 
+if (!function_exists('resolveUploadStorageCandidates')) {
+    function resolveUploadStorageCandidates(): array {
+        $candidates = [];
+
+        $configuredDir = normalizeConfiguredPathValue(getenv('APP_UPLOAD_STORAGE_DIR') ?: '');
+        if ($configuredDir !== '') {
+            $candidates[] = rtrim($configuredDir, "/\\") . DIRECTORY_SEPARATOR;
+        }
+
+        $railwayVolumeMount = normalizeConfiguredPathValue(getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: '');
+        if ($railwayVolumeMount !== '') {
+            $candidates[] = rtrim($railwayVolumeMount, "/\\") . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+        }
+
+        $candidates[] = __DIR__ . '/../uploads/';
+        $candidates[] = '/data/uploads/';
+
+        $normalized = [];
+        foreach ($candidates as $candidate) {
+            $trimmed = trim((string) $candidate);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            $canonical = rtrim($trimmed, "/\\") . DIRECTORY_SEPARATOR;
+            if (!in_array($canonical, $normalized, true)) {
+                $normalized[] = $canonical;
+            }
+        }
+
+        return $normalized;
+    }
+}
+
 if (!function_exists('hasPersistentUploadStorage')) {
     function hasPersistentUploadStorage(): bool {
         $configuredDir = normalizeConfiguredPathValue(getenv('APP_UPLOAD_STORAGE_DIR') ?: '');
@@ -106,17 +140,21 @@ if (!function_exists('resolvePublicUploadPath')) {
         if (str_starts_with($normalized, 'uploads/')) {
             $relativeUploadPath = ltrim(substr($normalized, strlen('uploads/')), '/\\');
             if ($relativeUploadPath !== '') {
-                $uploadCandidate = rtrim(UPLOAD_DIR, "/\\") . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativeUploadPath);
-                if (is_file($uploadCandidate)) {
-                    return $normalized;
+                foreach (resolveUploadStorageCandidates() as $storageDir) {
+                    $uploadCandidate = rtrim($storageDir, "/\\") . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativeUploadPath);
+                    if (is_file($uploadCandidate)) {
+                        return $normalized;
+                    }
                 }
             }
         }
 
         if (strpos($normalized, '/') === false && strpos($normalized, '\\') === false) {
-            $bareFilenameCandidate = rtrim(UPLOAD_DIR, "/\\") . DIRECTORY_SEPARATOR . $normalized;
-            if (is_file($bareFilenameCandidate)) {
-                return 'uploads/' . $normalized;
+            foreach (resolveUploadStorageCandidates() as $storageDir) {
+                $bareFilenameCandidate = rtrim($storageDir, "/\\") . DIRECTORY_SEPARATOR . $normalized;
+                if (is_file($bareFilenameCandidate)) {
+                    return 'uploads/' . $normalized;
+                }
             }
         }
 
