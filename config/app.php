@@ -95,6 +95,13 @@ if (!function_exists('resolvePublicUploadPath')) {
             }
         }
 
+        if (strpos($normalized, '/') === false && strpos($normalized, '\\') === false) {
+            $bareFilenameCandidate = rtrim(UPLOAD_DIR, "/\\") . DIRECTORY_SEPARATOR . $normalized;
+            if (is_file($bareFilenameCandidate)) {
+                return 'uploads/' . $normalized;
+            }
+        }
+
         return ltrim($fallback, '/');
     }
 }
