@@ -6,6 +6,24 @@
 
 require_once __DIR__ . '/../includes/env_loader.php';
 
+if (!function_exists('normalizeConfiguredPathValue')) {
+    function normalizeConfiguredPathValue($value): string {
+        $path = trim((string) $value);
+        if ($path === '') {
+            return '';
+        }
+
+        if (
+            (str_starts_with($path, '"') && str_ends_with($path, '"')) ||
+            (str_starts_with($path, "'") && str_ends_with($path, "'"))
+        ) {
+            $path = trim(substr($path, 1, -1));
+        }
+
+        return $path;
+    }
+}
+
 if (!function_exists('resolveLegacyAppUrl')) {
     function resolveLegacyAppUrl() {
         $configuredUrl = trim((string) (getenv('APP_URL') ?: ''));
@@ -42,12 +60,12 @@ if (!function_exists('resolveLegacyAppUrl')) {
 
 if (!function_exists('resolveUploadStorageDir')) {
     function resolveUploadStorageDir() {
-        $configuredDir = trim((string) (getenv('APP_UPLOAD_STORAGE_DIR') ?: ''));
+        $configuredDir = normalizeConfiguredPathValue(getenv('APP_UPLOAD_STORAGE_DIR') ?: '');
         if ($configuredDir !== '') {
             return rtrim($configuredDir, "/\\") . DIRECTORY_SEPARATOR;
         }
 
-        $railwayVolumeMount = trim((string) (getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: ''));
+        $railwayVolumeMount = normalizeConfiguredPathValue(getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: '');
         if ($railwayVolumeMount !== '') {
             return rtrim($railwayVolumeMount, "/\\") . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
         }
@@ -58,12 +76,12 @@ if (!function_exists('resolveUploadStorageDir')) {
 
 if (!function_exists('hasPersistentUploadStorage')) {
     function hasPersistentUploadStorage(): bool {
-        $configuredDir = trim((string) (getenv('APP_UPLOAD_STORAGE_DIR') ?: ''));
+        $configuredDir = normalizeConfiguredPathValue(getenv('APP_UPLOAD_STORAGE_DIR') ?: '');
         if ($configuredDir !== '') {
             return true;
         }
 
-        $railwayVolumeMount = trim((string) (getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: ''));
+        $railwayVolumeMount = normalizeConfiguredPathValue(getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: '');
         return $railwayVolumeMount !== '';
     }
 }
