@@ -2170,36 +2170,98 @@ if ($conn instanceof PDO) {
         </div>
 
         <div class="settings-layout">
-            <div class="settings-card">
-                <form method="POST">
-                    <h2><i class="fas fa-shield-alt"></i> Security and Rate Limit Policies</h2>
-                    <p class="card-note">Control session expiry, password policy, and anti-bruteforce thresholds.</p>
+            <div class="settings-column">
+                <div class="settings-card">
+                    <form method="POST">
+                        <h2><i class="fas fa-shield-alt"></i> Security and Rate Limit Policies</h2>
+                        <p class="card-note">Control session expiry, password policy, and anti-bruteforce thresholds.</p>
 
-                    <div class="policy-grid">
-                        <?php foreach ($policySettings as $key => $meta): ?>
-                            <div class="policy-item">
-                                <label for="<?php echo htmlspecialchars($key); ?>">
-                                    <?php echo htmlspecialchars($meta['label']); ?>
-                                </label>
-                                <input
-                                    type="number"
-                                    id="<?php echo htmlspecialchars($key); ?>"
-                                    name="<?php echo htmlspecialchars($key); ?>"
-                                    value="<?php echo (int)$policySettingValues[$key]; ?>"
-                                    min="<?php echo (int)$meta['min']; ?>"
-                                    max="<?php echo (int)$meta['max']; ?>"
-                                >
-                                <small><?php echo htmlspecialchars($meta['help']); ?></small>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
+                        <div class="policy-grid">
+                            <?php foreach ($policySettings as $key => $meta): ?>
+                                <div class="policy-item">
+                                    <label for="<?php echo htmlspecialchars($key); ?>">
+                                        <?php echo htmlspecialchars($meta['label']); ?>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id="<?php echo htmlspecialchars($key); ?>"
+                                        name="<?php echo htmlspecialchars($key); ?>"
+                                        value="<?php echo (int)$policySettingValues[$key]; ?>"
+                                        min="<?php echo (int)$meta['min']; ?>"
+                                        max="<?php echo (int)$meta['max']; ?>"
+                                    >
+                                    <small><?php echo htmlspecialchars($meta['help']); ?></small>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
 
-                    <div class="settings-actions">
-                        <button type="submit" name="update_policy_settings" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
-                            <i class="fas fa-save"></i> Save Policy Settings
-                        </button>
-                    </div>
-                </form>
+                        <div class="settings-actions">
+                            <button type="submit" name="update_policy_settings" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
+                                <i class="fas fa-save"></i> Save Policy Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="settings-card">
+                    <form method="POST">
+                        <h2><i class="fas fa-cogs"></i> Advanced Admin Controls</h2>
+                        <p class="card-note">Configure authentication hardening, workflow safeguards, governance controls, and operational safety flags.</p>
+
+                        <div class="policy-grid">
+                            <?php foreach ($advancedSettings as $key => $meta): ?>
+                                <div class="policy-item">
+                                    <label for="<?php echo htmlspecialchars($key); ?>">
+                                        <?php echo htmlspecialchars($meta['label']); ?>
+                                    </label>
+
+                                    <?php if (($meta['type'] ?? 'text') === 'boolean'): ?>
+                                        <label class="toggle-inline" for="<?php echo htmlspecialchars($key); ?>">
+                                            <input
+                                                type="checkbox"
+                                                id="<?php echo htmlspecialchars($key); ?>"
+                                                name="<?php echo htmlspecialchars($key); ?>"
+                                                value="1"
+                                                <?php echo ((int)$advancedSettingValues[$key] === 1) ? 'checked' : ''; ?>
+                                            >
+                                            Enabled
+                                        </label>
+                                    <?php elseif (($meta['type'] ?? 'text') === 'number'): ?>
+                                        <input
+                                            type="number"
+                                            id="<?php echo htmlspecialchars($key); ?>"
+                                            name="<?php echo htmlspecialchars($key); ?>"
+                                            value="<?php echo (int)$advancedSettingValues[$key]; ?>"
+                                            min="<?php echo (int)($meta['min'] ?? 0); ?>"
+                                            max="<?php echo (int)($meta['max'] ?? 999999); ?>"
+                                        >
+                                    <?php elseif (($meta['type'] ?? 'text') === 'datetime'): ?>
+                                        <input
+                                            type="datetime-local"
+                                            id="<?php echo htmlspecialchars($key); ?>"
+                                            name="<?php echo htmlspecialchars($key); ?>"
+                                            value="<?php echo htmlspecialchars(aasToDateTimeLocalValue((string)$advancedSettingValues[$key])); ?>"
+                                        >
+                                    <?php else: ?>
+                                        <textarea
+                                            id="<?php echo htmlspecialchars($key); ?>"
+                                            name="<?php echo htmlspecialchars($key); ?>"
+                                            placeholder="<?php echo htmlspecialchars($meta['placeholder'] ?? ''); ?>"
+                                        ><?php echo htmlspecialchars($advancedSettingValues[$key]); ?></textarea>
+                                    <?php endif; ?>
+
+                                    <small><?php echo htmlspecialchars($meta['help']); ?></small>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <div class="settings-actions">
+                            <button type="submit" name="update_advanced_settings" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
+                                <i class="fas fa-save"></i> Save Advanced Controls
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <div class="settings-column">
@@ -2315,66 +2377,6 @@ if ($conn instanceof PDO) {
                     </form>
                 </div>
             </div>
-        </div>
-
-        <div class="settings-card">
-            <form method="POST">
-                <h2><i class="fas fa-cogs"></i> Advanced Admin Controls</h2>
-                <p class="card-note">Configure authentication hardening, workflow safeguards, governance controls, and operational safety flags.</p>
-
-                <div class="policy-grid">
-                    <?php foreach ($advancedSettings as $key => $meta): ?>
-                        <div class="policy-item">
-                            <label for="<?php echo htmlspecialchars($key); ?>">
-                                <?php echo htmlspecialchars($meta['label']); ?>
-                            </label>
-
-                            <?php if (($meta['type'] ?? 'text') === 'boolean'): ?>
-                                <label class="toggle-inline" for="<?php echo htmlspecialchars($key); ?>">
-                                    <input
-                                        type="checkbox"
-                                        id="<?php echo htmlspecialchars($key); ?>"
-                                        name="<?php echo htmlspecialchars($key); ?>"
-                                        value="1"
-                                        <?php echo ((int)$advancedSettingValues[$key] === 1) ? 'checked' : ''; ?>
-                                    >
-                                    Enabled
-                                </label>
-                            <?php elseif (($meta['type'] ?? 'text') === 'number'): ?>
-                                <input
-                                    type="number"
-                                    id="<?php echo htmlspecialchars($key); ?>"
-                                    name="<?php echo htmlspecialchars($key); ?>"
-                                    value="<?php echo (int)$advancedSettingValues[$key]; ?>"
-                                    min="<?php echo (int)($meta['min'] ?? 0); ?>"
-                                    max="<?php echo (int)($meta['max'] ?? 999999); ?>"
-                                >
-                            <?php elseif (($meta['type'] ?? 'text') === 'datetime'): ?>
-                                <input
-                                    type="datetime-local"
-                                    id="<?php echo htmlspecialchars($key); ?>"
-                                    name="<?php echo htmlspecialchars($key); ?>"
-                                    value="<?php echo htmlspecialchars(aasToDateTimeLocalValue((string)$advancedSettingValues[$key])); ?>"
-                                >
-                            <?php else: ?>
-                                <textarea
-                                    id="<?php echo htmlspecialchars($key); ?>"
-                                    name="<?php echo htmlspecialchars($key); ?>"
-                                    placeholder="<?php echo htmlspecialchars($meta['placeholder'] ?? ''); ?>"
-                                ><?php echo htmlspecialchars($advancedSettingValues[$key]); ?></textarea>
-                            <?php endif; ?>
-
-                            <small><?php echo htmlspecialchars($meta['help']); ?></small>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <div class="settings-actions">
-                    <button type="submit" name="update_advanced_settings" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
-                        <i class="fas fa-save"></i> Save Advanced Controls
-                    </button>
-                </div>
-            </form>
         </div>
 
         <!-- Statistics -->
