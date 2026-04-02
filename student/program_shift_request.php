@@ -75,7 +75,7 @@ $error = $_GET['error'] ?? '';
 $lastName = htmlspecialchars((string)($studentRow['last_name'] ?? ''));
 $firstName = htmlspecialchars((string)($studentRow['first_name'] ?? ''));
 $middleName = htmlspecialchars((string)($studentRow['middle_name'] ?? ''));
-$picture = !empty($_SESSION['picture']) ? '../' . htmlspecialchars((string)$_SESSION['picture']) : '../pix/anonymous.jpg';
+$picture = resolveScopedPictureSrc($_SESSION['picture'] ?? '', '../', 'pix/anonymous.jpg');
 
 $historyStats = [
     'all' => count($historyAll),

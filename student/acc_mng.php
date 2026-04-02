@@ -36,7 +36,7 @@ if ($is_admin && $view_student_id) {
       $first_name = htmlspecialchars($row['first_name']);
       $middle_name = htmlspecialchars($row['middle_name']);
       $email = htmlspecialchars($row['email'] ?? '');
-      $picture = !empty($row['picture']) ? htmlspecialchars($row['picture']) : '';
+      $picture = resolvePublicUploadPath($row['picture'] ?? '', 'pix/anonymous.jpg');
       $student_id = htmlspecialchars($row['student_id']);
       $contact_no = htmlspecialchars($row['contact_no']);
       $address = htmlspecialchars($row['address']);
@@ -51,7 +51,7 @@ if ($is_admin && $view_student_id) {
     $first_name = htmlspecialchars($row['first_name'] ?? '');
     $middle_name = htmlspecialchars($row['middle_name'] ?? '');
     $email = htmlspecialchars($row['email'] ?? '');
-    $picture = !empty($row['picture']) ? htmlspecialchars($row['picture']) : '';
+    $picture = resolvePublicUploadPath($row['picture'] ?? '', 'pix/anonymous.jpg');
     $student_id = htmlspecialchars((string) ($row['student_id'] ?? ''));
     $contact_no = htmlspecialchars((string) ($row['contact_no'] ?? ''));
     $address = htmlspecialchars((string) ($row['address'] ?? ''));
@@ -80,7 +80,7 @@ if ($is_admin && $view_student_id) {
     $first_name = htmlspecialchars($row['first_name'] ?? '');
     $middle_name = htmlspecialchars($row['middle_name'] ?? '');
     $email = htmlspecialchars($row['email'] ?? '');
-    $picture = !empty($row['picture']) ? htmlspecialchars($row['picture']) : '';
+    $picture = resolvePublicUploadPath($row['picture'] ?? '', 'pix/anonymous.jpg');
     $student_id = htmlspecialchars((string) ($row['student_id'] ?? ''));
     $contact_no = htmlspecialchars((string) ($row['contact_no'] ?? ''));
     $address = htmlspecialchars((string) ($row['address'] ?? ''));
@@ -98,7 +98,7 @@ if ($is_admin && $view_student_id) {
       $first_name = htmlspecialchars($dbRow['first_name'] ?? '');
       $middle_name = htmlspecialchars($dbRow['middle_name'] ?? '');
       $email = htmlspecialchars($dbRow['email'] ?? '');
-      $picture = !empty($dbRow['picture']) ? htmlspecialchars($dbRow['picture']) : '';
+      $picture = resolvePublicUploadPath($dbRow['picture'] ?? '', 'pix/anonymous.jpg');
       $student_id = htmlspecialchars((string) ($dbRow['student_id'] ?? ''));
       $contact_no = htmlspecialchars((string) ($dbRow['contact_no'] ?? ''));
       $address = htmlspecialchars((string) ($dbRow['address'] ?? ''));
@@ -109,7 +109,7 @@ if ($is_admin && $view_student_id) {
       $first_name = htmlspecialchars($_SESSION['first_name']);
       $middle_name = htmlspecialchars($_SESSION['middle_name']);
       $email = htmlspecialchars($_SESSION['email'] ?? '');
-      $picture = !empty($_SESSION['picture']) ? htmlspecialchars($_SESSION['picture']) : '';
+      $picture = resolvePublicUploadPath($_SESSION['picture'] ?? '', 'pix/anonymous.jpg');
       $student_id = htmlspecialchars($_SESSION['student_id']);
       $contact_no = htmlspecialchars($_SESSION['contact_no']);
       $address = htmlspecialchars($_SESSION['address']);
@@ -936,7 +936,7 @@ $studentProfileWorkspacePayload = htmlspecialchars(json_encode([
       <span style="color: #d9e441; font-weight: 800;">ASPLAN</span>
     </div>
     <div class="student-info">
-      <img src="<?= !empty($picture) ? '../' . $picture : '../pix/anonymous.jpg' ?>" alt="Profile Picture">
+      <img src="<?= htmlspecialchars(resolveScopedPictureSrc($picture, '../', 'pix/anonymous.jpg')) ?>" alt="Profile Picture">
       <span><?= $last_name . ', ' . $first_name . (!empty($middle_name) ? ' ' . $middle_name : '') ?> | Student</span>
     </div>
   </div>
@@ -979,7 +979,7 @@ $studentProfileWorkspacePayload = htmlspecialchars(json_encode([
       <div class="profile" id="student-profile-form">
         <div class="photo" id="student-profile-photo-panel">
           <div class="photo-container">
-            <img id="profile-pic" src="<?= !empty($picture) ? '../' . $picture : '../pix/anonymous.jpg' ?>" alt="Profile Photo" />
+            <img id="profile-pic" src="<?= htmlspecialchars(resolveScopedPictureSrc($picture, '../', 'pix/anonymous.jpg')) ?>" alt="Profile Photo" />
           </div>
           <div class="photo-caption">
             <strong><?= $first_name . (!empty($middle_name) ? ' ' . $middle_name : '') . ' ' . $last_name ?></strong>

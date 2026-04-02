@@ -32,7 +32,7 @@ $student_id = $_SESSION['student_id'];
 $last_name = htmlspecialchars($_SESSION['last_name'] ?? '');
 $first_name = htmlspecialchars($_SESSION['first_name'] ?? '');
 $middle_name = htmlspecialchars($_SESSION['middle_name'] ?? '');
-$picture = !empty($_SESSION['picture']) ? '../' . htmlspecialchars($_SESSION['picture']) : '../pix/anonymous.jpg';
+$picture = resolveScopedPictureSrc($_SESSION['picture'] ?? '', '../', 'pix/anonymous.jpg');
 $admission_year = null;
 $program = $_SESSION['program'] ?? '';
 $curriculum_year = $_SESSION['curriculum_year'] ?? '';
@@ -54,7 +54,7 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
         $last_name = htmlspecialchars((string) ($studentRow['last_name'] ?? ''));
         $first_name = htmlspecialchars((string) ($studentRow['first_name'] ?? ''));
         $middle_name = htmlspecialchars((string) ($studentRow['middle_name'] ?? ''));
-        $picture = !empty($studentRow['picture']) ? (string) $studentRow['picture'] : '../pix/anonymous.jpg';
+        $picture = resolveScopedPictureSrc($studentRow['picture'] ?? '', '../', 'pix/anonymous.jpg');
         $program = (string) ($studentRow['program'] ?? $program);
         $curriculum_year = (string) ($studentRow['curriculum_year'] ?? $curriculum_year);
         $admission_year = isset($studentRow['admission_year']) ? (int) $studentRow['admission_year'] : null;
@@ -73,7 +73,7 @@ if (!$bridgeLoaded) {
         $last_name = htmlspecialchars($row['last_name'] ?? '');
         $first_name = htmlspecialchars($row['first_name'] ?? '');
         $middle_name = htmlspecialchars($row['middle_name'] ?? '');
-        $picture = !empty($row['picture']) ? '../' . htmlspecialchars($row['picture']) : '../pix/anonymous.jpg';
+        $picture = resolveScopedPictureSrc($row['picture'] ?? '', '../', 'pix/anonymous.jpg');
         $program = (string)($row['program'] ?? $program);
         $curriculum_year = (string)($row['curriculum_year'] ?? $curriculum_year);
 

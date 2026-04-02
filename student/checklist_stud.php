@@ -57,7 +57,7 @@ if (isset($_GET['student_id'])) {
         $last_name = htmlspecialchars($student_data['last_name'] ?? '');
         $first_name = htmlspecialchars($student_data['first_name'] ?? '');
         $middle_name = htmlspecialchars($student_data['middle_name'] ?? '');
-        $picture = !empty($student_data['picture']) ? '../' . htmlspecialchars($student_data['picture']) : '../pix/anonymous.jpg';
+        $picture = resolveScopedPictureSrc($student_data['picture'] ?? '', '../', 'pix/anonymous.jpg');
         $contact_no = htmlspecialchars($student_data['contact_no'] ?? '');
         $address = htmlspecialchars($student_data['address'] ?? '');
         $admission_date = htmlspecialchars($student_data['admission_date'] ?? '');
@@ -69,7 +69,7 @@ if (isset($_GET['student_id'])) {
     $last_name = htmlspecialchars($_SESSION['last_name'] ?? '');
     $first_name = htmlspecialchars($_SESSION['first_name'] ?? '');
     $middle_name = htmlspecialchars($_SESSION['middle_name'] ?? '');
-    $picture = !empty($_SESSION['picture']) ? '../' . htmlspecialchars($_SESSION['picture']) : '../pix/anonymous.jpg';
+    $picture = resolveScopedPictureSrc($_SESSION['picture'] ?? '', '../', 'pix/anonymous.jpg');
     $student_id = htmlspecialchars($_SESSION['student_id'] ?? '');
     $contact_no = htmlspecialchars($_SESSION['contact_no'] ?? '');
     $address = htmlspecialchars($_SESSION['address'] ?? '');

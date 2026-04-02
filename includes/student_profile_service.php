@@ -203,6 +203,15 @@ function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = n
         return ['success' => false, 'path' => null, 'error' => 'No file uploaded'];
     }
 
+    $isRailwayRuntime = trim((string) (getenv('RAILWAY_ENVIRONMENT_ID') ?: getenv('RAILWAY_PROJECT_NAME') ?: '')) !== '';
+    if ($isRailwayRuntime && !hasPersistentUploadStorage()) {
+        return [
+            'success' => false,
+            'path' => null,
+            'error' => 'Profile picture storage is not configured for persistence yet. Please contact the administrator to attach a persistent uploads volume.',
+        ];
+    }
+
     // Validate file is image
     if (!getimagesize($fileInput['tmp_name'])) {
         return ['success' => false, 'path' => null, 'error' => 'File is not a valid image.'];

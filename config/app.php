@@ -56,6 +56,62 @@ if (!function_exists('resolveUploadStorageDir')) {
     }
 }
 
+if (!function_exists('hasPersistentUploadStorage')) {
+    function hasPersistentUploadStorage(): bool {
+        $configuredDir = trim((string) (getenv('APP_UPLOAD_STORAGE_DIR') ?: ''));
+        if ($configuredDir !== '') {
+            return true;
+        }
+
+        $railwayVolumeMount = trim((string) (getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: ''));
+        return $railwayVolumeMount !== '';
+    }
+}
+
+if (!function_exists('resolvePublicUploadPath')) {
+    function resolvePublicUploadPath($storedPath, string $fallback = 'pix/anonymous.jpg'): string {
+        $rawPath = trim((string) $storedPath);
+        if ($rawPath === '') {
+            return ltrim($fallback, '/');
+        }
+
+        if (preg_match('#^(?:https?:)?//#i', $rawPath) || str_starts_with($rawPath, 'data:')) {
+            return $rawPath;
+        }
+
+        $normalized = ltrim(str_replace('\\', '/', $rawPath), '/');
+        $documentCandidate = __DIR__ . '/../' . $normalized;
+        if (is_file($documentCandidate)) {
+            return $normalized;
+        }
+
+        if (str_starts_with($normalized, 'uploads/')) {
+            $relativeUploadPath = ltrim(substr($normalized, strlen('uploads/')), '/\\');
+            if ($relativeUploadPath !== '') {
+                $uploadCandidate = rtrim(UPLOAD_DIR, "/\\") . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativeUploadPath);
+                if (is_file($uploadCandidate)) {
+                    return $normalized;
+                }
+            }
+        }
+
+        return ltrim($fallback, '/');
+    }
+}
+
+if (!function_exists('resolveScopedPictureSrc')) {
+    function resolveScopedPictureSrc($storedPath, string $prefix = '../', string $fallback = 'pix/anonymous.jpg'): string {
+        $resolvedPath = resolvePublicUploadPath($storedPath, $fallback);
+
+        if (preg_match('#^(?:https?:)?//#i', $resolvedPath) || str_starts_with($resolvedPath, 'data:')) {
+            return $resolvedPath;
+        }
+
+        $cleanPrefix = $prefix === '' ? '' : rtrim($prefix, '/') . '/';
+        return $cleanPrefix . ltrim($resolvedPath, '/');
+    }
+}
+
 // Application Settings
 define('APP_NAME', 'PEAS - Pre-Enrollment Assessment System');
 define('APP_VERSION', '1.0.0');

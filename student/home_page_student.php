@@ -15,7 +15,7 @@ $student_id = $_SESSION['student_id'];
 $last_name = htmlspecialchars($_SESSION['last_name'] ?? '');
 $first_name = htmlspecialchars($_SESSION['first_name'] ?? '');
 $middle_name = htmlspecialchars($_SESSION['middle_name'] ?? '');
-$picture = !empty($_SESSION['picture']) ? '../' . htmlspecialchars($_SESSION['picture']) : '../pix/anonymous.jpg';
+$picture = resolveScopedPictureSrc($_SESSION['picture'] ?? '', '../', 'pix/anonymous.jpg');
 $studentShiftSummary = ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0, 'latest_status' => null, 'latest_requested_program' => null, 'latest_requested_at' => null];
 $academicHold = ['active' => false, 'title' => '', 'message' => '', 'courses' => []];
 $bridgeLoaded = false;
@@ -38,7 +38,7 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
             $middle_name = htmlspecialchars((string) ($row['middle_name'] ?? $middle_name));
             $picturePath = (string) ($row['picture'] ?? '');
             if ($picturePath !== '') {
-                $picture = strpos($picturePath, '../') === 0 ? htmlspecialchars($picturePath) : '../' . htmlspecialchars($picturePath);
+                $picture = resolveScopedPictureSrc($picturePath, '../', 'pix/anonymous.jpg');
             }
         }
         if (isset($bridgeData['summary']) && is_array($bridgeData['summary'])) {
@@ -62,7 +62,7 @@ if (!$bridgeLoaded) {
         $last_name = htmlspecialchars($row['last_name'] ?? '');
         $first_name = htmlspecialchars($row['first_name'] ?? '');
         $middle_name = htmlspecialchars($row['middle_name'] ?? '');
-        $picture = !empty($row['picture']) ? '../' . htmlspecialchars($row['picture']) : '../pix/anonymous.jpg';
+        $picture = resolveScopedPictureSrc($row['picture'] ?? '', '../', 'pix/anonymous.jpg');
     }
 
     $studentShiftSummary = psGetStudentShiftSummary($conn, $student_id);
