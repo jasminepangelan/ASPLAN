@@ -651,6 +651,91 @@ if (!empty($programOptions)) {
       border-bottom: 1px solid #e8efe7;
         padding-bottom: 10px;
     }
+
+    .curriculum-toolbar {
+      margin-bottom: 18px;
+    }
+
+    .curriculum-actions-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      max-width: 880px;
+      margin: 0 auto;
+    }
+
+    .curriculum-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbf7 100%);
+      border: 1px solid #dde8db;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--pc-shadow-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .curriculum-card-existing {
+      border-top: 4px solid rgba(32, 96, 24, 0.85);
+    }
+
+    .curriculum-card-generator {
+      border-top: 4px solid rgba(45, 143, 34, 0.78);
+    }
+
+    .curriculum-card-head {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #e8efe7;
+    }
+
+    .curriculum-card-label {
+      display: inline-flex;
+      align-self: flex-start;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(45, 143, 34, 0.1);
+      color: var(--pc-green-900);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .curriculum-card-head h2 {
+      margin: 0;
+      padding: 0;
+      border: none;
+      font-size: 20px;
+      color: #223224;
+    }
+
+    .curriculum-card-head p {
+      margin: 0;
+      color: var(--pc-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .curriculum-card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .curriculum-card .form-group {
+      min-width: 0;
+    }
+
+    .curriculum-action-note {
+      margin: 0;
+      color: var(--pc-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
     
     .form-row {
         display: flex;
@@ -932,6 +1017,9 @@ if (!empty($programOptions)) {
     @keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
 
     @media (max-width: 900px) {
+      .curriculum-actions-grid {
+        grid-template-columns: 1fr;
+      }
       .form-row {
         flex-direction: column;
         align-items: stretch;
@@ -1029,48 +1117,77 @@ if (!empty($programOptions)) {
       <h1>Curriculum Management</h1>
     </div>
 
-    <!-- Step 1: Select Program & Year -->
     <div class="curriculum-setup">
-      <h2>Create New Curriculum</h2>
-      <div class="form-row">
-        <?php if ($isAdmin): ?>
-        <div class="form-group">
-          <label for="programSelect">Program</label>
-          <select id="programSelect">
-            <?php foreach ($programOptions as $programCode => $programLabel): ?>
-              <option value="<?= htmlspecialchars($programCode) ?>" <?= $coordinatorProgramCode === $programCode ? 'selected' : '' ?>>
-                <?= htmlspecialchars($programLabel) ?> (<?= htmlspecialchars($programCode) ?>)
-              </option>
-            <?php endforeach; ?>
-          </select>
-          <div class="program-note">Select the target program before generating or editing curriculum.</div>
-        </div>
-        <?php endif; ?>
-        <div class="form-group">
-          <label>Curriculum Year</label>
-          <div class="year-select-row">
-            <select id="curriculumYearSelect">
-              <option value="">-- Select Curriculum Year --</option>
-              <?php foreach ($availableCurriculumYears as $year): ?>
-                <option value="<?= htmlspecialchars($year) ?>">
-                  <?= htmlspecialchars($year) ?><?= ((string)$year === $currentCurriculumYear) ? ' (Currently Used)' : '' ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-            <button type="button" id="viewEditBtn" class="btn btn-view" onclick="viewChecklist()" disabled>View / Edit</button>
+      <?php if ($isAdmin): ?>
+      <div class="curriculum-toolbar">
+        <div class="curriculum-card">
+          <div class="curriculum-card-head">
+            <span class="curriculum-card-label">Target Program</span>
+            <h2>Select Program</h2>
+            <p>Choose the program before viewing an existing curriculum or generating a new one.</p>
           </div>
-          <div class="existing-info" id="existingInfo"></div>
-          <?php if ($programConfigNotice !== ''): ?>
-            <div class="existing-info" style="color:#c0392b;"><?= htmlspecialchars($programConfigNotice) ?></div>
-          <?php endif; ?>
+          <div class="curriculum-card-body">
+            <div class="form-group">
+              <label for="programSelect">Program</label>
+              <select id="programSelect">
+                <?php foreach ($programOptions as $programCode => $programLabel): ?>
+                  <option value="<?= htmlspecialchars($programCode) ?>" <?= $coordinatorProgramCode === $programCode ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($programLabel) ?> (<?= htmlspecialchars($programCode) ?>)
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <div class="program-note">Select the target program before generating or editing curriculum.</div>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label>&nbsp;</label>
-          <button class="btn btn-add" type="button" onclick="startCreateChecklistFlow()" id="initBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 1-2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-            Generate Curriculum/Checklist
-          </button>
-        </div>
+      </div>
+      <?php endif; ?>
+
+      <div class="curriculum-actions-grid">
+        <section class="curriculum-card curriculum-card-existing" aria-labelledby="existingCurriculumHeading">
+          <div class="curriculum-card-head">
+            <span class="curriculum-card-label">Existing Curriculum</span>
+            <h2 id="existingCurriculumHeading">View/Edit Existing Curriculum</h2>
+            <p>Open a saved curriculum year to review, update, or remove it for the selected program.</p>
+          </div>
+          <div class="curriculum-card-body">
+            <div class="form-group">
+              <label for="curriculumYearSelect">Curriculum Year</label>
+              <div class="year-select-row">
+                <select id="curriculumYearSelect">
+                  <option value="">-- Select Curriculum Year --</option>
+                  <?php foreach ($availableCurriculumYears as $year): ?>
+                    <option value="<?= htmlspecialchars($year) ?>">
+                      <?= htmlspecialchars($year) ?><?= ((string)$year === $currentCurriculumYear) ? ' (Currently Used)' : '' ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+                <button type="button" id="viewEditBtn" class="btn btn-view" onclick="viewChecklist()" disabled>View / Edit</button>
+              </div>
+              <div class="existing-info" id="existingInfo"></div>
+              <?php if ($programConfigNotice !== ''): ?>
+                <div class="existing-info" style="color:#c0392b;"><?= htmlspecialchars($programConfigNotice) ?></div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </section>
+
+        <section class="curriculum-card curriculum-card-generator" aria-labelledby="newCurriculumHeading">
+          <div class="curriculum-card-head">
+            <span class="curriculum-card-label">New Curriculum</span>
+            <h2 id="newCurriculumHeading">Generate New Curriculum</h2>
+            <p>Create a fresh checklist workspace, then set the curriculum year before saving it.</p>
+          </div>
+          <div class="curriculum-card-body">
+            <p class="curriculum-action-note">Use this when you want to build a new curriculum instead of editing an existing saved year.</p>
+            <div class="form-group">
+              <button class="btn btn-add" type="button" onclick="startCreateChecklistFlow()" id="initBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 1-2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                Generate Curriculum/Checklist
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
 
