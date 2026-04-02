@@ -1900,6 +1900,9 @@ if ($conn instanceof PDO) {
             overflow: auto;
             border: 1px solid var(--line-soft);
             border-radius: 8px;
+            max-height: 420px;
+            overscroll-behavior: contain;
+            background: #fff;
         }
 
         .audit-table {
