@@ -263,9 +263,12 @@ if (!$bridgeLoaded) {
         .menu-group-title { padding: 6px 20px 2px 20px; color: rgba(255,255,255,.7); font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
 
         .container {
-            width: min(1480px, calc(100vw - 64px));
+            width: min(1480px, calc(100vw - 298px));
             max-width: 1480px;
-            margin: 25px auto 30px;
+            margin-top: 25px;
+            margin-right: 24px;
+            margin-bottom: 30px;
+            margin-left: calc(274px + max(0px, ((100vw - 298px) - min(1480px, calc(100vw - 298px))) / 2));
             background: rgba(255,255,255,.95);
             backdrop-filter: blur(10px);
             border-radius: 12px;
@@ -274,9 +277,9 @@ if (!$bridgeLoaded) {
             transition: all .3s ease;
         }
         .container.expanded {
-            width: min(1480px, calc(100vw - 64px));
-            margin-left: auto;
-            margin-right: auto;
+            width: min(1480px, calc(100vw - 48px));
+            margin-left: calc(24px + max(0px, ((100vw - 48px) - min(1480px, calc(100vw - 48px))) / 2));
+            margin-right: 24px;
         }
 
         .title { color: #206018; font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
