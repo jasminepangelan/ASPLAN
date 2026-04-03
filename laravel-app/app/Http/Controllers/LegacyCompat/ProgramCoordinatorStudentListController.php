@@ -20,7 +20,7 @@ class ProgramCoordinatorStudentListController extends Controller
 
             $username = trim((string) $request->input('username', ''));
             $search = trim((string) $request->input('search', ''));
-            $selectedBatch = trim((string) $request->input('batch', ''));
+            $selectedBatch = $this->normalizeBatchPrefix((string) $request->input('batch', ''));
             $recordsPerPage = max(1, (int) $request->input('records_per_page', 10));
             $page = max(1, (int) $request->input('page', 1));
 
@@ -83,7 +83,7 @@ class ProgramCoordinatorStudentListController extends Controller
                 continue;
             }
 
-            $batch = substr((string) ($row->student_number ?? ''), 0, 4);
+            $batch = $this->normalizeBatchPrefix((string) ($row->student_number ?? ''));
             if ($batch !== '') {
                 $batches[$batch] = true;
             }
@@ -110,7 +110,7 @@ class ProgramCoordinatorStudentListController extends Controller
                 continue;
             }
 
-            if ($selectedBatch !== '' && substr((string) ($row->student_number ?? ''), 0, 4) !== $selectedBatch) {
+            if ($selectedBatch !== '' && $this->normalizeBatchPrefix((string) ($row->student_number ?? '')) !== $selectedBatch) {
                 continue;
             }
 
@@ -256,6 +256,20 @@ class ProgramCoordinatorStudentListController extends Controller
         }
 
         return $result;
+    }
+
+    private function normalizeBatchPrefix(string $batchRaw): string
+    {
+        $batchRaw = trim($batchRaw);
+        if ($batchRaw === '') {
+            return '';
+        }
+
+        if (preg_match('/(\d{4})/', $batchRaw, $match)) {
+            return (string) $match[1];
+        }
+
+        return '';
     }
 
     private function isBridgeAuthorized(Request $request): bool

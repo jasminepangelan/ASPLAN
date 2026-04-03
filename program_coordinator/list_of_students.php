@@ -95,6 +95,19 @@ function parseProgramList($programRaw) {
     return array_values(array_unique($normalized, SORT_STRING));
 }
 
+function normalizeBatchPrefix($batchRaw) {
+    $batchRaw = trim((string)$batchRaw);
+    if ($batchRaw === '') {
+        return '';
+    }
+
+    if (preg_match('/(\d{4})/', $batchRaw, $match)) {
+        return (string)$match[1];
+    }
+
+    return '';
+}
+
 function resolveCoordinatorProgramKeys(mysqli $conn, $username) {
     $username = trim((string)$username);
     if ($username === '') {
@@ -148,7 +161,7 @@ function resolveCoordinatorProgramKeys(mysqli $conn, $username) {
     return [];
 }
 
-$selectedBatch = isset($_GET['batch']) ? trim((string)$_GET['batch']) : '';
+$selectedBatch = isset($_GET['batch']) ? normalizeBatchPrefix($_GET['batch']) : '';
 $search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 $recordsPerPage = 10;
 $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -207,7 +220,10 @@ if (!$bridgeLoaded) {
             $resBatches = $stmtBatches->get_result();
             while ($row = $resBatches->fetch_assoc()) {
                 if (in_array(normalizeProgramKey((string)($row['program'] ?? '')), $coordinatorPrograms, true)) {
-                    $availableBatches[] = (string)$row['batch'];
+                    $normalizedBatch = normalizeBatchPrefix($row['batch'] ?? '');
+                    if ($normalizedBatch !== '') {
+                        $availableBatches[] = $normalizedBatch;
+                    }
                 }
             }
             $stmtBatches->close();
@@ -640,7 +656,7 @@ if (!$bridgeLoaded) {
                 <select id="batchFilter" name="batch" <?php echo empty($coordinatorPrograms) ? 'disabled' : ''; ?>>
                     <option value="">-- Select Batch --</option>
                     <?php foreach ($availableBatches as $batch): ?>
-                        <option value="<?php echo htmlspecialchars($batch); ?>" <?php echo $selectedBatch === $batch ? 'selected' : ''; ?>>
+                        <option value="<?php echo htmlspecialchars($batch); ?>" <?php echo normalizeBatchPrefix($selectedBatch) === normalizeBatchPrefix($batch) ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($batch); ?>
                         </option>
                     <?php endforeach; ?>
@@ -737,7 +753,19 @@ if (!$bridgeLoaded) {
             const batchFilter = document.getElementById('batchFilter');
             if (batchFilter) {
                 batchFilter.addEventListener('change', function() {
-                    document.getElementById('filterForm').submit();
+                    const searchInput = document.getElementById('searchInput');
+                    const params = new URLSearchParams();
+                    const searchValue = searchInput ? searchInput.value.trim() : '';
+                    const batchValue = batchFilter.value.trim();
+
+                    if (searchValue !== '') {
+                        params.set('search', searchValue);
+                    }
+                    if (batchValue !== '') {
+                        params.set('batch', batchValue);
+                    }
+
+                    window.location.search = params.toString();
                 });
             }
 
