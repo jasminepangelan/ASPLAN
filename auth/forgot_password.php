@@ -19,15 +19,6 @@ $conn = getDBConnection();
 
 $useLaravelAuthBridge = getenv('USE_LARAVEL_AUTH_BRIDGE') === '1';
 
-if (!$useLaravelAuthBridge) {
-    closeDBConnection($conn);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Authentication bridge is disabled. Set USE_LARAVEL_AUTH_BRIDGE=1.',
-    ]);
-    exit;
-}
-
 // Check rate limit (settings-backed defaults if configured)
 $rateLimit = checkRateLimit('forgot_password');
 if (!$rateLimit['allowed']) {
@@ -52,29 +43,24 @@ if (!preg_match('/^[0-9]{1,20}$/', $student_id)) {
     exit;
 }
 
-$bridgeData = postLaravelJsonBridge('/api/forgot-password', [
-    'student_id' => $student_id,
-], 12);
+if ($useLaravelAuthBridge) {
+    $bridgeData = postLaravelJsonBridge('/api/forgot-password', [
+        'student_id' => $student_id,
+    ], 12);
 
-if (is_array($bridgeData) && isset($bridgeData['success'])) {
-    closeDBConnection($conn);
-    if (!empty($bridgeData['success'])) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode([
-            'success' => false,
-            'message' => $bridgeData['message'] ?? 'Failed to send code. Please try again.',
-        ]);
+    if (is_array($bridgeData) && isset($bridgeData['success'])) {
+        closeDBConnection($conn);
+        if (!empty($bridgeData['success'])) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => $bridgeData['message'] ?? 'Failed to send code. Please try again.',
+            ]);
+        }
+        exit;
     }
-    exit;
 }
-
-closeDBConnection($conn);
-echo json_encode([
-    'success' => false,
-    'message' => 'Authentication service is temporarily unavailable. Please try again shortly.',
-]);
-exit;
 
 // Check if student exists and get their email
 $stmt = $conn->prepare("SELECT email FROM student_info WHERE student_number = ?");
@@ -89,7 +75,7 @@ if ($result->num_rows === 0) {
 
 $row = $result->fetch_assoc();
 $email = $row['email'];
-// Only allow Gmail addresses for security
+// Only allow CvSU email addresses for security
 if (!preg_match('/^([a-zA-Z0-9_.+-]+)@cvsu.edu\.ph$/', $email)) {
     echo json_encode(['success' => false, 'message' => 'Only CvSU accounts are allowed.']);
     exit;
