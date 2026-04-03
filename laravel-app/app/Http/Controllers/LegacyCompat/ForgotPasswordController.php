@@ -4,8 +4,10 @@ namespace App\Http\Controllers\LegacyCompat;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class ForgotPasswordController extends Controller
@@ -74,20 +76,56 @@ class ForgotPasswordController extends Controller
     private function sendResetCodeEmail(string $email, string $code): void
     {
         $emailConfigPath = $this->resolveLegacyEmailConfigPath();
-        require_once $emailConfigPath;
+        if ($emailConfigPath !== null) {
+            require_once $emailConfigPath;
 
-        $mail = getMailer();
-        $mail->addAddress($email);
-        $mail->isHTML(false);
-        $mail->Subject = 'Your Password Reset Code';
-        $mail->Body = "Your password reset code is: {$code}\nThis code will expire in 10 minutes.";
+            if (function_exists('getMailer')) {
+                $mail = getMailer();
+                $mail->addAddress($email);
+                $mail->isHTML(false);
+                $mail->Subject = 'Your Password Reset Code';
+                $mail->Body = "Your password reset code is: {$code}\nThis code will expire in 10 minutes.";
 
-        if (!$mail->send()) {
-            throw new \RuntimeException('Mailer Error: ' . $mail->ErrorInfo);
+                if (!$mail->send()) {
+                    throw new \RuntimeException('Mailer Error: ' . $mail->ErrorInfo);
+                }
+
+                return;
+            }
         }
+
+        $host = trim((string) (env('MAIL_HOST') ?: env('SMTP_HOST') ?: ''));
+        $port = (int) (env('MAIL_PORT') ?: env('SMTP_PORT') ?: 587);
+        $username = trim((string) (env('MAIL_USERNAME') ?: env('SMTP_USERNAME') ?: ''));
+        $password = (string) (env('MAIL_PASSWORD') ?: env('SMTP_PASSWORD') ?: '');
+        $encryption = trim((string) (env('MAIL_ENCRYPTION') ?: env('SMTP_SECURE') ?: 'tls'));
+        $fromAddress = trim((string) (env('MAIL_FROM_ADDRESS') ?: env('SMTP_FROM_EMAIL') ?: $username));
+        $fromName = trim((string) (env('MAIL_FROM_NAME') ?: env('SMTP_FROM_NAME') ?: 'ASPLAN'));
+
+        if ($host === '' || $username === '' || $password === '' || $fromAddress === '') {
+            throw new \RuntimeException('Email service is not configured.');
+        }
+
+        Config::set('mail.default', 'smtp');
+        Config::set('mail.mailers.smtp.transport', 'smtp');
+        Config::set('mail.mailers.smtp.host', $host);
+        Config::set('mail.mailers.smtp.port', $port);
+        Config::set('mail.mailers.smtp.username', $username);
+        Config::set('mail.mailers.smtp.password', $password);
+        Config::set('mail.mailers.smtp.encryption', $encryption !== '' ? $encryption : null);
+        Config::set('mail.from.address', $fromAddress);
+        Config::set('mail.from.name', $fromName);
+
+        Mail::raw(
+            "Your password reset code is: {$code}\nThis code will expire in 10 minutes.",
+            static function ($message) use ($email): void {
+                $message->to($email)
+                    ->subject('Your Password Reset Code');
+            }
+        );
     }
 
-    private function resolveLegacyEmailConfigPath(): string
+    private function resolveLegacyEmailConfigPath(): ?string
     {
         $candidates = [
             dirname(__DIR__, 5) . '/config/email.php',
@@ -102,6 +140,6 @@ class ForgotPasswordController extends Controller
             }
         }
 
-        throw new \RuntimeException('Email configuration file is missing.');
+        return null;
     }
 }
