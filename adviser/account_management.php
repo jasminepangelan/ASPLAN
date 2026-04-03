@@ -519,38 +519,6 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
       line-height: 1.6;
     }
 
-    .meta-list {
-      width: 100%;
-      display: grid;
-      gap: 12px;
-      margin-top: 6px;
-    }
-
-    .meta-item {
-      background: rgba(255, 255, 255, 0.74);
-      border: 1px solid rgba(32, 96, 24, 0.1);
-      border-radius: 16px;
-      padding: 14px 15px;
-      text-align: left;
-    }
-
-    .meta-item span {
-      display: block;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #5b7f57;
-      margin-bottom: 6px;
-      font-weight: 700;
-    }
-
-    .meta-item strong {
-      color: #1f3d1b;
-      font-size: 15px;
-      line-height: 1.45;
-      word-break: break-word;
-    }
-
     .form-card {
       background: #fff;
       border-radius: 22px;
@@ -845,20 +813,6 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
                 </div>
                 <h2><?= htmlspecialchars($student_display_name !== '' ? $student_display_name : 'Student Profile') ?></h2>
                 <p class="profile-role">Keep the student record current so checklist, study plan, and advising details stay aligned.</p>
-                <div class="meta-list">
-                  <div class="meta-item">
-                    <span>Student Number</span>
-                    <strong><?= $student_id ?></strong>
-                  </div>
-                  <div class="meta-item">
-                    <span>Program</span>
-                    <strong><?= $program !== '' ? $program : 'Not assigned' ?></strong>
-                  </div>
-                  <div class="meta-item">
-                    <span>Email Address</span>
-                    <strong><?= $email !== '' ? $email : 'Not provided' ?></strong>
-                  </div>
-                </div>
                 <div class="photo-upload">
                   <label for="picture">Change Photo</label>
                   <input type="file" id="picture" name="picture" accept="image/*" onchange="previewImage(this)">
