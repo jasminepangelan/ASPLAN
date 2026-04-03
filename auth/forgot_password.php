@@ -52,47 +52,21 @@ if (!preg_match('/^[0-9]{1,20}$/', $student_id)) {
     exit;
 }
 
-    $bridgeUrl = laravelBridgeUrl('/api/forgot-password');
-$payloadJson = json_encode(['student_id' => $student_id]);
+$bridgeData = postLaravelJsonBridge('/api/forgot-password', [
+    'student_id' => $student_id,
+], 12);
 
-$bridgeResponse = false;
-if (function_exists('curl_init')) {
-    $ch = curl_init($bridgeUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $payloadJson,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 12,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-    ]);
-    $bridgeResponse = curl_exec($ch);
-    curl_close($ch);
-} else {
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => "Content-Type: application/json\r\n",
-            'content' => $payloadJson,
-            'timeout' => 12,
-        ],
-    ]);
-    $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
-}
-
-if ($bridgeResponse !== false) {
-    $bridgeData = json_decode($bridgeResponse, true);
-    if (is_array($bridgeData) && isset($bridgeData['success'])) {
-        closeDBConnection($conn);
-        if (!empty($bridgeData['success'])) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode([
-                'success' => false,
-                'message' => $bridgeData['message'] ?? 'Failed to send code. Please try again.',
-            ]);
-        }
-        exit;
+if (is_array($bridgeData) && isset($bridgeData['success'])) {
+    closeDBConnection($conn);
+    if (!empty($bridgeData['success'])) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => $bridgeData['message'] ?? 'Failed to send code. Please try again.',
+        ]);
     }
+    exit;
 }
 
 closeDBConnection($conn);
