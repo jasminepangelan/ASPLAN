@@ -336,7 +336,6 @@ $result = $stmt->get_result();
             color: #fff;
             padding: 8px 15px;
             font-size: 18px;
-            font-weight: 600;
             position: fixed;
             top: 0;
             left: 0;
@@ -351,7 +350,7 @@ $result = $stmt->get_result();
         .header img { width: 32px; height: 32px; margin-right: 10px; cursor: pointer; }
         .adviser-name {
             font-size: 17px;
-            font-weight: 800;
+            font-weight: 600;
             color: #facc41;
             background: rgba(250, 204, 65, 0.15);
             padding: 6px 10px;
