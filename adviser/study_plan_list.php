@@ -350,7 +350,7 @@ $result = $stmt->get_result();
         .title-content { display: flex; align-items: center; }
         .header img { width: 32px; height: 32px; margin-right: 10px; cursor: pointer; }
         .adviser-name {
-            font-size: 14px;
+            font-size: 16px;
             color: #facc41;
             background: rgba(250, 204, 65, 0.15);
             padding: 6px 10px;
