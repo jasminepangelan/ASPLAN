@@ -43,6 +43,26 @@ if (!preg_match('/^[0-9]{1,20}$/', $student_id)) {
     exit;
 }
 
+if (!function_exists('formatForgotPasswordMailerError')) {
+    function formatForgotPasswordMailerError(Throwable $e, $mail = null): string
+    {
+        $raw = trim((string) $e->getMessage());
+        if ($raw === '' && is_object($mail) && isset($mail->ErrorInfo)) {
+            $raw = trim((string) $mail->ErrorInfo);
+        }
+
+        if ($raw === '') {
+            return 'Unable to send the verification email right now. Please try again later.';
+        }
+
+        if (stripos($raw, 'Could not connect to SMTP host') !== false || stripos($raw, 'Network is unreachable') !== false) {
+            return 'Unable to connect to the configured SMTP server. Please check the mail host, port, and outbound network access.';
+        }
+
+        return preg_replace('/^(Mailer Error:\s*)+/i', 'Mailer Error: ', $raw) ?: 'Unable to send the verification email right now.';
+    }
+}
+
 if ($useLaravelAuthBridge) {
     $bridgeData = postLaravelJsonBridge('/api/forgot-password', [
         'student_id' => $student_id,
@@ -115,7 +135,7 @@ try {
     exit;
 } catch (Exception $e) {
     closeDBConnection($conn);
-    echo json_encode(['success' => false, 'message' => 'Mailer Error: ' . $mail->ErrorInfo]);
+    echo json_encode(['success' => false, 'message' => formatForgotPasswordMailerError($e, $mail)]);
     exit;
 }
 

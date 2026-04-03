@@ -68,7 +68,7 @@ class ForgotPasswordController extends Controller
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->formatMailerErrorMessage($e->getMessage()),
             ]);
         }
     }
@@ -87,7 +87,7 @@ class ForgotPasswordController extends Controller
                 $mail->Body = "Your password reset code is: {$code}\nThis code will expire in 10 minutes.";
 
                 if (!$mail->send()) {
-                    throw new \RuntimeException('Mailer Error: ' . $mail->ErrorInfo);
+                    throw new \RuntimeException($this->formatMailerErrorMessage((string) $mail->ErrorInfo));
                 }
 
                 return;
@@ -123,6 +123,20 @@ class ForgotPasswordController extends Controller
                     ->subject('Your Password Reset Code');
             }
         );
+    }
+
+    private function formatMailerErrorMessage(string $message): string
+    {
+        $message = trim($message);
+        if ($message === '') {
+            return 'Unable to send the verification email right now. Please try again later.';
+        }
+
+        if (stripos($message, 'Could not connect to SMTP host') !== false || stripos($message, 'Network is unreachable') !== false) {
+            return 'Unable to connect to the configured SMTP server. Please check the mail host, port, and outbound network access.';
+        }
+
+        return preg_replace('/^(Mailer Error:\s*)+/i', 'Mailer Error: ', $message) ?: 'Unable to send the verification email right now.';
     }
 
     private function resolveLegacyEmailConfigPath(): ?string
