@@ -63,22 +63,55 @@ if (!function_exists('formatForgotPasswordMailerError')) {
     }
 }
 
+if (!function_exists('shouldFallbackForgotPasswordToLocalMailer')) {
+    function shouldFallbackForgotPasswordToLocalMailer(string $message): bool
+    {
+        $message = strtolower(trim($message));
+        if ($message === '') {
+            return true;
+        }
+
+        $transportMarkers = [
+            'temporarily unavailable',
+            'email service is not configured',
+            'unable to connect to the configured smtp server',
+            'could not connect to smtp host',
+            'network is unreachable',
+            'mailer error:',
+            'failed to send code',
+        ];
+
+        foreach ($transportMarkers as $marker) {
+            if (strpos($message, $marker) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 if ($useLaravelAuthBridge) {
     $bridgeData = postLaravelJsonBridge('/api/forgot-password', [
         'student_id' => $student_id,
     ], 12);
 
     if (is_array($bridgeData) && isset($bridgeData['success'])) {
-        closeDBConnection($conn);
         if (!empty($bridgeData['success'])) {
+            closeDBConnection($conn);
             echo json_encode(['success' => true]);
-        } else {
+            exit;
+        }
+
+        $bridgeMessage = (string) ($bridgeData['message'] ?? 'Failed to send code. Please try again.');
+        if (!shouldFallbackForgotPasswordToLocalMailer($bridgeMessage)) {
+            closeDBConnection($conn);
             echo json_encode([
                 'success' => false,
-                'message' => $bridgeData['message'] ?? 'Failed to send code. Please try again.',
+                'message' => $bridgeMessage,
             ]);
+            exit;
         }
-        exit;
     }
 }
 
