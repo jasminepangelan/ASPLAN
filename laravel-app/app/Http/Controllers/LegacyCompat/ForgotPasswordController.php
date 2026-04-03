@@ -73,8 +73,8 @@ class ForgotPasswordController extends Controller
 
     private function sendResetCodeEmail(string $email, string $code): void
     {
-        $rootPath = dirname(__DIR__, 5);
-        require_once $rootPath . '/config/email.php';
+        $emailConfigPath = $this->resolveLegacyEmailConfigPath();
+        require_once $emailConfigPath;
 
         $mail = getMailer();
         $mail->addAddress($email);
@@ -85,5 +85,23 @@ class ForgotPasswordController extends Controller
         if (!$mail->send()) {
             throw new \RuntimeException('Mailer Error: ' . $mail->ErrorInfo);
         }
+    }
+
+    private function resolveLegacyEmailConfigPath(): string
+    {
+        $candidates = [
+            dirname(__DIR__, 5) . '/config/email.php',
+            dirname(__DIR__, 4) . '/config/email.php',
+            base_path('../config/email.php'),
+            base_path('../../config/email.php'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && $candidate !== '' && is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException('Email configuration file is missing.');
     }
 }
