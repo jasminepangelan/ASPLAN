@@ -712,13 +712,13 @@ if (!$bridgeLoaded && !empty($batches)) {
         }
 
         .btn-profile {
-            background: linear-gradient(135deg, #6f42c1 0%, #5a2d91 100%);
+            background: linear-gradient(135deg, #206018 0%, #2d8023 100%);
         }
 
         .btn-profile:hover {
-            background: linear-gradient(135deg, #5a2d91 0%, #4c1a7a 100%);
+            background: linear-gradient(135deg, #1a4f14 0%, #206018 100%);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(111, 66, 193, 0.3);
+            box-shadow: 0 4px 8px rgba(32, 96, 24, 0.3);
         }
 
         /* Make the table cell containing buttons wider */
