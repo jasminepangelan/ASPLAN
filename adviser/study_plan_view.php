@@ -677,9 +677,10 @@ foreach ($study_plan as $term) {
                         <?php else: ?>
                             <table>
                                 <colgroup>
-                                    <col style="width:20%;">
-                                    <col style="width:56%;">
+                                    <col style="width:16%;">
+                                    <col style="width:42%;">
                                     <col style="width:10%;">
+                                    <col style="width:18%;">
                                     <col style="width:14%;">
                                 </colgroup>
                                 <thead>
@@ -687,15 +688,23 @@ foreach ($study_plan as $term) {
                                         <th>Course Code</th>
                                         <th>Course Title</th>
                                         <th>Units</th>
+                                        <th>Prerequisite</th>
                                         <th>Flags</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                 <?php foreach (($term['courses'] ?? []) as $course): ?>
+                                    <?php
+                                        $prerequisite = trim((string)($course['prerequisite'] ?? ''));
+                                        if ($prerequisite === '') {
+                                            $prerequisite = 'None';
+                                        }
+                                    ?>
                                     <tr>
                                         <td><?= htmlspecialchars($course['code'] ?? '') ?></td>
                                         <td><?= htmlspecialchars($course['title'] ?? '') ?></td>
                                         <td><?= (int)($course['units'] ?? 0) ?></td>
+                                        <td><?= htmlspecialchars($prerequisite) ?></td>
                                         <td>
                                             <?php if ($is_completed_term): ?>
                                                 <span class="tag tag-completed">Completed</span>
