@@ -139,7 +139,7 @@ $full_name = trim(($student['last_name'] ?? '') . ', ' . ($student['first_name']
             align-items: center;
             height: 46px;
         }
-        .title-content { display: flex; align-items: center; }
+        .title-content { display: flex; align-items: center; font-weight: 600;}
         .title-content img { width: 32px; height: 32px; margin-right: 10px; cursor: pointer; }
         .adviser-name {
             font-size: 15px;
