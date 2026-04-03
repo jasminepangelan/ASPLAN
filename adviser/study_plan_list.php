@@ -336,6 +336,7 @@ $result = $stmt->get_result();
             color: #fff;
             padding: 8px 15px;
             font-size: 18px;
+            font-weight: 600;
             position: fixed;
             top: 0;
             left: 0;
@@ -345,6 +346,10 @@ $result = $stmt->get_result();
             align-items: center;
             justify-content: space-between;
             height: 46px;
+        }
+        .brand-title {
+            color: #d9e441;
+            font-weight: 800;
         }
         .title-content { display: flex; align-items: center; }
         .header img { width: 32px; height: 32px; margin-right: 10px; cursor: pointer; }
@@ -506,7 +511,7 @@ $result = $stmt->get_result();
         <div class="title-content">
             <button type="button" class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">&#9776;</button>
             <img src="../img/cav.png" alt="CvSU Logo" onclick="toggleSidebar()">
-            <span style="color:#d9e441;">ASPLAN</span>
+            <span class="brand-title">ASPLAN</span>
         </div>
         <span class="adviser-name"><?= $adviser_name ?> | Adviser</span>
     </div>
