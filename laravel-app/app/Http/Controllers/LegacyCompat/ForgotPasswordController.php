@@ -102,19 +102,23 @@ class ForgotPasswordController extends Controller
         if ($emailConfigPath !== null) {
             require_once $emailConfigPath;
 
-            if (function_exists('getMailer')) {
-                $mail = getMailer();
-                $mail->addAddress($email);
-                $mail->isHTML(false);
-                $mail->Subject = 'Your Password Reset Code';
-                $mail->Body = "Your password reset code is: {$code}\nThis code will expire in 10 minutes.";
+            if (function_exists('sendConfiguredEmail')) {
+                $sendResult = sendConfiguredEmail(
+                    $email,
+                    'Your Password Reset Code',
+                    "Your password reset code is: {$code}\nThis code will expire in 10 minutes."
+                );
 
-                if (!$mail->send()) {
-                    throw new \RuntimeException($this->formatMailerErrorMessage((string) $mail->ErrorInfo));
+                if (empty($sendResult['success'])) {
+                    throw new \RuntimeException($this->formatMailerErrorMessage((string) ($sendResult['error'] ?? 'Unable to send email.')));
                 }
 
                 return;
             }
+        }
+
+        if ($this->sendResetCodeEmailThroughResend($email, $code)) {
+            return;
         }
 
         $host = $this->normalizeMailEnvValue(env('MAIL_HOST') ?: env('SMTP_HOST') ?: '');
@@ -146,6 +150,58 @@ class ForgotPasswordController extends Controller
                     ->subject('Your Password Reset Code');
             }
         );
+    }
+
+    private function sendResetCodeEmailThroughResend(string $email, string $code): bool
+    {
+        $apiKey = $this->normalizeMailEnvValue(env('RESEND_API_KEY') ?: '');
+        $fromEmail = $this->normalizeMailEnvValue(env('RESEND_FROM_EMAIL') ?: env('MAIL_FROM_ADDRESS') ?: '');
+        $fromName = $this->normalizeMailEnvValue(env('RESEND_FROM_NAME') ?: env('MAIL_FROM_NAME') ?: 'ASPLAN');
+        $replyTo = $this->normalizeMailEnvValue(env('RESEND_REPLY_TO') ?: $fromEmail);
+
+        if ($apiKey === '' || $fromEmail === '' || !function_exists('curl_init')) {
+            return false;
+        }
+
+        $payload = [
+            'from' => $fromName !== '' ? ($fromName . ' <' . $fromEmail . '>') : $fromEmail,
+            'to' => [$email],
+            'subject' => 'Your Password Reset Code',
+            'text' => "Your password reset code is: {$code}\nThis code will expire in 10 minutes.",
+        ];
+
+        if ($replyTo !== '') {
+            $payload['reply_to'] = $replyTo;
+        }
+
+        $ch = curl_init('https://api.resend.com/emails');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $apiKey,
+                'Content-Type: application/json',
+            ],
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false || $response === '' || $httpCode < 200 || $httpCode >= 300) {
+            $decoded = is_string($response) ? json_decode($response, true) : null;
+            $errorMessage = trim((string) (($decoded['message'] ?? '') ?: ($decoded['error'] ?? '') ?: $curlError));
+            if ($errorMessage !== '') {
+                throw new \RuntimeException($this->formatMailerErrorMessage($errorMessage));
+            }
+
+            return false;
+        }
+
+        return true;
     }
 
     private function formatMailerErrorMessage(string $message): string

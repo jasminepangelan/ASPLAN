@@ -150,25 +150,23 @@ $stmt->bind_param('sss', $email, $code, $expiry);
 $stmt->execute();
 $stmt->close();
 
-// Send code to email using PHPMailer and Gmail SMTP
-$mail = getMailer();
-
 try {
-    // Recipients
-    $mail->addAddress($email);
+    $sendResult = sendConfiguredEmail(
+        $email,
+        'Your Password Reset Code',
+        "Your password reset code is: $code\nThis code will expire in 10 minutes."
+    );
 
-    // Content
-    $mail->isHTML(false);
-    $mail->Subject = 'Your Password Reset Code';
-    $mail->Body    = "Your password reset code is: $code\nThis code will expire in 10 minutes.";
+    if (empty($sendResult['success'])) {
+        throw new RuntimeException((string) ($sendResult['error'] ?? 'Unable to send the verification email right now.'));
+    }
 
-    $mail->send();
     closeDBConnection($conn);
     echo json_encode(['success' => true]);
     exit;
-} catch (Exception $e) {
+} catch (Throwable $e) {
     closeDBConnection($conn);
-    echo json_encode(['success' => false, 'message' => formatForgotPasswordMailerError($e, $mail)]);
+    echo json_encode(['success' => false, 'message' => formatForgotPasswordMailerError($e)]);
     exit;
 }
 
