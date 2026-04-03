@@ -385,7 +385,7 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
 
     .container {
       max-width: 1160px;
-      margin: 54px auto 28px;
+      margin: 69px auto 28px;
       padding: 0 18px;
     }
 
