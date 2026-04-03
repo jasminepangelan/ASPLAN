@@ -172,10 +172,12 @@ $last_name = htmlspecialchars($row['last_name'] ?? '');
 $first_name = htmlspecialchars($row['first_name'] ?? '');
 $middle_name = htmlspecialchars($row['middle_name'] ?? '');
 $email = htmlspecialchars($row['email'] ?? '');
-$picture = htmlspecialchars($row['picture'] ?? 'pix/anonymous.jpg');
+$picture = htmlspecialchars(resolvePublicUploadPath((string)($row['picture'] ?? ''), 'pix/anonymous.jpg'));
 $contact_no = htmlspecialchars($row['contact_number'] ?? '');
 $address = htmlspecialchars($row['house_number_street'] ?? '');
 $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
+$program = htmlspecialchars($row['program'] ?? '');
+$student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_name . ' ' : '') . $last_name);
 
 ?>
 <!DOCTYPE html>
@@ -382,98 +384,227 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
     }
 
     .container {
-      max-width: 750px;
-      margin: 70px auto 20px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      box-shadow: 0 15px 35px rgba(32, 96, 24, 0.1);
+      max-width: 1160px;
+      margin: 38px auto 28px;
+      padding: 0 18px;
+    }
+
+    .page-shell {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(14px);
+      border-radius: 26px;
+      box-shadow: 0 18px 44px rgba(32, 96, 24, 0.12);
+      border: 1px solid rgba(32, 96, 24, 0.08);
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    .title {
+    .page-hero {
       background: linear-gradient(135deg, #206018 0%, #2d8f22 100%);
-      color: white;
-      padding: 20px;
-      text-align: center;
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      margin: 0;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .subtitle {
-      text-align: center;
-      color: #206018;
-      font-size: 18px;
-      margin: 20px 0;
-      letter-spacing: 0.5px;
-      font-weight: 500;
-    }
-
-    .content-wrapper {
-      padding: 20px 30px 30px;
-    }
-
-    .profile {
+      color: #fff;
+      padding: 28px 34px;
       display: flex;
-      gap: 40px;
-      align-items: flex-start;
-      justify-content: center;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
       flex-wrap: wrap;
     }
 
-    .profile .photo {
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 720px;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .hero-copy h1 {
+      margin: 0;
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1.05;
+    }
+
+    .hero-copy p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.84);
+    }
+
+    .hero-back {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+
+    .hero-back:hover {
+      background: rgba(255, 255, 255, 0.22);
+      transform: translateY(-1px);
+    }
+
+    .content-wrapper {
+      padding: 28px 34px 34px;
+    }
+
+    .profile-layout {
+      display: grid;
+      grid-template-columns: minmax(270px, 320px) minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .profile-card {
+      background: linear-gradient(180deg, #f8fdf8 0%, #eef8ef 100%);
+      border: 1px solid rgba(32, 96, 24, 0.12);
+      border-radius: 22px;
+      padding: 28px 24px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 15px;
+      text-align: center;
+      gap: 16px;
     }
 
-    .profile .photo .photo-container {
+    .photo-container {
       position: relative;
+      width: 156px;
+      height: 156px;
       border-radius: 50%;
-      padding: 5px;
-      background: linear-gradient(135deg, #206018, #2d8f22);
-      box-shadow: 0 10px 30px rgba(32, 96, 24, 0.3);
+      padding: 6px;
+      background: linear-gradient(135deg, #206018 0%, #7cc86f 100%);
+      box-shadow: 0 16px 30px rgba(32, 96, 24, 0.22);
     }
 
-    .profile .photo img {
-      width: 140px;
-      height: 140px;
+    .photo-container img {
+      width: 100%;
+      height: 100%;
       border-radius: 50%;
       object-fit: cover;
-      background: #f8f9fa;
-      border: 4px solid white;
+      display: block;
+      background: #f4f7f4;
+      border: 4px solid #fff;
     }
 
-    .profile .details {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 25px;
+    .profile-card h2 {
+      margin: 2px 0 0;
+      font-size: 30px;
+      line-height: 1.05;
+      font-weight: 800;
+      color: #1e3f1a;
+    }
+
+    .profile-card .profile-role {
+      margin: 0;
+      color: #426b3e;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .meta-list {
       width: 100%;
-      min-width: 280px;
-      max-width: 500px;
+      display: grid;
+      gap: 12px;
+      margin-top: 6px;
     }
 
-    .profile .details .field {
+    .meta-item {
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(32, 96, 24, 0.1);
+      border-radius: 16px;
+      padding: 14px 15px;
+      text-align: left;
+    }
+
+    .meta-item span {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #5b7f57;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .meta-item strong {
+      color: #1f3d1b;
+      font-size: 15px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .form-card {
+      background: #fff;
+      border-radius: 22px;
+      border: 1px solid rgba(32, 96, 24, 0.12);
+      box-shadow: 0 12px 34px rgba(32, 96, 24, 0.08);
+      overflow: hidden;
+    }
+
+    .form-card-header {
+      padding: 24px 28px 18px;
+      border-bottom: 1px solid #e4efe2;
+    }
+
+    .form-card-header h3 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      font-weight: 800;
+      color: #1d3f18;
+    }
+
+    .form-card-header p {
+      margin: 0;
+      color: #4f6e4c;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .details {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px 24px;
+      padding: 26px 28px 8px;
+    }
+
+    .field {
       display: flex;
       flex-direction: column;
       position: relative;
     }
 
-    .profile .details .field label {
+    .field.field-span {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
       margin-bottom: 8px;
-      font-weight: 600;
+      font-weight: 700;
       color: #206018;
-      font-size: 14px;
-      letter-spacing: 0.5px;
+      font-size: 13px;
+      letter-spacing: 0.7px;
       text-transform: uppercase;
     }
 
-    .profile .details .field input {
+    .field input {
       width: 100%;
       padding: 12px 15px;
       border: 2px solid #e1e5e9;
@@ -485,25 +616,25 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
       color: #495057;
     }
 
-    .profile .details .field input:focus {
+    .field input:focus {
       border-color: #206018;
       outline: none;
       box-shadow: 0 4px 20px rgba(32, 96, 24, 0.15);
     }
 
-    .profile .details .field input:read-only {
+    .field input:read-only {
       background: #f8f9fa;
       color: #6c757d;
       cursor: not-allowed;
     }
 
     .buttons {
-      text-align: center;
-      margin-top: 25px;
+      margin-top: 10px;
       display: flex;
       gap: 15px;
-      justify-content: center;
+      justify-content: flex-end;
       flex-wrap: wrap;
+      padding: 0 28px 28px;
     }
 
     .buttons button {
@@ -540,9 +671,8 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
       box-shadow: 0 8px 25px rgba(108, 117, 125, 0.4);
     }
 
-    /* Message styles */
     .message {
-      margin: 20px 0;
+      margin: 0 0 22px;
       padding: 15px 20px;
       border-radius: 12px;
       font-weight: 600;
@@ -562,9 +692,12 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
       border: 2px solid #f5c6cb;
     }
 
-    /* Photo upload styling */
     .photo-upload {
-      margin-top: 15px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
     }
 
     .photo-upload input[type="file"] {
@@ -573,13 +706,13 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
 
     .photo-upload label {
       display: inline-block;
-      padding: 8px 16px;
+      padding: 12px 20px;
       background: linear-gradient(135deg, #206018 0%, #2d8f22 100%);
       color: white;
-      border-radius: 8px;
+      border-radius: 12px;
       cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 13px;
+      font-weight: 700;
       transition: all 0.3s ease;
       box-shadow: 0 2px 10px rgba(32, 96, 24, 0.2);
     }
@@ -587,6 +720,13 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
     .photo-upload label:hover {
       transform: translateY(-2px);
       box-shadow: 0 4px 15px rgba(32, 96, 24, 0.3);
+    }
+
+    .photo-help {
+      font-size: 12px;
+      color: #587453;
+      line-height: 1.5;
+      max-width: 220px;
     }
 
     @media (max-width: 768px) {
@@ -607,28 +747,35 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
         display: block;
       }
 
-      .profile {
-        flex-direction: column;
-        align-items: center;
-      }
-      
-      .profile .details {
+      .profile-layout,
+      .details {
         grid-template-columns: 1fr;
-        max-width: 400px;
       }
       
       .buttons {
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
       }
       
       .container {
-        margin: 15px;
-        border-radius: 15px;
+        margin: 18px auto 24px;
+        padding: 0 12px;
       }
       
       .content-wrapper {
-        padding: 15px 20px 25px;
+        padding: 18px 18px 24px;
+      }
+
+      .page-hero,
+      .form-card-header,
+      .details,
+      .buttons {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .hero-copy h1 {
+        font-size: 32px;
       }
     }
   </style>
@@ -639,7 +786,7 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
     <div class="title-content">
       <button type="button" class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">&#9776;</button>
       <img src="../img/cav.png" alt="CvSU Logo" onclick="toggleSidebar()">
-      PRE - ENROLLMENT ASSESSMENT
+      <span style="color: #d9e441; font-weight: 800;">ASPLAN</span>
     </div>
     <div class="adviser-name"><?= $adviser_name ?> | Adviser</div>
   </div>
@@ -674,66 +821,99 @@ $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
   <!-- Main Content -->
   <div class="main-content" id="mainContent">
     <div class="container">
-    <div class="title">Edit Student Profile</div>
-    <div class="content-wrapper">
-      <div class="subtitle">Edit student account details</div>
-      
-      <?php if (!empty($message)): ?>
-        <div class="message <?= $message_type ?>">
-          <?= htmlspecialchars($message) ?>
+      <div class="page-shell">
+        <div class="page-hero">
+          <div class="hero-copy">
+            <span class="hero-eyebrow">Adviser Student Profile</span>
+            <h1>Edit Student Profile</h1>
+            <p>Review and update this student's core account details from the adviser workspace while keeping the familiar student-facing profile structure.</p>
+          </div>
+          <a href="javascript:window.history.back();" class="hero-back">Back to Student List</a>
         </div>
-      <?php endif; ?>
-      
-      <form method="POST" enctype="multipart/form-data">
-        <div class="profile">
-          <div class="photo">
-            <div class="photo-container">
-              <img id="profile-pic" src="<?= $picture ?>" alt="Profile Photo" />
+        <div class="content-wrapper">
+          <?php if (!empty($message)): ?>
+            <div class="message <?= $message_type ?>">
+              <?= htmlspecialchars($message) ?>
             </div>
-            <div class="photo-upload">
-              <label for="picture">Change Photo</label>
-              <input type="file" id="picture" name="picture" accept="image/*" onchange="previewImage(this)">
+          <?php endif; ?>
+
+          <form method="POST" enctype="multipart/form-data">
+            <div class="profile-layout">
+              <aside class="profile-card">
+                <div class="photo-container">
+                  <img id="profile-pic" src="<?= $picture ?>" alt="Profile Photo" />
+                </div>
+                <h2><?= htmlspecialchars($student_display_name !== '' ? $student_display_name : 'Student Profile') ?></h2>
+                <p class="profile-role">Keep the student record current so checklist, study plan, and advising details stay aligned.</p>
+                <div class="meta-list">
+                  <div class="meta-item">
+                    <span>Student Number</span>
+                    <strong><?= $student_id ?></strong>
+                  </div>
+                  <div class="meta-item">
+                    <span>Program</span>
+                    <strong><?= $program !== '' ? $program : 'Not assigned' ?></strong>
+                  </div>
+                  <div class="meta-item">
+                    <span>Email Address</span>
+                    <strong><?= $email !== '' ? $email : 'Not provided' ?></strong>
+                  </div>
+                </div>
+                <div class="photo-upload">
+                  <label for="picture">Change Photo</label>
+                  <input type="file" id="picture" name="picture" accept="image/*" onchange="previewImage(this)">
+                  <div class="photo-help">Upload a clear square image so the student profile stays consistent across the adviser and student views.</div>
+                </div>
+              </aside>
+
+              <section class="form-card">
+                <div class="form-card-header">
+                  <h3>Account Details</h3>
+                  <p>Edit the student-facing personal details below. Required fields stay aligned with the existing validation and save flow.</p>
+                </div>
+                <div class="details">
+                  <div class="field">
+                    <label>Last Name *</label>
+                    <input type="text" name="last_name" value="<?= $last_name ?>" required>
+                  </div>
+                  <div class="field">
+                    <label>First Name *</label>
+                    <input type="text" name="first_name" value="<?= $first_name ?>" required>
+                  </div>
+                  <div class="field">
+                    <label>Middle Name <small>(Optional)</small></label>
+                    <input type="text" name="middle_name" value="<?= $middle_name ?>" placeholder="Leave blank if no middle name">
+                  </div>
+                  <div class="field">
+                    <label>Email Address *</label>
+                    <input type="email" name="email" value="<?= $email ?>" required>
+                  </div>
+                  <div class="field">
+                    <label>Student Number</label>
+                    <input type="text" value="<?= $student_id ?>" readonly>
+                  </div>
+                  <div class="field">
+                    <label>Contact Number *</label>
+                    <input type="text" name="contact_no" value="<?= $contact_no ?>" required>
+                  </div>
+                  <div class="field">
+                    <label>Date of Admission *</label>
+                    <input type="date" name="admission_date" value="<?= $admission_date ?>" required>
+                  </div>
+                  <div class="field">
+                    <label>Address *</label>
+                    <input type="text" name="address" value="<?= $address ?>" required>
+                  </div>
+                </div>
+                <div class="buttons">
+                  <button type="submit" name="update_profile" class="btn-save">Save Changes</button>
+                  <button type="button" onclick="window.history.back();" class="btn-back">Back</button>
+                </div>
+              </section>
             </div>
-          </div>
-        <div class="details">
-          <div class="field">
-            <label>Last Name *</label>
-            <input type="text" name="last_name" value="<?= $last_name ?>" required>
-          </div>
-          <div class="field">
-            <label>First Name *</label>
-            <input type="text" name="first_name" value="<?= $first_name ?>" required>
-          </div>
-          <div class="field">
-            <label>Middle Name <small>(Optional)</small></label>
-            <input type="text" name="middle_name" value="<?= $middle_name ?>" placeholder="Leave blank if no middle name">
-          </div>
-          <div class="field">
-            <label>Email Address *</label>
-            <input type="email" name="email" value="<?= $email ?>" required>
-          </div>
-          <div class="field">
-            <label>Student Number</label>
-            <input type="text" value="<?= $student_id ?>" readonly>
-          </div>
-          <div class="field">
-            <label>Contact Number *</label>
-            <input type="text" name="contact_no" value="<?= $contact_no ?>" required>
-          </div>
-          <div class="field">
-            <label>Date of Admission *</label>
-            <input type="date" name="admission_date" value="<?= $admission_date ?>" required>
-          </div>
-          <div class="field">
-            <label>Address *</label>
-            <input type="text" name="address" value="<?= $address ?>" required>
-          </div>
+          </form>
         </div>
-        <div class="buttons">
-          <button type="submit" name="update_profile" class="btn-save">SAVE CHANGES</button>
-          <button type="button" onclick="window.history.back();" class="btn-back">BACK</button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 </div>
