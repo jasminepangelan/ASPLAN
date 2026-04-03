@@ -24,7 +24,7 @@ define('SMTP_PASSWORD', getenv('SMTP_PASSWORD') ?: '');
 
 // Email Settings - loaded from environment variables
 define('SMTP_FROM_EMAIL', getenv('SMTP_FROM_EMAIL') ?: 'noreply@cvsu-carmona.edu.ph');
-define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'PEAS - Pre-Enrollment Assessment System');
+define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'ASPLAN - Automated Study Plan Generator');
 define('SMTP_REPLY_TO', getenv('SMTP_REPLY_TO') ?: 'noreply@cvsu-carmona.edu.ph');
 
 /**
