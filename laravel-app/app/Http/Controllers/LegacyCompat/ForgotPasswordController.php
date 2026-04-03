@@ -12,6 +12,29 @@ use Throwable;
 
 class ForgotPasswordController extends Controller
 {
+    private function normalizeMailEnvValue($value, bool $collapseInternalWhitespace = false): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (
+            (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+            (str_starts_with($value, "'") && str_ends_with($value, "'"))
+        ) {
+            $value = substr($value, 1, -1);
+        }
+
+        $value = trim($value);
+
+        if ($collapseInternalWhitespace) {
+            $value = preg_replace('/\s+/', '', $value) ?? $value;
+        }
+
+        return $value;
+    }
+
     public function sendCode(Request $request): JsonResponse
     {
         try {
@@ -94,13 +117,13 @@ class ForgotPasswordController extends Controller
             }
         }
 
-        $host = trim((string) (env('MAIL_HOST') ?: env('SMTP_HOST') ?: ''));
-        $port = (int) (env('MAIL_PORT') ?: env('SMTP_PORT') ?: 587);
-        $username = trim((string) (env('MAIL_USERNAME') ?: env('SMTP_USERNAME') ?: ''));
-        $password = (string) (env('MAIL_PASSWORD') ?: env('SMTP_PASSWORD') ?: '');
-        $encryption = trim((string) (env('MAIL_ENCRYPTION') ?: env('SMTP_SECURE') ?: 'tls'));
-        $fromAddress = trim((string) (env('MAIL_FROM_ADDRESS') ?: env('SMTP_FROM_EMAIL') ?: $username));
-        $fromName = trim((string) (env('MAIL_FROM_NAME') ?: env('SMTP_FROM_NAME') ?: 'ASPLAN'));
+        $host = $this->normalizeMailEnvValue(env('MAIL_HOST') ?: env('SMTP_HOST') ?: '');
+        $port = (int) ($this->normalizeMailEnvValue(env('MAIL_PORT') ?: env('SMTP_PORT') ?: '587') ?: 587);
+        $username = $this->normalizeMailEnvValue(env('MAIL_USERNAME') ?: env('SMTP_USERNAME') ?: '');
+        $password = $this->normalizeMailEnvValue(env('MAIL_PASSWORD') ?: env('SMTP_PASSWORD') ?: '', true);
+        $encryption = $this->normalizeMailEnvValue(env('MAIL_ENCRYPTION') ?: env('SMTP_SECURE') ?: 'tls');
+        $fromAddress = $this->normalizeMailEnvValue(env('MAIL_FROM_ADDRESS') ?: env('SMTP_FROM_EMAIL') ?: $username);
+        $fromName = $this->normalizeMailEnvValue(env('MAIL_FROM_NAME') ?: env('SMTP_FROM_NAME') ?: 'ASPLAN');
 
         if ($host === '' || $username === '' || $password === '' || $fromAddress === '') {
             throw new \RuntimeException('Email service is not configured.');
