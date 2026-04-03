@@ -510,6 +510,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             border-radius: 12px;
             margin-bottom: 25px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: none;
         }
 
         .page-header h1 {
