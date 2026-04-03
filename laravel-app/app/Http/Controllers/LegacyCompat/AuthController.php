@@ -53,6 +53,7 @@ class AuthController extends Controller
                 'redirect' => $this->redirectForType($user['type']),
                 'user_type' => $user['type'],
                 'session' => $this->sessionPayload($user, $request->ip()),
+                'clear_remember_cookie' => $user['type'] === 'student' && !$rememberMe,
             ];
 
             if ($user['type'] === 'student' && $rememberMe) {

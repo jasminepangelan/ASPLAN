@@ -26,6 +26,13 @@ function sendJsonResponse($data)
     exit();
 }
 
+function clearRememberMeCookies(): void
+{
+    clearAppCookie('remember_me', '/');
+    clearAppCookie('remember_me', '/PEAS/');
+    unset($_COOKIE['remember_me']);
+}
+
 function checkStudentCredentials($conn, $username, $password)
 {
     $query = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name, email, password, contact_number AS contact_no, CONCAT_WS(', ', house_number_street, brgy, town, province) AS address, date_of_admission AS admission_date, picture, status, program FROM student_info WHERE student_number = ?");
@@ -190,6 +197,8 @@ try {
 
                 if ($rememberMe && isset($bridgeData['remember']['cookie_value'], $bridgeData['remember']['expires'])) {
                     setAppCookie('remember_me', (string) $bridgeData['remember']['cookie_value'], (int) $bridgeData['remember']['expires'], '/');
+                } elseif (!empty($bridgeData['clear_remember_cookie']) || (($bridgeData['user_type'] ?? '') === 'student' && !$rememberMe)) {
+                    clearRememberMeCookies();
                 }
 
                 closeDBConnection($conn);
@@ -317,6 +326,8 @@ try {
                 }
 
                 setAppCookie('remember_me', $userData['student_id'] . ':' . $rememberToken . ':student', $expiry, '/');
+            } else {
+                clearRememberMeCookies();
             }
 
             closeDBConnection($conn);
@@ -334,6 +345,8 @@ try {
             $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $_SESSION['user_type'] = 'admin';
 
+            clearRememberMeCookies();
+
             closeDBConnection($conn);
             sendJsonResponse(['status' => 'success', 'redirect' => 'admin/index.php', 'user_type' => 'admin']);
             break;
@@ -350,6 +363,8 @@ try {
             $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $_SESSION['user_type'] = 'adviser';
 
+            clearRememberMeCookies();
+
             closeDBConnection($conn);
             sendJsonResponse(['status' => 'success', 'redirect' => 'adviser/index.php', 'user_type' => 'adviser']);
             break;
@@ -365,6 +380,8 @@ try {
             $_SESSION['login_time'] = time();
             $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $_SESSION['user_type'] = 'program_coordinator';
+
+            clearRememberMeCookies();
 
             closeDBConnection($conn);
             sendJsonResponse(['status' => 'success', 'redirect' => 'program_coordinator/index.php', 'user_type' => 'program_coordinator']);
