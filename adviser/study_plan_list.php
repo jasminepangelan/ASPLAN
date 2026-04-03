@@ -336,7 +336,7 @@ $result = $stmt->get_result();
             color: #fff;
             padding: 8px 15px;
             font-size: 18px;
-            font-weight: 800;
+            font-weight: 600;
             position: fixed;
             top: 0;
             left: 0;
