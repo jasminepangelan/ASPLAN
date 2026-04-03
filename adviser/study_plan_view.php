@@ -94,6 +94,7 @@ if (!$bridgeLoaded) {
 
 $generator = new StudyPlanGenerator($student_id, $student['program']);
 $study_plan = $generator->generateOptimizedPlan();
+$completed_terms = $generator->getCompletedTerms();
 $stats = $generator->getCompletionStats();
 $ay_courses_by_term = $generator->getAllCoursesGroupedByTerm();
 
@@ -114,6 +115,33 @@ if ($admission_year === null) {
 }
 
 $full_name = trim(($student['last_name'] ?? '') . ', ' . ($student['first_name'] ?? '') . ' ' . ($student['middle_name'] ?? ''));
+
+$display_terms = [];
+foreach ($completed_terms as $term) {
+    $display_terms[] = [
+        'year' => $term['year'],
+        'semester' => $term['semester'],
+        'courses' => $term['courses'] ?? [],
+        'total_units' => $term['total_units'] ?? 0,
+        'retention_status' => $term['retention_status'] ?? 'None',
+        'is_completed_term' => true,
+        'skipped' => false,
+    ];
+}
+
+foreach ($study_plan as $term) {
+    $display_terms[] = [
+        'year' => $term['year'] ?? '',
+        'semester' => $term['semester'] ?? '',
+        'courses' => $term['courses'] ?? [],
+        'total_units' => $term['total_units'] ?? 0,
+        'max_units' => $term['max_units'] ?? null,
+        'retention_status' => $term['retention_status'] ?? 'None',
+        'skipped' => !empty($term['skipped']),
+        'skip_reason' => $term['skip_reason'] ?? '',
+        'is_completed_term' => false,
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -234,6 +262,32 @@ $full_name = trim(($student['last_name'] ?? '') . ', ' . ($student['first_name']
         }
         .term-title { font-weight: 700; color: #1f2937; }
         .term-meta { font-size: 12px; color: #555; }
+        .term-badges {
+            display: inline-flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .term-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .term-badge.completed {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #b7ddb9;
+        }
+        .term-badge.upcoming {
+            background: #eef5ee;
+            color: #206018;
+            border: 1px solid #d1e0cf;
+        }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
         th {
@@ -259,6 +313,23 @@ $full_name = trim(($student['last_name'] ?? '') . ', ' . ($student['first_name']
         }
         .tag-retake { background: #ffe8cc; color: #9a3412; }
         .tag-cross { background: #dbeafe; color: #1d4ed8; }
+        .tag-completed { background: #e8f5e9; color: #2e7d32; }
+        .term-divider {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 14px 0;
+        }
+        .term-divider span {
+            background: #eef5ee;
+            color: #206018;
+            border: 1px solid #d1e0cf;
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
         .ay-overview-wrap {
             display: flex;
             justify-content: center;
@@ -569,16 +640,35 @@ $full_name = trim(($student['last_name'] ?? '') . ', ' . ($student['first_name']
                 </button>
             </div>
 
-            <?php if (empty($study_plan)): ?>
+            <?php if (empty($display_terms)): ?>
                 <div class="panel">No study plan terms generated for this student yet.</div>
             <?php else: ?>
-                <?php foreach ($study_plan as $term): ?>
+                <?php
+                    $futureDividerShown = false;
+                    foreach ($display_terms as $term):
+                        $is_completed_term = !empty($term['is_completed_term']);
+                        if (!$is_completed_term && !$futureDividerShown && !empty($completed_terms)) {
+                            $futureDividerShown = true;
+                ?>
+                    <div class="term-divider">
+                        <span>Remaining Semesters</span>
+                    </div>
+                <?php
+                        }
+                ?>
                     <div class="term-card">
                         <div class="term-header">
                             <div class="term-title"><?= htmlspecialchars($term['year']) ?> - <?= htmlspecialchars($term['semester']) ?></div>
                             <div class="term-meta">
+                                <span class="term-badges">
+                                    <?php if ($is_completed_term): ?>
+                                        <span class="term-badge completed">Completed</span>
+                                    <?php else: ?>
+                                        <span class="term-badge upcoming">Planned</span>
+                                    <?php endif; ?>
+                                </span>
                                 Total Units: <?= (int)($term['total_units'] ?? 0) ?>
-                                <?php if (!empty($term['max_units'])): ?> | Max Units: <?= (int)$term['max_units'] ?><?php endif; ?>
+                                <?php if (!$is_completed_term && !empty($term['max_units'])): ?> | Max Units: <?= (int)$term['max_units'] ?><?php endif; ?>
                             </div>
                         </div>
 
@@ -607,11 +697,17 @@ $full_name = trim(($student['last_name'] ?? '') . ', ' . ($student['first_name']
                                         <td><?= htmlspecialchars($course['title'] ?? '') ?></td>
                                         <td><?= (int)($course['units'] ?? 0) ?></td>
                                         <td>
+                                            <?php if ($is_completed_term): ?>
+                                                <span class="tag tag-completed">Completed</span>
+                                            <?php endif; ?>
                                             <?php if (!empty($course['needs_retake'])): ?>
                                                 <span class="tag tag-retake">Retake</span>
                                             <?php endif; ?>
                                             <?php if (!empty($course['cross_registered'])): ?>
                                                 <span class="tag tag-cross">Cross-Registered</span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($course['failed'])): ?>
+                                                <span class="tag tag-retake">Failed</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
