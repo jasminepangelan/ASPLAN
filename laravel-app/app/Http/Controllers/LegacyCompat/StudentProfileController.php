@@ -160,7 +160,7 @@ class StudentProfileController extends Controller
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'Please provide a valid email address.';
             } elseif (!$this->isAllowedEmailDomain($email)) {
-                $errors[] = 'Registration is currently limited to allowed school email domains.';
+                $errors[] = 'Only official @cvsu.edu.ph email addresses are allowed for student accounts.';
             } else {
                 $fields['email'] = htmlspecialchars($email);
             }
@@ -274,36 +274,7 @@ class StudentProfileController extends Controller
 
     private function isAllowedEmailDomain(string $email): bool
     {
-        if ((bool) preg_match('/@cvsu\.edu\.ph$/i', trim($email))) {
-            return true;
-        }
-
-        $domainsRaw = trim((string) DB::table('system_settings')
-            ->where('setting_name', 'allowed_email_domains')
-            ->value('setting_value'));
-
-        if ($domainsRaw === '') {
-            return true;
-        }
-
-        $allowedDomains = [];
-        foreach (explode(',', $domainsRaw) as $domain) {
-            $normalized = strtolower(trim($domain));
-            if ($normalized === '') {
-                continue;
-            }
-            if (str_starts_with($normalized, '@')) {
-                $normalized = substr($normalized, 1);
-            }
-            $allowedDomains[] = $normalized;
-        }
-
-        if (empty($allowedDomains)) {
-            return true;
-        }
-
-        $emailDomain = strtolower((string) substr(strrchr($email, '@') ?: '', 1));
-        return $emailDomain !== '' && in_array($emailDomain, $allowedDomains, true);
+        return (bool) preg_match('/@cvsu\.edu\.ph$/i', trim($email));
     }
 
     private function normalizeContactNumber(string $raw): string

@@ -133,35 +133,9 @@ if (!function_exists('isAllowedEmailDomain')) {
             return ['allowed' => true, 'message' => ''];
         }
 
-        $domainsRaw = trim(policySettingString($conn, 'allowed_email_domains', ''));
-        if ($domainsRaw === '') {
-            return ['allowed' => true, 'message' => ''];
-        }
-
-        $allowedDomains = [];
-        foreach (explode(',', $domainsRaw) as $domain) {
-            $normalized = strtolower(trim($domain));
-            if ($normalized === '') {
-                continue;
-            }
-            if (strpos($normalized, '@') === 0) {
-                $normalized = substr($normalized, 1);
-            }
-            $allowedDomains[] = $normalized;
-        }
-
-        if (empty($allowedDomains)) {
-            return ['allowed' => true, 'message' => ''];
-        }
-
-        $emailDomain = strtolower(substr(strrchr($email, '@'), 1));
-        if ($emailDomain !== '' && in_array($emailDomain, $allowedDomains, true)) {
-            return ['allowed' => true, 'message' => ''];
-        }
-
         return [
             'allowed' => false,
-            'message' => 'Registration is currently limited to allowed school email domains.'
+            'message' => 'Only official @cvsu.edu.ph email addresses are allowed for student accounts.'
         ];
     }
 }

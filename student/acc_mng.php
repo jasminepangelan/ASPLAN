@@ -1120,7 +1120,7 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
           <label for="email">Email Address</label>
           <input id="email" type="email" value="<?= $email ?>" disabled>
           <i class="fas fa-edit" onclick="toggleEdit('email')"></i>
-          <div class="field-note">Use an active email so you can receive account and academic notices.</div>
+          <div class="field-note">Student accounts must use an official @cvsu.edu.ph email address for notices and recovery.</div>
         </div>
         <div class="field">
           <label for="password">Password</label>

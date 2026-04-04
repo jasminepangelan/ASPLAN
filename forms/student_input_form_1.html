@@ -136,7 +136,8 @@
         </div>
         <div class="form-group">
             <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" placeholder="ex. juan.delacruz@email.com" required>
+            <input type="email" id="email" name="email" placeholder="ex. juan.delacruz@cvsu.edu.ph" required>
+            <div style="color: #5d715e; font-size: 12px; margin-top: 5px;">Use your official <strong>@cvsu.edu.ph</strong> email only.</div>
         </div>
         <div class="form-group">
             <label for="last-name">Last Name</label>
@@ -298,6 +299,12 @@
         
         if (!email) {
             alert('Email address is required.');
+            form.email.focus();
+            return;
+        }
+
+        if (!/@cvsu\.edu\.ph$/i.test(email)) {
+            alert('Only official @cvsu.edu.ph email addresses are allowed for student accounts.');
             form.email.focus();
             return;
         }

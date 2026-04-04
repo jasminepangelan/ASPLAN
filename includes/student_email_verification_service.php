@@ -149,10 +149,10 @@ if (!function_exists('sevGetStatusMeta')) {
 
         if (!sevIsCvsuEmail($normalizedEmail)) {
             return [
-                'variant' => 'neutral',
-                'label' => 'Personal email',
-                'headline' => 'Verification not required',
-                'description' => 'This profile is using a non-CvSU email address, so CvSU OTP verification is not required.',
+                'variant' => 'pending',
+                'label' => 'CvSU email required',
+                'headline' => 'Update to your official email',
+                'description' => 'Student accounts must use an official @cvsu.edu.ph email address. Replace this email before relying on account recovery.',
             ];
         }
 
