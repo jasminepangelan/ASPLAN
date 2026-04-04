@@ -151,6 +151,22 @@ $studentProfileWorkspacePayload = htmlspecialchars(json_encode([
     ['key' => 'save', 'title' => 'Save all changes', 'description' => 'Run the current PHP save handler with your latest form values.'],
   ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+$emailVerificationStatus = [
+  'variant' => 'neutral',
+  'label' => 'Email status unavailable',
+  'headline' => 'Unable to read verification state',
+  'description' => 'Refresh the page after updating your profile if the email verification state does not appear right away.',
+];
+
+$studentIdForVerification = html_entity_decode((string) $student_id, ENT_QUOTES, 'UTF-8');
+$emailForVerification = html_entity_decode((string) $email, ENT_QUOTES, 'UTF-8');
+
+if ($studentIdForVerification !== '' && $emailForVerification !== '') {
+  $verificationConn = getDBConnection();
+  $emailVerificationStatus = sevGetStatusMeta($verificationConn, $studentIdForVerification, $emailForVerification);
+  closeDBConnection($verificationConn);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -454,6 +470,80 @@ $studentProfileWorkspacePayload = htmlspecialchars(json_encode([
       font-size: 13px;
       color: #5f785c;
       line-height: 1.5;
+    }
+
+    .verification-panel {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid #d7e6d5;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(38, 79, 32, 0.07);
+    }
+
+    .verification-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: #1f6a1b;
+      background: #eef8ec;
+      border: 1px solid #cde2c9;
+    }
+
+    .verification-label::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.9;
+    }
+
+    .verification-panel strong {
+      display: block;
+      margin-top: 12px;
+      font-size: 16px;
+      line-height: 1.3;
+      color: #1e3d1b;
+    }
+
+    .verification-panel p {
+      margin: 8px 0 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #637860;
+    }
+
+    .verification-panel.pending {
+      background: linear-gradient(180deg, #fff9ef 0%, #fff4df 100%);
+      border-color: #efd2a3;
+    }
+
+    .verification-panel.pending .verification-label {
+      color: #9a5b00;
+      background: #fff4dd;
+      border-color: #f0d39d;
+    }
+
+    .verification-panel.pending strong {
+      color: #6f4300;
+    }
+
+    .verification-panel.neutral {
+      background: linear-gradient(180deg, #f7faf7 0%, #f0f5ef 100%);
+      border-color: #dce7da;
+    }
+
+    .verification-panel.neutral .verification-label {
+      color: #50654d;
+      background: #eef2ed;
+      border-color: #d9e1d7;
     }
 
     .profile .photo button {
@@ -989,6 +1079,11 @@ $studentProfileWorkspacePayload = htmlspecialchars(json_encode([
             <input id="file-input" name="picture" type="file" accept="image/*" style="display: none;" onchange="previewImage(event)">
           </form>
           <button type="button" onclick="document.getElementById('file-input').click()">Change Picture</button>
+          <div class="verification-panel <?= htmlspecialchars($emailVerificationStatus['variant']) ?>">
+            <span class="verification-label"><?= htmlspecialchars($emailVerificationStatus['label']) ?></span>
+            <strong><?= htmlspecialchars($emailVerificationStatus['headline']) ?></strong>
+            <p><?= htmlspecialchars($emailVerificationStatus['description']) ?></p>
+          </div>
         </div>
       <div class="details" id="student-profile-details-panel">
         <div class="details-heading">

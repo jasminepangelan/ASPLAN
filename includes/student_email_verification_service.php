@@ -133,6 +133,51 @@ if (!function_exists('sevStudentRequiresVerification')) {
     }
 }
 
+if (!function_exists('sevGetStatusMeta')) {
+    function sevGetStatusMeta($conn, string $studentId, string $email): array
+    {
+        $normalizedEmail = sevNormalizeEmail($email);
+
+        if ($studentId === '' || $normalizedEmail === '') {
+            return [
+                'variant' => 'neutral',
+                'label' => 'Email not set',
+                'headline' => 'No email available',
+                'description' => 'Add an active email address so the system can send recovery and account notices.',
+            ];
+        }
+
+        if (!sevIsCvsuEmail($normalizedEmail)) {
+            return [
+                'variant' => 'neutral',
+                'label' => 'Personal email',
+                'headline' => 'Verification not required',
+                'description' => 'This profile is using a non-CvSU email address, so CvSU OTP verification is not required.',
+            ];
+        }
+
+        sevSyncRecordForEmail($conn, $studentId, $normalizedEmail);
+        $record = sevGetRecord($conn, $studentId);
+        $verifiedAt = trim((string) ($record['verified_at'] ?? ''));
+
+        if ($verifiedAt !== '') {
+            return [
+                'variant' => 'verified',
+                'label' => 'CvSU email verified',
+                'headline' => 'Verified for recovery',
+                'description' => 'Your official CvSU email has been confirmed and can be used for account recovery and notices.',
+            ];
+        }
+
+        return [
+            'variant' => 'pending',
+            'label' => 'CvSU email pending',
+            'headline' => 'Verification still required',
+            'description' => 'This CvSU email is on file, but it still needs OTP verification before it is fully trusted by the system.',
+        ];
+    }
+}
+
 if (!function_exists('sevSetSessionRequirement')) {
     function sevSetSessionRequirement(string $email): void
     {
