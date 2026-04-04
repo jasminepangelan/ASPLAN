@@ -81,11 +81,11 @@ class ProgramCoordinatorStudentListController extends Controller
 
             $batch = $this->normalizeBatchPrefix($studentNumber);
             if ($batch !== '') {
-                $batches[$batch] = true;
+                $batches[] = $batch;
             }
         }
 
-        $batches = array_keys($batches);
+        $batches = array_values(array_unique($batches, SORT_STRING));
         rsort($batches, SORT_STRING);
 
         return $batches;

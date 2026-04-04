@@ -214,11 +214,11 @@ function extractAvailableBatchesFromRows(array $rows): array
     foreach ($rows as $row) {
         $normalizedBatch = normalizeBatchPrefix($row['student_number'] ?? '');
         if ($normalizedBatch !== '') {
-            $availableBatches[$normalizedBatch] = true;
+            $availableBatches[] = $normalizedBatch;
         }
     }
 
-    $batches = array_keys($availableBatches);
+    $batches = array_values(array_unique($availableBatches, SORT_STRING));
     rsort($batches, SORT_STRING);
 
     return $batches;
