@@ -15,6 +15,9 @@ function getRateLimitDefaults($action) {
     $defaults = [
         'login' => ['attempts' => 5, 'window' => 300],
         'forgot_password' => ['attempts' => 3, 'window' => 600],
+        'verify_reset_code' => ['attempts' => 5, 'window' => 600],
+        'reset_password_code' => ['attempts' => 5, 'window' => 600],
+        'student_email_otp_verify' => ['attempts' => 5, 'window' => 900],
     ];
 
     return $defaults[$action] ?? ['attempts' => 5, 'window' => 300];
@@ -218,4 +221,41 @@ function recordAttemptDB($conn, $action) {
     // Clean up old records (older than 1 hour)
     $cleanupTime = date('Y-m-d H:i:s', time() - 3600);
     $conn->query("DELETE FROM rate_limits WHERE last_attempt < '$cleanupTime'");
+}
+
+function resetRateLimitDB($conn, $action) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+    $createTableQuery = "CREATE TABLE IF NOT EXISTS rate_limits (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ip_address VARCHAR(45) NOT NULL,
+        action VARCHAR(50) NOT NULL,
+        attempts INT DEFAULT 0,
+        first_attempt DATETIME NOT NULL,
+        last_attempt DATETIME NOT NULL,
+        INDEX idx_ip_action (ip_address, action),
+        INDEX idx_last_attempt (last_attempt)
+    )";
+    $conn->query($createTableQuery);
+
+    $stmt = $conn->prepare("DELETE FROM rate_limits WHERE ip_address = ? AND action = ?");
+    if ($stmt) {
+        $stmt->bind_param("ss", $ip, $action);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
+function scopedRateLimitAction($action, $scope = '') {
+    $normalizedAction = preg_replace('/[^a-z0-9_]+/i', '_', (string) $action) ?: 'rate_limit';
+    $scope = trim((string) $scope);
+
+    if ($scope === '') {
+        return substr($normalizedAction, 0, 50);
+    }
+
+    $suffix = substr(hash('sha256', strtolower($scope)), 0, 16);
+    $composed = $normalizedAction . '_' . $suffix;
+
+    return substr($composed, 0, 50);
 }

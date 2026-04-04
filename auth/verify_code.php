@@ -20,10 +20,6 @@ if (!$useLaravelAuthBridge) {
 $student_id = isset($_POST['student_id']) ? trim($_POST['student_id']) : '';
 $code = isset($_POST['code']) ? trim($_POST['code']) : '';
 
-// Debug: Log what we received
-error_log("Verify Code - Received student_id: '" . $student_id . "'");
-error_log("Verify Code - Received code: '" . $code . "' (length: " . strlen($code) . ")");
-
 if (!$student_id || !$code) {
     echo json_encode(['success' => false, 'message' => 'Student ID and code are required.']);
     exit;
@@ -109,12 +105,12 @@ $stmt->bind_result($db_code, $expires_at);
 $stmt->fetch();
 $stmt->close();
 
-// Debug logging - remove after testing
-error_log("Verify Code Debug - Input code: '" . $code . "' (length: " . strlen($code) . ")");
-error_log("Verify Code Debug - DB code: '" . $db_code . "' (length: " . strlen($db_code) . ")");
-error_log("Verify Code Debug - Comparison: " . ($db_code === $code ? 'MATCH' : 'NO MATCH'));
+$storedCodeInfo = password_get_info((string) $db_code);
+$codeMatches = !empty($storedCodeInfo['algo'])
+    ? password_verify($code, (string) $db_code)
+    : hash_equals((string) $db_code, $code);
 
-if ($db_code !== $code) {
+if (!$codeMatches) {
     echo json_encode(['success' => false, 'message' => 'Invalid code.']);
     exit;
 }

@@ -12,6 +12,16 @@ use Throwable;
 
 class ForgotPasswordController extends Controller
 {
+    private function ensurePasswordResetsTable(): void
+    {
+        DB::statement('CREATE TABLE IF NOT EXISTS password_resets (
+            email VARCHAR(255) PRIMARY KEY,
+            code VARCHAR(255),
+            expires_at DATETIME
+        )');
+        DB::statement('ALTER TABLE password_resets MODIFY COLUMN code VARCHAR(255) NULL');
+    }
+
     private function normalizeMailEnvValue($value, bool $collapseInternalWhitespace = false): string
     {
         $value = trim((string) $value);
@@ -72,17 +82,14 @@ class ForgotPasswordController extends Controller
             }
 
             $code = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $codeHash = password_hash($code, PASSWORD_DEFAULT);
             $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
-            DB::statement('CREATE TABLE IF NOT EXISTS password_resets (
-                email VARCHAR(255) PRIMARY KEY,
-                code VARCHAR(10),
-                expires_at DATETIME
-            )');
+            $this->ensurePasswordResetsTable();
 
             DB::table('password_resets')->updateOrInsert(
                 ['email' => $email],
-                ['code' => $code, 'expires_at' => $expiry]
+                ['code' => $codeHash, 'expires_at' => $expiry]
             );
 
             $this->sendResetCodeEmail((string) $email, $code);

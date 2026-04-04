@@ -91,6 +91,18 @@ if (!function_exists('shouldFallbackForgotPasswordToLocalMailer')) {
     }
 }
 
+if (!function_exists('ensurePasswordResetsTable')) {
+    function ensurePasswordResetsTable($conn): void
+    {
+        $conn->query('CREATE TABLE IF NOT EXISTS password_resets (
+            email VARCHAR(255) PRIMARY KEY,
+            code VARCHAR(255),
+            expires_at DATETIME
+        )');
+        $conn->query('ALTER TABLE password_resets MODIFY COLUMN code VARCHAR(255) NULL');
+    }
+}
+
 if ($useLaravelAuthBridge) {
     $bridgeData = postLaravelJsonBridge('/api/forgot-password', [
         'student_id' => $student_id,
@@ -136,17 +148,14 @@ if (!preg_match('/^([a-zA-Z0-9_.+-]+)@cvsu.edu\.ph$/', $email)) {
 
 // Generate 4-digit code
 $code = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+$codeHash = password_hash($code, PASSWORD_DEFAULT);
 $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
-// Store code in password_resets table (create if not exists)
-$conn->query('CREATE TABLE IF NOT EXISTS password_resets (
-    email VARCHAR(255) PRIMARY KEY,
-    code VARCHAR(10),
-    expires_at DATETIME
-)');
+// Store a hashed code in password_resets so the raw verification code is not persisted.
+ensurePasswordResetsTable($conn);
 
 $stmt = $conn->prepare('REPLACE INTO password_resets (email, code, expires_at) VALUES (?, ?, ?)');
-$stmt->bind_param('sss', $email, $code, $expiry);
+$stmt->bind_param('sss', $email, $codeHash, $expiry);
 $stmt->execute();
 $stmt->close();
 

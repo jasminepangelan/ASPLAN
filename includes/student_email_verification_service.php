@@ -6,8 +6,12 @@
  * it with an OTP after a successful login before accessing the student area.
  */
 
+require_once __DIR__ . '/rate_limit.php';
+
 const SEV_OTP_EXPIRY_MINUTES = 10;
 const SEV_RESEND_COOLDOWN_SECONDS = 60;
+const SEV_VERIFY_MAX_ATTEMPTS = 5;
+const SEV_VERIFY_WINDOW_SECONDS = 900;
 
 if (!function_exists('sevNormalizeEmail')) {
     function sevNormalizeEmail(string $email): string
@@ -33,13 +37,15 @@ if (!function_exists('sevEnsureTable')) {
         $conn->query("CREATE TABLE IF NOT EXISTS student_email_verifications (
             student_number VARCHAR(50) PRIMARY KEY,
             email VARCHAR(255) NOT NULL,
-            otp_code VARCHAR(10) NULL,
+            otp_code VARCHAR(255) NULL,
             otp_expires_at DATETIME NULL,
             verified_at DATETIME NULL,
             last_sent_at DATETIME NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
+
+        $conn->query("ALTER TABLE student_email_verifications MODIFY COLUMN otp_code VARCHAR(255) NULL");
     }
 }
 
@@ -248,6 +254,7 @@ if (!function_exists('sevIssueOtp')) {
         }
 
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $codeHash = password_hash($code, PASSWORD_DEFAULT);
         $expiry = date('Y-m-d H:i:s', strtotime('+' . SEV_OTP_EXPIRY_MINUTES . ' minutes'));
         $normalizedEmail = sevNormalizeEmail($email);
 
@@ -256,12 +263,14 @@ if (!function_exists('sevIssueOtp')) {
             return ['success' => false, 'message' => 'Failed to prepare the email verification request.'];
         }
 
-        $stmt->bind_param('ssss', $studentId, $normalizedEmail, $code, $expiry);
+        $stmt->bind_param('ssss', $studentId, $normalizedEmail, $codeHash, $expiry);
         if (!$stmt->execute()) {
             $stmt->close();
             return ['success' => false, 'message' => 'Failed to save the email verification request.'];
         }
         $stmt->close();
+
+        resetRateLimitDB($conn, scopedRateLimitAction('student_email_otp_verify', $studentId . '|' . $normalizedEmail));
 
         $subject = 'Your ASPLAN CvSU Email Verification Code';
         $textBody = "Your ASPLAN CvSU email verification code is: {$code}\nThis code will expire in " . SEV_OTP_EXPIRY_MINUTES . " minutes.";
@@ -283,13 +292,20 @@ if (!function_exists('sevVerifyOtp')) {
             return ['success' => false, 'message' => 'Please enter the 6-digit verification code.'];
         }
 
+        $normalizedEmail = sevNormalizeEmail($email);
+        $throttleAction = scopedRateLimitAction('student_email_otp_verify', $studentId . '|' . $normalizedEmail);
+        $rateLimit = checkRateLimitDB($conn, $throttleAction, SEV_VERIFY_MAX_ATTEMPTS, SEV_VERIFY_WINDOW_SECONDS);
+        if (!$rateLimit['allowed']) {
+            return ['success' => false, 'message' => $rateLimit['message']];
+        }
+
         sevSyncRecordForEmail($conn, $studentId, $email);
         $record = sevGetRecord($conn, $studentId);
         if ($record === null) {
             return ['success' => false, 'message' => 'No verification request was found for this account.'];
         }
 
-        if (sevNormalizeEmail((string) ($record['email'] ?? '')) !== sevNormalizeEmail($email)) {
+        if (sevNormalizeEmail((string) ($record['email'] ?? '')) !== $normalizedEmail) {
             return ['success' => false, 'message' => 'Your CvSU email changed. Please request a new verification code.'];
         }
 
@@ -298,12 +314,20 @@ if (!function_exists('sevVerifyOtp')) {
             return ['success' => true, 'message' => 'Your CvSU email is already verified.'];
         }
 
-        if ((string) ($record['otp_code'] ?? '') !== $code) {
+        $storedOtp = (string) ($record['otp_code'] ?? '');
+        $otpInfo = password_get_info($storedOtp);
+        $matchesOtp = !empty($otpInfo['algo'])
+            ? password_verify($code, $storedOtp)
+            : hash_equals($storedOtp, $code);
+
+        if (!$matchesOtp) {
+            recordAttemptDB($conn, $throttleAction);
             return ['success' => false, 'message' => 'Invalid verification code.'];
         }
 
         $expiresAt = trim((string) ($record['otp_expires_at'] ?? ''));
         if ($expiresAt === '' || strtotime($expiresAt) < time()) {
+            recordAttemptDB($conn, $throttleAction);
             return ['success' => false, 'message' => 'Verification code expired. Please request a new one.'];
         }
 
@@ -319,6 +343,7 @@ if (!function_exists('sevVerifyOtp')) {
         }
         $stmt->close();
 
+        resetRateLimitDB($conn, $throttleAction);
         sevClearSessionRequirement();
 
         return ['success' => true, 'message' => 'Your CvSU email has been verified successfully.'];

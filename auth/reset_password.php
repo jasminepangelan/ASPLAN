@@ -113,7 +113,12 @@ $stmt->bind_result($db_code, $expires_at);
 $stmt->fetch();
 $stmt->close();
 
-if ($db_code !== $code) {
+$storedCodeInfo = password_get_info((string) $db_code);
+$codeMatches = !empty($storedCodeInfo['algo'])
+    ? password_verify($code, (string) $db_code)
+    : hash_equals((string) $db_code, $code);
+
+if (!$codeMatches) {
     echo json_encode(['success' => false, 'message' => 'Invalid code.']);
     exit;
 }
