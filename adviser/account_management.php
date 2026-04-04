@@ -18,12 +18,12 @@ if (!isset($_SESSION['id'])) {
 // Get adviser name for header display
 $adviser_name = isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : '';
 
-// Get student_id from URL parameter
-if (!isset($_GET['student_id'])) {
+// Accept the student identifier from the URL on first load and from POST during saves.
+$student_id = trim((string) ($_GET['student_id'] ?? $_POST['student_id'] ?? ''));
+if ($student_id === '') {
     echo "<script>alert('No student ID provided.'); window.history.back();</script>";
     exit();
 }
-$student_id = $_GET['student_id'];
 
 // Database connection
 $conn = getDBConnection();
@@ -806,6 +806,7 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
           <?php endif; ?>
 
           <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="student_id" value="<?= htmlspecialchars($student_id, ENT_QUOTES, 'UTF-8') ?>">
             <div class="profile-layout">
               <aside class="profile-card">
                 <div class="photo-container">
