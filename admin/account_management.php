@@ -20,8 +20,12 @@ $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/account-management/student-profile',
-        ['student_id' => $view_student_id]
+        '/api/account-management/student-profile',
+        [
+            'bridge_authorized' => true,
+            'admin_id' => (string) ($_SESSION['admin_id'] ?? ''),
+            'student_id' => $view_student_id,
+        ]
     );
 
     if (is_array($bridgeData) && !empty($bridgeData['success']) && isset($bridgeData['student']) && is_array($bridgeData['student'])) {

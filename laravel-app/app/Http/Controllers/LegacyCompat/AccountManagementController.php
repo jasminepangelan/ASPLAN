@@ -13,6 +13,32 @@ class AccountManagementController extends Controller
     public function studentProfile(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized',
+                ], 403);
+            }
+
+            $adminId = trim((string) $request->input('admin_id', ''));
+            if ($adminId === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Please log in as admin.',
+                ], 401);
+            }
+
+            $adminExists = DB::table('admin')
+                ->where('username', $adminId)
+                ->exists();
+
+            if (!$adminExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Please log in as admin.',
+                ], 401);
+            }
+
             $studentId = trim((string) $request->input('student_id', ''));
             if ($studentId === '') {
                 return response()->json([
