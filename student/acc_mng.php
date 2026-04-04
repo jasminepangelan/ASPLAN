@@ -158,6 +158,7 @@ $emailVerificationStatus = [
   'headline' => 'Unable to read verification state',
   'description' => 'Refresh the page after updating your profile if the email verification state does not appear right away.',
 ];
+$showVerificationBanner = false;
 
 $studentIdForVerification = html_entity_decode((string) $student_id, ENT_QUOTES, 'UTF-8');
 $emailForVerification = html_entity_decode((string) $email, ENT_QUOTES, 'UTF-8');
@@ -166,6 +167,12 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
   $verificationConn = getDBConnection();
   $emailVerificationStatus = sevGetStatusMeta($verificationConn, $studentIdForVerification, $emailForVerification);
   closeDBConnection($verificationConn);
+
+  if (($emailVerificationStatus['variant'] ?? '') === 'pending' && function_exists('sevIsCvsuEmail') && sevIsCvsuEmail($emailForVerification)) {
+    sevSetSessionRequirement($emailForVerification);
+    $_SESSION['student_email_verification_notice'] = 'Please verify your CvSU email address to complete your student account setup.';
+    $showVerificationBanner = true;
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -544,6 +551,60 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
       color: #50654d;
       background: #eef2ed;
       border-color: #d9e1d7;
+    }
+
+    .verification-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin: 0 0 22px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid #f0d39d;
+      background: linear-gradient(135deg, #fff8eb 0%, #fff3dd 100%);
+      box-shadow: 0 10px 24px rgba(130, 91, 22, 0.08);
+    }
+
+    .verification-banner-copy {
+      min-width: 0;
+    }
+
+    .verification-banner-copy strong {
+      display: block;
+      font-size: 15px;
+      color: #7a4a00;
+      margin-bottom: 6px;
+    }
+
+    .verification-banner-copy p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #6f5a2d;
+    }
+
+    .verification-banner-action {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 124px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #206018 0%, #2d8f22 100%);
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      box-shadow: 0 10px 18px rgba(32, 96, 24, 0.2);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .verification-banner-action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 22px rgba(32, 96, 24, 0.26);
     }
 
     .profile .photo button {
@@ -1066,6 +1127,15 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
     <div class="content-wrapper">
       <div data-student-profile-workspace="<?= $studentProfileWorkspacePayload ?>"></div>
       <div class="subtitle">View and manage your account details</div>
+      <?php if ($showVerificationBanner): ?>
+        <div class="verification-banner">
+          <div class="verification-banner-copy">
+            <strong>CvSU email verification is still required</strong>
+            <p>Your student account is using <strong><?= htmlspecialchars($emailForVerification) ?></strong>. Verify this CvSU email to keep account recovery and official notices active.</p>
+          </div>
+          <a class="verification-banner-action" href="verify_cvsu_email.php">Verify Email</a>
+        </div>
+      <?php endif; ?>
       <div class="profile" id="student-profile-form">
         <div class="photo" id="student-profile-photo-panel">
           <div class="photo-container">
@@ -1083,6 +1153,9 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
             <span class="verification-label"><?= htmlspecialchars($emailVerificationStatus['label']) ?></span>
             <strong><?= htmlspecialchars($emailVerificationStatus['headline']) ?></strong>
             <p><?= htmlspecialchars($emailVerificationStatus['description']) ?></p>
+            <?php if (($emailVerificationStatus['variant'] ?? '') === 'pending' && function_exists('sevIsCvsuEmail') && sevIsCvsuEmail($emailForVerification)): ?>
+              <a class="verification-banner-action" href="verify_cvsu_email.php" style="margin-top: 14px; width: 100%;">Verify CvSU Email</a>
+            <?php endif; ?>
           </div>
         </div>
       <div class="details" id="student-profile-details-panel">

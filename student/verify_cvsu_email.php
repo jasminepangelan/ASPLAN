@@ -6,7 +6,18 @@ if (!isset($_SESSION['student_id'])) {
     exit();
 }
 
-if (empty($_SESSION['student_email_verification_required'])) {
+$conn = getDBConnection();
+$studentId = (string) ($_SESSION['student_id'] ?? '');
+$sessionEmail = (string) ($_SESSION['student_email_verification_email'] ?? $_SESSION['email'] ?? '');
+$requiresVerification = false;
+
+if ($studentId !== '' && $sessionEmail !== '' && function_exists('sevApplySessionRequirement')) {
+    $requiresVerification = sevApplySessionRequirement($conn, $studentId, $sessionEmail);
+}
+
+closeDBConnection($conn);
+
+if (!$requiresVerification && empty($_SESSION['student_email_verification_required'])) {
     header('Location: ../student/home_page_student.php');
     exit();
 }
