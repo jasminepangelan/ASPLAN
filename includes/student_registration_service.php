@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/program_shift_service.php';
+require_once __DIR__ . '/student_profile_service.php';
 
 const SRS_MAX_PICTURE_SIZE = 5000000; // 5MB
 const SRS_ALLOWED_IMAGE_TYPES = ['jpg', 'png', 'jpeg', 'gif'];
@@ -70,29 +71,18 @@ function srsProcessPictureUpload(): array {
         return ['success' => true, 'path' => SRS_DEFAULT_PICTURE];
     }
 
-    if ($_FILES['picture']['error'] !== UPLOAD_ERR_OK) {
-        return ['success' => false, 'error' => 'File upload error: ' . $_FILES['picture']['error']];
+    $isRailwayRuntime = trim((string) (getenv('RAILWAY_ENVIRONMENT_ID') ?: getenv('RAILWAY_PROJECT_NAME') ?: '')) !== '';
+    if ($isRailwayRuntime && !hasPersistentUploadStorage()) {
+        return ['success' => false, 'error' => 'Profile picture storage is not configured for persistence yet. Please contact the administrator to attach a persistent uploads volume.'];
     }
 
     if ($_FILES['picture']['size'] === 0) {
         return ['success' => true, 'path' => SRS_DEFAULT_PICTURE];
     }
 
-    // Check if file is actually an image
-    $check = getimagesize($_FILES['picture']['tmp_name']);
-    if ($check === false) {
-        return ['success' => false, 'error' => 'File is not a valid image. Please upload an image file.'];
-    }
-
-    // Check file size
-    if ($_FILES['picture']['size'] > SRS_MAX_PICTURE_SIZE) {
-        return ['success' => false, 'error' => 'File is too large. Maximum size is 5MB.'];
-    }
-
-    // Check file type
-    $image_file_type = strtolower(pathinfo($_FILES['picture']['name'], PATHINFO_EXTENSION));
-    if (!in_array($image_file_type, SRS_ALLOWED_IMAGE_TYPES, true)) {
-        return ['success' => false, 'error' => 'Invalid file type. Allowed: ' . implode(', ', SRS_ALLOWED_IMAGE_TYPES)];
+    $validation = spsValidateUploadedImageFile($_FILES['picture']);
+    if (!$validation['valid']) {
+        return ['success' => false, 'error' => (string) $validation['error']];
     }
 
     // Create upload directory if needed
@@ -104,13 +94,16 @@ function srsProcessPictureUpload(): array {
     }
 
     // Generate unique filename to prevent overwrites
-    $unique_filename = uniqid('student_', false) . '_' . bin2hex(random_bytes(4)) . '.' . $image_file_type;
+    $image_file_type = (string) ($validation['extension'] ?? 'jpg');
+    $unique_filename = uniqid('student_', true) . '_' . bin2hex(random_bytes(8)) . '.' . $image_file_type;
     $target_file = rtrim($target_dir, "/\\") . DIRECTORY_SEPARATOR . $unique_filename;
 
     // Move uploaded file
     if (!move_uploaded_file($_FILES['picture']['tmp_name'], $target_file)) {
         return ['success' => false, 'error' => 'There was an error uploading your file. Please try again.'];
     }
+
+    @chmod($target_file, 0644);
 
     $publicSubdir = defined('UPLOAD_PUBLIC_SUBDIR') ? trim((string) UPLOAD_PUBLIC_SUBDIR, "/\\") : 'uploads';
     return ['success' => true, 'path' => $publicSubdir . '/' . $unique_filename];

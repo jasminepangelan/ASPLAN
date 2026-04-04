@@ -4,6 +4,81 @@
  * Handles student profile updates, picture uploads, and session synchronization
  */
 
+if (!function_exists('spsUploadErrorMessage')) {
+    function spsUploadErrorMessage(int $errorCode): string
+    {
+        return match ($errorCode) {
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Picture file is too large (max 5MB).',
+            UPLOAD_ERR_PARTIAL => 'The picture upload was interrupted. Please try again.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Upload failed because the temporary upload directory is missing.',
+            UPLOAD_ERR_CANT_WRITE => 'Upload failed because the server could not write the file.',
+            UPLOAD_ERR_EXTENSION => 'Upload was blocked by a server extension.',
+            default => 'No file uploaded',
+        };
+    }
+}
+
+if (!function_exists('spsValidateUploadedImageFile')) {
+    function spsValidateUploadedImageFile(array $fileInput): array
+    {
+        $errorCode = (int) ($fileInput['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($errorCode !== UPLOAD_ERR_OK) {
+            return ['valid' => false, 'error' => spsUploadErrorMessage($errorCode)];
+        }
+
+        $tmpPath = (string) ($fileInput['tmp_name'] ?? '');
+        if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+            return ['valid' => false, 'error' => 'Invalid upload payload. Please choose the image again.'];
+        }
+
+        $size = (int) ($fileInput['size'] ?? 0);
+        if ($size <= 0) {
+            return ['valid' => false, 'error' => 'The uploaded picture is empty.'];
+        }
+
+        if ($size > MAX_FILE_SIZE) {
+            return ['valid' => false, 'error' => 'Picture file is too large (max 5MB).'];
+        }
+
+        $imageInfo = @getimagesize($tmpPath);
+        if (!is_array($imageInfo) || empty($imageInfo['mime'])) {
+            return ['valid' => false, 'error' => 'File is not a valid image.'];
+        }
+
+        $width = (int) ($imageInfo[0] ?? 0);
+        $height = (int) ($imageInfo[1] ?? 0);
+        if ($width <= 0 || $height <= 0) {
+            return ['valid' => false, 'error' => 'Unable to read the uploaded image dimensions.'];
+        }
+
+        if ($width > MAX_IMAGE_WIDTH || $height > MAX_IMAGE_HEIGHT) {
+            return ['valid' => false, 'error' => 'Picture dimensions are too large (max 4096x4096).'];
+        }
+
+        $ext = strtolower(pathinfo((string) ($fileInput['name'] ?? ''), PATHINFO_EXTENSION));
+        if (!in_array($ext, ALLOWED_IMAGE_TYPES, true)) {
+            return ['valid' => false, 'error' => 'Only JPG, JPEG, PNG & GIF files are allowed.'];
+        }
+
+        $allowedMimeTypes = ALLOWED_IMAGE_MIME_TYPES[$ext] ?? [];
+        $imageMime = strtolower(trim((string) $imageInfo['mime']));
+        if (!in_array($imageMime, $allowedMimeTypes, true)) {
+            return ['valid' => false, 'error' => 'The uploaded image content does not match the file extension.'];
+        }
+
+        $detectedMime = detectUploadedMimeType($tmpPath);
+        if ($detectedMime !== '' && !in_array($detectedMime, $allowedMimeTypes, true)) {
+            return ['valid' => false, 'error' => 'The uploaded image MIME type is not allowed.'];
+        }
+
+        return [
+            'valid' => true,
+            'error' => null,
+            'extension' => $ext,
+        ];
+    }
+}
+
 // Allowed fields for profile updates
 define('SPS_ALLOWED_FIELDS', [
     'last_name',
@@ -199,7 +274,7 @@ function spsGetStoredPicturePath($conn, string $studentId): ?string {
  * @return array ['success' => bool, 'path' => string|null, 'error' => string|null]
  */
 function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = null): array {
-    if (!$fileInput || $fileInput['error'] !== UPLOAD_ERR_OK) {
+    if (!$fileInput) {
         return ['success' => false, 'path' => null, 'error' => 'No file uploaded'];
     }
 
@@ -212,21 +287,9 @@ function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = n
         ];
     }
 
-    // Validate file is image
-    if (!getimagesize($fileInput['tmp_name'])) {
-        return ['success' => false, 'path' => null, 'error' => 'File is not a valid image.'];
-    }
-
-    // Check file size (5MB max)
-    if ($fileInput['size'] > 5242880) { // 5MB in bytes
-        return ['success' => false, 'path' => null, 'error' => 'Picture file is too large (max 5MB).'];
-    }
-
-    // Check file type
-    $ext = strtolower(pathinfo($fileInput['name'], PATHINFO_EXTENSION));
-    $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
-    if (!in_array($ext, $allowedTypes)) {
-        return ['success' => false, 'path' => null, 'error' => 'Only JPG, JPEG, PNG & GIF files are allowed.'];
+    $validation = spsValidateUploadedImageFile($fileInput);
+    if (!$validation['valid']) {
+        return ['success' => false, 'path' => null, 'error' => $validation['error']];
     }
 
     // Create uploads directory
@@ -238,7 +301,8 @@ function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = n
     }
 
     // Generate unique filename (uniqid + random bytes)
-    $uniqueName = uniqid() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    $ext = (string) ($validation['extension'] ?? 'jpg');
+    $uniqueName = uniqid('', true) . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
     $filePath = rtrim($uploadDir, "/\\") . DIRECTORY_SEPARATOR . $uniqueName;
     $publicSubdir = defined('UPLOAD_PUBLIC_SUBDIR') ? trim((string) UPLOAD_PUBLIC_SUBDIR, "/\\") : 'uploads';
     $dbPath = $publicSubdir . '/' . $uniqueName;
@@ -247,6 +311,8 @@ function spsUpdateProfilePicture(string $studentId, ?array $fileInput, $conn = n
     if (!move_uploaded_file($fileInput['tmp_name'], $filePath)) {
         return ['success' => false, 'path' => null, 'error' => 'Failed to upload picture.'];
     }
+
+    @chmod($filePath, 0644);
 
     // Update database if connection provided
     if ($conn) {

@@ -244,14 +244,53 @@ class StudentProfileController extends Controller
                 return ['success' => false, 'path' => null, 'error' => 'File is not a valid image.'];
             }
 
+            if ((int) $file->getSize() <= 0) {
+                return ['success' => false, 'path' => null, 'error' => 'The uploaded picture is empty.'];
+            }
+
             if ((int) $file->getSize() > 5242880) {
                 return ['success' => false, 'path' => null, 'error' => 'Picture file is too large (max 5MB).'];
             }
 
+            $imageInfo = @getimagesize($path);
+            if (!is_array($imageInfo) || empty($imageInfo['mime'])) {
+                return ['success' => false, 'path' => null, 'error' => 'File is not a valid image.'];
+            }
+
+            $width = (int) ($imageInfo[0] ?? 0);
+            $height = (int) ($imageInfo[1] ?? 0);
+            if ($width <= 0 || $height <= 0) {
+                return ['success' => false, 'path' => null, 'error' => 'Unable to read the uploaded image dimensions.'];
+            }
+
+            if ($width > 4096 || $height > 4096) {
+                return ['success' => false, 'path' => null, 'error' => 'Picture dimensions are too large (max 4096x4096).'];
+            }
+
             $ext = strtolower((string) $file->getClientOriginalExtension());
             $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
+            $allowedMimeTypes = [
+                'jpg' => ['image/jpeg'],
+                'jpeg' => ['image/jpeg'],
+                'png' => ['image/png'],
+                'gif' => ['image/gif'],
+            ];
             if (!in_array($ext, $allowedTypes, true)) {
                 return ['success' => false, 'path' => null, 'error' => 'Only JPG, JPEG, PNG & GIF files are allowed.'];
+            }
+
+            $imageMime = strtolower(trim((string) ($imageInfo['mime'] ?? '')));
+            if (!in_array($imageMime, $allowedMimeTypes[$ext] ?? [], true)) {
+                return ['success' => false, 'path' => null, 'error' => 'The uploaded image content does not match the file extension.'];
+            }
+
+            $detectedMime = '';
+            if (class_exists(\finfo::class)) {
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $detectedMime = strtolower(trim((string) $finfo->file($path)));
+            }
+            if ($detectedMime !== '' && !in_array($detectedMime, $allowedMimeTypes[$ext] ?? [], true)) {
+                return ['success' => false, 'path' => null, 'error' => 'The uploaded image MIME type is not allowed.'];
             }
 
             $uploadDir = dirname(base_path()) . DIRECTORY_SEPARATOR . 'uploads';
@@ -259,8 +298,9 @@ class StudentProfileController extends Controller
                 return ['success' => false, 'path' => null, 'error' => 'Failed to create uploads directory.'];
             }
 
-            $uniqueName = uniqid('', true) . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            $uniqueName = uniqid('', true) . '_' . bin2hex(random_bytes(8)) . '.' . $ext;
             $file->move($uploadDir, $uniqueName);
+            @chmod($uploadDir . DIRECTORY_SEPARATOR . $uniqueName, 0644);
 
             return [
                 'success' => true,

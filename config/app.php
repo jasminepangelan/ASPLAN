@@ -188,6 +188,39 @@ define('UPLOAD_DIR', resolveUploadStorageDir());
 define('UPLOAD_PUBLIC_SUBDIR', 'uploads/');
 define('MAX_FILE_SIZE', 5242880); // 5MB in bytes
 define('ALLOWED_IMAGE_TYPES', ['jpg', 'jpeg', 'png', 'gif']);
+define('MAX_IMAGE_WIDTH', 4096);
+define('MAX_IMAGE_HEIGHT', 4096);
+define('ALLOWED_IMAGE_MIME_TYPES', [
+    'jpg' => ['image/jpeg'],
+    'jpeg' => ['image/jpeg'],
+    'png' => ['image/png'],
+    'gif' => ['image/gif'],
+]);
+
+if (!function_exists('detectUploadedMimeType')) {
+    function detectUploadedMimeType(string $path): string {
+        if ($path === '' || !is_file($path)) {
+            return '';
+        }
+
+        if (class_exists('finfo')) {
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $mime = (string) $finfo->file($path);
+            if ($mime !== '') {
+                return strtolower(trim($mime));
+            }
+        }
+
+        if (function_exists('mime_content_type')) {
+            $mime = (string) mime_content_type($path);
+            if ($mime !== '') {
+                return strtolower(trim($mime));
+            }
+        }
+
+        return '';
+    }
+}
 
 // Password Settings
 define('MIN_PASSWORD_LENGTH', 8);
