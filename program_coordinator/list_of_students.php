@@ -624,10 +624,10 @@ if (!$bridgeLoaded) {
             background: #1a4f16;
         }
         .btn-profile {
-            background: #d97706;
+            background: #2d8f22;
         }
         .btn-profile:hover {
-            background: #b45309;
+            background: #206018;
         }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-250px); }
