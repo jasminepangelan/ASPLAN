@@ -81,6 +81,18 @@ if (isset($_COOKIE['remember_me'])) {
                     foreach ($bridgeData['session'] as $key => $value) {
                         $_SESSION[$key] = $value;
                     }
+
+                    $verificationConn = getDBConnection();
+                    $requiresVerification = sevApplySessionRequirement(
+                        $verificationConn,
+                        (string) ($_SESSION['student_id'] ?? ''),
+                        (string) ($_SESSION['email'] ?? '')
+                    );
+                    closeDBConnection($verificationConn);
+
+                    if ($requiresVerification) {
+                        $_SESSION['student_email_verification_notice'] = 'Please verify your CvSU email address before accessing your student workspace.';
+                    }
                 }
 
                 if (!empty($bridgeData['clear_cookie'])) {
@@ -88,8 +100,8 @@ if (isset($_COOKIE['remember_me'])) {
                     clearAppCookie('remember_me', '/PEAS/');
                 }
 
-                if (!empty($bridgeData['redirect'])) {
-                    header('Location: ' . $bridgeData['redirect']);
+                if (!empty($bridgeData['redirect']) || !empty($_SESSION['student_email_verification_required'])) {
+                    header('Location: ' . (!empty($_SESSION['student_email_verification_required']) ? sevVerificationRedirectUrl() : $bridgeData['redirect']));
                     exit();
                 }
 

@@ -274,6 +274,10 @@ class StudentProfileController extends Controller
 
     private function isAllowedEmailDomain(string $email): bool
     {
+        if ((bool) preg_match('/@cvsu\.edu\.ph$/i', trim($email))) {
+            return true;
+        }
+
         $domainsRaw = trim((string) DB::table('system_settings')
             ->where('setting_name', 'allowed_email_domains')
             ->value('setting_value'));

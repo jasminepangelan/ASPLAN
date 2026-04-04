@@ -80,6 +80,11 @@ try {
     ], $hashed_password, $picture_db_path);
 
     if ($createResult['success']) {
+        $successMessage = $createResult['message'];
+        if (function_exists('sevIsCvsuEmail') && sevIsCvsuEmail($email)) {
+            $successMessage .= ' After your first successful login, you will be asked to verify your CvSU email with a one-time code.';
+        }
+
         $logContext = [
             'student_id' => $student_id,
             'email' => $email,
@@ -87,7 +92,7 @@ try {
             'picture_uploaded' => ($picture_db_path !== SRS_DEFAULT_PICTURE)
         ];
         elsInfo('Student account created successfully', $logContext, 'student_registration');
-        echo json_encode(['status' => 'success', 'message' => $createResult['message']]);
+        echo json_encode(['status' => 'success', 'message' => $successMessage]);
     } else {
         elsError('Failed to create student account', ['error' => $createResult['error']], 'student_registration');
         echo json_encode(['status' => 'error', 'message' => $createResult['error']]);

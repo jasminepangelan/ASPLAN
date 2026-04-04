@@ -46,6 +46,8 @@ if (!function_exists('autoLoginClearCookie')) {
 
 require_once __DIR__ . '/../includes/env_loader.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/student_email_verification_service.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_only_cookies', '1');
@@ -78,8 +80,16 @@ if ($sessionExpiredNotice) {
 }
 
 if (isset($_SESSION['student_id'])) {
+    $sessionConn = getDBConnection();
+    $requiresVerification = sevApplySessionRequirement(
+        $sessionConn,
+        (string) ($_SESSION['student_id'] ?? ''),
+        (string) ($_SESSION['email'] ?? '')
+    );
+    closeDBConnection($sessionConn);
+
     autoLoginJson([
-        'redirect' => 'student/home_page_student.php',
+        'redirect' => $requiresVerification ? sevVerificationRedirectUrl() : 'student/home_page_student.php',
         'session_expired' => false,
         'session_timeout_seconds' => $sessionTimeoutSeconds,
     ]);
@@ -118,6 +128,18 @@ if (is_array($bridgeData)) {
         foreach ($bridgeData['session'] as $key => $value) {
             $_SESSION[$key] = $value;
         }
+
+        $verificationConn = getDBConnection();
+        $requiresVerification = sevApplySessionRequirement(
+            $verificationConn,
+            (string) ($_SESSION['student_id'] ?? ''),
+            (string) ($_SESSION['email'] ?? '')
+        );
+        closeDBConnection($verificationConn);
+
+        if ($requiresVerification) {
+            $_SESSION['student_email_verification_notice'] = 'Please verify your CvSU email address before accessing your student workspace.';
+        }
     }
 
     if (!empty($bridgeData['clear_cookie'])) {
@@ -126,7 +148,9 @@ if (is_array($bridgeData)) {
     }
 
     autoLoginJson([
-        'redirect' => $bridgeData['redirect'] ?? null,
+        'redirect' => !empty($_SESSION['student_email_verification_required'])
+            ? sevVerificationRedirectUrl()
+            : ($bridgeData['redirect'] ?? null),
         'session_expired' => false,
         'session_timeout_seconds' => $sessionTimeoutSeconds,
     ]);

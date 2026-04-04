@@ -195,6 +195,18 @@ try {
                     }
                 }
 
+                if (($bridgeData['user_type'] ?? '') === 'student') {
+                    $verificationConn = getDBConnection();
+                    $bridgeStudentId = (string) ($_SESSION['student_id'] ?? '');
+                    $bridgeStudentEmail = (string) ($_SESSION['email'] ?? '');
+                    $requiresVerification = sevApplySessionRequirement($verificationConn, $bridgeStudentId, $bridgeStudentEmail);
+                    closeDBConnection($verificationConn);
+
+                    if ($requiresVerification) {
+                        $_SESSION['student_email_verification_notice'] = 'Please verify your CvSU email address before accessing your student workspace.';
+                    }
+                }
+
                 if ($rememberMe && isset($bridgeData['remember']['cookie_value'], $bridgeData['remember']['expires'])) {
                     setAppCookie('remember_me', (string) $bridgeData['remember']['cookie_value'], (int) $bridgeData['remember']['expires'], '/');
                 } elseif (!empty($bridgeData['clear_remember_cookie']) || (($bridgeData['user_type'] ?? '') === 'student' && !$rememberMe)) {
@@ -204,7 +216,9 @@ try {
                 closeDBConnection($conn);
                 sendJsonResponse([
                     'status' => 'success',
-                    'redirect' => $bridgeData['redirect'] ?? 'index.html',
+                    'redirect' => !empty($_SESSION['student_email_verification_required'])
+                        ? sevVerificationRedirectUrl()
+                        : ($bridgeData['redirect'] ?? 'index.html'),
                     'user_type' => $bridgeData['user_type'] ?? 'unknown',
                 ]);
             }
@@ -314,6 +328,11 @@ try {
             $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $_SESSION['user_type'] = 'student';
 
+            $requiresVerification = sevApplySessionRequirement($conn, (string) $userData['student_id'], (string) ($userData['email'] ?? ''));
+            if ($requiresVerification) {
+                $_SESSION['student_email_verification_notice'] = 'Please verify your CvSU email address before accessing your student workspace.';
+            }
+
             if ($rememberMe) {
                 $rememberToken = bin2hex(random_bytes(32));
                 $rememberTokenHash = password_hash($rememberToken, PASSWORD_DEFAULT);
@@ -331,7 +350,11 @@ try {
             }
 
             closeDBConnection($conn);
-            sendJsonResponse(['status' => 'success', 'redirect' => 'student/home_page_student.php', 'user_type' => 'student']);
+            sendJsonResponse([
+                'status' => 'success',
+                'redirect' => $requiresVerification ? sevVerificationRedirectUrl() : 'student/home_page_student.php',
+                'user_type' => 'student'
+            ]);
             break;
 
         case 'admin':

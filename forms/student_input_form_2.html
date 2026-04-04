@@ -427,6 +427,10 @@
         .then(data => {
             console.log('Parsed data:', data);
             if(data.status === 'success') {
+                const successMessage = document.querySelector('.success-message');
+                if (successMessage && data.message) {
+                    successMessage.textContent = data.message;
+                }
                 // Show custom success modal
                 document.getElementById('successModal').style.display = 'block';
                 document.getElementById('form2').reset();

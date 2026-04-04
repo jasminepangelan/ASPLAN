@@ -129,6 +129,10 @@ if (!function_exists('isAllowedEmailDomain')) {
             ];
         }
 
+        if (function_exists('sevIsCvsuEmail') && sevIsCvsuEmail((string)$email)) {
+            return ['allowed' => true, 'message' => ''];
+        }
+
         $domainsRaw = trim(policySettingString($conn, 'allowed_email_domains', ''));
         if ($domainsRaw === '') {
             return ['allowed' => true, 'message' => ''];
