@@ -58,30 +58,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         } else {
             $bridgeHandled = false;
             $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
+            $hasPictureUpload = isset($_FILES['picture']) && (($_FILES['picture']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK);
 
-            if ($useLaravelBridge) {
+            // Save picture uploads locally so the file lives in the same service
+            // that renders the adviser-facing image path.
+            if ($useLaravelBridge && !$hasPictureUpload) {
                 $payloadFields = $_POST;
                 $payloadFields['profile_context'] = 'adviser';
 
                 $bridgeData = null;
-                if (isset($_FILES['picture']) && $_FILES['picture']['error'] === UPLOAD_ERR_OK) {
-                    $bridgeData = postLaravelMultipartBridge(
-                        'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',
-                        $payloadFields,
-                        [
-                            'picture' => [
-                                'path' => (string) $_FILES['picture']['tmp_name'],
-                                'name' => (string) $_FILES['picture']['name'],
-                                'mime' => (string) ($_FILES['picture']['type'] ?? 'application/octet-stream'),
-                            ],
-                        ]
-                    );
-                } else {
-                    $bridgeData = postLaravelJsonBridge(
-                        'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',
-                        $payloadFields
-                    );
-                }
+                $bridgeData = postLaravelJsonBridge(
+                    '/api/student-profile/update',
+                    $payloadFields
+                );
 
                 if (is_array($bridgeData) && array_key_exists('success', $bridgeData)) {
                     $bridgeHandled = true;
@@ -119,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     elsError('Adviser profile update failed', ['student_id' => $student_id, 'error' => $updateResult['error']], 'adviser_student_profile');
                 } else {
                     // Handle picture upload if provided
-                    if (isset($_FILES['picture']) && $_FILES['picture']['error'] === UPLOAD_ERR_OK) {
+                    if ($hasPictureUpload) {
                         $pictureResult = spsUpdateProfilePicture($student_id, $_FILES['picture'], $conn);
                         if (!$pictureResult['success']) {
                             $message = 'Profile updated (with warning: ' . $pictureResult['error'] . ')';
