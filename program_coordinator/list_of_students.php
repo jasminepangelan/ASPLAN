@@ -208,6 +208,22 @@ function loadCoordinatorCandidateRows(mysqli $conn, string $search, string $sele
     return $rows;
 }
 
+function extractAvailableBatchesFromRows(array $rows): array
+{
+    $availableBatches = [];
+    foreach ($rows as $row) {
+        $normalizedBatch = normalizeBatchPrefix($row['student_number'] ?? '');
+        if ($normalizedBatch !== '') {
+            $availableBatches[$normalizedBatch] = true;
+        }
+    }
+
+    $batches = array_keys($availableBatches);
+    rsort($batches, SORT_STRING);
+
+    return $batches;
+}
+
 $selectedBatch = isset($_GET['batch']) ? normalizeBatchPrefix($_GET['batch']) : '';
 $search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 $recordsPerPage = 10;
@@ -223,7 +239,7 @@ $bridgeLoaded = false;
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/program-coordinator/list-of-students/overview',
+        '/api/program-coordinator/list-of-students/overview',
         [
             'bridge_authorized' => true,
             'username' => $_SESSION['username'] ?? '',
@@ -257,26 +273,15 @@ if (!$bridgeLoaded) {
     $conn = getDBConnection();
     $conn->set_charset('utf8mb4');
     $coordinatorPrograms = resolveCoordinatorProgramKeys($conn, $_SESSION['username'] ?? '');
+    $allScopedRows = [];
     if (!empty($coordinatorPrograms)) {
-        $stmtBatches = $conn->prepare("SELECT DISTINCT LEFT(student_number, 4) AS batch, TRIM(program) AS program
-                                       FROM student_info
-                                       WHERE student_number IS NOT NULL AND student_number != ''
-                                       ORDER BY batch DESC");
-        if ($stmtBatches) {
-            $stmtBatches->execute();
-            $resBatches = $stmtBatches->get_result();
-            while ($row = $resBatches->fetch_assoc()) {
-                if (in_array(normalizeProgramKey((string)($row['program'] ?? '')), $coordinatorPrograms, true)) {
-                    $normalizedBatch = normalizeBatchPrefix($row['batch'] ?? '');
-                    if ($normalizedBatch !== '') {
-                        $availableBatches[] = $normalizedBatch;
-                    }
-                }
+        $candidateRows = loadCoordinatorCandidateRows($conn, '', '');
+        foreach ($candidateRows as $row) {
+            if (in_array(normalizeProgramKey((string)($row['program'] ?? '')), $coordinatorPrograms, true)) {
+                $allScopedRows[] = $row;
             }
-            $stmtBatches->close();
         }
-        $availableBatches = array_values(array_unique($availableBatches, SORT_STRING));
-        rsort($availableBatches, SORT_STRING);
+        $availableBatches = extractAvailableBatchesFromRows($allScopedRows);
     }
 
     if ($selectedBatch !== '' && !in_array($selectedBatch, $availableBatches, true)) {
@@ -292,14 +297,27 @@ if (!$bridgeLoaded) {
     }
     $paginationSuffix = empty($queryParams) ? '' : '&' . http_build_query($queryParams);
 
-    $filteredRows = [];
-    if (!empty($coordinatorPrograms)) {
-        $candidateRows = loadCoordinatorCandidateRows($conn, $search, $selectedBatch);
-        foreach ($candidateRows as $row) {
-            if (in_array(normalizeProgramKey((string)($row['program'] ?? '')), $coordinatorPrograms, true)) {
-                $filteredRows[] = $row;
+    $filteredRows = $allScopedRows;
+    if (!empty($filteredRows) && ($search !== '' || $selectedBatch !== '')) {
+        $searchNeedle = strtolower($search);
+        $filteredRows = array_values(array_filter($filteredRows, static function ($row) use ($selectedBatch, $searchNeedle) {
+            if ($selectedBatch !== '' && normalizeBatchPrefix($row['student_number'] ?? '') !== $selectedBatch) {
+                return false;
             }
-        }
+
+            if ($searchNeedle === '') {
+                return true;
+            }
+
+            $haystack = strtolower(implode(' ', [
+                (string) ($row['student_number'] ?? ''),
+                (string) ($row['last_name'] ?? ''),
+                (string) ($row['first_name'] ?? ''),
+                (string) ($row['middle_name'] ?? ''),
+            ]));
+
+            return strpos($haystack, $searchNeedle) !== false;
+        }));
     }
     $totalRecords = count($filteredRows);
     $totalPages = max(1, (int)ceil($totalRecords / $recordsPerPage));

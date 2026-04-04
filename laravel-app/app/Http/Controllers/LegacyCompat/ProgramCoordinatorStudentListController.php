@@ -39,12 +39,15 @@ class ProgramCoordinatorStudentListController extends Controller
                 ]);
             }
 
-            $availableBatches = $this->loadAvailableBatches($coordinatorPrograms);
+            $allScopedStudents = $this->loadStudents('', '', $coordinatorPrograms);
+            $availableBatches = $this->extractAvailableBatchesFromStudentRows($allScopedStudents);
             if ($selectedBatch !== '' && !in_array($selectedBatch, $availableBatches, true)) {
                 $selectedBatch = '';
             }
 
-            $students = $this->loadStudents($search, $selectedBatch, $coordinatorPrograms);
+            $students = ($search === '' && $selectedBatch === '')
+                ? $allScopedStudents
+                : $this->loadStudents($search, $selectedBatch, $coordinatorPrograms);
             $totalRecords = count($students);
             $totalPages = max(1, (int) ceil($totalRecords / $recordsPerPage));
             $page = min($page, $totalPages);
@@ -67,23 +70,16 @@ class ProgramCoordinatorStudentListController extends Controller
         }
     }
 
-    private function loadAvailableBatches(array $programKeys): array
+    private function extractAvailableBatchesFromStudentRows(array $rows): array
     {
         $batches = [];
-        $rows = DB::table('student_info')
-            ->select(['student_number', 'program'])
-            ->whereNotNull('student_number')
-            ->where('student_number', '!=', '')
-            ->orderByDesc(DB::raw('LEFT(student_number, 4)'))
-            ->get();
 
         foreach ($rows as $row) {
-            $programKey = $this->normalizeProgramKey((string) ($row->program ?? ''));
-            if (!in_array($programKey, $programKeys, true)) {
-                continue;
-            }
+            $studentNumber = is_array($row)
+                ? (string) ($row['student_number'] ?? '')
+                : (string) ($row->student_number ?? '');
 
-            $batch = $this->normalizeBatchPrefix((string) ($row->student_number ?? ''));
+            $batch = $this->normalizeBatchPrefix($studentNumber);
             if ($batch !== '') {
                 $batches[$batch] = true;
             }
