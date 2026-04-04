@@ -1009,6 +1009,7 @@ $adviserShellPayload = htmlspecialchars(json_encode([
             $bridgeData = postLaravelJsonBridge(
                 'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser/pending-accounts/list',
                 [
+                    'bridge_authorized' => true,
                     'adviser_id' => (int) $_SESSION['id'],
                 ]
             );

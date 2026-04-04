@@ -24,6 +24,7 @@ if ((getenv('USE_LARAVEL_BRIDGE') === '1')) {
 	$bridgeData = postLaravelJsonBridge(
 		'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser/pending-accounts/reject',
 		[
+			'bridge_authorized' => true,
 			'student_id' => $student_id,
 			'adviser_id' => (int) ($_SESSION['id'] ?? 0),
 		]

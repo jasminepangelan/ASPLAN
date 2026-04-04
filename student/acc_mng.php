@@ -18,7 +18,12 @@ if ($is_admin && $view_student_id) {
   if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
       'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/view',
-      ['student_id' => $view_student_id]
+      [
+        'bridge_authorized' => true,
+        'profile_context' => 'admin',
+        'admin_id' => (string) ($_SESSION['admin_id'] ?? $_SESSION['admin_username'] ?? ''),
+        'student_id' => $view_student_id,
+      ]
     );
 
     if (is_array($bridgeData) && !empty($bridgeData['success']) && isset($bridgeData['student']) && is_array($bridgeData['student'])) {
@@ -68,7 +73,12 @@ if ($is_admin && $view_student_id) {
   if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
       'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/view',
-      ['student_id' => $_SESSION['student_id']]
+      [
+        'bridge_authorized' => true,
+        'profile_context' => 'student',
+        'session_student_id' => (string) $_SESSION['student_id'],
+        'student_id' => (string) $_SESSION['student_id'],
+      ]
     );
 
     if (is_array($bridgeData) && !empty($bridgeData['success']) && isset($bridgeData['student']) && is_array($bridgeData['student'])) {

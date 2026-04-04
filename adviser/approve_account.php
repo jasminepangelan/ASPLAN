@@ -23,6 +23,7 @@ if ($student_id !== null && $student_id !== '') {
         $bridgeData = postLaravelJsonBridge(
             'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser/pending-accounts/approve',
             [
+                'bridge_authorized' => true,
                 'student_id' => $student_id,
                 'adviser_id' => (int) ($_SESSION['id'] ?? 0),
             ]

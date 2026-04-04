@@ -32,6 +32,7 @@ if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
         'http://localhost/ASPLAN_v10/laravel-app/public/api/admin/pending-accounts/approve',
         [
+            'bridge_authorized' => true,
             'student_id' => $student_id,
             'admin_id' => $admin_id,
             'approved_by' => $admin_id,

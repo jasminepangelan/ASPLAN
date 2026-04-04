@@ -13,6 +13,18 @@ class PendingAccountController extends Controller
     public function adminList(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
+            $adminId = trim((string) $request->input('admin_id', ''));
+            if ($adminId === '' || !$this->adminExists($adminId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Please log in as admin.',
+                ], 401);
+            }
+
             $pendingAccounts = DB::table('student_info')
                 ->select([
                     DB::raw('student_number as student_id'),
@@ -43,8 +55,12 @@ class PendingAccountController extends Controller
     public function adviserList(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+
             $adviserId = (int) $request->input('adviser_id', 0);
-            if ($adviserId <= 0) {
+            if ($adviserId <= 0 || !$this->adviserExists($adviserId)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Access denied. Please log in.',
@@ -78,6 +94,10 @@ class PendingAccountController extends Controller
     public function adminApprove(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return $this->response(false, 'Unauthorized', 'error', 403);
+            }
+
             $studentId = trim((string) $request->input('student_id', ''));
             $adminId = trim((string) $request->input('admin_id', $request->input('approved_by', '')));
 
@@ -89,7 +109,7 @@ class PendingAccountController extends Controller
                 return $this->response(false, 'Invalid student ID format', 'error', 422);
             }
 
-            if ($adminId === '') {
+            if ($adminId === '' || !$this->adminExists($adminId)) {
                 return $this->response(false, 'Invalid admin session', 'error', 422);
             }
 
@@ -113,7 +133,12 @@ class PendingAccountController extends Controller
     public function adminReject(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return $this->response(false, 'Unauthorized', 'error', 403);
+            }
+
             $studentId = trim((string) $request->input('student_id', ''));
+            $adminId = trim((string) $request->input('admin_id', ''));
 
             if ($studentId === '') {
                 return $this->response(false, 'Invalid student ID', 'error', 422);
@@ -121,6 +146,10 @@ class PendingAccountController extends Controller
 
             if (!$this->isValidStudentId($studentId)) {
                 return $this->response(false, 'Invalid student ID format', 'error', 422);
+            }
+
+            if ($adminId === '' || !$this->adminExists($adminId)) {
+                return $this->response(false, 'Invalid admin session', 'error', 422);
             }
 
             $updated = DB::table('student_info')
@@ -140,6 +169,10 @@ class PendingAccountController extends Controller
     public function adviserApprove(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return $this->response(false, 'Unauthorized', 'message', 403);
+            }
+
             $studentId = trim((string) $request->input('student_id', ''));
             $adviserId = (int) $request->input('adviser_id', 0);
 
@@ -151,7 +184,7 @@ class PendingAccountController extends Controller
                 return $this->response(false, 'Invalid student ID format.', 'message', 422);
             }
 
-            if ($adviserId <= 0) {
+            if ($adviserId <= 0 || !$this->adviserExists($adviserId)) {
                 return $this->response(false, 'Access denied. Please log in.', 'message', 401);
             }
 
@@ -185,6 +218,10 @@ class PendingAccountController extends Controller
     public function adviserReject(Request $request): JsonResponse
     {
         try {
+            if (!$this->isBridgeAuthorized($request)) {
+                return $this->response(false, 'Unauthorized', 'message', 403);
+            }
+
             $studentId = trim((string) $request->input('student_id', ''));
             $adviserId = (int) $request->input('adviser_id', 0);
 
@@ -196,7 +233,7 @@ class PendingAccountController extends Controller
                 return $this->response(false, 'Invalid student ID format.', 'message', 422);
             }
 
-            if ($adviserId <= 0) {
+            if ($adviserId <= 0 || !$this->adviserExists($adviserId)) {
                 return $this->response(false, 'Access denied. Please log in.', 'message', 401);
             }
 
@@ -226,6 +263,21 @@ class PendingAccountController extends Controller
     private function isValidStudentId(string $studentId): bool
     {
         return preg_match('/^[A-Za-z0-9\-]{1,30}$/', $studentId) === 1;
+    }
+
+    private function isBridgeAuthorized(Request $request): bool
+    {
+        return filter_var($request->input('bridge_authorized', false), FILTER_VALIDATE_BOOL);
+    }
+
+    private function adminExists(string $adminId): bool
+    {
+        return DB::table('admin')->where('username', $adminId)->exists();
+    }
+
+    private function adviserExists(int $adviserId): bool
+    {
+        return DB::table('adviser')->where('id', $adviserId)->exists();
     }
 
     private function loadAdviserBatches(int $adviserId): array
