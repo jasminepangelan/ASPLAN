@@ -65,14 +65,32 @@ class StudentProfileController extends Controller
                 ], 405);
             }
 
+            if (!$this->isBridgeAuthorized($request)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized',
+                ], 403);
+            }
+
             $studentId = trim((string) $request->input('student_id', ''));
             $context = trim((string) $request->input('profile_context', 'student'));
+            if (!in_array($context, ['student', 'admin', 'adviser', 'program_coordinator'], true)) {
+                $context = 'student';
+            }
 
             if ($studentId === '') {
                 return response()->json([
                     'success' => false,
                     'message' => 'No student ID provided',
                 ], 422);
+            }
+
+            $authorizationError = $this->authorizeProfileUpdate($request, $studentId, $context);
+            if ($authorizationError !== null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $authorizationError,
+                ], 403);
             }
 
             $student = DB::table('student_info')
@@ -315,6 +333,37 @@ class StudentProfileController extends Controller
     private function isAllowedEmailDomain(string $email): bool
     {
         return (bool) preg_match('/@cvsu\.edu\.ph$/i', trim($email));
+    }
+
+    private function isBridgeAuthorized(Request $request): bool
+    {
+        return filter_var($request->input('bridge_authorized', false), FILTER_VALIDATE_BOOL);
+    }
+
+    private function authorizeProfileUpdate(Request $request, string $studentId, string $context): ?string
+    {
+        if ($context === 'student') {
+            $sessionStudentId = trim((string) $request->input('session_student_id', ''));
+            if ($sessionStudentId === '' || !hash_equals($sessionStudentId, $studentId)) {
+                return 'You can only update your own profile.';
+            }
+
+            return null;
+        }
+
+        if ($context === 'admin') {
+            return trim((string) $request->input('admin_id', '')) === '' ? 'Unauthorized' : null;
+        }
+
+        if ($context === 'adviser') {
+            return trim((string) $request->input('adviser_id', '')) === '' ? 'Unauthorized' : null;
+        }
+
+        if ($context === 'program_coordinator') {
+            return trim((string) $request->input('coordinator_id', '')) === '' ? 'Unauthorized' : null;
+        }
+
+        return 'Unauthorized';
     }
 
     private function normalizeContactNumber(string $raw): string

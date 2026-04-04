@@ -4,6 +4,7 @@ session_start();
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
 $password_display = '********';
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
@@ -174,6 +175,8 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
     $showVerificationBanner = true;
   }
 }
+
+$csrfToken = getCSRFToken();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1362,6 +1365,7 @@ function closeModal(modalId) {
     function saveChanges() {
       const formData = new FormData();
       formData.append("student_id", "<?= $student_id ?>");
+      formData.append("csrf_token", "<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>");
       formData.append("last_name", document.getElementById("last_name").value);
       formData.append("first_name", document.getElementById("first_name").value);
       formData.append("middle_name", document.getElementById("middle_name").value);

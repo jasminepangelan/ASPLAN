@@ -1,39 +1,54 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/security_policy_enforce.php';
 
-// Get database connection
-$conn = getDBConnection();
+$redirectBase = '../admin/pending_accounts.php';
 
-// Check if student_id is set in the URL
-if (isset($_GET['student_id'])) {
-    $student_id = trim((string) $_GET['student_id']);
-
-    $stmt = $conn->prepare("UPDATE student_info SET status = ? WHERE student_number = ?");
-    if ($stmt) {
-        $status = 'approved';
-        $stmt->bind_param('ss', $status, $student_id);
-        $success = $stmt->execute();
-        $stmt->close();
-    } else {
-        $success = false;
-    }
-
-    // Update the student's status to 'approved'
-    if ($success === true) {
-        // Redirect back to the pending accounts page with success message
-        closeDBConnection($conn);
-        header("Location: pending_accs_admin.php?message=Account approved successfully.");
-        exit;
-    } else {
-        // Redirect back with an error message if the update fails
-        closeDBConnection($conn);
-        header("Location: pending_accs_admin.php?message=Error approving account.");
-        exit;
-    }
-} else {
-    // Redirect back if student_id is not set
-    closeDBConnection($conn);
-    header("Location: pending_accs_admin.php?message=No account selected.");
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: ' . $redirectBase . '?error=' . urlencode('Deprecated endpoint. Use the admin approval form instead.'));
     exit;
 }
-?>
+
+requireAdmin();
+validateCSRFTokenRequired();
+
+$student_id = trim((string) ($_POST['student_id'] ?? ''));
+
+if ($student_id === '') {
+    logSecurityEvent('legacy_approve_account_missing_id', [], 'warning');
+    header('Location: ' . $redirectBase . '?error=' . urlencode('No account selected.'));
+    exit;
+}
+
+if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $student_id)) {
+    logSecurityEvent('legacy_approve_account_invalid_id', ['student_id' => $student_id], 'warning');
+    header('Location: ' . $redirectBase . '?error=' . urlencode('Invalid student ID.'));
+    exit;
+}
+
+$conn = getDBConnection();
+$adminId = (string) ($_SESSION['admin_id'] ?? $_SESSION['admin_username'] ?? '');
+$stmt = $conn->prepare("UPDATE student_info SET status = 'approved', approved_by = ? WHERE student_number = ?");
+
+if (!$stmt) {
+    logSecurityEvent('legacy_approve_account_prepare_failed', ['student_id' => $student_id, 'error' => $conn->error], 'error');
+    closeDBConnection($conn);
+    header('Location: ' . $redirectBase . '?error=' . urlencode('Database error.'));
+    exit;
+}
+
+$stmt->bind_param('ss', $adminId, $student_id);
+$success = $stmt->execute();
+$affectedRows = $stmt->affected_rows;
+$stmt->close();
+closeDBConnection($conn);
+
+if ($success && $affectedRows > 0) {
+    logSecurityEvent('legacy_approve_account_success', ['student_id' => $student_id, 'admin_id' => $adminId], 'info');
+    header('Location: ' . $redirectBase . '?message=' . urlencode('Account approved successfully.'));
+    exit;
+}
+
+logSecurityEvent('legacy_approve_account_failed', ['student_id' => $student_id, 'admin_id' => $adminId], 'warning');
+header('Location: ' . $redirectBase . '?error=' . urlencode('Unable to approve account.'));
+exit;

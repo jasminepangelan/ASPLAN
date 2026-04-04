@@ -65,6 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             if ($useLaravelBridge && !$hasPictureUpload) {
                 $payloadFields = $_POST;
                 $payloadFields['profile_context'] = 'adviser';
+                $payloadFields['bridge_authorized'] = true;
+                $payloadFields['adviser_id'] = (string) ($_SESSION['id'] ?? '');
 
                 $bridgeData = null;
                 $bridgeData = postLaravelJsonBridge(

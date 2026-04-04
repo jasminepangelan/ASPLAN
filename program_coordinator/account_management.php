@@ -95,6 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             if ($useLaravelBridge && !$hasPictureUpload) {
                 $payloadFields = $_POST;
                 $payloadFields['profile_context'] = 'program_coordinator';
+                $payloadFields['bridge_authorized'] = true;
+                $payloadFields['coordinator_id'] = (string) ($_SESSION['username'] ?? '');
 
                 $bridgeData = postLaravelJsonBridge(
                     'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',

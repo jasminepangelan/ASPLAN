@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/account_management_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
 // Only allow admin
 if (!isset($_SESSION['admin_id'])) {
@@ -35,6 +36,8 @@ if (!$row) {
 if (!$row) {
     die("Student not found.");
 }
+
+$csrfToken = getCSRFToken();
 
 $last_name = htmlspecialchars($row['last_name'] ?? '');
 $first_name = htmlspecialchars($row['first_name'] ?? '');
@@ -759,6 +762,7 @@ $admission_date = htmlspecialchars((string)($row['date_of_admission'] ?? ''));
     function saveStudentChanges() {
       const form = document.getElementById('edit-student-form');
       const formData = new FormData(form);
+      formData.append('csrf_token', '<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>');
       fetch('../student/save_profile.php', {
         method: 'POST',
         body: formData
