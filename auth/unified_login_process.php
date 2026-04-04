@@ -147,10 +147,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     sendJsonResponse(['status' => 'error', 'message' => 'Invalid request method.']);
 }
 
-$conn = null;
+$conn = getDBConnection();
 
 try {
-    $rateLimit = checkRateLimit('login');
+    $rateLimit = checkRateLimitDB($conn, 'login');
     if (!$rateLimit['allowed']) {
         sendJsonResponse([
             'status' => 'rate_limited',
@@ -160,7 +160,7 @@ try {
 
     $csrfToken = $_POST['csrf_token'] ?? '';
     if (!validateCSRFToken($csrfToken)) {
-        recordAttempt('login');
+        recordAttemptDB($conn, 'login');
         sendJsonResponse([
             'status' => 'error',
             'message' => 'Invalid security token. Please refresh the page and try again.',
@@ -173,7 +173,7 @@ try {
     $useLaravelAuthBridge = (getenv('USE_LARAVEL_AUTH_BRIDGE') ?: '') === '1';
 
     if ($username === '' || $password === '') {
-        recordAttempt('login');
+        recordAttemptDB($conn, 'login');
         sendJsonResponse(['status' => 'error', 'message' => 'Student ID/Username or password cannot be empty.']);
     }
 
@@ -186,7 +186,7 @@ try {
 
         if (is_array($bridgeData) && isset($bridgeData['status'])) {
             if ($bridgeData['status'] === 'success') {
-                resetRateLimit('login');
+                resetRateLimitDB($conn, 'login');
                 session_regenerate_id(true);
 
                 if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
@@ -224,7 +224,7 @@ try {
             }
 
             if ($bridgeData['status'] === 'error') {
-                recordAttempt('login');
+                recordAttemptDB($conn, 'login');
                 sendJsonResponse($bridgeData);
             }
 
@@ -233,8 +233,6 @@ try {
             }
         }
     }
-
-    $conn = getDBConnection();
 
     $accountLockStatus = getAccountLockoutStatus($conn, $username);
     if (!empty($accountLockStatus['locked'])) {
@@ -281,20 +279,20 @@ try {
     }
 
     if (!$userFound && preg_match('/^[0-9]+$/', $username)) {
-        recordAttempt('login');
+        recordAttemptDB($conn, 'login');
         registerFailedLoginAttempt($conn, $username);
         sendJsonResponse(['status' => 'error', 'message' => 'Student ID not found. Please check and try again.']);
     }
 
     if (!$userFound) {
-        recordAttempt('login');
+        recordAttemptDB($conn, 'login');
         registerFailedLoginAttempt($conn, $username);
         sendJsonResponse(['status' => 'error', 'message' => 'Account not found. Please check your credentials.']);
     }
 
     $userData = $userFound['data'];
     if (!password_verify($password, $userData['password'])) {
-        recordAttempt('login');
+        recordAttemptDB($conn, 'login');
         registerFailedLoginAttempt($conn, $username);
         sendJsonResponse(['status' => 'error', 'message' => 'Invalid password. Please try again.']);
     }
@@ -311,7 +309,7 @@ try {
                 sendJsonResponse(['status' => 'rejected', 'message' => 'Your account was rejected. Please contact admin for more information.']);
             }
 
-            resetRateLimit('login');
+            resetRateLimitDB($conn, 'login');
             session_regenerate_id(true);
 
             $_SESSION['student_id'] = $userData['student_id'];
@@ -358,7 +356,7 @@ try {
             break;
 
         case 'admin':
-            resetRateLimit('login');
+            resetRateLimitDB($conn, 'login');
             session_regenerate_id(true);
 
             $_SESSION['admin_id'] = $userData['username'];
@@ -375,7 +373,7 @@ try {
             break;
 
         case 'adviser':
-            resetRateLimit('login');
+            resetRateLimitDB($conn, 'login');
             session_regenerate_id(true);
 
             $_SESSION['id'] = $userData['id'];
@@ -393,7 +391,7 @@ try {
             break;
 
         case 'program_coordinator':
-            resetRateLimit('login');
+            resetRateLimitDB($conn, 'login');
             session_regenerate_id(true);
 
             $_SESSION['id'] = $userData['id'];

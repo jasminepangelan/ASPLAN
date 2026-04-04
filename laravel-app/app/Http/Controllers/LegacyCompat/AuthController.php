@@ -10,6 +10,9 @@ use Throwable;
 
 class AuthController extends Controller
 {
+    private const LOGIN_MAX_ATTEMPTS = 5;
+    private const LOGIN_WINDOW_SECONDS = 300;
+
     public function unifiedLogin(Request $request): JsonResponse
     {
         try {
@@ -20,13 +23,22 @@ class AuthController extends Controller
             $username = trim((string) $request->input('username', ''));
             $password = trim((string) $request->input('password', ''));
             $rememberMe = (bool) $request->input('remember_me', false);
+            $rateLimit = $this->checkRateLimit($request, 'login', self::LOGIN_MAX_ATTEMPTS, self::LOGIN_WINDOW_SECONDS);
+            if (!$rateLimit['allowed']) {
+                return response()->json([
+                    'status' => 'rate_limited',
+                    'message' => $rateLimit['message'],
+                ], 429);
+            }
 
             if ($username === '' || $password === '') {
+                $this->recordRateLimitAttempt($request, 'login');
                 return response()->json(['status' => 'error', 'message' => 'Student ID/Username or password cannot be empty.']);
             }
 
             $user = $this->resolveUser($username);
             if ($user === null) {
+                $this->recordRateLimitAttempt($request, 'login');
                 if (preg_match('/^[0-9]+$/', $username)) {
                     return response()->json(['status' => 'error', 'message' => 'Student ID not found. Please check and try again.']);
                 }
@@ -35,6 +47,7 @@ class AuthController extends Controller
             }
 
             if (!password_verify($password, (string) ($user['password'] ?? ''))) {
+                $this->recordRateLimitAttempt($request, 'login');
                 return response()->json(['status' => 'error', 'message' => 'Invalid password. Please try again.']);
             }
 
@@ -48,6 +61,7 @@ class AuthController extends Controller
                 }
             }
 
+            $this->resetRateLimit($request, 'login');
             $response = [
                 'status' => 'success',
                 'redirect' => $this->redirectForType($user['type']),
@@ -67,6 +81,96 @@ class AuthController extends Controller
         } catch (Throwable $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
+    }
+
+    private function ensureRateLimitTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS rate_limits (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            ip_address VARCHAR(45) NOT NULL,
+            action VARCHAR(50) NOT NULL,
+            attempts INT DEFAULT 0,
+            first_attempt DATETIME NOT NULL,
+            last_attempt DATETIME NOT NULL,
+            INDEX idx_ip_action (ip_address, action),
+            INDEX idx_last_attempt (last_attempt)
+        )");
+    }
+
+    private function checkRateLimit(Request $request, string $action, int $maxAttempts, int $windowSeconds): array
+    {
+        $this->ensureRateLimitTable();
+
+        $ip = (string) ($request->ip() ?: 'unknown');
+        $windowStart = now()->subSeconds($windowSeconds)->toDateTimeString();
+        $record = DB::table('rate_limits')
+            ->select(['attempts', 'first_attempt'])
+            ->where('ip_address', $ip)
+            ->where('action', $action)
+            ->where('first_attempt', '>', $windowStart)
+            ->first();
+
+        if ($record !== null) {
+            $attempts = (int) ($record->attempts ?? 0);
+            $firstAttempt = strtotime((string) ($record->first_attempt ?? '')) ?: time();
+
+            if ($attempts >= $maxAttempts) {
+                $retryAfter = max(0, $windowSeconds - (time() - $firstAttempt));
+                return [
+                    'allowed' => false,
+                    'message' => 'Too many attempts. Please try again in ' . max(1, (int) ceil($retryAfter / 60)) . ' minutes.',
+                ];
+            }
+        }
+
+        return ['allowed' => true, 'message' => ''];
+    }
+
+    private function recordRateLimitAttempt(Request $request, string $action): void
+    {
+        $this->ensureRateLimitTable();
+
+        $ip = (string) ($request->ip() ?: 'unknown');
+        $now = now()->toDateTimeString();
+        $windowStart = now()->subSeconds(self::LOGIN_WINDOW_SECONDS)->toDateTimeString();
+
+        $record = DB::table('rate_limits')
+            ->select(['id'])
+            ->where('ip_address', $ip)
+            ->where('action', $action)
+            ->where('first_attempt', '>', $windowStart)
+            ->first();
+
+        if ($record !== null) {
+            DB::table('rate_limits')
+                ->where('id', (int) $record->id)
+                ->update([
+                    'attempts' => DB::raw('attempts + 1'),
+                    'last_attempt' => $now,
+                ]);
+        } else {
+            DB::table('rate_limits')->insert([
+                'ip_address' => $ip,
+                'action' => $action,
+                'attempts' => 1,
+                'first_attempt' => $now,
+                'last_attempt' => $now,
+            ]);
+        }
+
+        DB::table('rate_limits')
+            ->where('last_attempt', '<', now()->subHour()->toDateTimeString())
+            ->delete();
+    }
+
+    private function resetRateLimit(Request $request, string $action): void
+    {
+        $this->ensureRateLimitTable();
+
+        DB::table('rate_limits')
+            ->where('ip_address', (string) ($request->ip() ?: 'unknown'))
+            ->where('action', $action)
+            ->delete();
     }
 
     private function resolveUser(string $username): ?array

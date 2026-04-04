@@ -12,6 +12,9 @@ use Throwable;
 
 class ForgotPasswordController extends Controller
 {
+    private const FORGOT_PASSWORD_MAX_ATTEMPTS = 3;
+    private const FORGOT_PASSWORD_WINDOW_SECONDS = 600;
+
     private function ensurePasswordResetsTable(): void
     {
         DB::statement('CREATE TABLE IF NOT EXISTS password_resets (
@@ -48,8 +51,17 @@ class ForgotPasswordController extends Controller
     public function sendCode(Request $request): JsonResponse
     {
         try {
+            $rateLimit = $this->checkRateLimit($request, 'forgot_password', self::FORGOT_PASSWORD_MAX_ATTEMPTS, self::FORGOT_PASSWORD_WINDOW_SECONDS);
+            if (!$rateLimit['allowed']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $rateLimit['message'],
+                ], 429);
+            }
+
             $studentId = trim((string) $request->input('student_id', ''));
             if ($studentId === '') {
+                $this->recordRateLimitAttempt($request, 'forgot_password');
                 return response()->json([
                     'success' => false,
                     'message' => 'Student ID is required.',
@@ -57,6 +69,7 @@ class ForgotPasswordController extends Controller
             }
 
             if (!preg_match('/^[0-9]{1,20}$/', $studentId)) {
+                $this->recordRateLimitAttempt($request, 'forgot_password');
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid Student ID format.',
@@ -68,6 +81,7 @@ class ForgotPasswordController extends Controller
                 ->value('email');
 
             if ($email === null || $email === '') {
+                $this->recordRateLimitAttempt($request, 'forgot_password');
                 return response()->json([
                     'success' => false,
                     'message' => 'Student ID not found.',
@@ -75,6 +89,7 @@ class ForgotPasswordController extends Controller
             }
 
             if (!preg_match('/^([a-zA-Z0-9_.+-]+)@cvsu.edu\.ph$/', (string) $email)) {
+                $this->recordRateLimitAttempt($request, 'forgot_password');
                 return response()->json([
                     'success' => false,
                     'message' => 'Only CvSU accounts are allowed.',
@@ -93,9 +108,11 @@ class ForgotPasswordController extends Controller
             );
 
             $this->sendResetCodeEmail((string) $email, $code);
+            $this->recordRateLimitAttempt($request, 'forgot_password');
 
             return response()->json(['success' => true]);
         } catch (Throwable $e) {
+            $this->recordRateLimitAttempt($request, 'forgot_password');
             return response()->json([
                 'success' => false,
                 'message' => $this->formatMailerErrorMessage($e->getMessage()),
@@ -241,5 +258,85 @@ class ForgotPasswordController extends Controller
         }
 
         return null;
+    }
+
+    private function ensureRateLimitTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS rate_limits (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            ip_address VARCHAR(45) NOT NULL,
+            action VARCHAR(50) NOT NULL,
+            attempts INT DEFAULT 0,
+            first_attempt DATETIME NOT NULL,
+            last_attempt DATETIME NOT NULL,
+            INDEX idx_ip_action (ip_address, action),
+            INDEX idx_last_attempt (last_attempt)
+        )");
+    }
+
+    private function checkRateLimit(Request $request, string $action, int $maxAttempts, int $windowSeconds): array
+    {
+        $this->ensureRateLimitTable();
+
+        $ip = (string) ($request->ip() ?: 'unknown');
+        $windowStart = now()->subSeconds($windowSeconds)->toDateTimeString();
+        $record = DB::table('rate_limits')
+            ->select(['attempts', 'first_attempt'])
+            ->where('ip_address', $ip)
+            ->where('action', $action)
+            ->where('first_attempt', '>', $windowStart)
+            ->first();
+
+        if ($record !== null) {
+            $attempts = (int) ($record->attempts ?? 0);
+            $firstAttempt = strtotime((string) ($record->first_attempt ?? '')) ?: time();
+
+            if ($attempts >= $maxAttempts) {
+                $retryAfter = max(0, $windowSeconds - (time() - $firstAttempt));
+                return [
+                    'allowed' => false,
+                    'message' => 'Too many attempts. Please try again in ' . max(1, (int) ceil($retryAfter / 60)) . ' minutes.',
+                ];
+            }
+        }
+
+        return ['allowed' => true, 'message' => ''];
+    }
+
+    private function recordRateLimitAttempt(Request $request, string $action): void
+    {
+        $this->ensureRateLimitTable();
+
+        $ip = (string) ($request->ip() ?: 'unknown');
+        $now = now()->toDateTimeString();
+        $windowStart = now()->subSeconds(self::FORGOT_PASSWORD_WINDOW_SECONDS)->toDateTimeString();
+
+        $record = DB::table('rate_limits')
+            ->select(['id'])
+            ->where('ip_address', $ip)
+            ->where('action', $action)
+            ->where('first_attempt', '>', $windowStart)
+            ->first();
+
+        if ($record !== null) {
+            DB::table('rate_limits')
+                ->where('id', (int) $record->id)
+                ->update([
+                    'attempts' => DB::raw('attempts + 1'),
+                    'last_attempt' => $now,
+                ]);
+        } else {
+            DB::table('rate_limits')->insert([
+                'ip_address' => $ip,
+                'action' => $action,
+                'attempts' => 1,
+                'first_attempt' => $now,
+                'last_attempt' => $now,
+            ]);
+        }
+
+        DB::table('rate_limits')
+            ->where('last_attempt', '<', now()->subHour()->toDateTimeString())
+            ->delete();
     }
 }

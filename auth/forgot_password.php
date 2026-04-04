@@ -19,8 +19,8 @@ $conn = getDBConnection();
 
 $useLaravelAuthBridge = getenv('USE_LARAVEL_AUTH_BRIDGE') === '1';
 
-// Check rate limit (settings-backed defaults if configured)
-$rateLimit = checkRateLimit('forgot_password');
+// Check rate limit using the shared database-backed limiter.
+$rateLimit = checkRateLimitDB($conn, 'forgot_password');
 if (!$rateLimit['allowed']) {
     echo json_encode([
         'success' => false, 
@@ -31,14 +31,14 @@ if (!$rateLimit['allowed']) {
 
 $student_id = isset($_POST['student_id']) ? trim($_POST['student_id']) : '';
 if (!$student_id) {
-    recordAttempt('forgot_password');
+    recordAttemptDB($conn, 'forgot_password');
     echo json_encode(['success' => false, 'message' => 'Student ID is required.']);
     exit;
 }
 
 // Validate student ID format
 if (!preg_match('/^[0-9]{1,20}$/', $student_id)) {
-    recordAttempt('forgot_password');
+    recordAttemptDB($conn, 'forgot_password');
     echo json_encode(['success' => false, 'message' => 'Invalid Student ID format.']);
     exit;
 }
@@ -134,6 +134,7 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
+    recordAttemptDB($conn, 'forgot_password');
     echo json_encode(['success' => false, 'message' => 'Student ID not found.']);
     exit;
 }
@@ -142,6 +143,7 @@ $row = $result->fetch_assoc();
 $email = $row['email'];
 // Only allow CvSU email addresses for security
 if (!preg_match('/^([a-zA-Z0-9_.+-]+)@cvsu.edu\.ph$/', $email)) {
+    recordAttemptDB($conn, 'forgot_password');
     echo json_encode(['success' => false, 'message' => 'Only CvSU accounts are allowed.']);
     exit;
 }
@@ -170,10 +172,12 @@ try {
         throw new RuntimeException((string) ($sendResult['error'] ?? 'Unable to send the verification email right now.'));
     }
 
+    recordAttemptDB($conn, 'forgot_password');
     closeDBConnection($conn);
     echo json_encode(['success' => true]);
     exit;
 } catch (Throwable $e) {
+    recordAttemptDB($conn, 'forgot_password');
     closeDBConnection($conn);
     echo json_encode(['success' => false, 'message' => formatForgotPasswordMailerError($e)]);
     exit;
