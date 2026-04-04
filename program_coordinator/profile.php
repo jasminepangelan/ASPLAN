@@ -14,11 +14,30 @@ $successMessage = '';
 $errorMessage = '';
 $profile = [];
 $bridgeLoaded = false;
+$verificationRequiresRedirect = false;
+$coordinatorVerificationPending = false;
+
+function coordinatorProfileHandleVerificationRequirement(array $profile, string $username): bool
+{
+    $email = trim((string) ($profile['adviser_email'] ?? ''));
+    $_SESSION['program_coordinator_email'] = $email;
+
+    $conn = getDBConnection();
+    $requiresVerification = cevApplySessionRequirement($conn, $username, $email);
+    closeDBConnection($conn);
+
+    if ($requiresVerification) {
+        $_SESSION['program_coordinator_email_verification_notice'] = 'Please verify your CvSU email address before accessing the program coordinator workspace.';
+        return true;
+    }
+
+    return false;
+}
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/program-coordinator/profile/update',
+            '/api/program-coordinator/profile/update',
             array_merge($_POST, [
                 'bridge_authorized' => true,
                 'username' => $username,
@@ -34,6 +53,7 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
                 }
                 if (isset($bridgeData['profile']) && is_array($bridgeData['profile'])) {
                     $profile = $bridgeData['profile'];
+                    $verificationRequiresRedirect = coordinatorProfileHandleVerificationRequirement($profile, $username);
                 }
                 $bridgeLoaded = true;
             } else {
@@ -45,7 +65,7 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
 
     if (!$bridgeLoaded) {
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/program-coordinator/profile/view',
+            '/api/program-coordinator/profile/view',
             [
                 'bridge_authorized' => true,
                 'username' => $username,
@@ -54,6 +74,7 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
 
         if (is_array($bridgeData) && !empty($bridgeData['success']) && isset($bridgeData['profile']) && is_array($bridgeData['profile'])) {
             $profile = $bridgeData['profile'];
+            $_SESSION['program_coordinator_email'] = trim((string) ($profile['adviser_email'] ?? ''));
             $bridgeLoaded = true;
         }
     }
@@ -109,6 +130,19 @@ if (!$bridgeLoaded) {
                 if ($prefix) $newFullName = "$prefix $newFullName";
                 $_SESSION['full_name'] = $newFullName;
                 $coordinatorName = htmlspecialchars($newFullName);
+                $profile = array_merge($profile, [
+                    'username' => $username,
+                    'first_name' => $first_name,
+                    'last_name' => $last_name,
+                    'middle_name' => $middle_name,
+                    'prefix' => $prefix,
+                    'suffix' => $suffix,
+                    'adviser_email' => $email,
+                    'sex' => $sex,
+                    'pronoun' => $pronoun,
+                    'program' => $program,
+                ]);
+                $verificationRequiresRedirect = coordinatorProfileHandleVerificationRequirement($profile, $username);
             } else {
                 $errorMessage = "Failed to update profile. Please try again.";
             }
@@ -135,6 +169,15 @@ if (!$bridgeLoaded) {
 
     $conn->close();
 }
+
+if ($verificationRequiresRedirect) {
+    header('Location: ' . cevVerificationRedirectUrl());
+    exit();
+}
+
+$coordinatorVerificationPending =
+    !empty($_SESSION['program_coordinator_email_verification_required']) &&
+    cevIsCvsuEmail((string) ($_SESSION['program_coordinator_email_verification_email'] ?? $_SESSION['program_coordinator_email'] ?? ''));
 
 ?>
 <!DOCTYPE html>
@@ -568,6 +611,29 @@ if (!$bridgeLoaded) {
             color: #b12424;
             border-color: #f2caca;
         }
+        .alert-warning {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: #f5fbf3;
+            color: #225b26;
+            border-color: #cfe2cf;
+        }
+        .alert-warning a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #2f8a35 0%, #206018 100%);
+            color: #fff;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-250px); }
             .sidebar:not(.collapsed) { transform: translateX(0); }
@@ -600,6 +666,10 @@ if (!$bridgeLoaded) {
                 grid-column: auto;
             }
             .form-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .alert-warning {
                 flex-direction: column;
                 align-items: stretch;
             }
@@ -674,6 +744,13 @@ if (!$bridgeLoaded) {
                 
                 <?php if (!empty($errorMessage)): ?>
                     <div class="alert alert-danger"><?php echo $errorMessage; ?></div>
+                <?php endif; ?>
+
+                <?php if ($coordinatorVerificationPending): ?>
+                    <div class="alert alert-warning">
+                        <span>Your official CvSU email is on file but still needs OTP verification before you can continue in the coordinator workspace.</span>
+                        <a href="verify_cvsu_email.php">Verify Email</a>
+                    </div>
                 <?php endif; ?>
 
                 <form method="POST" action="">

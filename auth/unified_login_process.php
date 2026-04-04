@@ -123,7 +123,7 @@ function checkProgramCoordinatorCredentials($conn, $username, $password)
         return ['found' => false];
     }
 
-    $query = $conn->prepare("SELECT id, CONCAT_WS(' ', first_name, middle_name, last_name) AS full_name, username, password, sex, pronoun FROM `$table` WHERE username = ?");
+    $query = $conn->prepare("SELECT id, CONCAT_WS(' ', first_name, middle_name, last_name) AS full_name, username, password, sex, pronoun, adviser_email FROM `$table` WHERE username = ?");
     if (!$query) {
         throw new RuntimeException('Program coordinator credentials query could not be prepared: ' . ($conn->error ?? 'unknown database error'));
     }
@@ -398,14 +398,24 @@ try {
             $_SESSION['full_name'] = $userData['full_name'];
             $_SESSION['username'] = $userData['username'];
             $_SESSION['pronoun'] = $userData['pronoun'];
+            $_SESSION['program_coordinator_email'] = $userData['adviser_email'] ?? '';
             $_SESSION['login_time'] = time();
             $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $_SESSION['user_type'] = 'program_coordinator';
 
+            $requiresVerification = cevApplySessionRequirement($conn, (string) $userData['username'], (string) ($userData['adviser_email'] ?? ''));
+            if ($requiresVerification) {
+                $_SESSION['program_coordinator_email_verification_notice'] = 'Please verify your CvSU email address before accessing the program coordinator workspace.';
+            }
+
             clearRememberMeCookies();
 
             closeDBConnection($conn);
-            sendJsonResponse(['status' => 'success', 'redirect' => 'program_coordinator/index.php', 'user_type' => 'program_coordinator']);
+            sendJsonResponse([
+                'status' => 'success',
+                'redirect' => $requiresVerification ? cevVerificationRedirectUrl() : 'program_coordinator/index.php',
+                'user_type' => 'program_coordinator'
+            ]);
             break;
     }
 

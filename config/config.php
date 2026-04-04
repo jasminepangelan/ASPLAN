@@ -78,6 +78,7 @@ require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/email.php';
 require_once __DIR__ . '/../includes/student_email_verification_service.php';
+require_once __DIR__ . '/../includes/coordinator_email_verification_service.php';
 require_once __DIR__ . '/../includes/settings.php';
 require_once __DIR__ . '/../includes/error_logging_service.php';
 
@@ -169,12 +170,66 @@ if (!function_exists('shouldBypassStudentVerificationGate')) {
     }
 }
 
+if (!function_exists('shouldBypassCoordinatorVerificationGate')) {
+    function shouldBypassCoordinatorVerificationGate(): bool
+    {
+        if (PHP_SAPI === 'cli') {
+            return true;
+        }
+
+        $scriptName = str_replace('\\', '/', strtolower((string)($_SERVER['SCRIPT_NAME'] ?? '')));
+        $allowed = [
+            '/program_coordinator/profile.php',
+            '/program_coordinator/verify_cvsu_email.php',
+            '/program_coordinator/send_cvsu_email_verification.php',
+            '/program_coordinator/verify_cvsu_email_otp.php',
+            '/auth/signout.php',
+            '/auth/unified_login_process.php',
+            '/auth/get_csrf_token.php',
+        ];
+
+        foreach ($allowed as $path) {
+            if (str_ends_with($scriptName, $path)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 if (
     !empty($_SESSION['student_id']) &&
     !empty($_SESSION['student_email_verification_required']) &&
     !shouldBypassStudentVerificationGate()
 ) {
     $verificationRedirect = sevVerificationRedirectUrl();
+    $expectsJson =
+        (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
+        (isset($_SERVER['HTTP_ACCEPT']) && stripos((string)$_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+    if ($expectsJson) {
+        header('Content-Type: application/json; charset=UTF-8');
+        http_response_code(403);
+        echo json_encode([
+            'status' => 'email_verification_required',
+            'message' => 'Please verify your CvSU email address before continuing.',
+            'redirect' => $verificationRedirect,
+        ]);
+        exit();
+    }
+
+    header('Location: ' . $verificationRedirect);
+    exit();
+}
+
+if (
+    (string) ($_SESSION['user_type'] ?? '') === 'program_coordinator' &&
+    !empty($_SESSION['username']) &&
+    !empty($_SESSION['program_coordinator_email_verification_required']) &&
+    !shouldBypassCoordinatorVerificationGate()
+) {
+    $verificationRedirect = cevVerificationRedirectUrl();
     $expectsJson =
         (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
         (isset($_SERVER['HTTP_ACCEPT']) && stripos((string)$_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
