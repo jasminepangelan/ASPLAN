@@ -1075,6 +1075,17 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
     .success-modal .modal-content {
       border-top: 4px solid #28a745;
     }
+
+    .error-modal .modal-content {
+      border-top: 4px solid #d93025;
+    }
+
+    .error-modal .modal-icon {
+      background: linear-gradient(135deg, #d93025 0%, #ef5350 100%);
+      font-size: 30px;
+      font-weight: 800;
+      color: #fff;
+    }
   </style>
   <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-profile-workspace.jsx']) ?>
 </head>
@@ -1231,7 +1242,7 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
                     const confirmPassword = document.getElementById('confirm_password').value;
 
                     if (newPassword !== confirmPassword) {
-                        alert('New passwords do not match!');
+                        showFeedbackModal('error', 'Password Update Failed', 'New passwords do not match.');
                         return;
                     }
 
@@ -1247,14 +1258,17 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            alert("Password changed successfully!");
+                            showFeedbackModal('success', 'Password Updated', 'Your password has been changed successfully.');
                             // Optionally reset the form or close it
                             document.getElementById('change-password-container').style.display = 'none';
                         } else {
-                            alert("Error: " + data.message);
+                            showFeedbackModal('error', 'Password Update Failed', data.message || 'Unable to update your password right now.');
                         }
                     })
-                    .catch(error => console.error("Error:", error));
+                    .catch(error => {
+                        console.error("Error:", error);
+                        showFeedbackModal('error', 'Password Update Failed', 'A network error occurred while updating your password.');
+                    });
                 }
             </script>
 
@@ -1296,6 +1310,15 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
   </div>
 </div>
 
+<div id="feedbackModal" class="modal">
+  <div class="modal-content error-modal">
+    <div class="modal-icon" id="feedbackModalIcon">!</div>
+    <div class="modal-title" id="feedbackModalTitle">Something went wrong</div>
+    <div class="modal-message" id="feedbackModalMessage">Please try again.</div>
+    <button class="modal-button" onclick="closeModal('feedbackModal')">OK</button>
+  </div>
+</div>
+
   <script>
     function previewImage(event) {
       const file = event.target.files[0];
@@ -1321,6 +1344,20 @@ if ($studentIdForVerification !== '' && $emailForVerification !== '') {
 function closeModal(modalId) {
   document.getElementById(modalId).style.setProperty('display', 'none', 'important');
 }
+
+    function showFeedbackModal(type, title, message) {
+      const modal = document.getElementById('feedbackModal');
+      const modalContent = modal.querySelector('.modal-content');
+      const icon = document.getElementById('feedbackModalIcon');
+      const titleNode = document.getElementById('feedbackModalTitle');
+      const messageNode = document.getElementById('feedbackModalMessage');
+
+      modalContent.className = 'modal-content ' + (type === 'success' ? 'success-modal' : 'error-modal');
+      icon.textContent = type === 'success' ? 'OK' : '!';
+      titleNode.textContent = title;
+      messageNode.textContent = message;
+      modal.style.setProperty('display', 'block', 'important');
+    }
 
     function saveChanges() {
       const formData = new FormData();
@@ -1351,19 +1388,19 @@ function closeModal(modalId) {
           try {
             data = JSON.parse(text);
           } catch (e) {
-            alert('Server error: ' + text);
+            showFeedbackModal('error', 'Profile Update Failed', 'The server returned an unexpected response. Please try again.');
             return;
           }
           if (data.success) {
             showSuccessModal();
             setTimeout(() => location.reload(), 1500);
           } else {
-            alert("Error: " + data.message);
+            showFeedbackModal('error', 'Profile Update Failed', data.message || 'Unable to update your profile right now.');
           }
         })
         .catch(error => {
           console.error("Error:", error);
-          alert('Network error: ' + error);
+          showFeedbackModal('error', 'Profile Update Failed', 'A network error occurred while saving your profile.');
         });
     }
 
