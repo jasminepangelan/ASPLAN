@@ -12,12 +12,18 @@ function paLoadPendingAccounts()
 {
     $conn = getDBConnection();
     $pending = [];
-    $query = "SELECT student_number AS student_id, last_name, first_name, middle_name FROM student_info WHERE status = 'pending'";
-    $result = $conn->query($query);
-    if ($result && $result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $pending[] = $row;
+    $stmt = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name FROM student_info WHERE status = ?");
+    if ($stmt) {
+        $status = 'pending';
+        $stmt->bind_param('s', $status);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                $pending[] = $row;
+            }
         }
+        $stmt->close();
     }
     closeDBConnection($conn);
     return $pending;
@@ -30,12 +36,18 @@ function paLoadPendingAccounts()
 function paIsAutoApproveEnabled()
 {
     $conn = getDBConnection();
-    $auto_approve_query = "SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students'";
-    $auto_approve_result = $conn->query($auto_approve_query);
     $enabled = false;
-    if ($auto_approve_result && $auto_approve_result->num_rows > 0) {
-        $auto_row = $auto_approve_result->fetch_assoc();
-        $enabled = ($auto_row['setting_value'] === '1');
+    $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_name = ? LIMIT 1");
+    if ($stmt) {
+        $settingName = 'auto_approve_students';
+        $stmt->bind_param('s', $settingName);
+        $stmt->execute();
+        $autoApproveResult = $stmt->get_result();
+        if ($autoApproveResult && $autoApproveResult->num_rows > 0) {
+            $autoRow = $autoApproveResult->fetch_assoc();
+            $enabled = (($autoRow['setting_value'] ?? '') === '1');
+        }
+        $stmt->close();
     }
     closeDBConnection($conn);
     return $enabled;

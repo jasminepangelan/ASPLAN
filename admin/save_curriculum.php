@@ -56,7 +56,18 @@ $conn->begin_transaction();
 try {
     // Delete existing courses for this program + curriculum year prefix
     // We need to find rows where the prefix matches AND the program is in the programs list
-    $existing = $conn->query("SELECT curriculumyear_coursecode, programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode LIKE '" . $conn->real_escape_string($prefix) . "%'");
+    $existing = null;
+    $existingStmt = $conn->prepare("SELECT curriculumyear_coursecode, programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode LIKE ?");
+    if ($existingStmt) {
+        $prefixLike = $prefix . '%';
+        $existingStmt->bind_param('s', $prefixLike);
+        $existingStmt->execute();
+        $existing = $existingStmt->get_result();
+    }
+
+    if (!$existing) {
+        throw new Exception('Failed to load existing curriculum rows.');
+    }
 
     while ($row = $existing->fetch_assoc()) {
         $progs = array_map('trim', explode(',', $row['programs']));
@@ -77,6 +88,9 @@ try {
                 $stmt->close();
             }
         }
+    }
+    if (isset($existingStmt) && $existingStmt instanceof mysqli_stmt) {
+        $existingStmt->close();
     }
 
     // Insert new courses

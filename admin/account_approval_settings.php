@@ -803,7 +803,7 @@ $pending_query = "
             WHEN 'rejected' THEN 3 
         END,
         created_at DESC
-    LIMIT $records_per_page OFFSET $offset
+    LIMIT :records_per_page OFFSET :offset
 ";
 $accounts = [];
 if ($conn instanceof PDO) {
@@ -814,6 +814,8 @@ if ($conn instanceof PDO) {
     if (!empty($filter_status)) {
         $pending_stmt->bindValue(':filter_status', $filter_status, PDO::PARAM_STR);
     }
+    $pending_stmt->bindValue(':records_per_page', (int)$records_per_page, PDO::PARAM_INT);
+    $pending_stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
     $pending_stmt->execute();
     $accounts = $pending_stmt->fetchAll(PDO::FETCH_ASSOC);
 }

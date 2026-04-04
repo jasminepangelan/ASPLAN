@@ -161,6 +161,53 @@ function resolveCoordinatorProgramKeys(mysqli $conn, $username) {
     return [];
 }
 
+function loadCoordinatorCandidateRows(mysqli $conn, string $search, string $selectedBatch): array
+{
+    $whereParts = ["TRIM(program) IS NOT NULL"];
+    $params = [];
+    $types = '';
+
+    $search = trim($search);
+    if ($search !== '') {
+        $searchParam = '%' . $search . '%';
+        $whereParts[] = "(student_number LIKE ? OR last_name LIKE ? OR first_name LIKE ? OR middle_name LIKE ?)";
+        array_push($params, $searchParam, $searchParam, $searchParam, $searchParam);
+        $types .= 'ssss';
+    }
+
+    if ($selectedBatch !== '') {
+        $whereParts[] = "LEFT(student_number, 4) = ?";
+        $params[] = $selectedBatch;
+        $types .= 's';
+    }
+
+    $whereClause = ' WHERE ' . implode(' AND ', $whereParts);
+    $sql = "SELECT student_number, last_name, first_name, middle_name, program
+            FROM student_info
+            $whereClause
+            ORDER BY last_name, first_name";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return [];
+    }
+
+    if (!empty($params)) {
+        $stmt->bind_param($types, ...$params);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
+    }
+    $stmt->close();
+
+    return $rows;
+}
+
 $selectedBatch = isset($_GET['batch']) ? normalizeBatchPrefix($_GET['batch']) : '';
 $search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 $recordsPerPage = 10;
@@ -236,28 +283,6 @@ if (!$bridgeLoaded) {
         $selectedBatch = '';
     }
 
-    $whereParts = [];
-    if (!empty($coordinatorPrograms)) {
-        $whereParts[] = "TRIM(program) IS NOT NULL";
-    } else {
-        $whereParts[] = "1 = 0";
-    }
-
-    if ($search !== '') {
-        $searchEscaped = $conn->real_escape_string($search);
-        $whereParts[] = "(student_number LIKE '%$searchEscaped%'
-                        OR last_name LIKE '%$searchEscaped%'
-                        OR first_name LIKE '%$searchEscaped%'
-                        OR middle_name LIKE '%$searchEscaped%')";
-    }
-
-    if ($selectedBatch !== '') {
-        $batchEscaped = $conn->real_escape_string($selectedBatch);
-        $whereParts[] = "LEFT(student_number, 4) = '$batchEscaped'";
-    }
-
-    $whereClause = ' WHERE ' . implode(' AND ', $whereParts);
-
     $queryParams = [];
     if ($search !== '') {
         $queryParams['search'] = $search;
@@ -267,32 +292,19 @@ if (!$bridgeLoaded) {
     }
     $paginationSuffix = empty($queryParams) ? '' : '&' . http_build_query($queryParams);
 
-    $countSql = "SELECT student_number, program FROM student_info $whereClause";
-    $countResult = $conn->query($countSql);
-    if ($countResult) {
-        while ($row = $countResult->fetch_assoc()) {
-            if (in_array(normalizeProgramKey((string)($row['program'] ?? '')), $coordinatorPrograms, true)) {
-                $totalRecords++;
-            }
-        }
-    }
-    $totalPages = max(1, (int)ceil($totalRecords / $recordsPerPage));
-    if ($currentPage > $totalPages) {
-        $currentPage = $totalPages;
-    }
-
-    $sql = "SELECT student_number, last_name, first_name, middle_name, program
-            FROM student_info
-            $whereClause
-            ORDER BY last_name, first_name";
-    $result = $conn->query($sql);
     $filteredRows = [];
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
+    if (!empty($coordinatorPrograms)) {
+        $candidateRows = loadCoordinatorCandidateRows($conn, $search, $selectedBatch);
+        foreach ($candidateRows as $row) {
             if (in_array(normalizeProgramKey((string)($row['program'] ?? '')), $coordinatorPrograms, true)) {
                 $filteredRows[] = $row;
             }
         }
+    }
+    $totalRecords = count($filteredRows);
+    $totalPages = max(1, (int)ceil($totalRecords / $recordsPerPage));
+    if ($currentPage > $totalPages) {
+        $currentPage = $totalPages;
     }
     $offset = ($currentPage - 1) * $recordsPerPage;
     $displayRows = array_slice($filteredRows, $offset, $recordsPerPage);

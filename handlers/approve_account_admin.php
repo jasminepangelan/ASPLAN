@@ -6,11 +6,20 @@ $conn = getDBConnection();
 
 // Check if student_id is set in the URL
 if (isset($_GET['student_id'])) {
-    $student_id = $conn->real_escape_string($_GET['student_id']); // Sanitize input
+    $student_id = trim((string) $_GET['student_id']);
+
+    $stmt = $conn->prepare("UPDATE student_info SET status = ? WHERE student_number = ?");
+    if ($stmt) {
+        $status = 'approved';
+        $stmt->bind_param('ss', $status, $student_id);
+        $success = $stmt->execute();
+        $stmt->close();
+    } else {
+        $success = false;
+    }
 
     // Update the student's status to 'approved'
-    $query = "UPDATE student_info SET status = 'approved' WHERE student_number = '$student_id'";
-    if ($conn->query($query) === TRUE) {
+    if ($success === true) {
         // Redirect back to the pending accounts page with success message
         closeDBConnection($conn);
         header("Location: pending_accs_admin.php?message=Account approved successfully.");

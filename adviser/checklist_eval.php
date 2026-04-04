@@ -5,6 +5,80 @@ session_start();
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
+function aceLoadStudentsFromAssignedScope(mysqli $conn, array $batches, ?string $adviserProgram, string $search, int $recordsPerPage, int $currentPage): array
+{
+    $recordsPerPage = max(1, $recordsPerPage);
+    $currentPage = max(1, $currentPage);
+
+    if (empty($batches)) {
+        return [[], 0, 1];
+    }
+
+    $batchPlaceholders = implode(',', array_fill(0, count($batches), '?'));
+    $whereParts = ["LEFT(student_number, 4) IN ($batchPlaceholders)"];
+    $params = array_values($batches);
+    $types = str_repeat('s', count($batches));
+
+    if (!empty($adviserProgram)) {
+        $whereParts[] = "program = ?";
+        $params[] = $adviserProgram;
+        $types .= 's';
+    }
+
+    $search = trim($search);
+    if ($search !== '') {
+        $searchParam = '%' . $search . '%';
+        $whereParts[] = "(student_number LIKE ? OR last_name LIKE ? OR first_name LIKE ? OR middle_name LIKE ?)";
+        array_push($params, $searchParam, $searchParam, $searchParam, $searchParam);
+        $types .= 'ssss';
+    }
+
+    $whereClause = implode(' AND ', $whereParts);
+
+    $countQuery = "SELECT COUNT(*) as total FROM student_info WHERE $whereClause";
+    $countStmt = $conn->prepare($countQuery);
+    if (!$countStmt) {
+        return [[], 0, 1];
+    }
+    $countStmt->bind_param($types, ...$params);
+    $countStmt->execute();
+    $countResult = $countStmt->get_result();
+    $totalRecords = $countResult ? (int) (($countResult->fetch_assoc()['total'] ?? 0)) : 0;
+    $countStmt->close();
+
+    $totalPages = max(1, (int) ceil(max(0, $totalRecords) / $recordsPerPage));
+    $currentPage = min($currentPage, $totalPages);
+    $offset = ($currentPage - 1) * $recordsPerPage;
+
+    $query = "SELECT student_number AS student_id, last_name, first_name, middle_name, program
+              FROM student_info
+              WHERE $whereClause
+              ORDER BY last_name ASC, first_name ASC
+              LIMIT ? OFFSET ?";
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        return [[], $totalRecords, $totalPages];
+    }
+
+    $pageParams = $params;
+    $pageParams[] = $recordsPerPage;
+    $pageParams[] = $offset;
+    $pageTypes = $types . 'ii';
+    $stmt->bind_param($pageTypes, ...$pageParams);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
+    }
+    $stmt->close();
+
+    return [$rows, $totalRecords, $totalPages];
+}
+
 // Check if the adviser is logged in
 if (!isset($_SESSION['id'])) {
     header("Location: login.php");
@@ -260,41 +334,14 @@ if (empty($batches)) {
 }
 
 if (!$bridgeLoaded && !empty($batches)) {
-    $offset = ($current_page - 1) * $records_per_page;
-
-    // Build base WHERE clause for batch filtering
-    $batch_conditions = implode(' OR ', array_map(function($batch) {
-        return "student_number LIKE CONCAT('{$batch}', '%')";
-    }, $batches));
-
-    // Add program filtering and search conditions
-    $where_clause = "(" . $batch_conditions . ")";
-    if ($adviser_program) {
-        $adviser_program_escaped = $conn->real_escape_string($adviser_program);
-        $where_clause .= " AND program = '{$adviser_program_escaped}'";
-    }
-    if (!empty($search)) {
-        $search_term = "%" . $conn->real_escape_string($search) . "%";
-        $where_clause .= " AND (student_number LIKE '$search_term' OR last_name LIKE '$search_term' OR first_name LIKE '$search_term' OR middle_name LIKE '$search_term')";
-    }
-
-    // Count total students for pagination
-    $count_query = "SELECT COUNT(*) as total FROM student_info WHERE " . $where_clause;
-    $count_stmt = $conn->prepare($count_query);
-    $count_stmt->execute();
-    $total_records = $count_stmt->get_result()->fetch_assoc()['total'];
-    $total_pages = ceil($total_records / $records_per_page);
-
-    // Fetch students from assigned batches with matching program
-    $query = "SELECT student_number AS student_id, last_name, first_name, middle_name, program FROM student_info WHERE " . $where_clause . " ORDER BY last_name ASC LIMIT $records_per_page OFFSET $offset";
-    $stmt = $conn->prepare($query);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $displayRows = [];
-    while ($row = $result->fetch_assoc()) {
-        $displayRows[] = $row;
-    }
+    [$displayRows, $total_records, $total_pages] = aceLoadStudentsFromAssignedScope(
+        $conn,
+        $batches,
+        $adviser_program,
+        $search,
+        $records_per_page,
+        $current_page
+    );
 }
 ?>
 

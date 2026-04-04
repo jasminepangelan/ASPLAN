@@ -5,6 +5,38 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../student/generate_study_plan.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
+function aspvLoadStudentWithinAdviserScope(mysqli $conn, string $studentId, string $adviserProgram, array $batches): ?array
+{
+    if (trim($studentId) === '' || trim($adviserProgram) === '' || empty($batches)) {
+        return null;
+    }
+
+    $batchPlaceholders = implode(',', array_fill(0, count($batches), '?'));
+    $query = "
+        SELECT student_number, last_name, first_name, middle_name, program, date_of_admission
+        FROM student_info
+        WHERE student_number = ?
+          AND program = ?
+          AND LEFT(student_number, 4) IN ($batchPlaceholders)
+        LIMIT 1
+    ";
+
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        return null;
+    }
+
+    $params = array_merge([$studentId, $adviserProgram], array_values($batches));
+    $types = 'ss' . str_repeat('s', count($batches));
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $student = $result ? $result->fetch_assoc() : null;
+    $stmt->close();
+
+    return $student ?: null;
+}
+
 $conn = getDBConnection();
 
 if (!isset($_SESSION['id'])) {
@@ -67,25 +99,7 @@ if (!$bridgeLoaded) {
         die("Access denied. Adviser batch/program assignment is missing.");
     }
 
-    $batch_conditions = implode(' OR ', array_map(function($batch) use ($conn) {
-        $batch_safe = $conn->real_escape_string($batch);
-        return "student_number LIKE '{$batch_safe}%'";
-    }, $batches));
-
-    $student_query = "
-        SELECT student_number, last_name, first_name, middle_name, program, date_of_admission
-        FROM student_info
-        WHERE student_number = ?
-          AND program = ?
-          AND (" . $batch_conditions . ")
-        LIMIT 1
-    ";
-
-    $student_stmt = $conn->prepare($student_query);
-    $student_stmt->bind_param("ss", $student_id, $adviser_program);
-    $student_stmt->execute();
-    $student_result = $student_stmt->get_result();
-    $student = $student_result->fetch_assoc();
+    $student = aspvLoadStudentWithinAdviserScope($conn, $student_id, $adviser_program, $batches);
 
     if (!$student) {
         die("Access denied. Student is not in your assigned batch/program.");

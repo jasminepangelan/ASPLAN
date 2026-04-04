@@ -300,12 +300,12 @@ if (!function_exists('isPasswordReuseDetected')) {
         ensurePasswordHistoryTable($conn);
         $limit = max(1, (int)$historyLimit);
 
-        $stmt = $conn->prepare("SELECT password_hash FROM password_history WHERE student_number = ? ORDER BY changed_at DESC LIMIT $limit");
+        $stmt = $conn->prepare("SELECT password_hash FROM password_history WHERE student_number = ? ORDER BY changed_at DESC LIMIT ?");
         if (!$stmt) {
             return false;
         }
 
-        $stmt->bind_param('s', $studentId);
+        $stmt->bind_param('si', $studentId, $limit);
         $stmt->execute();
         $result = $stmt->get_result();
 

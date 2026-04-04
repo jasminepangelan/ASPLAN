@@ -4,6 +4,75 @@
 
 require_once __DIR__ . '/../config/database.php';
 
+function avsNormalizePageWindow($offset, $records_per_page): array
+{
+    $offset = max(0, (int) $offset);
+    $records_per_page = max(1, (int) $records_per_page);
+
+    return [$offset, $records_per_page];
+}
+
+function avsExecutePagedAccountQuery(mysqli $conn, string $table, array $columns, array $searchColumns, string $search, int $offset, int $records_per_page, string $orderBy = 'last_name ASC, first_name ASC'): array
+{
+    [$offset, $records_per_page] = avsNormalizePageWindow($offset, $records_per_page);
+    $tableSafe = trim($table);
+    $selectClause = implode(', ', $columns);
+    $search = trim($search);
+
+    $whereClause = '';
+    $params = [];
+    $types = '';
+
+    if ($search !== '') {
+        $likes = [];
+        $searchParam = '%' . $search . '%';
+        foreach ($searchColumns as $column) {
+            $likes[] = $column . ' LIKE ?';
+            $params[] = $searchParam;
+            $types .= 's';
+        }
+        $whereClause = ' WHERE (' . implode(' OR ', $likes) . ')';
+    }
+
+    $countSql = "SELECT COUNT(*) AS total FROM `$tableSafe`" . $whereClause;
+    $countStmt = $conn->prepare($countSql);
+    if (!$countStmt) {
+        return [[], 0, 1];
+    }
+
+    if (!empty($params)) {
+        $countStmt->bind_param($types, ...$params);
+    }
+    $countStmt->execute();
+    $countResult = $countStmt->get_result();
+    $total_records = $countResult ? (int) ($countResult->fetch_assoc()['total'] ?? 0) : 0;
+    $countStmt->close();
+    $total_pages = $total_records > 0 ? (int) ceil($total_records / $records_per_page) : 1;
+
+    $sql = "SELECT {$selectClause} FROM `$tableSafe`" . $whereClause . " ORDER BY {$orderBy} LIMIT ? OFFSET ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return [[], $total_records, $total_pages];
+    }
+
+    $pageParams = $params;
+    $pageParams[] = $records_per_page;
+    $pageParams[] = $offset;
+    $pageTypes = $types . 'ii';
+    $stmt->bind_param($pageTypes, ...$pageParams);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
+    }
+    $stmt->close();
+
+    return [$rows, $total_records, $total_pages];
+}
+
 /**
  * Resolves which admin table exists in the database.
  * Returns 'admins', 'admin', or null.
@@ -189,7 +258,6 @@ function avsLoadAdviserAccounts($search, $offset, $records_per_page)
 function avsLoadProgramCoordinatorAccounts($search, $offset, $records_per_page)
 {
     $conn = getDBConnection();
-    $searchSafe = $conn->real_escape_string($search);
     $programCoordinatorTable = avsResolveProgramCoordinatorTable();
 
     if ($programCoordinatorTable === null) {
@@ -200,58 +268,51 @@ function avsLoadProgramCoordinatorAccounts($search, $offset, $records_per_page)
     }
 
     $hasProgramColumn = avsTableHasColumn($programCoordinatorTable, 'program');
-    $whereClause = '';
     if ($hasProgramColumn) {
-        if ($search !== '') {
-            $whereClause = " WHERE (id LIKE '%$searchSafe%' OR last_name LIKE '%$searchSafe%' OR first_name LIKE '%$searchSafe%' OR middle_name LIKE '%$searchSafe%' OR username LIKE '%$searchSafe%' OR program LIKE '%$searchSafe%')";
-        }
-        $countSql = "SELECT COUNT(*) AS total FROM $programCoordinatorTable" . $whereClause;
-        $countResult = $conn->query($countSql);
-        $total_records = $countResult ? (int)$countResult->fetch_assoc()['total'] : 0;
-        $total_pages = $total_records > 0 ? (int)ceil($total_records / $records_per_page) : 1;
-
-        $sql = "SELECT id, last_name, first_name, middle_name, username, program, sex
-                FROM $programCoordinatorTable" . $whereClause . " ORDER BY last_name ASC, first_name ASC LIMIT $records_per_page OFFSET $offset";
-        $result = $conn->query($sql);
+        [$resultRows, $total_records, $total_pages] = avsExecutePagedAccountQuery(
+            $conn,
+            $programCoordinatorTable,
+            ['id', 'last_name', 'first_name', 'middle_name', 'username', 'program', 'sex'],
+            ['id', 'last_name', 'first_name', 'middle_name', 'username', 'program'],
+            (string) $search,
+            (int) $offset,
+            (int) $records_per_page,
+            'last_name ASC, first_name ASC'
+        );
         $rows = [];
-        if ($result) {
-            while ($r = $result->fetch_assoc()) {
-                $rows[] = [
-                    $r['id'] ?? '',
-                    $r['last_name'] ?? '',
-                    $r['first_name'] ?? '',
-                    $r['middle_name'] ?? '',
-                    $r['username'] ?? '',
-                    $r['program'] ?? '',
-                    $r['sex'] ?? ''
-                ];
-            }
+        foreach ($resultRows as $r) {
+            $rows[] = [
+                $r['id'] ?? '',
+                $r['last_name'] ?? '',
+                $r['first_name'] ?? '',
+                $r['middle_name'] ?? '',
+                $r['username'] ?? '',
+                $r['program'] ?? '',
+                $r['sex'] ?? ''
+            ];
         }
         $columns = ['Coordinator ID', 'Last Name', 'First Name', 'Middle Name', 'Username', 'Program', 'Sex'];
     } else {
-        if ($search !== '') {
-            $whereClause = " WHERE (id LIKE '%$searchSafe%' OR last_name LIKE '%$searchSafe%' OR first_name LIKE '%$searchSafe%' OR middle_name LIKE '%$searchSafe%' OR username LIKE '%$searchSafe%')";
-        }
-        $countSql = "SELECT COUNT(*) AS total FROM $programCoordinatorTable" . $whereClause;
-        $countResult = $conn->query($countSql);
-        $total_records = $countResult ? (int)$countResult->fetch_assoc()['total'] : 0;
-        $total_pages = $total_records > 0 ? (int)ceil($total_records / $records_per_page) : 1;
-
-        $sql = "SELECT id, last_name, first_name, middle_name, username, sex
-                FROM $programCoordinatorTable" . $whereClause . " ORDER BY last_name ASC, first_name ASC LIMIT $records_per_page OFFSET $offset";
-        $result = $conn->query($sql);
+        [$resultRows, $total_records, $total_pages] = avsExecutePagedAccountQuery(
+            $conn,
+            $programCoordinatorTable,
+            ['id', 'last_name', 'first_name', 'middle_name', 'username', 'sex'],
+            ['id', 'last_name', 'first_name', 'middle_name', 'username'],
+            (string) $search,
+            (int) $offset,
+            (int) $records_per_page,
+            'last_name ASC, first_name ASC'
+        );
         $rows = [];
-        if ($result) {
-            while ($r = $result->fetch_assoc()) {
-                $rows[] = [
-                    $r['id'] ?? '',
-                    $r['last_name'] ?? '',
-                    $r['first_name'] ?? '',
-                    $r['middle_name'] ?? '',
-                    $r['username'] ?? '',
-                    $r['sex'] ?? ''
-                ];
-            }
+        foreach ($resultRows as $r) {
+            $rows[] = [
+                $r['id'] ?? '',
+                $r['last_name'] ?? '',
+                $r['first_name'] ?? '',
+                $r['middle_name'] ?? '',
+                $r['username'] ?? '',
+                $r['sex'] ?? ''
+            ];
         }
         $columns = ['Coordinator ID', 'Last Name', 'First Name', 'Middle Name', 'Username', 'Sex'];
     }
@@ -266,54 +327,47 @@ function avsLoadProgramCoordinatorAccounts($search, $offset, $records_per_page)
 function avsLoadAdminAccounts($search, $offset, $records_per_page)
 {
     $conn = getDBConnection();
-    $searchSafe = $conn->real_escape_string($search);
     $adminTable = avsResolveAdminTable();
 
     if ($adminTable === 'admins') {
-        $whereClause = '';
-        if ($search !== '') {
-            $whereClause = " WHERE (username LIKE '%$searchSafe%' OR full_name LIKE '%$searchSafe%')";
-        }
-        $countSql = "SELECT COUNT(*) AS total FROM admins" . $whereClause;
-        $countResult = $conn->query($countSql);
-        $total_records = $countResult ? (int)$countResult->fetch_assoc()['total'] : 0;
-        $total_pages = $total_records > 0 ? (int)ceil($total_records / $records_per_page) : 1;
-
-        $sql = "SELECT username, full_name FROM admins" . $whereClause . " ORDER BY username ASC LIMIT $records_per_page OFFSET $offset";
-        $result = $conn->query($sql);
+        [$resultRows, $total_records, $total_pages] = avsExecutePagedAccountQuery(
+            $conn,
+            'admins',
+            ['username', 'full_name'],
+            ['username', 'full_name'],
+            (string) $search,
+            (int) $offset,
+            (int) $records_per_page,
+            'username ASC'
+        );
         $rows = [];
-        if ($result) {
-            while ($r = $result->fetch_assoc()) {
-                $rows[] = [
-                    $r['username'] ?? '',
-                    $r['full_name'] ?? ''
-                ];
-            }
+        foreach ($resultRows as $r) {
+            $rows[] = [
+                $r['username'] ?? '',
+                $r['full_name'] ?? ''
+            ];
         }
         $columns = ['Username', 'Full Name'];
     } elseif ($adminTable === 'admin') {
-        $whereClause = '';
-        if ($search !== '') {
-            $whereClause = " WHERE (admin_id LIKE '%$searchSafe%' OR last_name LIKE '%$searchSafe%' OR first_name LIKE '%$searchSafe%' OR middle_name LIKE '%$searchSafe%' OR username LIKE '%$searchSafe%')";
-        }
-        $countSql = "SELECT COUNT(*) AS total FROM admin" . $whereClause;
-        $countResult = $conn->query($countSql);
-        $total_records = $countResult ? (int)$countResult->fetch_assoc()['total'] : 0;
-        $total_pages = $total_records > 0 ? (int)ceil($total_records / $records_per_page) : 1;
-
-        $sql = "SELECT admin_id, last_name, first_name, middle_name, username FROM admin" . $whereClause . " ORDER BY last_name ASC, first_name ASC LIMIT $records_per_page OFFSET $offset";
-        $result = $conn->query($sql);
+        [$resultRows, $total_records, $total_pages] = avsExecutePagedAccountQuery(
+            $conn,
+            'admin',
+            ['admin_id', 'last_name', 'first_name', 'middle_name', 'username'],
+            ['admin_id', 'last_name', 'first_name', 'middle_name', 'username'],
+            (string) $search,
+            (int) $offset,
+            (int) $records_per_page,
+            'last_name ASC, first_name ASC'
+        );
         $rows = [];
-        if ($result) {
-            while ($r = $result->fetch_assoc()) {
-                $rows[] = [
-                    $r['admin_id'] ?? '',
-                    $r['last_name'] ?? '',
-                    $r['first_name'] ?? '',
-                    $r['middle_name'] ?? '',
-                    $r['username'] ?? ''
-                ];
-            }
+        foreach ($resultRows as $r) {
+            $rows[] = [
+                $r['admin_id'] ?? '',
+                $r['last_name'] ?? '',
+                $r['first_name'] ?? '',
+                $r['middle_name'] ?? '',
+                $r['username'] ?? ''
+            ];
         }
         $columns = ['Admin ID', 'Last Name', 'First Name', 'Middle Name', 'Username'];
     } else {

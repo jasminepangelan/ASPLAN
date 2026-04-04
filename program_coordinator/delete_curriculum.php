@@ -58,7 +58,18 @@ try {
 
     $prefix = $curriculumYear . '_';
 
-    $existing = $conn->query("SELECT curriculumyear_coursecode, programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode LIKE '" . $conn->real_escape_string($prefix) . "%'");
+    $existing = null;
+    $existingStmt = $conn->prepare("SELECT curriculumyear_coursecode, programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode LIKE ?");
+    if ($existingStmt) {
+        $prefixLike = $prefix . '%';
+        $existingStmt->bind_param('s', $prefixLike);
+        $existingStmt->execute();
+        $existing = $existingStmt->get_result();
+    }
+
+    if (!$existing) {
+        throw new RuntimeException('Failed to load existing curriculum rows.');
+    }
 
     while ($row = $existing->fetch_assoc()) {
         $progs = array_map('trim', explode(',', (string)$row['programs']));
@@ -81,6 +92,9 @@ try {
             $stmt->execute();
             $stmt->close();
         }
+    }
+    if (isset($existingStmt) && $existingStmt instanceof mysqli_stmt) {
+        $existingStmt->close();
     }
 
     $conn->query(

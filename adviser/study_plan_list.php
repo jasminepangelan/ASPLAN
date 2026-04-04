@@ -4,6 +4,75 @@ session_start();
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
+function asplLoadScopedStudyPlanStudents(mysqli $conn, array $batches, string $adviserProgram, string $search, int $recordsPerPage, int $currentPage): array
+{
+    $recordsPerPage = max(1, $recordsPerPage);
+    $currentPage = max(1, $currentPage);
+
+    if (empty($batches) || trim($adviserProgram) === '') {
+        return [[], 0, 1];
+    }
+
+    $batchPlaceholders = implode(',', array_fill(0, count($batches), '?'));
+    $whereParts = ["LEFT(student_number, 4) IN ($batchPlaceholders)", 'program = ?'];
+    $params = array_values($batches);
+    $params[] = $adviserProgram;
+    $types = str_repeat('s', count($batches)) . 's';
+
+    $search = trim($search);
+    if ($search !== '') {
+        $searchParam = '%' . $search . '%';
+        $whereParts[] = "(student_number LIKE ? OR last_name LIKE ? OR first_name LIKE ? OR middle_name LIKE ?)";
+        array_push($params, $searchParam, $searchParam, $searchParam, $searchParam);
+        $types .= 'ssss';
+    }
+
+    $whereClause = implode(' AND ', $whereParts);
+
+    $countQuery = "SELECT COUNT(*) AS total FROM student_info WHERE $whereClause";
+    $countStmt = $conn->prepare($countQuery);
+    if (!$countStmt) {
+        return [[], 0, 1];
+    }
+    $countStmt->bind_param($types, ...$params);
+    $countStmt->execute();
+    $countResult = $countStmt->get_result();
+    $totalRecords = $countResult ? (int) (($countResult->fetch_assoc()['total'] ?? 0)) : 0;
+    $countStmt->close();
+
+    $totalPages = max(1, (int) ceil(max(0, $totalRecords) / $recordsPerPage));
+    $currentPage = min($currentPage, $totalPages);
+    $offset = ($currentPage - 1) * $recordsPerPage;
+
+    $query = "SELECT student_number, last_name, first_name, middle_name, program
+              FROM student_info
+              WHERE $whereClause
+              ORDER BY last_name ASC, first_name ASC
+              LIMIT ? OFFSET ?";
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        return [[], $totalRecords, $totalPages];
+    }
+
+    $pageParams = $params;
+    $pageParams[] = $recordsPerPage;
+    $pageParams[] = $offset;
+    $pageTypes = $types . 'ii';
+    $stmt->bind_param($pageTypes, ...$pageParams);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
+    }
+    $stmt->close();
+
+    return [$rows, $totalRecords, $totalPages];
+}
+
 if (!isset($_SESSION['id'])) {
     header("Location: login.php");
     exit;
@@ -78,36 +147,14 @@ if (!$bridgeLoaded) {
     }
 
     if (!empty($batches) && !empty($adviser_program)) {
-        $batch_conditions = implode(' OR ', array_map(function($batch) use ($conn) {
-            $batch_safe = $conn->real_escape_string($batch);
-            return "student_number LIKE '{$batch_safe}%'";
-        }, $batches));
-
-        $program_safe = $conn->real_escape_string($adviser_program);
-        $where_clause = "(" . $batch_conditions . ") AND program = '" . $program_safe . "'";
-
-        if (!empty($search)) {
-            $search_term = "%" . $conn->real_escape_string($search) . "%";
-            $where_clause .= " AND (student_number LIKE '$search_term' OR last_name LIKE '$search_term' OR first_name LIKE '$search_term' OR middle_name LIKE '$search_term')";
-        }
-
-        $count_query = "SELECT COUNT(*) AS total FROM student_info WHERE " . $where_clause;
-        $count_stmt = $conn->prepare($count_query);
-        $count_stmt->execute();
-        $total_records = (int) ($count_stmt->get_result()->fetch_assoc()['total'] ?? 0);
-        $total_pages = $total_records > 0 ? (int) ceil($total_records / $records_per_page) : 1;
-        $current_page = min($current_page, $total_pages);
-        $offset = ($current_page - 1) * $records_per_page;
-
-        $query = "SELECT student_number, last_name, first_name, middle_name, program FROM student_info WHERE " . $where_clause . " ORDER BY last_name ASC, first_name ASC LIMIT $records_per_page OFFSET $offset";
-        $stmt = $conn->prepare($query);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $displayRows = [];
-        while ($row = $result->fetch_assoc()) {
-            $displayRows[] = $row;
-        }
+        [$displayRows, $total_records, $total_pages] = asplLoadScopedStudyPlanStudents(
+            $conn,
+            $batches,
+            $adviser_program,
+            $search,
+            $records_per_page,
+            $current_page
+        );
     }
 }
 
@@ -295,31 +342,15 @@ $current_page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['
 if ($current_page < 1) {
     $current_page = 1;
 }
-$offset = ($current_page - 1) * $records_per_page;
-
-$batch_conditions = implode(' OR ', array_map(function($batch) use ($conn) {
-    $batch_safe = $conn->real_escape_string($batch);
-    return "student_number LIKE '{$batch_safe}%'";
-}, $batches));
-
-$program_safe = $conn->real_escape_string($adviser_program);
-$where_clause = "(" . $batch_conditions . ") AND program = '" . $program_safe . "'";
-
-if (!empty($search)) {
-    $search_term = "%" . $conn->real_escape_string($search) . "%";
-    $where_clause .= " AND (student_number LIKE '$search_term' OR last_name LIKE '$search_term' OR first_name LIKE '$search_term' OR middle_name LIKE '$search_term')";
-}
-
-$count_query = "SELECT COUNT(*) AS total FROM student_info WHERE " . $where_clause;
-$count_stmt = $conn->prepare($count_query);
-$count_stmt->execute();
-$total_records = (int)($count_stmt->get_result()->fetch_assoc()['total'] ?? 0);
-$total_pages = $total_records > 0 ? (int)ceil($total_records / $records_per_page) : 1;
-
-$query = "SELECT student_number, last_name, first_name, middle_name, program FROM student_info WHERE " . $where_clause . " ORDER BY last_name ASC, first_name ASC LIMIT $records_per_page OFFSET $offset";
-$stmt = $conn->prepare($query);
-$stmt->execute();
-$result = $stmt->get_result();
+$displayRows = [];
+[$displayRows, $total_records, $total_pages] = asplLoadScopedStudyPlanStudents(
+    $conn,
+    $batches,
+    $adviser_program,
+    $search,
+    $records_per_page,
+    $current_page
+);
 ?>
 <!DOCTYPE html>
 <html lang="en">
