@@ -1977,7 +1977,15 @@ function showSuccessModal(message) {
 }
 
 // Function to fetch and update checklist data
+let isChecklistRefreshRunning = false;
+let checklistLiveRefreshTimer = null;
+
 function fetchAndUpdateChecklist() {
+    if (isChecklistRefreshRunning) {
+        return;
+    }
+
+    isChecklistRefreshRunning = true;
     const studentId = '<?php echo $student_id; ?>';
   const programView = '<?php echo htmlspecialchars($selected_program_view, ENT_QUOTES); ?>';
     
@@ -1988,7 +1996,33 @@ function fetchAndUpdateChecklist() {
                 updateChecklistFields(data.courses);
             }
         })
-        .catch(error => console.error('Error fetching checklist data:', error));
+        .catch(error => console.error('Error fetching checklist data:', error))
+        .finally(() => {
+            isChecklistRefreshRunning = false;
+        });
+}
+
+function startChecklistLiveRefresh() {
+    if (checklistLiveRefreshTimer !== null) {
+        return;
+    }
+
+    checklistLiveRefreshTimer = window.setInterval(() => {
+        if (document.hidden || academicHold.active) {
+            return;
+        }
+
+        fetchAndUpdateChecklist();
+    }, 8000);
+}
+
+function stopChecklistLiveRefresh() {
+    if (checklistLiveRefreshTimer === null) {
+        return;
+    }
+
+    window.clearInterval(checklistLiveRefreshTimer);
+    checklistLiveRefreshTimer = null;
 }
 
 // Function to update checklist fields
@@ -2194,6 +2228,8 @@ window.addEventListener('afterprint', function() {
 document.addEventListener('DOMContentLoaded', function() {
     applyAcademicReadOnlyState();
     updatePageDisplay();
+    startChecklistLiveRefresh();
+    fetchAndUpdateChecklist();
 
     document.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
         gradeSelect.addEventListener('change', function() {
@@ -2217,19 +2253,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Fetch grades immediately on page load
-fetchAndUpdateChecklist();
-// Poll for updates every 90 seconds
-const updateInterval = setInterval(fetchAndUpdateChecklist, 90000);
-
-// Clear interval when page is hidden
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-        clearInterval(updateInterval);
+        stopChecklistLiveRefresh();
     } else {
         fetchAndUpdateChecklist();
-        setInterval(fetchAndUpdateChecklist, 900000);
+        startChecklistLiveRefresh();
     }
+});
+
+window.addEventListener('focus', function() {
+    fetchAndUpdateChecklist();
 });
 
 </script>
