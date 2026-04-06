@@ -136,24 +136,12 @@ $displayTerms = [];
 
 // Show completed/past terms first (same behavior as student study plan page).
 foreach ($completedTerms as $term) {
-    $courses = [];
-    foreach (($term['courses'] ?? []) as $course) {
-        $courses[] = [
-            'code' => (string)($course['code'] ?? ''),
-            'title' => (string)($course['title'] ?? ''),
-            'units' => (int)($course['units'] ?? 0),
-            'needs_retake' => false,
-            'cross_registered' => false,
-            'grade' => (string)($course['grade'] ?? '')
-        ];
-    }
-
     $displayTerms[] = [
         'year' => (string)($term['year'] ?? ''),
         'semester' => (string)($term['semester'] ?? ''),
         'total_units' => (int)($term['total_units'] ?? 0),
         'max_units' => null,
-        'courses' => $courses,
+        'courses' => $term['courses'] ?? [],
         'completed_term' => true,
         'skipped' => false,
     ];
@@ -507,6 +495,7 @@ $fullName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($studen
             margin-bottom: 3px;
             font-weight: 600;
         }
+        .tag-completed { background: #e8f5e9; color: #2e7d32; }
         .tag-retake { background: #ffe8cc; color: #9a3412; }
         .tag-cross { background: #dbeafe; color: #1d4ed8; }
         .tag-moved { background: #e9d5ff; color: #6d28d9; }
@@ -865,6 +854,9 @@ $fullName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($studen
                                         <?= htmlspecialchars($prerequisite); ?>
                                     </td>
                                     <td>
+                                        <?php if (!empty($term['completed_term'])): ?>
+                                            <span class="tag tag-completed">Completed</span>
+                                        <?php endif; ?>
                                         <?php if (!empty($course['needs_retake'])): ?>
                                             <span class="tag tag-retake">Retake</span>
                                         <?php endif; ?>
