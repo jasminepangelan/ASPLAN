@@ -1980,26 +1980,48 @@ function showSuccessModal(message) {
 let isChecklistRefreshRunning = false;
 let checklistLiveRefreshTimer = null;
 
+function bindChecklistFieldListeners(root = document) {
+    root.querySelectorAll('select[name^="final_grade"]').forEach(function(gradeSelect) {
+        if (gradeSelect.dataset.liveBound === '1') {
+            return;
+        }
+
+        gradeSelect.dataset.liveBound = '1';
+        gradeSelect.addEventListener('change', function() {
+            let courseCode = this.name.match(/\[(.*?)\]/)[1];
+            autoSaveGrade(courseCode);
+        });
+    });
+}
+
 function fetchAndUpdateChecklist() {
     if (isChecklistRefreshRunning) {
         return;
     }
 
     isChecklistRefreshRunning = true;
-    const studentId = '<?php echo $student_id; ?>';
-    const programView = '<?php echo htmlspecialchars($selected_program_view, ENT_QUOTES); ?>';
-    const requestUrl = `get_checklist_data.php?student_id=${encodeURIComponent(studentId)}&program_view=${encodeURIComponent(programView)}&_=${Date.now()}`;
+    const separator = window.location.search.includes('?') ? '&' : '?';
+    const requestUrl = `${window.location.pathname}${window.location.search}${separator}_=${Date.now()}`;
 
     fetch(requestUrl, {
         cache: 'no-store',
         headers: {
-            'Cache-Control': 'no-cache'
+            'Cache-Control': 'no-cache',
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                updateChecklistFields(data.courses);
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const nextDocument = parser.parseFromString(html, 'text/html');
+            const nextWrapper = nextDocument.querySelector('.table-wrapper');
+            const currentWrapper = document.querySelector('.table-wrapper');
+
+            if (nextWrapper && currentWrapper) {
+                currentWrapper.innerHTML = nextWrapper.innerHTML;
+                bindChecklistFieldListeners(currentWrapper);
+                applyAcademicReadOnlyState();
+                updatePageDisplay();
             }
         })
         .catch(error => console.error('Error fetching checklist data:', error))
@@ -2236,13 +2258,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updatePageDisplay();
     startChecklistLiveRefresh();
     fetchAndUpdateChecklist();
-
-    document.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
-        gradeSelect.addEventListener('change', function() {
-            let courseCode = this.name.match(/\[(.*?)\]/)[1];
-            autoSaveGrade(courseCode);
-        });
-    });
+    bindChecklistFieldListeners();
 
     const archiveGroup = document.getElementById('archiveChecklistGroup');
     const archivePopup = document.getElementById('archiveChecklistPopup');
