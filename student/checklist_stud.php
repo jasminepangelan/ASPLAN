@@ -1814,6 +1814,23 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         return normalized !== '' && normalized !== 'No Grade';
     }
 
+    function setChecklistRemarksBadge(courseCode, status) {
+        const remarksCell = document.getElementById(`remarks_${courseCode}`);
+        if (!remarksCell) return;
+
+        if (status === 'Pending') {
+            remarksCell.innerHTML = "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Pending</span>";
+            return;
+        }
+
+        if (status === 'Approved') {
+            remarksCell.innerHTML = "<span style='background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Approved</span>";
+            return;
+        }
+
+        remarksCell.textContent = status || '';
+    }
+
     // Add event listeners to all Save buttons
     document.querySelectorAll('#saveButton').forEach(btn => {
         btn.addEventListener('click', function () {
@@ -1869,17 +1886,19 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
             .then(data => {
                 if (data.status === 'success') {
                     showSuccessModal('Data saved successfully!');
-                    // Update remarks badges for 1st-attempt grades only
-                    document.querySelectorAll('[name^="final_grade"]').forEach(function(gradeInput) {
-                        if (!/^final_grade\[/.test(gradeInput.name)) return;
-                        let courseCode = gradeInput.name.match(/\[(.*?)\]/)[1];
-                        let gradeValue = gradeInput.value || '';
-                        let remarksCell = document.getElementById('remarks_' + courseCode);
-                        if (remarksCell && gradeValue && gradeValue !== '' && gradeValue !== 'No Grade') {
-                            let currentText = remarksCell.textContent.trim();
-                            if (currentText !== 'Approved') {
-                                remarksCell.innerHTML = "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Pending</span>";
-                            }
+                    professorInputs.forEach(function (profInput) {
+                        let courseCode = profInput.name.split('[')[1].split(']')[0];
+                        let gradeInput  = document.querySelector(`[name='final_grade[${courseCode}]']`);
+                        let gradeInput2 = document.querySelector(`[name='final_grade_2[${courseCode}]']`);
+                        let gradeInput3 = document.querySelector(`[name='final_grade_3[${courseCode}]']`);
+                        let hasSubmittedGrade = (
+                            hasSubmittedGradeValue(gradeInput ? gradeInput.value : '') ||
+                            hasSubmittedGradeValue(gradeInput2 ? gradeInput2.value : '') ||
+                            hasSubmittedGradeValue(gradeInput3 ? gradeInput3.value : '')
+                        );
+
+                        if (hasSubmittedGrade) {
+                            setChecklistRemarksBadge(courseCode, 'Pending');
                         }
                     });
                     fetchAndUpdateChecklist();
@@ -2101,15 +2120,11 @@ function autoSaveGrade(courseCode) {
             if (data.status === 'success') {
                 console.log('Auto-saved grade for ' + courseCode);
                 showNotification('success', 'Auto-saved', 'Grade saved successfully');
-                // Update remarks badge to Pending when any attempt grade is submitted
-                let hasNewGrade = (finalGrade  && finalGrade  !== '' && finalGrade  !== 'No Grade') ||
-                                  (finalGrade2 && finalGrade2 !== '' && finalGrade2 !== 'No Grade') ||
-                                  (finalGrade3 && finalGrade3 !== '' && finalGrade3 !== 'No Grade');
+                let hasNewGrade = hasSubmittedGradeValue(finalGrade) ||
+                                  hasSubmittedGradeValue(finalGrade2) ||
+                                  hasSubmittedGradeValue(finalGrade3);
                 if (hasNewGrade) {
-                    let rc = document.getElementById(`remarks_${courseCode}`);
-                    if (rc && rc.textContent.trim() !== 'Approved') {
-                        rc.innerHTML = "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Pending</span>";
-                    }
+                    setChecklistRemarksBadge(courseCode, 'Pending');
                 }
                 fetchAndUpdateChecklist();
             } else {
