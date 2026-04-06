@@ -703,7 +703,7 @@ foreach ($study_plan as $term) {
                                         <th>Course Title</th>
                                         <th>Units</th>
                                         <th>Prerequisite</th>
-                                        <th>Flags</th>
+                                        <th>Remarks</th>
                                     </tr>
                                 </thead>
                                 <tbody>
