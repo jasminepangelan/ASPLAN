@@ -1038,8 +1038,7 @@ if (empty($all_courses)) {
 <script>
 // Show approve checkboxes and bulk approve button when Approve Multiple is clicked
 let approveMultipleActive = false;
-document.getElementById('showApproveMultiple').addEventListener('click', function() {
-    approveMultipleActive = !approveMultipleActive;
+function applyApproveMultipleViewState() {
     document.querySelectorAll('.approve-col').forEach(function(td) {
         td.style.display = approveMultipleActive ? '' : 'none';
         if (!approveMultipleActive) {
@@ -1060,6 +1059,16 @@ document.getElementById('showApproveMultiple').addEventListener('click', functio
     var approveHeader = document.getElementById('approveColHeader');
     if (approveHeader) {
         approveHeader.style.display = approveMultipleActive ? '' : 'none';
+    }
+}
+
+document.getElementById('showApproveMultiple').addEventListener('click', function() {
+    approveMultipleActive = !approveMultipleActive;
+    applyApproveMultipleViewState();
+    if (approveMultipleActive) {
+        document.querySelector('table').scrollIntoView({behavior: 'smooth'});
+    }
+});
 
 // Semester approve checkbox logic
 function setSemesterApproved(semesterKey, checked) {
@@ -1073,10 +1082,8 @@ function setSemesterApproved(semesterKey, checked) {
             cb.checked = checked;
             // Set evaluator remarks to Approved if checked, else leave as is
             let remarksSelect = document.querySelector(`[name='evaluator_remarks[${courseCode}]']`);
-            if (remarksSelect) {
-                if (checked) {
-                    remarksSelect.value = 'Approved';
-                }
+            if (remarksSelect && checked) {
+                remarksSelect.value = 'Approved';
             }
         } else {
             // If no grade, ensure checkbox is unchecked
@@ -1087,11 +1094,6 @@ function setSemesterApproved(semesterKey, checked) {
 document.addEventListener('change', function(e) {
     if (e.target.classList.contains('semester-approve-checkbox')) {
         setSemesterApproved(e.target.dataset.semester, e.target.checked);
-    }
-});
-    }
-    if (approveMultipleActive) {
-        document.querySelector('table').scrollIntoView({behavior: 'smooth'});
     }
 });
 
@@ -1217,25 +1219,54 @@ document.addEventListener('change', function(e) {
 let isChecklistRefreshRunning = false;
 let checklistLiveRefreshTimer = null;
 
-function fetchAndUpdateChecklist() {
-    const studentId = '<?php echo $_GET['student_id']; ?>';
+function bindChecklistFieldListeners(root = document) {
+    root.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
+        if (gradeSelect.dataset.liveBound === '1') return;
+        gradeSelect.dataset.liveBound = '1';
+        gradeSelect.addEventListener('change', function() {
+            let courseCode = this.name.match(/\[(.*?)\]/)[1];
+            autoSaveGrade(courseCode);
+        });
+    });
 
+    root.querySelectorAll('[name^="evaluator_remarks"]').forEach(function(remarksSelect) {
+        if (remarksSelect.dataset.liveBound === '1') return;
+        remarksSelect.dataset.liveBound = '1';
+        remarksSelect.addEventListener('change', function() {
+            let courseCode = this.name.match(/\[(.*?)\]/)[1];
+            autoSaveGrade(courseCode);
+        });
+    });
+}
+
+function fetchAndUpdateChecklist() {
     if (isChecklistRefreshRunning) {
         return;
     }
 
     isChecklistRefreshRunning = true;
 
-    fetch(`../student/get_checklist_data.php?student_id=${encodeURIComponent(studentId)}&_=${Date.now()}`, {
+    const separator = window.location.search.includes('?') ? '&' : '?';
+    const requestUrl = `${window.location.pathname}${window.location.search}${separator}_=${Date.now()}`;
+
+    fetch(requestUrl, {
         cache: 'no-store',
         headers: {
-            'Cache-Control': 'no-cache'
+            'Cache-Control': 'no-cache',
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                updateChecklistFields(data.courses);
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const nextDocument = parser.parseFromString(html, 'text/html');
+            const nextWrapper = nextDocument.querySelector('.table-wrapper');
+            const currentWrapper = document.querySelector('.table-wrapper');
+
+            if (nextWrapper && currentWrapper) {
+                currentWrapper.innerHTML = nextWrapper.innerHTML;
+                bindChecklistFieldListeners(currentWrapper);
+                applyApproveMultipleViewState();
             }
         })
         .catch(error => console.error('Error fetching checklist data:', error))
@@ -1266,43 +1297,6 @@ function stopChecklistLiveRefresh() {
     window.clearInterval(checklistLiveRefreshTimer);
     checklistLiveRefreshTimer = null;
 }
-
-// Function to update checklist fields
-function updateChecklistFields(courses) {
-    courses.forEach(course => {
-        // Update final grade (1st attempt)
-        const gradeSelect = document.querySelector(`select[name="final_grade[${course.course_code}]"]`);
-        if (gradeSelect) {
-            gradeSelect.value = course.final_grade || '';
-        }
-        // Update 2nd attempt grade
-        const grade2Select = document.querySelector(`select[name="final_grade_2[${course.course_code}]"]`);
-        if (grade2Select && course.final_grade_2) {
-            grade2Select.value = course.final_grade_2;
-        }
-        // Update 3rd attempt grade
-        const grade3Select = document.querySelector(`select[name="final_grade_3[${course.course_code}]"]`);
-        if (grade3Select && course.final_grade_3) {
-            grade3Select.value = course.final_grade_3;
-        }
-        // Update evaluator remarks
-        const remarksElement = document.querySelector(`[name="evaluator_remarks[${course.course_code}]"]`);
-        if (remarksElement) {
-            if (remarksElement.tagName === 'SELECT') {
-                remarksElement.value = course.evaluator_remarks || '';
-            } else {
-                remarksElement.textContent = course.evaluator_remarks || '';
-            }
-        }
-        // Update professor/instructor
-        const professorElement = document.querySelector(`[name="professor_instructor[${course.course_code}]"]`);
-        if (professorElement) {
-            professorElement.value = course.professor_instructor || '';
-        }
-    });
-}
-// Poll for updates every 90 seconds (disabled to prevent conflicts with auto-save)
-// const updateInterval = setInterval(fetchAndUpdateChecklist, 90000);
 
 function showNotification(type, title, message) {
     const notification = document.createElement('div');
@@ -1421,20 +1415,7 @@ function autoSaveGrade(courseCode) {
 document.addEventListener('DOMContentLoaded', function() {
     startChecklistLiveRefresh();
     fetchAndUpdateChecklist();
-
-    document.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
-        gradeSelect.addEventListener('change', function() {
-            let courseCode = this.name.match(/\[(.*?)\]/)[1];
-            autoSaveGrade(courseCode);
-        });
-    });
-    
-    document.querySelectorAll('[name^="evaluator_remarks"]').forEach(function(remarksSelect) {
-        remarksSelect.addEventListener('change', function() {
-            let courseCode = this.name.match(/\[(.*?)\]/)[1];
-            autoSaveGrade(courseCode);
-        });
-    });
+    bindChecklistFieldListeners();
 });
 
 document.addEventListener('visibilitychange', function() {
