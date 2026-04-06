@@ -1077,7 +1077,6 @@ if (!empty($programOptions)) {
             <div class="menu-group">
               <div class="menu-group-title">System</div>
               <li><a href="curriculum_management.php" class="active"><img src="../pix/curr.png" alt="Curriculum Management" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
-              <li><a href="../admin/programs.html"><img src="../pix/update.png" alt="Programs" style="filter: brightness(0) invert(1);"> Programs</a></li>
             </div>
 
             <div class="menu-group">
