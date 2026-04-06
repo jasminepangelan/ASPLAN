@@ -1899,6 +1899,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
                         if (hasSubmittedGrade) {
                             setChecklistRemarksBadge(courseCode, 'Pending');
+                        } else {
+                            setChecklistRemarksBadge(courseCode, '');
                         }
                     });
                     fetchAndUpdateChecklist();
@@ -2125,6 +2127,8 @@ function autoSaveGrade(courseCode) {
                                   hasSubmittedGradeValue(finalGrade3);
                 if (hasNewGrade) {
                     setChecklistRemarksBadge(courseCode, 'Pending');
+                } else {
+                    setChecklistRemarksBadge(courseCode, '');
                 }
                 fetchAndUpdateChecklist();
             } else {
