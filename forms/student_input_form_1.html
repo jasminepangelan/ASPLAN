@@ -72,6 +72,12 @@
             box-shadow: 0 0 0 4px rgba(44, 122, 42, 0.14);
             outline: none;
         }
+        .form-group input[disabled] {
+            background: #eef3ee;
+            color: #7a887a;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
         .button-group {
             display: flex;
             gap: 10px;
@@ -138,26 +144,37 @@
             <label for="email">Email Address</label>
             <input type="email" id="email" name="email" placeholder="ex. juan.delacruz@cvsu.edu.ph" required>
             <div style="color: #5d715e; font-size: 12px; margin-top: 5px;">Use your official <strong>@cvsu.edu.ph</strong> email only.</div>
+            <div id="email-message" style="color: red; font-size: 13px; margin-top: 3px; display: none;"></div>
         </div>
         <div class="form-group">
             <label for="last-name">Last Name</label>
-            <input type="text" id="last-name" name="last_name" placeholder="ex. Dela Cruz" required>
+            <input type="text" id="last-name" name="last_name" placeholder="ex. Dela Cruz" required disabled>
         </div>
         <div class="form-group">
             <label for="first-name">First Name</label>
-            <input type="text" id="first-name" name="first_name" placeholder="ex. Juan" required>
+            <input type="text" id="first-name" name="first_name" placeholder="ex. Juan" required disabled>
         </div>
         <div class="form-group">
             <label for="middle-name">Middle Name <span style="color: #666; font-size: 12px;">(Optional)</span></label>
-            <input type="text" id="middle-name" name="middle_name" placeholder="ex. Reyes (Leave blank if no middle name)">
+            <input type="text" id="middle-name" name="middle_name" placeholder="ex. Reyes (Leave blank if no middle name)" disabled>
         </div>
         <div class="button-group">
-            <button type="button" class="btn-primary" onclick="saveAndNext()">Next</button>
+            <button type="button" id="next-button" class="btn-primary" onclick="saveAndNext()" disabled>Next</button>
             <button type="button" class="btn-secondary" onclick="window.location.href='../index.html'">Back</button>
         </div>
     </form>
 </div>
 <script>
+    function isOfficialCvsuEmail(value) {
+        return /^[^\s@]+@cvsu\.edu\.ph$/i.test(String(value || '').trim());
+    }
+
+    function showEmailMessage(message) {
+        const messageDiv = document.getElementById('email-message');
+        messageDiv.textContent = message;
+        messageDiv.style.display = message ? 'block' : 'none';
+    }
+
     // Prefill fields if data exists
     window.onload = function() {
         const data = JSON.parse(localStorage.getItem('studentFormPage1') || '{}');
@@ -166,13 +183,35 @@
         if (data.first_name) document.getElementById('first-name').value = data.first_name;
         if (data.middle_name) document.getElementById('middle-name').value = data.middle_name;
         if (data.email) document.getElementById('email').value = data.email;
+        updateProfileFieldGate();
     };
     // Live check for student number uniqueness
     let studentIdCheckTimeout = null;
     const studentIdInput = document.getElementById('student-id');
     const emailInput = document.getElementById('email');
     const lastNameInput = document.getElementById('last-name');
+    const firstNameInput = document.getElementById('first-name');
+    const middleNameInput = document.getElementById('middle-name');
+    const nextButton = document.getElementById('next-button');
+    const gatedInputs = [lastNameInput, firstNameInput, middleNameInput];
     let isStudentIdValid = false;
+
+    function updateProfileFieldGate() {
+        const hasValidOfficialEmail = isOfficialCvsuEmail(emailInput.value);
+        gatedInputs.forEach((input) => {
+            input.disabled = !hasValidOfficialEmail;
+        });
+        nextButton.disabled = !hasValidOfficialEmail;
+        nextButton.style.opacity = hasValidOfficialEmail ? '1' : '0.65';
+        nextButton.style.cursor = hasValidOfficialEmail ? 'pointer' : 'not-allowed';
+
+        if (!emailInput.value.trim()) {
+            showEmailMessage('');
+            return;
+        }
+
+        showEmailMessage(hasValidOfficialEmail ? '' : 'Enter a valid official @cvsu.edu.ph email first.');
+    }
 
     studentIdInput.addEventListener('input', function() {
         const studentId = this.value.trim();
@@ -205,8 +244,9 @@
                         // Clear and disable subsequent fields
                         emailInput.value = '';
                         lastNameInput.value = '';
-                        document.getElementById('first-name').value = '';
-                        document.getElementById('middle-name').value = '';
+                        firstNameInput.value = '';
+                        middleNameInput.value = '';
+                        updateProfileFieldGate();
                     } else {
                         messageDiv.style.display = 'none';
                         isStudentIdValid = true;
@@ -241,24 +281,36 @@
         }
     });
 
-    // Prevent focus to last name if student id is not 9 digits
-    lastNameInput.addEventListener('focus', function(e) {
-        const studentId = studentIdInput.value.trim();
-        const messageDiv = document.getElementById('student-id-message');
-        if (!/^\d{9}$/.test(studentId)) {
-            messageDiv.textContent = 'Must be 9 digit student number';
-            messageDiv.style.display = 'block';
-            studentIdInput.focus();
-            e.preventDefault();
-            return;
-        }
+    emailInput.addEventListener('input', function() {
+        updateProfileFieldGate();
+    });
 
-        if (!isStudentIdValid) {
-            messageDiv.textContent = 'Please enter a valid student number that does not exist in the system';
-            messageDiv.style.display = 'block';
-            studentIdInput.focus();
-            e.preventDefault();
-        }
+    gatedInputs.forEach((input) => {
+        input.addEventListener('focus', function(e) {
+            const studentId = studentIdInput.value.trim();
+            const messageDiv = document.getElementById('student-id-message');
+            if (!/^\d{9}$/.test(studentId)) {
+                messageDiv.textContent = 'Must be 9 digit student number';
+                messageDiv.style.display = 'block';
+                studentIdInput.focus();
+                e.preventDefault();
+                return;
+            }
+
+            if (!isStudentIdValid) {
+                messageDiv.textContent = 'Please enter a valid student number that does not exist in the system';
+                messageDiv.style.display = 'block';
+                studentIdInput.focus();
+                e.preventDefault();
+                return;
+            }
+
+            if (!isOfficialCvsuEmail(emailInput.value)) {
+                showEmailMessage('Enter a valid official @cvsu.edu.ph email first.');
+                emailInput.focus();
+                e.preventDefault();
+            }
+        });
     });
 
     function saveAndNext() {
@@ -303,8 +355,8 @@
             return;
         }
 
-        if (!/@cvsu\.edu\.ph$/i.test(email)) {
-            alert('Only official @cvsu.edu.ph email addresses are allowed for student accounts.');
+        if (!isOfficialCvsuEmail(email)) {
+            showEmailMessage('Enter a valid official @cvsu.edu.ph email first.');
             form.email.focus();
             return;
         }
