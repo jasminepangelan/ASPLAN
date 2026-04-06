@@ -844,15 +844,26 @@ $fullName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($studen
                                     <th>Course Code</th>
                                     <th>Course Title</th>
                                     <th>Units</th>
-                                    <th>Flags</th>
+                                    <th>Prerequisite</th>
+                                    <th>Remarks</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                             <?php foreach (($term['courses'] ?? []) as $course): ?>
+                                <?php
+                                    $prerequisite = trim((string)($course['prerequisite'] ?? ''));
+                                    if ($prerequisite === '') {
+                                        $prerequisite = 'None';
+                                    }
+                                ?>
                                 <tr>
                                     <td><?= htmlspecialchars((string)($course['code'] ?? '')); ?></td>
                                     <td><?= htmlspecialchars((string)($course['title'] ?? '')); ?></td>
                                     <td><?= (int)($course['units'] ?? 0); ?></td>
+                                    <td>
+                                        <?= htmlspecialchars($prerequisite); ?>
+                                    </td>
                                     <td>
                                         <?php if (!empty($course['needs_retake'])): ?>
                                             <span class="tag tag-retake">Retake</span>
@@ -863,7 +874,8 @@ $fullName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($studen
                                         <?php if (!empty($course['moved_override'])): ?>
                                             <span class="tag tag-moved">Moved</span>
                                         <?php endif; ?>
-
+                                    </td>
+                                    <td>
                                         <?php if (empty($term['completed_term'])): ?>
                                             <?php
                                                 $courseCode = (string)($course['code'] ?? '');
@@ -894,6 +906,8 @@ $fullName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($studen
                                                 </select>
                                                 <button type="button" onclick="moveCourseTerm('<?= htmlspecialchars($courseCode, ENT_QUOTES); ?>', '<?= htmlspecialchars($currentSelectId, ENT_QUOTES); ?>')">Move</button>
                                             </div>
+                                        <?php else: ?>
+                                            <span style="color:#64748b;font-size:12px;font-weight:600;">No Action</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
