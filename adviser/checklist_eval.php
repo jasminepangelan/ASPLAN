@@ -717,7 +717,7 @@ if (!$bridgeLoaded && !empty($batches)) {
 
         .action-buttons {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             justify-content: center;
             flex-wrap: wrap;
         }
@@ -725,30 +725,30 @@ if (!$bridgeLoaded && !empty($batches)) {
         .btn {
             text-decoration: none;
             font-weight: 700;
-            padding: 8px 14px;
-            border-radius: 10px;
+            padding: 9px 15px;
+            border-radius: 12px;
             transition: all 0.22s ease;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 96px;
+            min-width: 104px;
             font-size: 12px;
             border: 1px solid transparent;
             cursor: pointer;
-            letter-spacing: 0.1px;
-            box-shadow: 0 6px 14px rgba(18, 54, 14, 0.12);
+            letter-spacing: 0.15px;
+            box-shadow: 0 8px 16px rgba(18, 54, 14, 0.12);
         }
 
         .btn-grades {
-            background: linear-gradient(135deg, #5bbf58 0%, #3ea63f 100%);
+            background: linear-gradient(135deg, #2f8f2d 0%, #236d21 100%);
             color: #fff;
-            border-color: #3a913a;
+            border-color: #205f1f;
         }
 
         .btn-grades:hover {
-            background: linear-gradient(135deg, #4aae48 0%, #358f36 100%);
+            background: linear-gradient(135deg, #287b27 0%, #1d581b 100%);
             transform: translateY(-2px);
-            box-shadow: 0 10px 18px rgba(53, 143, 54, 0.24);
+            box-shadow: 0 12px 22px rgba(35, 109, 33, 0.28);
         }
 
         .btn-form {
@@ -764,17 +764,17 @@ if (!$bridgeLoaded && !empty($batches)) {
         }
 
         .btn-profile {
-            background: linear-gradient(135deg, #f4fbf1 0%, #e7f5e1 100%);
-            color: #206018;
-            border-color: #bdd8b4;
+            background: linear-gradient(135deg, #fbfdf8 0%, #eef6e8 100%);
+            color: #1e5a17;
+            border-color: #b7d6aa;
         }
 
         .btn-profile:hover {
-            background: linear-gradient(135deg, #e8f5e1 0%, #d7edcc 100%);
-            color: #174913;
-            border-color: #9fca92;
+            background: linear-gradient(135deg, #edf7e6 0%, #deefd3 100%);
+            color: #164511;
+            border-color: #98c484;
             transform: translateY(-2px);
-            box-shadow: 0 10px 18px rgba(23, 73, 19, 0.16);
+            box-shadow: 0 12px 22px rgba(23, 73, 19, 0.18);
         }
 
         /* Make the table cell containing buttons wider */
