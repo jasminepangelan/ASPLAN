@@ -509,28 +509,53 @@ $displayRows = [];
         }
         .empty-state { text-align: center; padding: 30px 14px; color: #666; }
         .pagination {
-            margin-top: 10px;
-            background: #fff;
-            border-radius: 8px;
-            padding: 10px 12px;
+            margin-top: 25px;
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             flex-wrap: wrap;
             gap: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        .pagination-controls { display: flex; gap: 6px; flex-wrap: wrap; }
+        .pagination-controls { display: flex; gap: 8px; flex-wrap: wrap; }
         .page-btn {
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            color: #206018;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
             text-decoration: none;
-            color: #333;
-            background: #f1f3f5;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 6px 10px;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            text-align: center;
         }
-        .page-btn.active { background: #206018; color: #fff; border-color: #206018; }
+        .page-btn:hover:not(.active):not(.disabled) {
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+            color: #fff;
+            border-color: #206018;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3);
+        }
+        .page-btn.active {
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+            color: #fff;
+            border-color: #206018;
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3);
+        }
+        .page-btn.disabled {
+            background: #f0f0f0;
+            color: #ccc;
+            border-color: #e0e0e0;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .pagination-info {
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 0 15px;
+        }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .main-content { margin-left: 0; }
@@ -620,12 +645,14 @@ $displayRows = [];
 
             <?php if ($total_pages > 1): ?>
                 <div class="pagination">
-                    <div>Page <?= $current_page ?> of <?= $total_pages ?></div>
                     <div class="pagination-controls">
                         <?php $search_param = !empty($search) ? '&search=' . urlencode($search) : ''; ?>
                         <?php if ($current_page > 1): ?>
                             <a class="page-btn" href="?page=1<?= $search_param ?>">First</a>
                             <a class="page-btn" href="?page=<?= $current_page - 1 ?><?= $search_param ?>">Previous</a>
+                        <?php else: ?>
+                            <span class="page-btn disabled">First</span>
+                            <span class="page-btn disabled">Previous</span>
                         <?php endif; ?>
                         <?php
                         $start_page = max(1, $current_page - 2);
@@ -637,8 +664,12 @@ $displayRows = [];
                         <?php if ($current_page < $total_pages): ?>
                             <a class="page-btn" href="?page=<?= $current_page + 1 ?><?= $search_param ?>">Next</a>
                             <a class="page-btn" href="?page=<?= $total_pages ?><?= $search_param ?>">Last</a>
+                        <?php else: ?>
+                            <span class="page-btn disabled">Next</span>
+                            <span class="page-btn disabled">Last</span>
                         <?php endif; ?>
                     </div>
+                    <span class="pagination-info">Page <?= $current_page ?> of <?= $total_pages ?></span>
                 </div>
             <?php endif; ?>
         </div>

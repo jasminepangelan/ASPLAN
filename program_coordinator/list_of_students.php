@@ -557,27 +557,53 @@ if (!$bridgeLoaded) {
             text-align: center;
             color: #647067;
         }
-        .pagination {
-            margin-top: 14px;
+        .pagination-container {
             display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
+            justify-content: center;
             align-items: center;
+            margin-top: 25px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
-        .pagination a,
-        .pagination span {
-            padding: 6px 10px;
-            border: 1px solid #d0ddd0;
+        .pagination-btn {
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            color: #206018;
+            border: 2px solid #e0e0e0;
             border-radius: 8px;
             text-decoration: none;
-            font-size: 12px;
-            color: #206018;
-            background: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            text-align: center;
         }
-        .pagination .active {
-            background: #206018;
+        .pagination-btn:hover:not(.active):not(.disabled) {
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
             color: #fff;
             border-color: #206018;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3);
+        }
+        .pagination-btn.active {
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+            color: #fff;
+            border-color: #206018;
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3);
+        }
+        .pagination-btn.disabled {
+            background: #f0f0f0;
+            color: #ccc;
+            border-color: #e0e0e0;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .pagination-info {
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 0 15px;
         }
         .btn-check {
             display: inline-block;
@@ -735,14 +761,35 @@ if (!$bridgeLoaded) {
         </table>
 
         <?php if ($totalPages > 1): ?>
-            <div class="pagination">
-                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                    <?php if ($i == $currentPage): ?>
-                        <span class="active"><?php echo $i; ?></span>
-                    <?php else: ?>
-                        <a href="?page=<?php echo $i; ?><?php echo htmlspecialchars($paginationSuffix); ?>"><?php echo $i; ?></a>
-                    <?php endif; ?>
+            <div class="pagination-container">
+                <?php if ($currentPage > 1): ?>
+                    <a href="?page=1<?php echo htmlspecialchars($paginationSuffix); ?>" class="pagination-btn">First</a>
+                    <a href="?page=<?php echo $currentPage - 1; ?><?php echo htmlspecialchars($paginationSuffix); ?>" class="pagination-btn">Previous</a>
+                <?php else: ?>
+                    <span class="pagination-btn disabled">First</span>
+                    <span class="pagination-btn disabled">Previous</span>
+                <?php endif; ?>
+
+                <?php
+                $startPage = max(1, $currentPage - 2);
+                $endPage = min($totalPages, $currentPage + 2);
+                for ($i = $startPage; $i <= $endPage; $i++):
+                ?>
+                    <a href="?page=<?php echo $i; ?><?php echo htmlspecialchars($paginationSuffix); ?>"
+                       class="pagination-btn <?php echo $i == $currentPage ? 'active' : ''; ?>">
+                        <?php echo $i; ?>
+                    </a>
                 <?php endfor; ?>
+
+                <?php if ($currentPage < $totalPages): ?>
+                    <a href="?page=<?php echo $currentPage + 1; ?><?php echo htmlspecialchars($paginationSuffix); ?>" class="pagination-btn">Next</a>
+                    <a href="?page=<?php echo $totalPages; ?><?php echo htmlspecialchars($paginationSuffix); ?>" class="pagination-btn">Last</a>
+                <?php else: ?>
+                    <span class="pagination-btn disabled">Next</span>
+                    <span class="pagination-btn disabled">Last</span>
+                <?php endif; ?>
+
+                <span class="pagination-info">Page <?php echo $currentPage; ?> of <?php echo $totalPages; ?></span>
             </div>
         <?php endif; ?>
     </div>

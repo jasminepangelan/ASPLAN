@@ -410,14 +410,14 @@ closeDBConnection($conn);
         .toolbar a { background: #e5e7eb; color: #1f2937; }
         .toolbar button:hover, .toolbar a:hover, .btn:hover { transform: translateY(-1px); }
         .th-sort { color: #111827; text-decoration: none; }
-        .pager { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; flex-wrap: wrap; color: #475569; font-size: 13px; }
-        .pager.top { margin-top: 0; margin-bottom: 12px; }
-        .pager .links { display: flex; gap: 8px; }
-        .pager a, .pager span { border-radius: 10px; padding: 7px 11px; font-size: 12px; font-weight: 800; text-decoration: none; }
-        .pager a { background: #f1f5f9; color: #334155; border: 1px solid #d7e0ea; }
-        .pager a:hover { background: #e7edf4; }
-        .pager .disabled { background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0; }
-        .pager .current { background: linear-gradient(135deg, #14532d 0%, #1f7a2f 100%); color: #fff; box-shadow: 0 6px 14px rgba(20, 83, 45, 0.18); }
+        .pager { display: flex; justify-content: center; align-items: center; margin-top: 25px; gap: 8px; flex-wrap: wrap; color: #666; font-size: 13px; }
+        .pager.top { margin-top: 0; margin-bottom: 16px; }
+        .pager .links { display: flex; gap: 8px; flex-wrap: wrap; }
+        .pager a, .pager span { border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; text-decoration: none; min-width: 40px; text-align: center; }
+        .pager a { background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%); color: #206018; border: 2px solid #e0e0e0; transition: all 0.3s ease; }
+        .pager a:hover { background: linear-gradient(135deg, #206018 0%, #4CAF50 100%); color: #fff; border-color: #206018; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3); }
+        .pager .disabled { background: #f0f0f0; color: #ccc; border: 2px solid #e0e0e0; cursor: not-allowed; opacity: 0.6; }
+        .pager .current { background: linear-gradient(135deg, #206018 0%, #4CAF50 100%); color: #fff; border: 2px solid #206018; box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3); }
         .per-page { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #374151; }
         .per-page select { border: 1px solid #cfd7e3; border-radius: 10px; padding: 6px 9px; font-size: 12px; background: #fff; }
         table {

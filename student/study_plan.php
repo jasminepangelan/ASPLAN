@@ -812,47 +812,50 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 15px;
+            gap: 8px;
             margin: 25px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            flex-wrap: wrap;
         }
 
         .pagination-btn {
-            background: #206018;
-            color: #ffffff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            color: #206018;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             display: flex;
             align-items: center;
             gap: 6px;
             transition: all 0.3s ease;
+            min-width: 40px;
+            justify-content: center;
         }
 
         .pagination-btn:hover:not(:disabled) {
-            background: #2d8f22;
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+            color: #fff;
+            border-color: #206018;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3);
         }
 
         .pagination-btn:disabled {
-            background: #ccc;
+            background: #f0f0f0;
+            color: #ccc;
+            border-color: #e0e0e0;
             cursor: not-allowed;
             opacity: 0.6;
+            box-shadow: none;
         }
 
         .pagination-info {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            padding: 8px 16px;
-            background: #fff;
-            border-radius: 6px;
-            border: 1px solid #ddd;
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 0 15px;
         }
 
         .page-content {

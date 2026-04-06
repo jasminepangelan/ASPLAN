@@ -422,23 +422,54 @@ if (!$bridgeLoaded) {
 
         .pagination {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
-            margin-top: 12px;
+            margin-top: 25px;
         }
-        .pagination-controls { display: flex; gap: 6px; flex-wrap: wrap; }
+        .pagination-controls { display: flex; gap: 8px; flex-wrap: wrap; }
         .page-btn {
+            padding: 8px 14px;
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            color: #206018;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
             text-decoration: none;
-            padding: 7px 10px;
-            border: 1px solid #d0d5dd;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #344054;
-            background: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            text-align: center;
         }
-        .page-btn.active { background: #206018; color: #fff; border-color: #206018; }
+        .page-btn:hover:not(.active):not(.disabled) {
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+            color: white;
+            border-color: #206018;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3);
+        }
+        .page-btn.active {
+            background: linear-gradient(135deg, #206018 0%, #4CAF50 100%);
+            color: #fff;
+            border-color: #206018;
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.3);
+            cursor: default;
+        }
+        .page-btn.disabled {
+            background: #f0f0f0;
+            color: #ccc;
+            border-color: #e0e0e0;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .pagination-info {
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 0 15px;
+        }
 
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-250px); }
@@ -608,12 +639,14 @@ if (!$bridgeLoaded) {
 
         <?php if ($total_pages > 1): ?>
             <div class="pagination">
-                <div>Page <?= $current_page ?> of <?= $total_pages ?></div>
                 <div class="pagination-controls">
                     <?php $searchParam = $search !== '' ? '&search=' . urlencode($search) : ''; ?>
                     <?php if ($current_page > 1): ?>
                         <a class="page-btn" href="?type=<?= urlencode($type) ?>&page=1<?= $searchParam ?>">First</a>
                         <a class="page-btn" href="?type=<?= urlencode($type) ?>&page=<?= $current_page - 1 ?><?= $searchParam ?>">Previous</a>
+                    <?php else: ?>
+                        <span class="page-btn disabled">First</span>
+                        <span class="page-btn disabled">Previous</span>
                     <?php endif; ?>
 
                     <?php
@@ -627,8 +660,12 @@ if (!$bridgeLoaded) {
                     <?php if ($current_page < $total_pages): ?>
                         <a class="page-btn" href="?type=<?= urlencode($type) ?>&page=<?= $current_page + 1 ?><?= $searchParam ?>">Next</a>
                         <a class="page-btn" href="?type=<?= urlencode($type) ?>&page=<?= $total_pages ?><?= $searchParam ?>">Last</a>
+                    <?php else: ?>
+                        <span class="page-btn disabled">Next</span>
+                        <span class="page-btn disabled">Last</span>
                     <?php endif; ?>
                 </div>
+                <span class="pagination-info">Page <?= $current_page ?> of <?= $total_pages ?></span>
             </div>
         <?php endif; ?>
     </div>
