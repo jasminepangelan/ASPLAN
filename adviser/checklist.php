@@ -964,6 +964,12 @@ if (empty($all_courses)) {
             $grade1_val  = $row['final_grade'] ?? '';
             $grade2_val  = $row['final_grade_2'] ?? '';
             $grade3_val  = $row['final_grade_3'] ?? '';
+            $remark1_val = $row['evaluator_remarks'] ?? '';
+            $remark2_val = $row['evaluator_remarks_2'] ?? '';
+            $remark3_val = $row['evaluator_remarks_3'] ?? '';
+            $effectiveRemark = ($remark1_val === 'Pending' || $remark2_val === 'Pending' || $remark3_val === 'Pending')
+                ? 'Pending'
+                : $remark1_val;
             $show_2nd    = isFailingGrade($grade1_val);
             $show_3rd    = $show_2nd && isFailingGrade($grade2_val);
             $grade_opts  = ['', 'No Grade', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'Passed', 'Failed', 'US', 'S', 'INC', 'DRP'];
@@ -1008,7 +1014,7 @@ if (empty($all_courses)) {
             echo "</td>";
             echo "<td><select name='evaluator_remarks[" . htmlspecialchars($courseCode) . "]' style='border:none;font-size:8px;width:100px;'>";
             foreach ($remark_opts as $ro) {
-                echo "<option value='" . htmlspecialchars((string)$ro) . "'" . ($ro === ($row['evaluator_remarks'] ?? '') ? ' selected' : '') . ">" . htmlspecialchars((string)$ro) . "</option>";
+                echo "<option value='" . htmlspecialchars((string)$ro) . "'" . ($ro === $effectiveRemark ? ' selected' : '') . ">" . htmlspecialchars((string)$ro) . "</option>";
             }
             echo "</select></td>";
             echo "<td style='display:none' class='approve-col'><input type='checkbox' class='approve-checkbox' value='" . htmlspecialchars($courseCode) . "'></td>";
