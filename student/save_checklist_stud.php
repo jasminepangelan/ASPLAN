@@ -54,6 +54,10 @@ function applyIncomingStudentAttemptLocal(array &$attempts, int $preferredSlot, 
 {
     $incoming = normalizeChecklistValue($incomingGrade);
     if ($incoming === '' || $incoming === 'No Grade') {
+        if (!isLockedApprovedAttemptLocal($attempts[$preferredSlot]['remark'] ?? '')) {
+            $attempts[$preferredSlot]['grade'] = '';
+            $attempts[$preferredSlot]['remark'] = '';
+        }
         return;
     }
 
@@ -109,6 +113,23 @@ function resolveStudentAttemptPayloadLocal(?array $existing, $grade1, $grade2, $
         'final_grade_3' => $attempts[3]['grade'],
         'evaluator_remarks_3' => $attempts[3]['remark'],
     ];
+}
+
+function hasAnySavedAttemptLocal(array $payload): bool
+{
+    $grades = [
+        normalizeChecklistValue($payload['final_grade'] ?? ''),
+        normalizeChecklistValue($payload['final_grade_2'] ?? ''),
+        normalizeChecklistValue($payload['final_grade_3'] ?? ''),
+    ];
+
+    foreach ($grades as $grade) {
+        if ($grade !== '' && $grade !== 'No Grade') {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function isCreditedLockedChecklistRecordLocal(?array $existing): bool
@@ -211,18 +232,19 @@ try {
             continue;
         }
 
-        $hasSubmittedAttempt = ($finalGrade !== '' && $finalGrade !== 'No Grade')
+        $hasIncomingSubmittedAttempt = ($finalGrade !== '' && $finalGrade !== 'No Grade')
             || ($finalGrade2 !== '' && $finalGrade2 !== 'No Grade')
             || ($finalGrade3 !== '' && $finalGrade3 !== 'No Grade');
 
         $attemptPayload = resolveStudentAttemptPayloadLocal($existing ?: null, $finalGrade, $finalGrade2, $finalGrade3);
+        $hasAnySavedAttempt = hasAnySavedAttemptLocal($attemptPayload);
 
         $stmt = $conn->prepare("
             INSERT INTO student_checklists
                 (student_id, course_code, final_grade, evaluator_remarks, professor_instructor,
                  final_grade_2, evaluator_remarks_2, final_grade_3, evaluator_remarks_3,
                  grade_submitted_at, submitted_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, IF(? != '', NOW(), NULL), IF(? != '', 'student', NULL))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, IF(? = 'student', NOW(), NULL), IF(? = 'student', 'student', NULL))
             ON DUPLICATE KEY UPDATE
                 professor_instructor = VALUES(professor_instructor),
                 final_grade = VALUES(final_grade),
@@ -231,20 +253,34 @@ try {
                 evaluator_remarks_2 = VALUES(evaluator_remarks_2),
                 final_grade_3 = VALUES(final_grade_3),
                 evaluator_remarks_3 = VALUES(evaluator_remarks_3),
-                grade_submitted_at = IF(VALUES(grade_submitted_at) IS NOT NULL, VALUES(grade_submitted_at), grade_submitted_at),
-                submitted_by = IF(VALUES(submitted_by) IS NOT NULL, VALUES(submitted_by), submitted_by)
+                grade_submitted_at = CASE
+                    WHEN ? = 'student' THEN NOW()
+                    WHEN ? = 'clear' THEN NULL
+                    ELSE grade_submitted_at
+                END,
+                submitted_by = CASE
+                    WHEN ? = 'student' THEN 'student'
+                    WHEN ? = 'clear' THEN NULL
+                    ELSE submitted_by
+                END
         ");
         if (!$stmt) {
             $errors[] = "Prepare failed for $course_code: " . $conn->error;
             continue;
         }
-        $gradeSubmissionGate = $hasSubmittedAttempt ? 'student' : '';
-        $stmt->bind_param('sssssssssss',
+        $gradeSubmissionGate = $hasIncomingSubmittedAttempt ? 'student' : '';
+        $gradeClearGate = (!$hasIncomingSubmittedAttempt && !$hasAnySavedAttempt) ? 'clear' : '';
+        $stmt->bind_param('sssssssssssssss',
             $student_id, $course_code,
             $attemptPayload['final_grade'], $attemptPayload['evaluator_remarks'], $professorInstructor,
             $attemptPayload['final_grade_2'], $attemptPayload['evaluator_remarks_2'],
             $attemptPayload['final_grade_3'], $attemptPayload['evaluator_remarks_3'],
-            $gradeSubmissionGate, $gradeSubmissionGate
+            $gradeSubmissionGate,
+            $gradeSubmissionGate,
+            $gradeSubmissionGate,
+            $gradeClearGate,
+            $gradeSubmissionGate,
+            $gradeClearGate
         );
 
         if (!$stmt->execute()) {

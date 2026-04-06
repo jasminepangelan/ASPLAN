@@ -323,16 +323,21 @@ class ChecklistController extends Controller
                 $grade = $this->normalizeString($grades[$index] ?? '');
                 $grade2 = $this->normalizeString($grades2[$index] ?? '');
                 $grade3 = $this->normalizeString($grades3[$index] ?? '');
-                $hasSubmittedAttempt = $grade !== '' || $grade2 !== '' || $grade3 !== '';
+                $hasIncomingSubmittedAttempt = $grade !== '' || $grade2 !== '' || $grade3 !== '';
 
                 $payload = [
                     'professor_instructor' => $this->resolveCourseValue($professors, $index, $courseCode),
                 ];
 
-                if ($hasSubmittedAttempt) {
-                    $payload += $this->resolveStudentAttemptPayload($existing, $grade, $grade2, $grade3);
+                $payload += $this->resolveStudentAttemptPayload($existing, $grade, $grade2, $grade3);
+                $hasAnySavedAttempt = $this->hasAnySavedAttempt($payload);
+
+                if ($hasIncomingSubmittedAttempt) {
                     $payload['grade_submitted_at'] = $timestamp;
                     $payload['submitted_by'] = 'student';
+                } elseif (!$hasAnySavedAttempt) {
+                    $payload['grade_submitted_at'] = null;
+                    $payload['submitted_by'] = null;
                 }
 
                 DB::table('student_checklists')->updateOrInsert(
@@ -421,6 +426,10 @@ class ChecklistController extends Controller
     private function applyIncomingStudentAttempt(array &$attempts, int $preferredSlot, string $incomingGrade): void
     {
         if ($incomingGrade === '' || $incomingGrade === 'No Grade') {
+            if (!$this->isLockedApprovedAttempt($attempts[$preferredSlot]['remark'] ?? '')) {
+                $attempts[$preferredSlot]['grade'] = '';
+                $attempts[$preferredSlot]['remark'] = '';
+            }
             return;
         }
 
@@ -456,6 +465,23 @@ class ChecklistController extends Controller
         }
 
         return $preferredSlot;
+    }
+
+    private function hasAnySavedAttempt(array $payload): bool
+    {
+        $grades = [
+            $this->normalizeString($payload['final_grade'] ?? ''),
+            $this->normalizeString($payload['final_grade_2'] ?? ''),
+            $this->normalizeString($payload['final_grade_3'] ?? ''),
+        ];
+
+        foreach ($grades as $grade) {
+            if ($grade !== '' && $grade !== 'No Grade') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isLockedApprovedAttempt(mixed $remark): bool
