@@ -296,6 +296,134 @@ class StudyPlanGenerator {
 
         return false;
     }
+
+    private function getStudentChecklistColumns() {
+        static $columns = null;
+
+        if ($columns !== null) {
+            return $columns;
+        }
+
+        $columns = [];
+        $result = $this->conn->query("SHOW COLUMNS FROM student_checklists");
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $field = trim((string)($row['Field'] ?? ''));
+                if ($field !== '') {
+                    $columns[$field] = true;
+                }
+            }
+        }
+
+        return $columns;
+    }
+
+    private function buildChecklistAttemptSelectColumns($prefix = '') {
+        $prefix = $prefix !== '' ? rtrim($prefix, '.') . '.' : '';
+        $columns = $this->getStudentChecklistColumns();
+        $selectColumns = [
+            $prefix . 'final_grade',
+            $prefix . 'evaluator_remarks',
+        ];
+
+        if (isset($columns['final_grade_2']) && isset($columns['evaluator_remarks_2'])) {
+            $selectColumns[] = $prefix . 'final_grade_2';
+            $selectColumns[] = $prefix . 'evaluator_remarks_2';
+        }
+
+        if (isset($columns['final_grade_3']) && isset($columns['evaluator_remarks_3'])) {
+            $selectColumns[] = $prefix . 'final_grade_3';
+            $selectColumns[] = $prefix . 'evaluator_remarks_3';
+        }
+
+        return $selectColumns;
+    }
+
+    private function buildChecklistAnyGradeCondition($prefix = '') {
+        $prefix = $prefix !== '' ? rtrim($prefix, '.') . '.' : '';
+        $columns = $this->getStudentChecklistColumns();
+        $gradeColumns = [$prefix . 'final_grade'];
+
+        if (isset($columns['final_grade_2'])) {
+            $gradeColumns[] = $prefix . 'final_grade_2';
+        }
+
+        if (isset($columns['final_grade_3'])) {
+            $gradeColumns[] = $prefix . 'final_grade_3';
+        }
+
+        $parts = [];
+        foreach ($gradeColumns as $column) {
+            $parts[] = "({$column} IS NOT NULL AND TRIM({$column}) != '' AND {$column} != 'No Grade')";
+        }
+
+        return '(' . implode(' OR ', $parts) . ')';
+    }
+
+    private function isApprovedChecklistRemark($remark) {
+        $normalized = strtoupper(trim((string)$remark));
+        if ($normalized === 'APPROVED') {
+            return true;
+        }
+
+        return $normalized !== '' && strpos($normalized, 'CREDITED') !== false;
+    }
+
+    private function resolveEffectiveChecklistAttempt(array $row, $requiresApproval = true) {
+        $columns = $this->getStudentChecklistColumns();
+        $attempts = [
+            1 => [
+                'grade' => trim((string)($row['final_grade'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks'] ?? '')),
+            ],
+        ];
+
+        if (isset($columns['final_grade_2']) && isset($columns['evaluator_remarks_2'])) {
+            $attempts[2] = [
+                'grade' => trim((string)($row['final_grade_2'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks_2'] ?? '')),
+            ];
+        }
+
+        if (isset($columns['final_grade_3']) && isset($columns['evaluator_remarks_3'])) {
+            $attempts[3] = [
+                'grade' => trim((string)($row['final_grade_3'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks_3'] ?? '')),
+            ];
+        }
+
+        for ($slot = 3; $slot >= 1; $slot--) {
+            if (!isset($attempts[$slot])) {
+                continue;
+            }
+
+            $grade = $attempts[$slot]['grade'];
+            if ($grade === '' || strtoupper($grade) === 'NO GRADE') {
+                continue;
+            }
+
+            if (!$requiresApproval || $this->isApprovedChecklistRemark($attempts[$slot]['remark'])) {
+                return [
+                    'slot' => $slot,
+                    'grade' => $grade,
+                    'remark' => $attempts[$slot]['remark'],
+                ];
+            }
+        }
+
+        if ($requiresApproval && (int)($row['grade_approved'] ?? 0) === 1) {
+            $fallbackGrade = trim((string)($row['final_grade'] ?? ''));
+            if ($fallbackGrade !== '' && strtoupper($fallbackGrade) !== 'NO GRADE') {
+                return [
+                    'slot' => 1,
+                    'grade' => $fallbackGrade,
+                    'remark' => trim((string)($row['evaluator_remarks'] ?? '')),
+                ];
+            }
+        }
+
+        return null;
+    }
     
     /**
      * Load student's completed AND failed courses from database
@@ -307,62 +435,44 @@ class StudyPlanGenerator {
      * Also builds semester-by-semester grade history for retention policy
      */
     private function loadStudentData() {
-        // Check if grade_approved column exists
-        $columns_check = $this->conn->query("SHOW COLUMNS FROM student_checklists LIKE 'grade_approved'");
-        $has_approval_column = ($columns_check && $columns_check->num_rows > 0);
+        $columns = $this->getStudentChecklistColumns();
+        $has_approval_column = isset($columns['grade_approved']);
         
         // Load ALL grades (not just passing) for retention policy calculation
         $this->loadAllGrades($has_approval_column);
-        
+
+        $selectColumns = array_merge(['course_code'], $this->buildChecklistAttemptSelectColumns());
         if ($has_approval_column) {
-            // Use the proper query that requires adviser approval
-            $query = $this->conn->prepare("
-                SELECT course_code, final_grade, grade_submitted_at, grade_approved
-                FROM student_checklists 
-                WHERE student_id = ? 
-                AND final_grade IS NOT NULL 
-                AND final_grade != '' 
-                AND final_grade != 'INC' 
-                AND final_grade != 'DRP'
-                AND grade_submitted_at IS NOT NULL
-                AND grade_approved = 1
-            ");
-            $query->bind_param("s", $this->student_id);
-            $query->execute();
-            $result = $query->get_result();
-            
-            while ($row = $result->fetch_assoc()) {
-                if ($this->isPassingFinalGrade($row['final_grade'] ?? null)) {
-                    $this->completed_courses[] = $this->normalizeCourseCode($row['course_code'] ?? '');
-                }
-            }
-            $query->close();
+            $selectColumns[] = 'grade_approved';
+        }
+
+        $sql = "
+            SELECT " . implode(', ', array_unique($selectColumns)) . "
+            FROM student_checklists
+            WHERE student_id = ?
+            AND " . $this->buildChecklistAnyGradeCondition() . "
+        ";
+
+        $query = $this->conn->prepare($sql);
+        if (!$query) {
             return;
         }
-        
-        // Fallback ONLY if grade_approved column doesn't exist (legacy systems)
-        $fallback_query = $this->conn->prepare("
-            SELECT course_code, final_grade 
-            FROM student_checklists 
-            WHERE student_id = ? 
-            AND final_grade IS NOT NULL 
-            AND final_grade != '' 
-            AND final_grade != 'INC' 
-            AND final_grade != 'DRP'
-            AND final_grade != 'N/A'
-            AND final_grade != '0'
-            AND final_grade != '0.0'
-        ");
-        $fallback_query->bind_param("s", $this->student_id);
-        $fallback_query->execute();
-        $fallback_result = $fallback_query->get_result();
-        
-        while ($row = $fallback_result->fetch_assoc()) {
-            if ($this->isPassingFinalGrade($row['final_grade'] ?? null)) {
+
+        $query->bind_param("s", $this->student_id);
+        $query->execute();
+        $result = $query->get_result();
+
+        while ($row = $result->fetch_assoc()) {
+            $effectiveAttempt = $this->resolveEffectiveChecklistAttempt($row, $has_approval_column);
+            if ($effectiveAttempt === null) {
+                continue;
+            }
+
+            if ($this->isPassingFinalGrade($effectiveAttempt['grade'] ?? null)) {
                 $this->completed_courses[] = $this->normalizeCourseCode($row['course_code'] ?? '');
             }
         }
-        $fallback_query->close();
+        $query->close();
     }
 
     private function loadStudentPolicyContext() {
@@ -409,8 +519,10 @@ class StudyPlanGenerator {
      * Load ALL grades including failed/INC/dropped for retention policy and back-subject tracking
      */
     private function loadAllGrades($has_approval_column) {
-        // Build base query to get all graded courses with their curriculum info
-        $approval_condition = $has_approval_column ? "AND (sc.grade_approved = 1 OR sc.final_grade IN ('INC', 'DRP', 'W'))" : "";
+        $attemptColumns = $this->buildChecklistAttemptSelectColumns('sc');
+        if ($has_approval_column) {
+            $attemptColumns[] = 'sc.grade_approved';
+        }
 
         if ($this->curriculumCoursesTableExists()) {
             $condition = $this->buildCurriculumProgramCondition('UPPER(TRIM(cb.program))');
@@ -418,7 +530,7 @@ class StudyPlanGenerator {
             $sql = "
                 SELECT
                     sc.course_code,
-                    sc.final_grade,
+                    " . implode(",\n                    ", $attemptColumns) . ",
                     CASE cb.year_level
                         WHEN 'First Year' THEN '1st Yr'
                         WHEN 'Second Year' THEN '2nd Yr'
@@ -440,10 +552,7 @@ class StudyPlanGenerator {
                 JOIN curriculum_courses cb
                     ON sc.course_code = TRIM(cb.course_code)
                 WHERE sc.student_id = ?
-                AND sc.final_grade IS NOT NULL
-                AND sc.final_grade != ''
-                AND sc.final_grade != 'No Grade'
-                $approval_condition
+                AND " . $this->buildChecklistAnyGradeCondition('sc') . "
                 AND {$condition['sql']}" . $yearCondition['sql'] . "
                 ORDER BY
                     FIELD(cb.year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
@@ -460,7 +569,7 @@ class StudyPlanGenerator {
             $sql = "
                 SELECT 
                     sc.course_code,
-                    sc.final_grade,
+                    " . implode(",\n                    ", $attemptColumns) . ",
                     CASE cb.year_level
                         WHEN 'First Year' THEN '1st Yr'
                         WHEN 'Second Year' THEN '2nd Yr'
@@ -482,10 +591,7 @@ class StudyPlanGenerator {
                 JOIN cvsucarmona_courses cb 
                     ON sc.course_code = TRIM(SUBSTRING_INDEX(cb.curriculumyear_coursecode, '_', -1))
                 WHERE sc.student_id = ?
-                AND sc.final_grade IS NOT NULL 
-                AND sc.final_grade != ''
-                AND sc.final_grade != 'No Grade'
-                $approval_condition
+                AND " . $this->buildChecklistAnyGradeCondition('sc') . "
                 AND {$condition['sql']}" . $yearCondition['sql'] . "
                 ORDER BY
                     FIELD(cb.year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
@@ -510,8 +616,13 @@ class StudyPlanGenerator {
             // Skip duplicate rows caused by same course_code in multiple curriculum entries
             if (isset($processed_grade_codes[$course_code])) continue;
             $processed_grade_codes[$course_code] = true;
-            
-            $grade = $row['final_grade'];
+
+            $effectiveAttempt = $this->resolveEffectiveChecklistAttempt($row, $has_approval_column);
+            if ($effectiveAttempt === null) {
+                continue;
+            }
+
+            $grade = $effectiveAttempt['grade'];
             $year = $row['year'];
             $semester = $row['semester'];
             
@@ -942,20 +1053,19 @@ class StudyPlanGenerator {
     }
 
     private function calculatePolicyAverageGrade() {
-        $columns_check = $this->conn->query("SHOW COLUMNS FROM student_checklists LIKE 'grade_approved'");
-        $has_approval_column = ($columns_check && $columns_check->num_rows > 0);
+        $columns = $this->getStudentChecklistColumns();
+        $has_approval_column = isset($columns['grade_approved']);
+        $selectColumns = $this->buildChecklistAttemptSelectColumns();
+        if ($has_approval_column) {
+            $selectColumns[] = 'grade_approved';
+        }
 
         $sql = "
-            SELECT final_grade
+            SELECT " . implode(', ', array_unique($selectColumns)) . "
             FROM student_checklists
             WHERE student_id = ?
-            AND final_grade IS NOT NULL
-            AND final_grade != ''
-            AND final_grade REGEXP '^[0-9]+(\\.[0-9]+)?$'
+            AND " . $this->buildChecklistAnyGradeCondition() . "
         ";
-        if ($has_approval_column) {
-            $sql .= " AND grade_approved = 1";
-        }
 
         $stmt = $this->conn->prepare($sql);
         if (!$stmt) {
@@ -968,7 +1078,14 @@ class StudyPlanGenerator {
 
         $grades = [];
         while ($row = $result->fetch_assoc()) {
-            $grades[] = (float)$row['final_grade'];
+            $effectiveAttempt = $this->resolveEffectiveChecklistAttempt($row, $has_approval_column);
+            if ($effectiveAttempt === null) {
+                continue;
+            }
+
+            if (is_numeric($effectiveAttempt['grade'])) {
+                $grades[] = (float)$effectiveAttempt['grade'];
+            }
         }
         $stmt->close();
 
