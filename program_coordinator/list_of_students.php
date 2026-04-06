@@ -605,55 +605,65 @@ if (!$bridgeLoaded) {
             font-weight: 500;
             padding: 0 15px;
         }
-        .btn-check {
-            display: inline-block;
-            padding: 6px 12px;
-            background: #4CAF50;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            transition: background 0.2s ease;
-        }
-        .btn-check:hover {
-            background: #45a049;
-        }
         .action-links {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            flex-wrap: nowrap;
+            gap: 10px;
+            flex-wrap: wrap;
             width: 100%;
         }
         .btn-check,
         .btn-study,
         .btn-profile {
-            display: inline-block;
-            min-width: 88px;
-            padding: 6px 0;
-            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 96px;
+            padding: 8px 14px;
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 10px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 0.01em;
             text-align: center;
-            transition: background 0.2s ease;
+            border: 1px solid transparent;
+            box-shadow: 0 6px 14px rgba(23, 63, 19, 0.12);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
             white-space: nowrap;
             line-height: 1.2;
         }
-        .btn-study {
-            background: #206018;
-        }
-        .btn-study:hover {
-            background: #1a4f16;
-        }
         .btn-profile {
-            background: #2d8f22;
+            background: linear-gradient(135deg, #f4fbf1 0%, #e7f5e1 100%);
+            color: #206018;
+            border-color: #bdd8b4;
         }
         .btn-profile:hover {
-            background: #206018;
+            background: linear-gradient(135deg, #e8f5e1 0%, #d7edcc 100%);
+            color: #174913;
+            border-color: #9fca92;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 18px rgba(32, 96, 24, 0.18);
+        }
+        .btn-check {
+            background: linear-gradient(135deg, #5bbf58 0%, #3ea63f 100%);
+            color: #fff;
+            border-color: #3a913a;
+        }
+        .btn-check:hover {
+            background: linear-gradient(135deg, #4aae48 0%, #358f36 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 18px rgba(53, 143, 54, 0.24);
+        }
+        .btn-study {
+            background: linear-gradient(135deg, #1f5b1a 0%, #154512 100%);
+            color: #fff;
+            border-color: #123b10;
+        }
+        .btn-study:hover {
+            background: linear-gradient(135deg, #194a15 0%, #0f330d 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 18px rgba(21, 69, 18, 0.26);
         }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-250px); }
@@ -731,7 +741,7 @@ if (!$bridgeLoaded) {
                     <th>First Name</th>
                     <th>Middle Name</th>
                     <th>Program</th>
-                    <th>Action</th>
+                    <th style="text-align:center;">Action</th>
                 </tr>
             </thead>
             <tbody>
