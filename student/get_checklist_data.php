@@ -4,6 +4,10 @@ require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
 header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
 
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 $studentId = trim((string)($_GET['student_id'] ?? ''));

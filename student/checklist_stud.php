@@ -1987,9 +1987,15 @@ function fetchAndUpdateChecklist() {
 
     isChecklistRefreshRunning = true;
     const studentId = '<?php echo $student_id; ?>';
-  const programView = '<?php echo htmlspecialchars($selected_program_view, ENT_QUOTES); ?>';
-    
-  fetch(`get_checklist_data.php?student_id=${encodeURIComponent(studentId)}&program_view=${encodeURIComponent(programView)}`)
+    const programView = '<?php echo htmlspecialchars($selected_program_view, ENT_QUOTES); ?>';
+    const requestUrl = `get_checklist_data.php?student_id=${encodeURIComponent(studentId)}&program_view=${encodeURIComponent(programView)}&_=${Date.now()}`;
+
+    fetch(requestUrl, {
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache'
+        }
+    })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
