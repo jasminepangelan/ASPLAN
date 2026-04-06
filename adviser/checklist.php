@@ -1214,18 +1214,57 @@ document.addEventListener('change', function(e) {
 });
 
 // Function to fetch and update checklist data
+let isChecklistRefreshRunning = false;
+let checklistLiveRefreshTimer = null;
+
 function fetchAndUpdateChecklist() {
-// And this line in your fetchAndUpdateChecklist function
     const studentId = '<?php echo $_GET['student_id']; ?>';
-    
-    fetch(`../student/get_checklist_data.php?student_id=${studentId}`)
+
+    if (isChecklistRefreshRunning) {
+        return;
+    }
+
+    isChecklistRefreshRunning = true;
+
+    fetch(`../student/get_checklist_data.php?student_id=${encodeURIComponent(studentId)}&_=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+            'Cache-Control': 'no-cache'
+        }
+    })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
                 updateChecklistFields(data.courses);
             }
         })
-        .catch(error => console.error('Error fetching checklist data:', error));
+        .catch(error => console.error('Error fetching checklist data:', error))
+        .finally(() => {
+            isChecklistRefreshRunning = false;
+        });
+}
+
+function startChecklistLiveRefresh() {
+    if (checklistLiveRefreshTimer !== null) {
+        return;
+    }
+
+    checklistLiveRefreshTimer = window.setInterval(() => {
+        if (document.hidden || isSaving) {
+            return;
+        }
+
+        fetchAndUpdateChecklist();
+    }, 8000);
+}
+
+function stopChecklistLiveRefresh() {
+    if (checklistLiveRefreshTimer === null) {
+        return;
+    }
+
+    window.clearInterval(checklistLiveRefreshTimer);
+    checklistLiveRefreshTimer = null;
 }
 
 // Function to update checklist fields
@@ -1380,6 +1419,9 @@ function autoSaveGrade(courseCode) {
 
 // Attach auto-save listeners to all grade and remark selects
 document.addEventListener('DOMContentLoaded', function() {
+    startChecklistLiveRefresh();
+    fetchAndUpdateChecklist();
+
     document.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
         gradeSelect.addEventListener('change', function() {
             let courseCode = this.name.match(/\[(.*?)\]/)[1];
@@ -1395,15 +1437,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Clear interval when page is hidden (disabled to prevent field reset issues)
-// document.addEventListener('visibilitychange', () => {
-//     if (document.hidden) {
-//         clearInterval(updateInterval);
-//     } else {
-//         fetchAndUpdateChecklist();
-//         setInterval(fetchAndUpdateChecklist, 90000);
-//     }
-// });
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        stopChecklistLiveRefresh();
+    } else {
+        fetchAndUpdateChecklist();
+        startChecklistLiveRefresh();
+    }
+});
+
+window.addEventListener('focus', function() {
+    fetchAndUpdateChecklist();
+});
 
 // Bulk approve selected grades
 document.getElementById('bulkApproveButton').addEventListener('click', function() {
