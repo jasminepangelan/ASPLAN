@@ -7,6 +7,132 @@ require_once __DIR__ . '/../includes/academic_hold_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 header('Content-Type: application/json');
 
+function normalizeChecklistValue($value): string
+{
+    return trim((string) $value);
+}
+
+function resolveStudentAttemptRemarkLocal($incomingGrade, $existingGrade, $existingRemark): string
+{
+    $incoming = normalizeChecklistValue($incomingGrade);
+    if ($incoming === '' || $incoming === 'No Grade') {
+        return normalizeChecklistValue($existingRemark);
+    }
+
+    $currentGrade = normalizeChecklistValue($existingGrade);
+    if ($currentGrade === $incoming) {
+        $remark = normalizeChecklistValue($existingRemark);
+        return $remark !== '' ? $remark : 'Pending';
+    }
+
+    return 'Pending';
+}
+
+function isLockedApprovedAttemptLocal($remark): bool
+{
+    return normalizeChecklistValue($remark) === 'Approved';
+}
+
+function resolveStudentSubmissionTargetSlotLocal(array $attempts, int $preferredSlot): int
+{
+    $preferredSlot = max(1, min(3, $preferredSlot));
+
+    if (!isLockedApprovedAttemptLocal($attempts[$preferredSlot]['remark'] ?? '')) {
+        return $preferredSlot;
+    }
+
+    for ($slot = $preferredSlot + 1; $slot <= 3; $slot++) {
+        if (!isLockedApprovedAttemptLocal($attempts[$slot]['remark'] ?? '')) {
+            return $slot;
+        }
+    }
+
+    return $preferredSlot;
+}
+
+function applyIncomingStudentAttemptLocal(array &$attempts, int $preferredSlot, $incomingGrade): void
+{
+    $incoming = normalizeChecklistValue($incomingGrade);
+    if ($incoming === '' || $incoming === 'No Grade') {
+        return;
+    }
+
+    $preferredSlot = max(1, min(3, $preferredSlot));
+    $existingGrade = normalizeChecklistValue($attempts[$preferredSlot]['grade'] ?? '');
+    $existingRemark = normalizeChecklistValue($attempts[$preferredSlot]['remark'] ?? '');
+
+    if ($existingGrade === $incoming) {
+        $attempts[$preferredSlot]['remark'] = resolveStudentAttemptRemarkLocal($incoming, $existingGrade, $existingRemark);
+        return;
+    }
+
+    $targetSlot = resolveStudentSubmissionTargetSlotLocal($attempts, $preferredSlot);
+    $targetExistingGrade = normalizeChecklistValue($attempts[$targetSlot]['grade'] ?? '');
+    $targetExistingRemark = normalizeChecklistValue($attempts[$targetSlot]['remark'] ?? '');
+
+    $attempts[$targetSlot]['grade'] = $incoming;
+    $attempts[$targetSlot]['remark'] = resolveStudentAttemptRemarkLocal($incoming, $targetExistingGrade, $targetExistingRemark);
+}
+
+function resolveStudentAttemptPayloadLocal(?array $existing, $grade1, $grade2, $grade3): array
+{
+    $attempts = [
+        1 => [
+            'grade' => normalizeChecklistValue($existing['final_grade'] ?? ''),
+            'remark' => normalizeChecklistValue($existing['evaluator_remarks'] ?? ''),
+        ],
+        2 => [
+            'grade' => normalizeChecklistValue($existing['final_grade_2'] ?? ''),
+            'remark' => normalizeChecklistValue($existing['evaluator_remarks_2'] ?? ''),
+        ],
+        3 => [
+            'grade' => normalizeChecklistValue($existing['final_grade_3'] ?? ''),
+            'remark' => normalizeChecklistValue($existing['evaluator_remarks_3'] ?? ''),
+        ],
+    ];
+
+    $incomingGrades = [
+        1 => normalizeChecklistValue($grade1),
+        2 => normalizeChecklistValue($grade2),
+        3 => normalizeChecklistValue($grade3),
+    ];
+
+    foreach ($incomingGrades as $preferredSlot => $incomingGrade) {
+        applyIncomingStudentAttemptLocal($attempts, $preferredSlot, $incomingGrade);
+    }
+
+    return [
+        'final_grade' => $attempts[1]['grade'],
+        'evaluator_remarks' => $attempts[1]['remark'],
+        'final_grade_2' => $attempts[2]['grade'],
+        'evaluator_remarks_2' => $attempts[2]['remark'],
+        'final_grade_3' => $attempts[3]['grade'],
+        'evaluator_remarks_3' => $attempts[3]['remark'],
+    ];
+}
+
+function isCreditedLockedChecklistRecordLocal(?array $existing): bool
+{
+    if (empty($existing)) {
+        return false;
+    }
+
+    $remarks = [
+        normalizeChecklistValue($existing['evaluator_remarks'] ?? ''),
+        normalizeChecklistValue($existing['evaluator_remarks_2'] ?? ''),
+        normalizeChecklistValue($existing['evaluator_remarks_3'] ?? ''),
+    ];
+
+    foreach ($remarks as $remark) {
+        if ($remark !== '' && strpos(strtolower($remark), 'credited') !== false) {
+            return true;
+        }
+    }
+
+    return strtolower(normalizeChecklistValue($existing['approved_by'] ?? '')) === 'shift_engine'
+        || strtolower(normalizeChecklistValue($existing['submitted_by'] ?? '')) === 'shift_engine';
+}
+
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Invalid request method');
@@ -16,9 +142,6 @@ try {
 
     // Database connection
     $conn = getDBConnection();
-
-    // Debug: log received POST data
-    file_put_contents('debug_save_checklist_stud.log', "POST: " . print_r($_POST, true) . "\n", FILE_APPEND);
 
     if (!isset($_POST['student_id']) || !isset($_POST['courses']) || !isset($_POST['final_grades']) || !isset($_POST['professor_instructors'])) {
         throw new Exception('Missing required data');
@@ -41,6 +164,7 @@ try {
         $bridgeData = postLaravelJsonBridge(
             'http://localhost/ASPLAN_v10/laravel-app/public/api/save-checklist',
             [
+                'save_context' => 'student',
                 'student_id' => $student_id,
                 'courses' => $courses,
                 'final_grades' => $final_grades,
@@ -61,10 +185,15 @@ try {
     $errors = [];
 
     foreach ($courses as $index => $course_code) {
-        $finalGrade  = isset($final_grades[$index])   ? $final_grades[$index]   : '';
-        $finalGrade2 = isset($final_grades_2[$index]) ? $final_grades_2[$index] : '';
-        $finalGrade3 = isset($final_grades_3[$index]) ? $final_grades_3[$index] : '';
-        $professorInstructor = isset($professor_instructors[$index]) ? $professor_instructors[$index] : '';
+        $course_code = trim((string) $course_code);
+        if ($course_code === '') {
+            continue;
+        }
+
+        $finalGrade = normalizeChecklistValue($final_grades[$index] ?? '');
+        $finalGrade2 = normalizeChecklistValue($final_grades_2[$index] ?? '');
+        $finalGrade3 = normalizeChecklistValue($final_grades_3[$index] ?? '');
+        $professorInstructor = normalizeChecklistValue($professor_instructors[$index] ?? '');
 
         // Fetch existing record to preserve values from previous attempts
         $check_stmt = $conn->prepare("SELECT final_grade, evaluator_remarks, final_grade_2, evaluator_remarks_2, final_grade_3, evaluator_remarks_3, approved_by, submitted_by FROM student_checklists WHERE student_id = ? AND course_code = ?");
@@ -77,39 +206,16 @@ try {
         $existing = $check_stmt->get_result()->fetch_assoc();
         $check_stmt->close();
 
-        $isCreditedLocked = false;
-        if ($existing) {
-            $r1 = strtolower(trim((string)($existing['evaluator_remarks'] ?? '')));
-            $r2 = strtolower(trim((string)($existing['evaluator_remarks_2'] ?? '')));
-            $r3 = strtolower(trim((string)($existing['evaluator_remarks_3'] ?? '')));
-            $approvedBy = strtolower(trim((string)($existing['approved_by'] ?? '')));
-            $submittedBy = strtolower(trim((string)($existing['submitted_by'] ?? '')));
-
-            $isCreditedLocked =
-                (strpos($r1, 'credited') !== false) ||
-                (strpos($r2, 'credited') !== false) ||
-                (strpos($r3, 'credited') !== false) ||
-                ($approvedBy === 'shift_engine') ||
-                ($submittedBy === 'shift_engine');
-        }
-
-        if ($isCreditedLocked) {
+        if (isCreditedLockedChecklistRecordLocal($existing ?: null)) {
             $errors[] = "Skipped credited course (locked): $course_code";
             continue;
         }
 
-        // Determine evaluator_remarks per attempt (keep existing if grade unchanged)
-        $er1 = ($finalGrade !== '' && $finalGrade !== null)
-            ? (($existing && $existing['final_grade'] === $finalGrade) ? ($existing['evaluator_remarks'] ?? 'Pending') : 'Pending')
-            : ($existing['evaluator_remarks'] ?? '');
-        $er2 = ($finalGrade2 !== '' && $finalGrade2 !== null && $finalGrade2 !== 'No Grade')
-            ? (($existing && $existing['final_grade_2'] === $finalGrade2) ? ($existing['evaluator_remarks_2'] ?? 'Pending') : 'Pending')
-            : ($existing['evaluator_remarks_2'] ?? '');
-        $er3 = ($finalGrade3 !== '' && $finalGrade3 !== null && $finalGrade3 !== 'No Grade')
-            ? (($existing && $existing['final_grade_3'] === $finalGrade3) ? ($existing['evaluator_remarks_3'] ?? 'Pending') : 'Pending')
-            : ($existing['evaluator_remarks_3'] ?? '');
+        $hasSubmittedAttempt = ($finalGrade !== '' && $finalGrade !== 'No Grade')
+            || ($finalGrade2 !== '' && $finalGrade2 !== 'No Grade')
+            || ($finalGrade3 !== '' && $finalGrade3 !== 'No Grade');
 
-        file_put_contents('debug_save_checklist_stud.log', "Saving $course_code: g1='$finalGrade', g2='$finalGrade2', g3='$finalGrade3'\n", FILE_APPEND);
+        $attemptPayload = resolveStudentAttemptPayloadLocal($existing ?: null, $finalGrade, $finalGrade2, $finalGrade3);
 
         $stmt = $conn->prepare("
             INSERT INTO student_checklists
@@ -119,32 +225,31 @@ try {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, IF(? != '', NOW(), NULL), IF(? != '', 'student', NULL))
             ON DUPLICATE KEY UPDATE
                 professor_instructor = VALUES(professor_instructor),
-                final_grade         = IF(VALUES(final_grade) != '' AND VALUES(final_grade) IS NOT NULL, VALUES(final_grade), final_grade),
-                evaluator_remarks   = IF(VALUES(final_grade) != '' AND VALUES(final_grade) IS NOT NULL, ?, evaluator_remarks),
-                final_grade_2       = IF(VALUES(final_grade_2) != '' AND VALUES(final_grade_2) IS NOT NULL, VALUES(final_grade_2), final_grade_2),
-                evaluator_remarks_2 = IF(VALUES(final_grade_2) != '' AND VALUES(final_grade_2) IS NOT NULL, ?, evaluator_remarks_2),
-                final_grade_3       = IF(VALUES(final_grade_3) != '' AND VALUES(final_grade_3) IS NOT NULL, VALUES(final_grade_3), final_grade_3),
-                evaluator_remarks_3 = IF(VALUES(final_grade_3) != '' AND VALUES(final_grade_3) IS NOT NULL, ?, evaluator_remarks_3),
-                grade_submitted_at  = IF(VALUES(final_grade) != '' AND VALUES(final_grade) IS NOT NULL, NOW(), grade_submitted_at),
-                submitted_by        = IF(VALUES(final_grade) != '' AND VALUES(final_grade) IS NOT NULL, 'student', submitted_by)
+                final_grade = VALUES(final_grade),
+                evaluator_remarks = VALUES(evaluator_remarks),
+                final_grade_2 = VALUES(final_grade_2),
+                evaluator_remarks_2 = VALUES(evaluator_remarks_2),
+                final_grade_3 = VALUES(final_grade_3),
+                evaluator_remarks_3 = VALUES(evaluator_remarks_3),
+                grade_submitted_at = IF(VALUES(grade_submitted_at) IS NOT NULL, VALUES(grade_submitted_at), grade_submitted_at),
+                submitted_by = IF(VALUES(submitted_by) IS NOT NULL, VALUES(submitted_by), submitted_by)
         ");
         if (!$stmt) {
             $errors[] = "Prepare failed for $course_code: " . $conn->error;
-            file_put_contents('debug_save_checklist_stud.log', "Prepare failed: " . $conn->error . "\n", FILE_APPEND);
             continue;
         }
-        // 9 INSERT data + 2 IF gates = 11 values, plus 3 ON DUPLICATE KEY remarks = 14 total params
-        $stmt->bind_param('ssssssssssssss',
+        $gradeSubmissionGate = $hasSubmittedAttempt ? 'student' : '';
+        $stmt->bind_param('sssssssssss',
             $student_id, $course_code,
-            $finalGrade, $er1, $professorInstructor,
-            $finalGrade2, $er2, $finalGrade3, $er3,
-            $finalGrade, $finalGrade,
-            $er1, $er2, $er3
+            $attemptPayload['final_grade'], $attemptPayload['evaluator_remarks'], $professorInstructor,
+            $attemptPayload['final_grade_2'], $attemptPayload['evaluator_remarks_2'],
+            $attemptPayload['final_grade_3'], $attemptPayload['evaluator_remarks_3'],
+            $gradeSubmissionGate, $gradeSubmissionGate
         );
 
         if (!$stmt->execute()) {
             $errors[] = "Failed to save data for course: $course_code";
-            file_put_contents('debug_save_checklist_stud.log', "Execute failed for $course_code: " . $stmt->error . "\n", FILE_APPEND);
+            $stmt->close();
             continue;
         }
         $stmt->close();
@@ -153,8 +258,6 @@ try {
 
     $conn->close();
 
-    file_put_contents('debug_save_checklist_stud.log', "Success count: $successful\nErrors: " . print_r($errors, true) . "\n", FILE_APPEND);
-
     echo json_encode([
         'status' => 'success',
         'updated' => $successful,
@@ -162,7 +265,6 @@ try {
     ]);
 
 } catch (Exception $e) {
-    file_put_contents('debug_save_checklist_stud.log', "Exception: " . $e->getMessage() . "\n", FILE_APPEND);
     echo json_encode([
         'status' => 'error',
         'message' => $e->getMessage()

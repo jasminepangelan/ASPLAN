@@ -101,6 +101,7 @@ try {
                 'http://localhost/ASPLAN_v10/laravel-app/public/api/save-checklist',
                 [
                     'bulk_approve' => true,
+                    'save_context' => 'staff',
                     'student_id' => $student_id,
                     'courses' => $courses,
                     'grades' => $grades,
@@ -111,6 +112,7 @@ try {
             $bridgeData = postLaravelJsonBridge(
                 'http://localhost/ASPLAN_v10/laravel-app/public/api/save-checklist',
                 [
+                    'save_context' => 'staff',
                     'student_id' => (string) ($_POST['student_id'] ?? $student_id),
                     'courses' => $_POST['courses'] ?? [],
                     'final_grades' => $_POST['final_grades'] ?? [],

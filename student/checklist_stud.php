@@ -1588,8 +1588,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 } else {
                                     echo "<span style='color:#ccc;font-size:10px;'>&#8212;</span>";
                                 }
+                                $anyPendingRemark = ($remarks1 === 'Pending' || $remarks2 === 'Pending' || $remarks3 === 'Pending');
                                 echo "</td><td id='remarks_{$row['course_code']}'>";
-                                if ($remarks1 === 'Pending') {
+                                if ($anyPendingRemark) {
                                     echo "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Pending</span>";
                                 } elseif ($remarks1) {
                                     echo htmlspecialchars($remarks1);
@@ -1808,6 +1809,11 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         });
     }
 
+    function hasSubmittedGradeValue(value) {
+        const normalized = String(value || '').trim();
+        return normalized !== '' && normalized !== 'No Grade';
+    }
+
     // Add event listeners to all Save buttons
     document.querySelectorAll('#saveButton').forEach(btn => {
         btn.addEventListener('click', function () {
@@ -1834,10 +1840,11 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                 let remarksCell = document.getElementById(`remarks_${courseCode}`);
                 let currentRemarks = remarksCell ? remarksCell.textContent.trim() : '';
 
-                let evaluatorRemark = currentRemarks;
-                if (finalGrade && finalGrade !== '' && finalGrade !== 'No Grade' && currentRemarks !== 'Approved') {
-                    evaluatorRemark = 'Pending';
-                }
+                let evaluatorRemark = (
+                    hasSubmittedGradeValue(finalGrade) ||
+                    hasSubmittedGradeValue(finalGrade2) ||
+                    hasSubmittedGradeValue(finalGrade3)
+                ) ? 'Pending' : currentRemarks;
 
                 formData.append('courses[]', courseCode);
                 formData.append('final_grades[]', finalGrade);
@@ -2070,10 +2077,11 @@ function autoSaveGrade(courseCode) {
         let professorValue  = profInput   ? profInput.value   : '';
         let currentRemarks  = remarksCell ? remarksCell.textContent.trim() : '';
         
-        let evaluatorRemark = currentRemarks;
-        if (finalGrade && finalGrade !== '' && finalGrade !== 'No Grade' && currentRemarks !== 'Approved') {
-            evaluatorRemark = 'Pending';
-        }
+        let evaluatorRemark = (
+            hasSubmittedGradeValue(finalGrade) ||
+            hasSubmittedGradeValue(finalGrade2) ||
+            hasSubmittedGradeValue(finalGrade3)
+        ) ? 'Pending' : currentRemarks;
         
         formData.append('courses[]', courseCode);
         formData.append('final_grades[]', finalGrade);
