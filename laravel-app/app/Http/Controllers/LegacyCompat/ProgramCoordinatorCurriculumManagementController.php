@@ -59,7 +59,7 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
                     'success' => true,
                     'coordinator_program_raw' => '',
                     'coordinator_program_code' => '',
-                    'program_config_notice' => 'Program is not configured for this account.',
+                    'program_config_notice' => $isAdmin ? '' : 'Program is not configured for this account.',
                     'existing' => new \stdClass(),
                     'curriculum_catalog' => new \stdClass(),
                 ]);

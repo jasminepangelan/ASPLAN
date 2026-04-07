@@ -269,6 +269,7 @@ try {
         $coordinatorProgramRaw = $programs[$coordinatorProgramCode] ?? $coordinatorProgramCode;
       } else {
         $coordinatorProgramRaw = '';
+        $programConfigNotice = '';
       }
     }
   }
