@@ -265,10 +265,11 @@ try {
       if ($requestedProgram !== '' && isset($programs[$requestedProgram])) {
         $coordinatorProgramCode = $requestedProgram;
       }
-      if ($coordinatorProgramCode === '') {
-        $coordinatorProgramCode = 'BSCS';
+      if ($coordinatorProgramCode !== '') {
+        $coordinatorProgramRaw = $programs[$coordinatorProgramCode] ?? $coordinatorProgramCode;
+      } else {
+        $coordinatorProgramRaw = '';
       }
-      $coordinatorProgramRaw = $programs[$coordinatorProgramCode] ?? $coordinatorProgramCode;
     }
   }
 
@@ -1099,6 +1100,9 @@ if (!empty($programOptions)) {
             <div class="form-group">
               <label for="programSelect">Program</label>
               <select id="programSelect">
+                <?php if ($isAdmin): ?>
+                  <option value="">-- Select Program --</option>
+                <?php endif; ?>
                 <?php foreach ($programOptions as $programCode => $programLabel): ?>
                   <option value="<?= htmlspecialchars($programCode) ?>" <?= $coordinatorProgramCode === $programCode ? 'selected' : '' ?>>
                     <?= htmlspecialchars($programLabel) ?> (<?= htmlspecialchars($programCode) ?>)
@@ -1266,11 +1270,12 @@ window.addEventListener('DOMContentLoaded', function() {
   if (programSelect) {
     programSelect.addEventListener('change', function() {
       const nextProgram = String(programSelect.value || '').trim();
-      if (!nextProgram) {
-        return;
-      }
       const url = new URL(window.location.href);
-      url.searchParams.set('program', nextProgram);
+      if (nextProgram) {
+        url.searchParams.set('program', nextProgram);
+      } else {
+        url.searchParams.delete('program');
+      }
       window.location.href = url.toString();
     });
   }

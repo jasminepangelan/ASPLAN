@@ -47,10 +47,11 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
                 if ($requestedProgram !== '' && isset($programs[$requestedProgram])) {
                     $coordinatorProgramCode = $requestedProgram;
                 }
-                if ($coordinatorProgramCode === '') {
-                    $coordinatorProgramCode = 'BSCS';
+                if ($coordinatorProgramCode !== '') {
+                    $coordinatorProgramRaw = $programs[$coordinatorProgramCode] ?? $coordinatorProgramCode;
+                } else {
+                    $coordinatorProgramRaw = '';
                 }
-                $coordinatorProgramRaw = $programs[$coordinatorProgramCode] ?? $coordinatorProgramCode;
             }
 
             if ($coordinatorProgramCode === '') {
