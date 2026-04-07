@@ -394,57 +394,56 @@ $adminSidebarCollapsed = false;
         }
         .program-list {
             display: grid;
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
         }
         .program-card {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 18px;
-            align-items: center;
-            padding: 18px 18px 18px 20px;
-            border-radius: 20px;
+            gap: 14px;
+            align-content: start;
+            min-height: 100%;
+            padding: 16px 16px 15px 18px;
+            border-radius: 18px;
             background:
                 linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(246,250,245,0.98) 100%);
             border: 1px solid rgba(32, 96, 24, 0.08);
-            box-shadow: 0 12px 22px rgba(32, 96, 24, 0.07);
-        }
-        .program-card.active {
-            border-color: rgba(76, 175, 80, 0.22);
-            box-shadow: 0 18px 30px rgba(32, 96, 24, 0.12);
+            box-shadow: 0 10px 18px rgba(32, 96, 24, 0.07);
         }
         .program-code {
             display: inline-flex;
             align-items: center;
-            padding: 6px 10px;
+            justify-content: center;
+            width: fit-content;
+            padding: 5px 10px;
             border-radius: 999px;
             background: rgba(32, 96, 24, 0.08);
             color: #22631c;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
             letter-spacing: 0.12em;
             text-transform: uppercase;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .program-name {
-            margin: 0 0 10px;
-            font-size: 22px;
-            line-height: 1.15;
+            margin: 0 0 8px;
+            font-size: 20px;
+            line-height: 1.18;
             color: #173f12;
             letter-spacing: -0.03em;
         }
         .program-years {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 7px;
         }
         .year-pill {
             display: inline-flex;
             align-items: center;
-            padding: 6px 10px;
+            padding: 6px 9px;
             border-radius: 999px;
             background: rgba(32, 96, 24, 0.06);
             color: #2d6128;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
         }
         .year-pill.empty {
@@ -453,20 +452,19 @@ $adminSidebarCollapsed = false;
         }
         .program-actions {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-            min-width: 190px;
+            margin-top: 2px;
         }
         .program-actions a {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            min-height: 44px;
-            padding: 12px 14px;
+            width: 100%;
+            min-height: 42px;
+            padding: 11px 14px;
             border-radius: 14px;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
@@ -495,12 +493,6 @@ $adminSidebarCollapsed = false;
             .grid {
                 grid-template-columns: 1fr;
             }
-            .program-card {
-                grid-template-columns: 1fr;
-            }
-            .program-actions {
-                min-width: 0;
-            }
         }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-250px); }
@@ -511,6 +503,9 @@ $adminSidebarCollapsed = false;
             }
             .hero, .panel { padding: 20px; border-radius: 20px; }
             .content-shell { width: 100%; }
+            .program-list {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
