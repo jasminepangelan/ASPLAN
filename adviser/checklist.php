@@ -267,11 +267,14 @@ if (empty($all_courses)) {
         padding-top: 50px;
         min-height: 100vh;
     }
+    :root {
+      --sidebar-width: 250px;
+      --content-gap: 28px;
+      --action-rail-width: 190px;
+    }
     .container {
-        width: 97%;
-        margin: 20px auto;
-        margin-bottom: 40px;
-        max-width: 1200px;
+        width: min(1200px, 100%);
+        margin: 16px auto 40px;
         padding: 20px;
         background-color: #fff;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -433,7 +436,7 @@ if (empty($all_courses)) {
 
     /* Sidebar styling */
     .sidebar {
-      width: 250px;
+      width: var(--sidebar-width);
       height: calc(110vh - 46px);
       background: linear-gradient(135deg, #1a4f16 0%, #2d8f22 100%);
       color: white;
@@ -515,36 +518,36 @@ if (empty($all_courses)) {
 
     /* Main content styling */
     .main-content {
-      margin-left: 0;
+      margin-left: var(--sidebar-width);
       min-height: calc(100vh - 46px);
-      width: 100vw;
-      overflow-x: visible;
+      width: calc(100vw - var(--sidebar-width));
+      overflow-x: auto;
       transition: margin-left 0.3s ease, width 0.3s ease;
-      padding: 20px;
+      padding: 24px calc(var(--action-rail-width) + var(--content-gap)) 32px var(--content-gap);
       box-sizing: border-box;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      gap: 12px;
+      gap: 0;
     }
 
     .main-content.expanded {
       margin-left: 0;
       width: 100vw;
+      padding-left: var(--content-gap);
+      padding-right: calc(var(--action-rail-width) + var(--content-gap));
     }
 
     /* Container wrapper */
     .container {
-      flex-shrink: 1;
-      margin: 20px 0 40px;
-      width: min(100%, calc(100vw - 430px), 1100px);
+      flex: 0 1 1200px;
     }
 
     /* Action buttons panel */
     .action-buttons {
       position: fixed;
-      right: 50px;
-      top: 76px;
+      right: 28px;
+      top: 74px;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -665,7 +668,7 @@ if (empty($all_courses)) {
         max-width: none;
         padding: 15px 5px;
         margin: 10px 0;
-        flex-shrink: 0;
+        flex: 0 0 auto;
       }
 
       .header {
