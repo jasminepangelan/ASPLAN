@@ -275,55 +275,102 @@ $adminSidebarCollapsed = false;
             width: 100vw;
         }
         .shell {
-            max-width: 1240px;
+            max-width: 1288px;
             margin: 0 auto;
             display: grid;
-            gap: 24px;
+            gap: 20px;
         }
         .hero {
             position: relative;
             overflow: hidden;
             background:
-                radial-gradient(circle at top right, rgba(111, 195, 73, 0.18), rgba(111, 195, 73, 0) 35%),
-                linear-gradient(140deg, rgba(255,255,255,0.98) 0%, rgba(246,251,245,0.98) 100%);
+                radial-gradient(circle at top right, rgba(111, 195, 73, 0.16), rgba(111, 195, 73, 0) 36%),
+                linear-gradient(135deg, rgba(255,255,255,0.99) 0%, rgba(247,251,245,0.98) 56%, rgba(239,247,236,0.96) 100%);
             border: 1px solid rgba(32, 96, 24, 0.08);
-            border-radius: 28px;
-            box-shadow: 0 24px 45px rgba(32, 96, 24, 0.1);
-            padding: 28px 32px;
+            border-radius: 26px;
+            box-shadow: 0 20px 40px rgba(32, 96, 24, 0.09);
+            padding: 22px 28px;
         }
         .hero::before {
             content: '';
             position: absolute;
             inset: 0 auto 0 0;
-            width: 8px;
+            width: 6px;
             background: linear-gradient(180deg, #206018 0%, #51a747 100%);
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            right: -70px;
+            top: -70px;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(111, 195, 73, 0.18) 0%, rgba(111, 195, 73, 0) 72%);
+            pointer-events: none;
+        }
+        .hero-inner {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 18px;
+            align-items: center;
         }
         .hero-kicker {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 7px 12px;
+            padding: 6px 11px;
             border-radius: 999px;
             background: rgba(32, 96, 24, 0.08);
             color: #2a6623;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.14em;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.16em;
             text-transform: uppercase;
         }
         .hero h1 {
-            margin: 14px 0 10px;
-            font-size: clamp(32px, 3vw, 42px);
-            line-height: 1.03;
+            margin: 12px 0 8px;
+            font-size: clamp(28px, 2.6vw, 38px);
+            line-height: 1.02;
             letter-spacing: -0.04em;
             color: #174a12;
         }
         .hero p {
             margin: 0;
-            max-width: 760px;
+            max-width: 700px;
             color: #5c6f5f;
-            font-size: 15px;
-            line-height: 1.75;
+            font-size: 14px;
+            line-height: 1.72;
+        }
+        .hero-stat {
+            min-width: 180px;
+            padding: 16px 18px;
+            border-radius: 20px;
+            background: linear-gradient(145deg, rgba(28, 89, 22, 0.96) 0%, rgba(47, 138, 39, 0.92) 100%);
+            color: #fff;
+            box-shadow: 0 18px 32px rgba(32, 96, 24, 0.18);
+        }
+        .hero-stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+        .hero-stat-value {
+            margin-top: 8px;
+            font-size: 30px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+        }
+        .hero-stat-note {
+            margin-top: 8px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: rgba(255,255,255,0.82);
         }
         .grid {
             display: grid;
@@ -334,25 +381,25 @@ $adminSidebarCollapsed = false;
             background: rgba(255,255,255,0.97);
             border: 1px solid rgba(32, 96, 24, 0.08);
             border-radius: 24px;
-            box-shadow: 0 18px 34px rgba(32, 96, 24, 0.08);
-            padding: 24px;
+            box-shadow: 0 16px 30px rgba(32, 96, 24, 0.08);
+            padding: 20px 22px;
         }
         .panel.programs-list-panel,
         .panel.compact-form-panel {
-            width: min(100%, 980px);
+            width: min(100%, 1020px);
             margin: 0 auto;
         }
         .panel h2 {
             margin: 0 0 8px;
-            font-size: 24px;
+            font-size: 22px;
             color: #174a12;
             letter-spacing: -0.03em;
         }
         .panel p.lead {
-            margin: 0 0 20px;
+            margin: 0 0 18px;
             color: #617564;
-            font-size: 14px;
-            line-height: 1.7;
+            font-size: 13px;
+            line-height: 1.72;
         }
         .flash {
             margin-bottom: 16px;
@@ -384,7 +431,8 @@ $adminSidebarCollapsed = false;
             text-transform: uppercase;
             color: #2c6326;
         }
-        .field input {
+        .field input,
+        .field select {
             width: 100%;
             padding: 14px 15px;
             border-radius: 14px;
@@ -394,7 +442,8 @@ $adminSidebarCollapsed = false;
             color: #203022;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
-        .field input:focus {
+        .field input:focus,
+        .field select:focus {
             outline: none;
             border-color: #4caf50;
             box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.12);
@@ -431,25 +480,27 @@ $adminSidebarCollapsed = false;
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 18px;
-            padding-bottom: 14px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
             border-bottom: 1px solid rgba(32, 96, 24, 0.08);
         }
         .catalog-count {
             color: #5f745f;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.16em;
         }
         .program-selector {
             display: grid;
-            gap: 16px;
-            padding: 18px;
-            border-radius: 20px;
-            background: linear-gradient(135deg, rgba(247, 251, 245, 0.98) 0%, rgba(240, 247, 238, 0.98) 100%);
+            gap: 14px;
+            padding: 16px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(247, 251, 245, 0.98) 0%, rgba(239, 247, 236, 0.98) 100%);
             border: 1px solid rgba(32, 96, 24, 0.08);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.75),
+                0 10px 22px rgba(32, 96, 24, 0.05);
         }
         .program-selector-form {
             display: grid;
@@ -457,34 +508,52 @@ $adminSidebarCollapsed = false;
             gap: 14px;
             align-items: end;
         }
-        .program-selector-meta {
-            display: grid;
-            gap: 10px;
-        }
         .program-selector-title {
             display: flex;
             align-items: center;
             gap: 10px;
             color: #174a12;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 800;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.13em;
             text-transform: uppercase;
         }
         .program-selector-summary {
             display: grid;
-            gap: 10px;
-            padding: 16px 18px;
-            border-radius: 18px;
-            background: rgba(255,255,255,0.88);
+            gap: 12px;
+            padding: 18px 18px 16px;
+            border-radius: 20px;
+            background:
+                linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(250,253,249,0.92) 100%);
             border: 1px solid rgba(32, 96, 24, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+        }
+        .program-summary-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .program-summary-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 11px;
+            border-radius: 999px;
+            background: rgba(32, 96, 24, 0.06);
+            color: #2e6227;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
         }
         .program-selector-code {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: fit-content;
-            padding: 5px 10px;
+            padding: 6px 11px;
             border-radius: 999px;
             background: rgba(32, 96, 24, 0.08);
             color: #22631c;
@@ -495,10 +564,11 @@ $adminSidebarCollapsed = false;
         }
         .program-selector-name {
             margin: 0;
-            font-size: 22px;
-            line-height: 1.15;
+            font-size: 18px;
+            line-height: 1.24;
             color: #173f12;
             letter-spacing: -0.03em;
+            max-width: 640px;
         }
         .program-years {
             display: flex;
@@ -508,7 +578,7 @@ $adminSidebarCollapsed = false;
         .year-pill {
             display: inline-flex;
             align-items: center;
-            padding: 6px 9px;
+            padding: 7px 10px;
             border-radius: 999px;
             background: rgba(32, 96, 24, 0.06);
             color: #2d6128;
@@ -544,8 +614,11 @@ $adminSidebarCollapsed = false;
         }
         .program-selector-note {
             color: #617564;
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1.6;
+        }
+        .compact-form-panel .form-grid {
+            gap: 14px;
         }
         .empty-programs {
             padding: 28px;
@@ -563,13 +636,21 @@ $adminSidebarCollapsed = false;
                 padding: 16px;
             }
             .hero, .panel { padding: 20px; border-radius: 20px; }
-            .content-shell { width: 100%; }
+            .hero-inner {
+                grid-template-columns: 1fr;
+            }
+            .hero-stat {
+                min-width: 0;
+            }
             .program-selector-form {
                 grid-template-columns: 1fr;
             }
             .open-builder-btn {
                 width: 100%;
                 min-width: 0;
+            }
+            .program-summary-top {
+                align-items: flex-start;
             }
         }
     </style>
@@ -589,9 +670,18 @@ $adminSidebarCollapsed = false;
     <div class="main-content" id="mainContent">
         <div class="shell">
             <section class="hero">
-                <span class="hero-kicker"><i class="fas fa-sitemap"></i> Program Catalog</span>
-                <h1>Programs</h1>
-                <p>Review the existing list of programs, then add a new one only when you are ready to generate its blank checklist and start encoding the courses that define it.</p>
+                <div class="hero-inner">
+                    <div class="hero-copy">
+                        <span class="hero-kicker"><i class="fas fa-sitemap"></i> Program Catalog</span>
+                        <h1>Programs</h1>
+                        <p>Review the existing list of programs, then add a new one only when you are ready to generate its blank checklist and start encoding the courses that define it.</p>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="hero-stat-label">Current Catalog</div>
+                        <div class="hero-stat-value"><?= count($programCatalog) ?></div>
+                        <div class="hero-stat-note">Programs ready for checklist building in the admin workspace.</div>
+                    </div>
+                </div>
             </section>
 
             <section class="grid">
@@ -609,7 +699,7 @@ $adminSidebarCollapsed = false;
                             <form method="get" action="../program_coordinator/curriculum_management.php" class="program-selector-form">
                                 <div class="field">
                                     <label for="program_picker">Programs</label>
-                                    <select id="program_picker" name="program" style="width:100%; padding:14px 15px; border-radius:14px; border:1px solid #d7e6d2; background:#fbfdf9; font-size:15px; color:#203022;">
+                                    <select id="program_picker" name="program">
                                         <?php foreach ($programCatalog as $code => $name): ?>
                                             <?php $years = $curriculumYearsByProgram[$code] ?? []; ?>
                                             <option
@@ -631,9 +721,15 @@ $adminSidebarCollapsed = false;
                             </form>
 
                             <div class="program-selector-summary">
-                                <div class="program-selector-title">
-                                    <i class="fas fa-list-check"></i>
-                                    Selected Program
+                                <div class="program-summary-top">
+                                    <div class="program-selector-title">
+                                        <i class="fas fa-list-check"></i>
+                                        Selected Program
+                                    </div>
+                                    <div class="program-summary-chip">
+                                        <i class="fas fa-sparkles"></i>
+                                        Builder Ready
+                                    </div>
                                 </div>
                                 <span class="program-selector-code" id="programSummaryCode"><?= htmlspecialchars($defaultProgramCode, ENT_QUOTES, 'UTF-8') ?></span>
                                 <h3 class="program-selector-name" id="programSummaryName">
