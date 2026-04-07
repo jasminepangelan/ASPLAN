@@ -577,7 +577,7 @@ $adminSidebarCollapsed = false;
                                                 data-years="<?= htmlspecialchars(implode('|', $years), ENT_QUOTES, 'UTF-8') ?>"
                                                 <?= $code === $defaultProgramCode ? 'selected' : '' ?>
                                             >
-                                                <?= htmlspecialchars($code . ' - ' . $name, ENT_QUOTES, 'UTF-8') ?>
+                                                <?= htmlspecialchars($name . ' - ' . $code, ENT_QUOTES, 'UTF-8') ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>

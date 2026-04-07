@@ -26,6 +26,21 @@ function pcNormalizeProgramLabel(string $value): string
     return preg_replace('/\s+/', ' ', $value) ?? $value;
 }
 
+function pcResolveProgramDisplayName(string $code, string $name): string
+{
+    $code = pcNormalizeProgramCode($code);
+    $name = pcNormalizeProgramLabel($name);
+    $defaults = pcDefaultProgramCatalog();
+
+    if ($code !== '' && isset($defaults[$code])) {
+        if ($name === '' || strcasecmp($name, $code) === 0) {
+            return $defaults[$code];
+        }
+    }
+
+    return $name;
+}
+
 function pcNormalizeProgramCode(string $value): string
 {
     $value = trim($value);
@@ -109,6 +124,8 @@ function pcEnsureProgramCatalogTable(mysqli $conn): void
                 $code = $defaultsByLabel[$name] ?? pcNormalizeProgramCode($name);
             }
 
+            $name = pcResolveProgramDisplayName($code, $name);
+
             if ($id > 0 && $code !== '') {
                 $stmt = $conn->prepare("UPDATE programs SET code = ?, name = ? WHERE id = ?");
                 if ($stmt) {
@@ -133,7 +150,7 @@ function pcLoadProgramCatalog(mysqli $conn, bool $mergeDefaults = true): array
     if ($programRows) {
         while ($row = $programRows->fetch_assoc()) {
             $code = pcNormalizeProgramCode((string) ($row['code'] ?? ''));
-            $name = pcNormalizeProgramLabel((string) ($row['name'] ?? ''));
+            $name = pcResolveProgramDisplayName($code, (string) ($row['name'] ?? ''));
             if ($code !== '' && $name !== '') {
                 $sources[$code] = $name;
             }
@@ -225,4 +242,3 @@ function pcSaveProgramCatalogEntry(mysqli $conn, string $code, string $name): ar
 
     return ['success' => true, 'message' => 'Program added successfully.', 'code' => $code, 'name' => $name];
 }
-
