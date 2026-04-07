@@ -8,9 +8,6 @@ if (!isset($_SESSION['admin_username']) && !isset($_SESSION['admin_id'])) {
     exit();
 }
 
-$adminName = isset($_SESSION['admin_full_name'])
-    ? htmlspecialchars((string) $_SESSION['admin_full_name'], ENT_QUOTES, 'UTF-8')
-    : 'Admin';
 $csrfToken = getCSRFToken();
 
 $conn = getDBConnection();
@@ -662,7 +659,7 @@ $adminSidebarCollapsed = false;
             <img src="../img/cav.png" alt="CvSU Logo" onclick="toggleSidebar()">
             <span>ASPLAN</span>
         </div>
-        <div class="admin-info"><?= $adminName ?> | Admin</div>
+        <div class="admin-info">Admin Panel</div>
     </div>
 
     <?php require __DIR__ . '/../includes/admin_sidebar.php'; ?>

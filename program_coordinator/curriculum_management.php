@@ -12,7 +12,7 @@ if (!$isAdmin && !$isProgramCoordinator) {
 
 $coordinator_name = '';
 if ($isAdmin) {
-  $coordinator_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars((string)$_SESSION['admin_full_name']) : 'Admin';
+  $coordinator_name = 'Admin Panel';
 } else {
   $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_SESSION['full_name']) : 'Program Coordinator';
 }
@@ -1043,7 +1043,7 @@ if (!empty($programOptions)) {
       <img src="../img/cav.png" alt="CvSU Logo" style="cursor:pointer;" onclick="toggleSidebar()">
       <span style="color: #d9e441;">ASPLAN</span>
     </div>
-    <div class="coordinator-name"><?= $coordinator_name; echo ' | ' . $roleLabel; ?></div>
+    <div class="coordinator-name"><?= $isAdmin ? 'Admin Panel' : ($coordinator_name . ' | ' . $roleLabel); ?></div>
   </div>
 
   <!-- Sidebar -->
