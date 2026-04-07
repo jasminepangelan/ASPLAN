@@ -225,34 +225,65 @@ $adviserShellPayload = htmlspecialchars(json_encode([
         
         .content {
             position: relative;
-            margin: 28px 24px 16px;
+            margin: 30px 24px 18px;
+            width: min(1180px, calc(100% - 48px));
+            margin-left: auto;
+            margin-right: auto;
             animation: fadeInUp 0.6s ease-out;
         }
 
         .page-header {
-            text-align: center;
-            background: rgba(255, 255, 255, 0.96);
-            padding: 18px 20px;
-            border-radius: 16px;
-            box-shadow: 0 12px 26px rgba(32, 96, 24, 0.08);
-            border: 1px solid rgba(32, 96, 24, 0.1);
-            max-width: 1180px;
-            margin: 0 auto;
+            position: relative;
+            text-align: left;
+            background:
+                radial-gradient(circle at top right, rgba(111, 195, 73, 0.16) 0, rgba(111, 195, 73, 0) 34%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 251, 245, 0.98) 100%);
+            padding: 24px 28px 22px;
+            border-radius: 24px;
+            box-shadow: 0 20px 38px rgba(32, 96, 24, 0.1);
+            border: 1px solid rgba(32, 96, 24, 0.09);
+            overflow: hidden;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 8px;
+            background: linear-gradient(180deg, #206018 0%, #51a747 100%);
+        }
+
+        .page-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(32, 96, 24, 0.08);
+            border: 1px solid rgba(32, 96, 24, 0.08);
+            color: #2a6623;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
         }
 
         .page-header h2 {
             color: #206018;
-            font-size: 22px;
+            font-size: clamp(28px, 2.4vw, 36px);
             font-weight: 800;
-            margin: 0 0 6px;
-            letter-spacing: 0.2px;
+            margin: 0 0 10px;
+            letter-spacing: -0.03em;
+            line-height: 1.05;
         }
 
         .page-header p {
-            color: #5f6f61;
-            font-size: 13px;
+            color: #5c6f5f;
+            font-size: 14px;
             margin: 0;
-            line-height: 1.5;
+            line-height: 1.7;
+            max-width: 760px;
         }
         
         .table-container {
@@ -864,45 +895,107 @@ $adviserShellPayload = htmlspecialchars(json_encode([
         
         /* Empty State Styling */
         .empty-state {
+            position: relative;
             text-align: center;
-            padding: 60px 40px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-            border-radius: 15px;
-            margin: 20px auto;
-            max-width: 600px;
-            box-shadow: 0 8px 20px rgba(32, 96, 24, 0.1);
+            padding: 54px 44px 40px;
+            background:
+                radial-gradient(circle at top center, rgba(111, 195, 73, 0.14) 0, rgba(111, 195, 73, 0) 36%),
+                linear-gradient(145deg, #fbfefb 0%, #f4f9f2 100%);
+            border-radius: 28px;
+            margin: 22px auto 28px;
+            max-width: 650px;
+            box-shadow: 0 24px 42px rgba(32, 96, 24, 0.12);
+            border: 1px solid rgba(32, 96, 24, 0.08);
+            overflow: hidden;
+        }
+
+        .empty-state::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(120deg, rgba(255,255,255,0.42), rgba(255,255,255,0) 30%),
+                radial-gradient(circle at 18% 16%, rgba(32, 96, 24, 0.05), rgba(32, 96, 24, 0) 28%);
+            pointer-events: none;
         }
         
         .empty-state-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-            opacity: 0.7;
+            width: 92px;
+            height: 92px;
+            margin: 0 auto 26px;
+            border-radius: 24px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, #67c956 0%, #4caf50 100%);
+            color: #fff;
+            font-size: 0;
+            box-shadow: 0 18px 28px rgba(76, 175, 80, 0.22);
             animation: float 3s ease-in-out infinite;
+            position: relative;
+            z-index: 1;
+        }
+
+        .empty-state-icon::before {
+            content: "\f00c";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            font-size: 40px;
+            line-height: 1;
         }
         
         .empty-state h3 {
             color: #206018;
-            font-size: 1.6rem;
+            font-size: clamp(2rem, 2.8vw, 2.5rem);
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
+            letter-spacing: -0.03em;
+            position: relative;
+            z-index: 1;
         }
         
         .empty-state p {
-            color: #666;
-            font-size: 1rem;
+            color: #5f6f61;
+            font-size: 1.02rem;
             line-height: 1.6;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
         }
         
         .empty-state .help-text {
-            color: #999;
-            font-size: 0.9rem;
-            margin-top: 16px;
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border-left: 4px solid #206018;
+            color: #617564;
+            font-size: 0.94rem;
+            margin-top: 22px;
+            padding: 16px 18px;
+            background: rgba(255, 255, 255, 0.78);
+            border-radius: 14px;
+            border: 1px solid rgba(32, 96, 24, 0.08);
+            box-shadow: inset 4px 0 0 #206018;
             text-align: left;
+            line-height: 1.55;
+            position: relative;
+            z-index: 1;
+        }
+
+        .empty-state .help-text strong {
+            color: #2b6223;
+            font-size: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .empty-state .help-text strong::before {
+            content: "\f0eb";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            font-size: 0.96rem;
+        }
+
+        .empty-state .help-text strong::after {
+            content: "Note:";
+            font-size: 0.94rem;
+            font-weight: 700;
         }
         
         @keyframes float {
@@ -932,7 +1025,9 @@ $adviserShellPayload = htmlspecialchars(json_encode([
             }
             
             .empty-state-icon {
-                font-size: 36px;
+                width: 62px;
+                height: 62px;
+                font-size: 28px;
             }
             
             .empty-state h3 {
@@ -991,6 +1086,7 @@ $adviserShellPayload = htmlspecialchars(json_encode([
         <div class="adviser-react-shell-slot" data-adviser-shell="<?= $adviserShellPayload ?>"></div>
         <div class="content">
             <div class="page-header">
+                <span class="page-kicker"><i class="fas fa-stream"></i> Approval Queue</span>
                 <h2>Student Pending Accounts</h2>
                 <p>Review newly registered student accounts under your assigned batches and process approval actions from one clean queue.</p>
             </div>
