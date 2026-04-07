@@ -173,6 +173,60 @@ $adminCredentialMinLength = 8;
 
 // Business logic functions are now in account_approval_settings_service.php
 
+function aasBuildPaginationUrl(array $overrides = []): string
+{
+    $params = $_GET;
+    foreach ($overrides as $key => $value) {
+        if ($value === null || $value === '') {
+            unset($params[$key]);
+        } else {
+            $params[$key] = $value;
+        }
+    }
+
+    $query = http_build_query($params);
+    return 'account_approval_settings.php' . ($query !== '' ? ('?' . $query) : '');
+}
+
+function aasRenderMiniPagination(string $pageParam, int $currentPage, int $totalPages): string
+{
+    if ($totalPages <= 1) {
+        return '';
+    }
+
+    $currentPage = max(1, min($currentPage, $totalPages));
+    $startPage = max(1, $currentPage - 2);
+    $endPage = min($totalPages, $currentPage + 2);
+
+    $html = '<div class="pagination-container">';
+
+    if ($currentPage > 1) {
+        $html .= '<a class="pagination-btn" href="' . htmlspecialchars(aasBuildPaginationUrl([$pageParam => 1])) . '">First</a>';
+        $html .= '<a class="pagination-btn" href="' . htmlspecialchars(aasBuildPaginationUrl([$pageParam => $currentPage - 1])) . '">Previous</a>';
+    } else {
+        $html .= '<span class="pagination-btn disabled">First</span>';
+        $html .= '<span class="pagination-btn disabled">Previous</span>';
+    }
+
+    for ($page = $startPage; $page <= $endPage; $page++) {
+        $class = 'pagination-btn' . ($page === $currentPage ? ' active' : '');
+        $html .= '<a class="' . $class . '" href="' . htmlspecialchars(aasBuildPaginationUrl([$pageParam => $page])) . '">' . $page . '</a>';
+    }
+
+    if ($currentPage < $totalPages) {
+        $html .= '<a class="pagination-btn" href="' . htmlspecialchars(aasBuildPaginationUrl([$pageParam => $currentPage + 1])) . '">Next</a>';
+        $html .= '<a class="pagination-btn" href="' . htmlspecialchars(aasBuildPaginationUrl([$pageParam => $totalPages])) . '">Last</a>';
+    } else {
+        $html .= '<span class="pagination-btn disabled">Next</span>';
+        $html .= '<span class="pagination-btn disabled">Last</span>';
+    }
+
+    $html .= '<span class="pagination-info">Page ' . $currentPage . ' of ' . $totalPages . '</span>';
+    $html .= '</div>';
+
+    return $html;
+}
+
 // Handle settings update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_policy_settings'])) {
@@ -819,6 +873,20 @@ if ($conn instanceof PDO) {
     $pending_stmt->execute();
     $accounts = $pending_stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+$shiftRecordsPerPage = 5;
+$shiftCurrentPage = isset($_GET['shift_page']) && is_numeric($_GET['shift_page']) ? max(1, (int)$_GET['shift_page']) : 1;
+$shiftTotalRecords = count($programShiftRecent);
+$shiftTotalPages = max(1, (int)ceil($shiftTotalRecords / $shiftRecordsPerPage));
+$shiftCurrentPage = min($shiftCurrentPage, $shiftTotalPages);
+$programShiftRecentPage = array_slice($programShiftRecent, ($shiftCurrentPage - 1) * $shiftRecordsPerPage, $shiftRecordsPerPage);
+
+$auditRecordsPerPage = 8;
+$auditCurrentPage = isset($_GET['audit_page']) && is_numeric($_GET['audit_page']) ? max(1, (int)$_GET['audit_page']) : 1;
+$auditTotalRecords = count($auditLogs);
+$auditTotalPages = max(1, (int)ceil($auditTotalRecords / $auditRecordsPerPage));
+$auditCurrentPage = min($auditCurrentPage, $auditTotalPages);
+$auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecordsPerPage, $auditRecordsPerPage);
 ?>
 
 <!DOCTYPE html>
@@ -2410,7 +2478,7 @@ if ($conn instanceof PDO) {
 
         <div class="section-heading">
             <h2><i class="fas fa-random"></i> Program Shift Oversight</h2>
-            <span>Workflow health and latest requests</span>
+            <span><?php echo (int)$shiftTotalRecords; ?> request<?php echo (int)$shiftTotalRecords === 1 ? '' : 's'; ?></span>
         </div>
         <div class="stats-grid">
             <div class="stat-card">
@@ -2452,7 +2520,7 @@ if ($conn instanceof PDO) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($programShiftRecent as $request): ?>
+                            <?php foreach ($programShiftRecentPage as $request): ?>
                                 <?php
                                     $status = (string)($request['status'] ?? '');
                                     $statusClass = str_replace('_', '-', strtolower($status));
@@ -2481,12 +2549,13 @@ if ($conn instanceof PDO) {
                         </tbody>
                     </table>
                 </div>
+                <?php echo aasRenderMiniPagination('shift_page', $shiftCurrentPage, $shiftTotalPages); ?>
             <?php endif; ?>
         </div>
 
         <div class="section-heading">
             <h2><i class="fas fa-clipboard-list"></i> Admin Audit Trail</h2>
-            <span>Latest 30 actions</span>
+            <span><?php echo (int)$auditTotalRecords; ?> actions</span>
         </div>
         <div class="settings-card">
             <?php if (empty($auditLogs)): ?>
@@ -2505,7 +2574,7 @@ if ($conn instanceof PDO) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($auditLogs as $log): ?>
+                            <?php foreach ($auditLogsPage as $log): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars(date('M d, Y h:i A', strtotime((string)$log['created_at']))); ?></td>
                                     <td><?php echo htmlspecialchars((string)$log['admin_id']); ?></td>
@@ -2520,6 +2589,7 @@ if ($conn instanceof PDO) {
                         </tbody>
                     </table>
                 </div>
+                <?php echo aasRenderMiniPagination('audit_page', $auditCurrentPage, $auditTotalPages); ?>
             <?php endif; ?>
         </div>
 
