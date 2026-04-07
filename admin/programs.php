@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     if (!empty($result['success'])) {
-        $redirect = '../program_coordinator/curriculum_management.php?program=' . urlencode((string) ($result['code'] ?? ''));
+        $redirect = 'curriculum_management.php?program=' . urlencode((string) ($result['code'] ?? ''));
         header('Location: ' . $redirect);
         exit();
     }
@@ -696,7 +696,7 @@ $adminSidebarCollapsed = false;
 
                     <?php if (!empty($programCatalog)): ?>
                         <div class="program-selector">
-                            <form method="get" action="../program_coordinator/curriculum_management.php" class="program-selector-form">
+                            <form method="get" action="curriculum_management.php" class="program-selector-form">
                                 <div class="field">
                                     <label for="program_picker">Programs</label>
                                     <select id="program_picker" name="program">

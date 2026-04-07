@@ -373,7 +373,7 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
           <img src="../pix/generic_user.svg" alt="List of Students Icon">
           <label>List of students</label>
         </div>
-        <div class="option" onclick="window.location.href='../program_coordinator/curriculum_management.php'">
+        <div class="option" onclick="window.location.href='curriculum_management.php'">
           <img src="../pix/curr.png" alt="Curriculum Management Icon">
           <label>Curriculum Management</label>
         </div>

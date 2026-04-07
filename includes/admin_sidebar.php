@@ -32,7 +32,7 @@ $activeClass = static function (array $pages) use ($activeAdminPage): string {
         <div class="menu-group">
             <div class="menu-group-title">System</div>
             <li><a href="programs.php"<?php echo $activeClass(['programs']); ?>><img src="../pix/update.png" alt="Programs"> Programs</a></li>
-            <li><a href="../program_coordinator/curriculum_management.php"<?php echo $activeClass(['curriculum_management']); ?>><img src="../pix/curr.png" alt="Curriculum"> Curriculum Management</a></li>
+            <li><a href="curriculum_management.php"<?php echo $activeClass(['curriculum_management']); ?>><img src="../pix/curr.png" alt="Curriculum"> Curriculum Management</a></li>
         </div>
 
         <div class="menu-group">

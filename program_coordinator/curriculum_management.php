@@ -417,7 +417,7 @@ if (!empty($programOptions)) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Curriculum Management - Program Coordinator</title>
+  <title>Curriculum Management - <?= $isAdmin ? 'Admin' : 'Program Coordinator' ?></title>
   <link rel="icon" type="image/png" href="../img/cav.png">
   <style>
     :root {
