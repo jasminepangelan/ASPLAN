@@ -281,9 +281,8 @@ $adminSidebarCollapsed = false;
         }
         .grid {
             display: grid;
-            grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.35fr);
             gap: 24px;
-            align-items: start;
+            align-items: stretch;
         }
         .panel {
             background: rgba(255,255,255,0.97);
@@ -291,6 +290,9 @@ $adminSidebarCollapsed = false;
             border-radius: 24px;
             box-shadow: 0 18px 34px rgba(32, 96, 24, 0.08);
             padding: 24px;
+        }
+        .panel.compact-form-panel {
+            max-width: 760px;
         }
         .panel h2 {
             margin: 0 0 8px;
@@ -489,11 +491,6 @@ $adminSidebarCollapsed = false;
             text-align: center;
             color: #617564;
         }
-        @media (max-width: 980px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
-        }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-250px); }
             .main-content {
@@ -530,33 +527,6 @@ $adminSidebarCollapsed = false;
             </section>
 
             <section class="grid">
-                <div class="panel">
-                    <h2>Add Program</h2>
-                    <p class="lead">Create the program entry, then continue straight to the blank checklist builder where you will input the courses just like the Generate New Curriculum workflow.</p>
-                    <?php if (is_array($flash)): ?>
-                        <div class="flash <?= $flash['type'] === 'success' ? 'success' : 'error' ?>">
-                            <?= htmlspecialchars((string) ($flash['message'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
-                        </div>
-                    <?php endif; ?>
-                    <form method="post" class="form-grid">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-                        <div class="field">
-                            <label for="program_code">Program Code</label>
-                            <input id="program_code" name="program_code" type="text" maxlength="64" placeholder="e.g. BSArch or BSN" required>
-                            <small>Use a short stable code. Letters, numbers, and hyphens are safest.</small>
-                        </div>
-                        <div class="field">
-                            <label for="program_name">Program Name</label>
-                            <input id="program_name" name="program_name" type="text" maxlength="255" placeholder="e.g. Bachelor of Science in Architecture" required>
-                            <small>The display name is what the admin module and curriculum workflow will show.</small>
-                        </div>
-                        <button type="submit" class="primary-btn">
-                            <i class="fas fa-plus-circle"></i>
-                            Add Program and Generate Checklist
-                        </button>
-                    </form>
-                </div>
-
                 <div class="panel">
                     <div class="catalog-meta">
                         <div>
@@ -598,6 +568,33 @@ $adminSidebarCollapsed = false;
                             No programs are available yet. Add the first one to start building its checklist-based curriculum.
                         </div>
                     <?php endif; ?>
+                </div>
+
+                <div class="panel compact-form-panel">
+                    <h2>Add Program</h2>
+                    <p class="lead">Create the program entry, then continue straight to the blank checklist builder where you will input the courses just like the Generate New Curriculum workflow.</p>
+                    <?php if (is_array($flash)): ?>
+                        <div class="flash <?= $flash['type'] === 'success' ? 'success' : 'error' ?>">
+                            <?= htmlspecialchars((string) ($flash['message'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                        </div>
+                    <?php endif; ?>
+                    <form method="post" class="form-grid">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                        <div class="field">
+                            <label for="program_code">Program Code</label>
+                            <input id="program_code" name="program_code" type="text" maxlength="64" placeholder="e.g. BSArch or BSN" required>
+                            <small>Use a short stable code. Letters, numbers, and hyphens are safest.</small>
+                        </div>
+                        <div class="field">
+                            <label for="program_name">Program Name</label>
+                            <input id="program_name" name="program_name" type="text" maxlength="255" placeholder="e.g. Bachelor of Science in Architecture" required>
+                            <small>The display name is what the admin module and curriculum workflow will show.</small>
+                        </div>
+                        <button type="submit" class="primary-btn">
+                            <i class="fas fa-plus-circle"></i>
+                            Add Program and Generate Checklist
+                        </button>
+                    </form>
                 </div>
             </section>
         </div>
