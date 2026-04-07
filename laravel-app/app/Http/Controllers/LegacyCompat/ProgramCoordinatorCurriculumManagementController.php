@@ -212,6 +212,19 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
 
     private function normalizeProgramCode(string $program): string
     {
+        $trimmed = trim($program);
+        if ($trimmed !== '') {
+            $catalog = $this->programNames();
+            if (isset($catalog[$trimmed])) {
+                return $trimmed;
+            }
+            foreach ($catalog as $code => $label) {
+                if (strcasecmp($trimmed, (string) $label) === 0) {
+                    return $code;
+                }
+            }
+        }
+
         $p = strtoupper(trim($program));
         if ($p === '') {
             return '';
@@ -265,6 +278,10 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
             return 'BSEd-Math';
         }
 
+        if (preg_match('/^[A-Za-z][A-Za-z0-9-]{1,63}$/', $trimmed)) {
+            return $trimmed;
+        }
+
         return '';
     }
 
@@ -304,7 +321,7 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
 
     private function programNames(): array
     {
-        return [
+        $catalog = [
             'BSIndT' => 'BS Industrial Technology',
             'BSCpE' => 'BS Computer Engineering',
             'BSIT' => 'BS Information Technology',
@@ -316,5 +333,18 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
             'BSEd-Science' => 'BSEd Major in Science',
             'BSEd-Math' => 'BSEd Major in Math',
         ];
+
+        if (Schema::hasTable('programs') && Schema::hasColumn('programs', 'code') && Schema::hasColumn('programs', 'name')) {
+            $rows = DB::table('programs')->select(['code', 'name'])->get();
+            foreach ($rows as $row) {
+                $code = trim((string) ($row->code ?? ''));
+                $name = trim((string) ($row->name ?? ''));
+                if ($code !== '' && $name !== '') {
+                    $catalog[$code] = preg_replace('/\s+/', ' ', $name) ?: $name;
+                }
+            }
+        }
+
+        return $catalog;
     }
 }

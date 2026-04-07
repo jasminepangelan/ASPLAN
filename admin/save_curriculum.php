@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/program_catalog.php';
 
 header('Content-Type: application/json');
 
@@ -35,9 +36,11 @@ if ($useLaravelBridge) {
 }
 
 // Validate program
-$valid_programs = ['BSIndT','BSCpE','BSIT','BSCS','BSHM','BSBA-HRM','BSBA-MM','BSEd-English','BSEd-Science','BSEd-Math'];
-if (!in_array($program, $valid_programs)) {
+$conn = getDBConnection();
+$valid_programs = array_keys(pcLoadProgramCatalog($conn, true));
+if (!in_array($program, $valid_programs, true)) {
     echo json_encode(['success' => false, 'message' => 'Invalid program']);
+    closeDBConnection($conn);
     exit();
 }
 
@@ -50,7 +53,6 @@ if (!preg_match('/^\d{4}$/', $curriculum_year) || $curriculum_year < 2017 || $cu
 // Build prefix (e.g., 2025_)
 $prefix = $curriculum_year . '_';
 
-$conn = getDBConnection();
 $conn->begin_transaction();
 
 try {

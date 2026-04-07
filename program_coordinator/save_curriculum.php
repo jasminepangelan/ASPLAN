@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/program_catalog.php';
 
 header('Content-Type: application/json');
 
@@ -39,9 +40,11 @@ if ($useLaravelBridge) {
     }
 }
 
-$valid_programs = ['BSIndT','BSCpE','BSIT','BSCS','BSHM','BSBA-HRM','BSBA-MM','BSEd-English','BSEd-Science','BSEd-Math'];
+$conn = getDBConnection();
+$valid_programs = array_keys(pcLoadProgramCatalog($conn, true));
 if (!in_array($program, $valid_programs, true)) {
     echo json_encode(['success' => false, 'message' => 'Invalid program']);
+    closeDBConnection($conn);
     exit();
 }
 
@@ -52,11 +55,11 @@ if (!preg_match('/^\d{4}$/', (string)$curriculum_year) || $curriculum_year < 201
 
 $prefix = $curriculum_year . '_';
 
-$conn = getDBConnection();
 $conn->begin_transaction();
 
 try {
-    $canonicalProgramLabel = psCanonicalProgramLabel(psNormalizeProgramKey($program));
+    $programCatalog = pcLoadProgramCatalog($conn, true);
+    $canonicalProgramLabel = (string) ($programCatalog[$program] ?? psCanonicalProgramLabel(psNormalizeProgramKey($program)));
     if ($canonicalProgramLabel === '') {
         throw new RuntimeException('Unable to resolve program label for curriculum sync.');
     }

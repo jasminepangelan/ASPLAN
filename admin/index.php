@@ -377,6 +377,10 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
           <img src="../pix/curr.png" alt="Curriculum Management Icon">
           <label>Curriculum Management</label>
         </div>
+        <div class="option" onclick="window.location.href='programs.php'">
+          <img src="../pix/update.png" alt="Programs Icon">
+          <label>Programs</label>
+        </div>
         <div class="option" onclick="window.location.href='account_approval_settings.php'">
           <img src="../pix/set.png" alt="Settings Icon">
           <label>Settings</label>

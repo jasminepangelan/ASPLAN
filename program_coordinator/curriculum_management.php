@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/program_catalog.php';
 
 $isAdmin = isset($_SESSION['admin_username']) || isset($_SESSION['admin_id']);
 $isProgramCoordinator = isset($_SESSION['username']) && (!isset($_SESSION['user_type']) || $_SESSION['user_type'] === 'program_coordinator');
@@ -40,6 +41,11 @@ function tableHasColumn($conn, string $table, string $column): bool {
 }
 
 function normalizeProgramCode(string $program): string {
+  $catalogCode = pcNormalizeProgramCode($program);
+  if ($catalogCode !== '') {
+    return $catalogCode;
+  }
+
   $p = strtoupper(trim($program));
   if ($p === '') {
     return '';
@@ -189,18 +195,7 @@ $existing = [];
 $curriculumCatalog = [];
 $availableCurriculumYears = [];
 $currentCurriculumYear = '';
-$programs = [
-  'BSIndT' => 'BS Industrial Technology',
-  'BSCpE'  => 'BS Computer Engineering',
-  'BSIT'   => 'BS Information Technology',
-  'BSCS'   => 'BS Computer Science',
-  'BSHM'   => 'BS Hospitality Management',
-  'BSBA-HRM' => 'BSBA - Human Resource Management',
-  'BSBA-MM'  => 'BSBA - Marketing Management',
-  'BSEd-English' => 'BSEd Major in English',
-  'BSEd-Science' => 'BSEd Major in Science',
-  'BSEd-Math'    => 'BSEd Major in Math',
-];
+$programs = pcLoadProgramCatalog($conn, true);
 $bridgeLoaded = false;
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 

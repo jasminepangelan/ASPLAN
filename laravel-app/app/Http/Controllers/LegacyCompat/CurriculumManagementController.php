@@ -501,27 +501,48 @@ class CurriculumManagementController extends Controller
 
     private function isValidProgram(string $program): bool
     {
-        return in_array($program, ['BSIndT', 'BSCpE', 'BSIT', 'BSCS', 'BSHM', 'BSBA-HRM', 'BSBA-MM', 'BSEd-English', 'BSEd-Science', 'BSEd-Math'], true);
+        return array_key_exists(trim($program), $this->programCatalog());
     }
 
     private function canonicalProgramLabel(string $program): string
     {
-        $map = [
-            'BSBA-MM' => 'Bachelor of Science in Business Administration Major in Marketing Management',
-            'BSBA-HRM' => 'Bachelor of Science in Business Administration Major in Human Resource Management',
-            'BSCPE' => 'Bachelor of Science in Computer Engineering',
-            'BSCS' => 'Bachelor of Science in Computer Science',
-            'BSHM' => 'Bachelor of Science in Hospitality Management',
-            'BSINDT' => 'Bachelor of Science in Industrial Technology',
-            'BSIT' => 'Bachelor of Science in Information Technology',
-            'BSED-ENGLISH' => 'Bachelor of Secondary Education Major in English',
-            'BSED-MATH' => 'Bachelor of Secondary Education Major in Mathematics',
-            'BSED-SCIENCE' => 'Bachelor of Secondary Education Major in Science',
+        $catalog = $this->programCatalog();
+        $key = trim($program);
+        return $catalog[$key] ?? '';
+    }
+
+    private function programCatalog(): array
+    {
+        $catalog = [
+            'BSIndT' => 'BS Industrial Technology',
+            'BSCpE' => 'BS Computer Engineering',
+            'BSIT' => 'BS Information Technology',
+            'BSCS' => 'BS Computer Science',
+            'BSHM' => 'BS Hospitality Management',
+            'BSBA-HRM' => 'BSBA - Human Resource Management',
+            'BSBA-MM' => 'BSBA - Marketing Management',
+            'BSEd-English' => 'BSEd Major in English',
+            'BSEd-Science' => 'BSEd Major in Science',
+            'BSEd-Math' => 'BSEd Major in Math',
         ];
 
-        $normalizedKey = strtoupper(trim($program));
+        if (Schema::hasTable('programs')) {
+            $codeColumn = Schema::hasColumn('programs', 'code');
+            $nameColumn = Schema::hasColumn('programs', 'name');
 
-        return $map[$normalizedKey] ?? '';
+            if ($codeColumn && $nameColumn) {
+                $rows = DB::table('programs')->select(['code', 'name'])->get();
+                foreach ($rows as $row) {
+                    $code = trim((string) ($row->code ?? ''));
+                    $name = trim((string) ($row->name ?? ''));
+                    if ($code !== '' && $name !== '') {
+                        $catalog[$code] = preg_replace('/\s+/', ' ', $name) ?: $name;
+                    }
+                }
+            }
+        }
+
+        return $catalog;
     }
 
     private function ensureCurriculumCoursesTable(): void
