@@ -296,8 +296,10 @@ $adminSidebarCollapsed = false;
             box-shadow: 0 18px 34px rgba(32, 96, 24, 0.08);
             padding: 24px;
         }
+        .panel.programs-list-panel,
         .panel.compact-form-panel {
-            max-width: 760px;
+            width: min(100%, 980px);
+            margin: 0 auto;
         }
         .panel h2 {
             margin: 0 0 8px;
@@ -552,7 +554,7 @@ $adminSidebarCollapsed = false;
             </section>
 
             <section class="grid">
-                <div class="panel">
+                <div class="panel programs-list-panel">
                     <div class="catalog-meta">
                         <div>
                             <h2>List of Programs</h2>
