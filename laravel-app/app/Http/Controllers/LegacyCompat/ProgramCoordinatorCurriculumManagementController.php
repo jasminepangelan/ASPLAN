@@ -65,7 +65,7 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
                 ]);
             }
 
-            $existing = $this->loadExistingCurriculumYears();
+            $existing = $this->loadExistingCurriculumYears($coordinatorProgramCode);
             $curriculumCatalog = $this->loadCurriculumCatalog($coordinatorProgramCode);
 
             return response()->json([
@@ -81,19 +81,29 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
         }
     }
 
-    private function loadExistingCurriculumYears(): array
+    private function loadExistingCurriculumYears(string $programCode = ''): array
     {
         $existing = [];
 
         if (Schema::hasTable('cvsucarmona_courses')) {
-            $rows = DB::table('cvsucarmona_courses')
+            $query = DB::table('cvsucarmona_courses')
                 ->select(DB::raw('DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, "_", 1) AS cy'), 'programs')
-                ->orderByDesc(DB::raw('cy'))
-                ->get();
+                ->orderByDesc(DB::raw('cy'));
+
+            if ($programCode !== '') {
+                $query->whereRaw("FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0", [$programCode]);
+            }
+
+            $rows = $query->get();
 
             foreach ($rows as $row) {
                 $normalizedYear = $this->normalizeCurriculumYear((string) ($row->cy ?? ''));
                 if ($normalizedYear === '') {
+                    continue;
+                }
+
+                if ($programCode !== '') {
+                    $this->appendCurriculumYear($existing, $programCode, $normalizedYear);
                     continue;
                 }
 
@@ -110,6 +120,9 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
                 $program = trim((string) ($row->program ?? ''));
                 $year = $this->normalizeCurriculumYear((string) ($row->curriculum_year ?? ''));
                 if ($program === '' || $year === '') {
+                    continue;
+                }
+                if ($programCode !== '' && $this->normalizeProgramCode($program) !== $programCode) {
                     continue;
                 }
                 $this->appendCurriculumYear($existing, $program, $year);

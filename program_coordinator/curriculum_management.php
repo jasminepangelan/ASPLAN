@@ -274,18 +274,27 @@ try {
     }
   }
 
-  $r = $conn->query("SELECT DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) AS cy, programs FROM cvsucarmona_courses ORDER BY cy DESC");
-  if ($r) {
-    while ($row = $r->fetch_assoc()) {
-      $normalizedYear = normalizeCurriculumYear((string)($row['cy'] ?? ''));
-      if ($normalizedYear === '') {
-        continue;
+  if ($coordinatorProgramCode !== '') {
+    $yearsStmt = $conn->prepare(
+      "SELECT DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) AS cy
+       FROM cvsucarmona_courses
+       WHERE FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
+       ORDER BY cy DESC"
+    );
+    if ($yearsStmt) {
+      $yearsStmt->bind_param('s', $coordinatorProgramCode);
+      $yearsStmt->execute();
+      $yearsRes = $yearsStmt->get_result();
+      if ($yearsRes) {
+        while ($row = $yearsRes->fetch_assoc()) {
+          $normalizedYear = normalizeCurriculumYear((string)($row['cy'] ?? ''));
+          if ($normalizedYear === '') {
+            continue;
+          }
+          appendCurriculumYear($existing, $coordinatorProgramCode, $normalizedYear);
+        }
       }
-
-      $progs = array_map('trim', explode(',', $row['programs']));
-      foreach ($progs as $p) {
-        appendCurriculumYear($existing, $p, $normalizedYear);
-      }
+      $yearsStmt->close();
     }
   }
 
@@ -306,6 +315,9 @@ try {
       $program = trim((string)($row['program'] ?? ''));
       $year = normalizeCurriculumYear((string)($row['curriculum_year'] ?? ''));
       if ($program === '' || $year === '') {
+        continue;
+      }
+      if ($coordinatorProgramCode !== '' && normalizeProgramCode($program) !== $coordinatorProgramCode) {
         continue;
       }
 
