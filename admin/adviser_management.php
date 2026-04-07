@@ -56,17 +56,19 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
             position: fixed;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%) scale(0.8);
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            padding: 25px 35px;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            text-align: center;
+            transform: translate(-50%, -50%) scale(0.92);
+            background:
+                radial-gradient(circle at top right, rgba(76, 175, 80, 0.16), rgba(76, 175, 80, 0) 42%),
+                linear-gradient(145deg, #ffffff 0%, #f7faf7 100%);
+            padding: 26px 28px 24px;
+            border-radius: 22px;
+            box-shadow: 0 26px 60px rgba(10, 24, 12, 0.28);
             z-index: 2001;
             opacity: 0;
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            min-width: 320px;
-            border: 2px solid rgba(32, 96, 24, 0.1);
+            transition: all 0.28s ease;
+            width: min(92vw, 440px);
+            border: 1px solid rgba(32, 96, 24, 0.12);
+            overflow: hidden;
         }
         
         .modal-container.active {
@@ -74,31 +76,150 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
             opacity: 1;
         }
         
-        .modal-icon {
-            font-size: 52px;
-            color: #4CAF50;
-            margin-bottom: 18px;
-            animation: pulse 2s infinite;
+        .modal-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
         }
-        
-        .modal-title {
+
+        .modal-icon-wrap {
+            width: 56px;
+            height: 56px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, rgba(32, 96, 24, 0.12) 0%, rgba(76, 175, 80, 0.18) 100%);
             color: #206018;
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 15px;
-            letter-spacing: 0.5px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+            flex-shrink: 0;
+        }
+
+        .modal-icon {
+            font-size: 26px;
+            color: inherit;
+            margin: 0;
+            animation: none;
+        }
+
+        .modal-copy {
+            flex: 1;
+            padding-top: 2px;
+        }
+
+        .modal-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: rgba(32, 96, 24, 0.08);
+            color: #2b6425;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .modal-title {
+            color: #153d12;
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+        }
+
+        .modal-message {
+            margin: 0;
+            color: #5f6f60;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .modal-detail {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(32, 96, 24, 0.05);
+            border: 1px solid rgba(32, 96, 24, 0.08);
+            color: #31502e;
+            font-size: 13px;
+            line-height: 1.6;
+            font-weight: 600;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 11px 16px;
+            border-radius: 14px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            transition: all 0.22s ease;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .modal-btn-neutral {
+            background: #ffffff;
+            color: #355332;
+            border-color: rgba(32, 96, 24, 0.16);
+            box-shadow: 0 8px 18px rgba(21, 43, 21, 0.06);
+        }
+
+        .modal-btn-neutral:hover {
+            background: #f4f8f3;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(135deg, #206018 0%, #2e7d32 100%);
+            color: #fff;
+            box-shadow: 0 12px 24px rgba(32, 96, 24, 0.18);
+        }
+
+        .modal-btn-confirm:hover {
+            box-shadow: 0 16px 28px rgba(32, 96, 24, 0.22);
+        }
+
+        .modal-btn-danger {
+            background: linear-gradient(135deg, #7b1f1f 0%, #b93232 100%);
+            color: #fff;
+            box-shadow: 0 12px 24px rgba(185, 50, 50, 0.2);
+        }
+
+        .modal-btn-danger:hover {
+            box-shadow: 0 16px 28px rgba(185, 50, 50, 0.24);
         }
         
         .modal-close {
             position: absolute;
-            top: 12px;
-            right: 16px;
-            font-size: 28px;
-            color: #aaa;
+            top: 14px;
+            right: 14px;
+            font-size: 22px;
+            color: #7a8a7b;
             cursor: pointer;
             transition: all 0.3s ease;
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -107,7 +228,7 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
         
         .modal-close:hover {
             color: #206018;
-            background: rgba(32, 96, 24, 0.1);
+            background: rgba(32, 96, 24, 0.08);
             transform: rotate(90deg);
         }
         
@@ -116,11 +237,6 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
             to { opacity: 1; }
         }
         
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-
         body {
             background: #f2f5f1;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -1119,12 +1235,12 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
                                     </div>
                                     <div style="display: flex; gap: 6px; align-items: flex-start; flex-shrink: 0;">
                                         <?php if (!empty($advisers)): ?>
-                                        <button type="submit" class="submit-btn" title="Update Adviser Assignments" name="direct_submit" value="1">
+                                        <button type="submit" class="submit-btn" title="Update Adviser Assignments" name="direct_submit" value="1" onclick="return confirmUpdate(event);">
                                             <i class="fas fa-save" style="color: white; margin-right: 2px; font-size: 10px;"></i>Update
                                         </button>
                                         <?php endif; ?>
                                         <?php if (!empty($assignedAdvisers)): ?>
-                                        <button type="submit" class="unassign-btn" name="unassign_batch" value="1" onclick="return confirm('Are you sure you want to unassign all advisers from this batch?');">
+                                        <button type="submit" class="unassign-btn" name="unassign_batch" value="1" onclick="return confirmUnassignBatch(event);">
                                             <i class="fas fa-times" style="margin-right: 2px; font-size: 10px;"></i>Unassign All
                                         </button>
                                         <?php endif; ?>
@@ -1157,6 +1273,83 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
         </div>
     </div>
 <script>
+    function showSystemModal(options) {
+        const config = Object.assign({
+            variant: 'confirm',
+            title: 'Please Confirm',
+            message: '',
+            detail: '',
+            confirmLabel: 'Confirm',
+            cancelLabel: 'Cancel',
+            onConfirm: null,
+        }, options || {});
+
+        const variantIconMap = {
+            confirm: 'fa-question-circle',
+            success: 'fa-check-circle',
+            danger: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        };
+
+        const confirmBtnClass = config.variant === 'danger' ? 'modal-btn modal-btn-danger' : 'modal-btn modal-btn-confirm';
+        const iconClass = variantIconMap[config.variant] || variantIconMap.confirm;
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+            <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="systemModalTitle">
+                <button type="button" class="modal-close" aria-label="Close dialog">&times;</button>
+                <div class="modal-head">
+                    <div class="modal-icon-wrap">
+                        <i class="fas ${iconClass} modal-icon"></i>
+                    </div>
+                    <div class="modal-copy">
+                        <div class="modal-kicker">ASPLAN</div>
+                        <h3 class="modal-title" id="systemModalTitle">${config.title}</h3>
+                    </div>
+                </div>
+                <p class="modal-message">${config.message}</p>
+                ${config.detail ? `<div class="modal-detail">${config.detail}</div>` : ''}
+                <div class="modal-actions">
+                    ${config.variant === 'info' ? '' : `<button type="button" class="modal-btn modal-btn-neutral" data-modal-cancel>${config.cancelLabel}</button>`}
+                    <button type="button" class="${config.variant === 'info' ? 'modal-btn modal-btn-confirm' : confirmBtnClass}" data-modal-confirm>${config.confirmLabel}</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        overlay.style.display = 'block';
+
+        const container = overlay.querySelector('.modal-container');
+        const closeBtn = overlay.querySelector('.modal-close');
+        const confirmBtn = overlay.querySelector('[data-modal-confirm]');
+        const cancelBtn = overlay.querySelector('[data-modal-cancel]');
+
+        const closeModal = () => {
+            container.classList.remove('active');
+            setTimeout(() => overlay.remove(), 220);
+        };
+
+        confirmBtn.addEventListener('click', () => {
+            closeModal();
+            if (typeof config.onConfirm === 'function') {
+                config.onConfirm();
+            }
+        });
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeModal);
+        }
+
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                closeModal();
+            }
+        });
+
+        requestAnimationFrame(() => container.classList.add('active'));
+    }
+
     function updateSelectionSummary() {
         const forms = document.querySelectorAll('form[action="../batch_update.php"]');
         let selectedAdviserCount = 0;
@@ -1182,16 +1375,20 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
             return;
         }
 
-        const confirmed = confirm('Clear all selected advisers across every batch?');
-        if (!confirmed) {
-            return;
-        }
-
-        document.querySelectorAll('input[name="advisers[]"]:checked').forEach((checkbox) => {
-            checkbox.checked = false;
+        showSystemModal({
+            variant: 'confirm',
+            title: 'Clear Adviser Selections',
+            message: 'Remove all currently selected advisers across every visible batch?',
+            detail: 'This only clears the current selections on the page. It will not save changes until you update assignments.',
+            confirmLabel: 'Clear Selections',
+            cancelLabel: 'Keep Selections',
+            onConfirm: () => {
+                document.querySelectorAll('input[name="advisers[]"]:checked').forEach((checkbox) => {
+                    checkbox.checked = false;
+                });
+                updateSelectionSummary();
+            }
         });
-
-        updateSelectionSummary();
     }
 
     function updateAllBatchAssignments() {
@@ -1217,20 +1414,14 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
         });
 
         if (!Object.keys(assignments).length) {
-            alert('No batch assignments were found to update.');
+            showSystemModal({
+                variant: 'info',
+                title: 'Nothing To Update',
+                message: 'No batch assignments were found to update yet.',
+                detail: 'Select advisers for one or more batches first, then use Update All Selected.',
+                confirmLabel: 'Close'
+            });
             return;
-        }
-
-        if (!hasAnySelection) {
-            const proceedWithoutSelection = confirm('No advisers are selected. This will clear adviser assignments for all listed batches. Continue?');
-            if (!proceedWithoutSelection) {
-                return;
-            }
-        } else {
-            const confirmUpdateAll = confirm('Update adviser assignments for all listed batches?');
-            if (!confirmUpdateAll) {
-                return;
-            }
         }
 
         const bulkForm = document.createElement('form');
@@ -1252,8 +1443,32 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
             bulkForm.appendChild(programInput);
         }
 
-        document.body.appendChild(bulkForm);
-        bulkForm.submit();
+        const submitBulkForm = () => {
+            document.body.appendChild(bulkForm);
+            bulkForm.submit();
+        };
+
+        if (!hasAnySelection) {
+            showSystemModal({
+                variant: 'danger',
+                title: 'Clear All Listed Assignments?',
+                message: 'No advisers are selected right now.',
+                detail: 'Continuing will clear adviser assignments for all listed batches in the selected program.',
+                confirmLabel: 'Yes, Clear All',
+                cancelLabel: 'Cancel',
+                onConfirm: submitBulkForm
+            });
+        } else {
+            showSystemModal({
+                variant: 'confirm',
+                title: 'Update All Batch Assignments',
+                message: 'Apply the current adviser selections to all listed batches?',
+                detail: 'Only the selections currently shown on this page will be submitted and saved.',
+                confirmLabel: 'Update Assignments',
+                cancelLabel: 'Review Again',
+                onConfirm: submitBulkForm
+            });
+        }
     }
 
     // Sidebar toggle functionality
@@ -1317,6 +1532,26 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
         }
     });
 
+    function confirmUnassignBatch(event) {
+        event.preventDefault();
+        const form = event.target.closest('form');
+        if (!form) {
+            return false;
+        }
+
+        showSystemModal({
+            variant: 'danger',
+            title: 'Unassign All Advisers',
+            message: 'Remove every assigned adviser from this batch?',
+            detail: 'This will save the batch with no adviser assigned.',
+            confirmLabel: 'Unassign All',
+            cancelLabel: 'Keep Assignments',
+            onConfirm: () => form.submit()
+        });
+
+        return false;
+    }
+
     // Custom confirmation dialog for batch updates
     function confirmUpdate(event) {
         event.preventDefault();
@@ -1326,63 +1561,25 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
         const checkboxes = form.querySelectorAll('input[name="advisers[]"]:checked');
         
         if (checkboxes.length === 0) {
-            alert('Please select at least one adviser to assign');
+            showSystemModal({
+                variant: 'info',
+                title: 'No Adviser Selected',
+                message: 'Please select at least one adviser before updating this batch.',
+                detail: 'Use the adviser chips in the row to choose who should handle the selected batch.',
+                confirmLabel: 'Got It'
+            });
             return false;
         }
-        
-        // Create confirmation modal
-        const confirmModal = document.createElement('div');
-        confirmModal.className = 'modal-overlay';
-        confirmModal.innerHTML = `
-            <div class="modal-container">
-                <span class="modal-close">&times;</span>
-                <div class="modal-icon">
-                    <i class="fas fa-question-circle" style="color: #206018;"></i>
-                </div>
-                <div class="modal-title">
-                    Confirm Batch Assignment
-                </div>
-                <div style="margin: 15px 0; color: #666;">
-                    Are you sure you want to update the batch assignments for this adviser?<br>
-                    <small>Selected batches: ${checkboxes.length}</small>
-                </div>
-                <div style="margin-top: 20px;">
-                    <button class="submit-btn" style="margin-right: 10px;" onclick="submitForm()">Yes, Update</button>
-                    <button class="unassign-btn" style="background-color: #6c757d;" onclick="closeModal()">Cancel</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(confirmModal);
-        const container = confirmModal.querySelector('.modal-container');
-        confirmModal.style.display = 'block';
-        setTimeout(() => container.classList.add('active'), 10);
 
-        // Handle close button
-        const closeBtn = confirmModal.querySelector('.modal-close');
-        closeBtn.onclick = closeModal;
-
-        // Handle click outside
-        confirmModal.onclick = (e) => {
-            if (e.target === confirmModal) {
-                closeModal();
-            }
-        };
-
-        function closeModal() {
-            container.classList.remove('active');
-            setTimeout(() => {
-                confirmModal.remove();
-            }, 300);
-        }
-
-        function submitForm() {
-            form.submit();
-        }
-
-        // Make functions available to onclick handlers
-        window.submitForm = submitForm;
-        window.closeModal = closeModal;
+        showSystemModal({
+            variant: 'confirm',
+            title: 'Confirm Batch Assignment',
+            message: 'Update the adviser assignments for this batch now?',
+            detail: `Selected adviser count: ${checkboxes.length}`,
+            confirmLabel: 'Yes, Update',
+            cancelLabel: 'Cancel',
+            onConfirm: () => form.submit()
+        });
 
         return false;
     }
