@@ -17,6 +17,42 @@ $conn = getDBConnection();
 $flash = $_SESSION['admin_programs_flash'] ?? null;
 unset($_SESSION['admin_programs_flash']);
 
+function apNormalizeCurriculumYear(string $value): string
+{
+    $value = strtoupper(trim($value));
+    if ($value === '') {
+        return '';
+    }
+
+    if (preg_match('/^(\d{2})V\d+$/', $value, $matches)) {
+        return '20' . $matches[1];
+    }
+
+    if (preg_match('/^(\d{4})$/', $value, $matches)) {
+        return $matches[1];
+    }
+
+    return '';
+}
+
+function apAppendCurriculumYear(array &$bucket, string $program, string $year): void
+{
+    $code = pcNormalizeProgramCode($program);
+    $year = apNormalizeCurriculumYear($year);
+
+    if ($code === '' || $year === '') {
+        return;
+    }
+
+    if (!isset($bucket[$code])) {
+        $bucket[$code] = [];
+    }
+
+    if (!in_array($year, $bucket[$code], true)) {
+        $bucket[$code][] = $year;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
         $_SESSION['admin_programs_flash'] = ['type' => 'error', 'message' => 'Your session token expired. Please try again.'];
@@ -52,20 +88,25 @@ if (!empty($programCatalog)) {
     $defaultProgramCode = (string) ($programKeys[0] ?? '');
 }
 $curriculumYearsByProgram = [];
+$courseYearResult = $conn->query("SELECT DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) AS curriculum_year, programs FROM cvsucarmona_courses ORDER BY curriculum_year DESC");
+if ($courseYearResult) {
+    while ($row = $courseYearResult->fetch_assoc()) {
+        $year = (string) ($row['curriculum_year'] ?? '');
+        $programTokens = array_map('trim', explode(',', (string) ($row['programs'] ?? '')));
+        foreach ($programTokens as $programToken) {
+            apAppendCurriculumYear($curriculumYearsByProgram, $programToken, $year);
+        }
+    }
+}
+
 $yearsResult = $conn->query("SELECT program, curriculum_year FROM program_curriculum_years ORDER BY curriculum_year DESC");
 if ($yearsResult) {
     while ($row = $yearsResult->fetch_assoc()) {
-        $code = pcNormalizeProgramCode((string) ($row['program'] ?? ''));
-        $year = trim((string) ($row['curriculum_year'] ?? ''));
-        if ($code === '' || $year === '') {
-            continue;
-        }
-        if (!isset($curriculumYearsByProgram[$code])) {
-            $curriculumYearsByProgram[$code] = [];
-        }
-        if (!in_array($year, $curriculumYearsByProgram[$code], true)) {
-            $curriculumYearsByProgram[$code][] = $year;
-        }
+        apAppendCurriculumYear(
+            $curriculumYearsByProgram,
+            (string) ($row['program'] ?? ''),
+            (string) ($row['curriculum_year'] ?? '')
+        );
     }
 }
 
