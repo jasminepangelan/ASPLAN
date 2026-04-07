@@ -66,6 +66,46 @@ function pcNormalizeProgramCode(string $value): string
         return $known[$upper];
     }
 
+    if (strpos($upper, 'COMPUTER SCIENCE') !== false) {
+        return 'BSCS';
+    }
+    if (strpos($upper, 'INFORMATION TECHNOLOGY') !== false) {
+        return 'BSIT';
+    }
+    if (strpos($upper, 'COMPUTER ENGINEERING') !== false) {
+        return 'BSCpE';
+    }
+    if (strpos($upper, 'INDUSTRIAL TECHNOLOGY') !== false) {
+        return 'BSIndT';
+    }
+    if (strpos($upper, 'HOSPITALITY MANAGEMENT') !== false) {
+        return 'BSHM';
+    }
+    if (strpos($upper, 'BUSINESS ADMINISTRATION') !== false && strpos($upper, 'HUMAN RESOURCE') !== false) {
+        return 'BSBA-HRM';
+    }
+    if (strpos($upper, 'BUSINESS ADMINISTRATION') !== false && strpos($upper, 'MARKETING') !== false) {
+        return 'BSBA-MM';
+    }
+    if (
+        (strpos($upper, 'SECONDARY EDUCATION') !== false || strpos($upper, 'BSED') !== false)
+        && strpos($upper, 'ENGLISH') !== false
+    ) {
+        return 'BSEd-English';
+    }
+    if (
+        (strpos($upper, 'SECONDARY EDUCATION') !== false || strpos($upper, 'BSED') !== false)
+        && strpos($upper, 'SCIENCE') !== false
+    ) {
+        return 'BSEd-Science';
+    }
+    if (
+        (strpos($upper, 'SECONDARY EDUCATION') !== false || strpos($upper, 'BSED') !== false)
+        && strpos($upper, 'MATH') !== false
+    ) {
+        return 'BSEd-Math';
+    }
+
     $sanitized = preg_replace('/[^A-Za-z0-9-]+/', '', $value) ?? '';
     if ($sanitized === '' || !preg_match('/^[A-Za-z][A-Za-z0-9-]{1,63}$/', $sanitized)) {
         return '';
