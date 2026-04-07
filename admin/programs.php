@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     if (!empty($result['success'])) {
-        $redirect = 'programs.php?program=' . urlencode((string) ($result['code'] ?? ''));
+        $redirect = '../program_coordinator/curriculum_management.php?program=' . urlencode((string) ($result['code'] ?? ''));
         header('Location: ' . $redirect);
         exit();
     }
@@ -46,11 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $programCatalog = pcLoadProgramCatalog($conn, true);
-$selectedProgram = pcNormalizeProgramCode((string) ($_GET['program'] ?? ''));
-if ($selectedProgram !== '' && !isset($programCatalog[$selectedProgram])) {
-    $selectedProgram = '';
-}
-
 $curriculumYearsByProgram = [];
 $yearsResult = $conn->query("SELECT program, curriculum_year FROM program_curriculum_years ORDER BY curriculum_year DESC");
 if ($yearsResult) {
@@ -536,13 +531,13 @@ $adminSidebarCollapsed = false;
             <section class="hero">
                 <span class="hero-kicker"><i class="fas fa-sitemap"></i> Program Catalog</span>
                 <h1>Programs</h1>
-                <p>Manage the active academic programs available to the admin workspace. Adding a program here prepares it for the curriculum builder, where you will define its checklist as the actual basis of the program structure.</p>
+                <p>Review the existing list of programs, then add a new one only when you are ready to generate its blank checklist and start encoding the courses that define it.</p>
             </section>
 
             <section class="grid">
                 <div class="panel">
                     <h2>Add Program</h2>
-                    <p class="lead">Create the program entry first, then continue to the curriculum builder to define the checklist and curriculum year for that new program.</p>
+                    <p class="lead">Create the program entry, then continue straight to the blank checklist builder where you will input the courses just like the Generate New Curriculum workflow.</p>
                     <?php if (is_array($flash)): ?>
                         <div class="flash <?= $flash['type'] === 'success' ? 'success' : 'error' ?>">
                             <?= htmlspecialchars((string) ($flash['message'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
@@ -562,7 +557,7 @@ $adminSidebarCollapsed = false;
                         </div>
                         <button type="submit" class="primary-btn">
                             <i class="fas fa-plus-circle"></i>
-                            Add Program
+                            Add Program and Generate Checklist
                         </button>
                     </form>
                 </div>
@@ -571,7 +566,7 @@ $adminSidebarCollapsed = false;
                     <div class="catalog-meta">
                         <div>
                             <h2>List of Programs</h2>
-                            <p class="lead">Current catalog entries that Admin can build curricula for.</p>
+                            <p class="lead">Current program entries available for checklist and curriculum creation.</p>
                         </div>
                         <span class="catalog-count"><?= count($programCatalog) ?> program<?= count($programCatalog) === 1 ? '' : 's' ?></span>
                     </div>
@@ -580,7 +575,7 @@ $adminSidebarCollapsed = false;
                         <div class="program-list">
                             <?php foreach ($programCatalog as $code => $name): ?>
                                 <?php $years = $curriculumYearsByProgram[$code] ?? []; ?>
-                                <article class="program-card<?= $selectedProgram === $code ? ' active' : '' ?>">
+                                <article class="program-card">
                                     <div>
                                         <span class="program-code"><?= htmlspecialchars($code, ENT_QUOTES, 'UTF-8') ?></span>
                                         <h3 class="program-name"><?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?></h3>
@@ -597,11 +592,7 @@ $adminSidebarCollapsed = false;
                                     <div class="program-actions">
                                         <a class="action-build" href="../program_coordinator/curriculum_management.php?program=<?= urlencode($code) ?>">
                                             <i class="fas fa-layer-group"></i>
-                                            Build Checklist
-                                        </a>
-                                        <a class="action-view" href="programs.php?program=<?= urlencode($code) ?>">
-                                            <i class="fas fa-eye"></i>
-                                            Focus Card
+                                            Open Checklist Builder
                                         </a>
                                     </div>
                                 </article>
