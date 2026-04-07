@@ -46,6 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $programCatalog = pcLoadProgramCatalog($conn, true);
+$defaultProgramCode = '';
+if (!empty($programCatalog)) {
+    $programKeys = array_keys($programCatalog);
+    $defaultProgramCode = (string) ($programKeys[0] ?? '');
+}
 $curriculumYearsByProgram = [];
 $yearsResult = $conn->query("SELECT program, curriculum_year FROM program_curriculum_years ORDER BY curriculum_year DESC");
 if ($yearsResult) {
@@ -394,24 +399,44 @@ $adminSidebarCollapsed = false;
             text-transform: uppercase;
             letter-spacing: 0.12em;
         }
-        .program-list {
+        .program-selector {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 14px;
-        }
-        .program-card {
-            display: grid;
-            gap: 14px;
-            align-content: start;
-            min-height: 100%;
-            padding: 16px 16px 15px 18px;
-            border-radius: 18px;
-            background:
-                linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(246,250,245,0.98) 100%);
+            gap: 16px;
+            padding: 18px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(247, 251, 245, 0.98) 0%, rgba(240, 247, 238, 0.98) 100%);
             border: 1px solid rgba(32, 96, 24, 0.08);
-            box-shadow: 0 10px 18px rgba(32, 96, 24, 0.07);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
         }
-        .program-code {
+        .program-selector-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 14px;
+            align-items: end;
+        }
+        .program-selector-meta {
+            display: grid;
+            gap: 10px;
+        }
+        .program-selector-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #174a12;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .program-selector-summary {
+            display: grid;
+            gap: 10px;
+            padding: 16px 18px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid rgba(32, 96, 24, 0.08);
+        }
+        .program-selector-code {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -424,12 +449,11 @@ $adminSidebarCollapsed = false;
             font-weight: 800;
             letter-spacing: 0.12em;
             text-transform: uppercase;
-            margin-bottom: 8px;
         }
-        .program-name {
-            margin: 0 0 8px;
-            font-size: 20px;
-            line-height: 1.18;
+        .program-selector-name {
+            margin: 0;
+            font-size: 22px;
+            line-height: 1.15;
             color: #173f12;
             letter-spacing: -0.03em;
         }
@@ -452,36 +476,33 @@ $adminSidebarCollapsed = false;
             background: rgba(109, 125, 112, 0.08);
             color: #617564;
         }
-        .program-actions {
-            display: flex;
-            margin-top: 2px;
-        }
-        .program-actions a {
+        .open-builder-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            width: 100%;
-            min-height: 42px;
-            padding: 11px 14px;
+            min-width: 220px;
+            min-height: 50px;
+            padding: 13px 18px;
             border-radius: 14px;
             text-decoration: none;
-            font-size: 13px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
             font-weight: 700;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .program-actions a:hover {
-            transform: translateY(-2px);
-        }
-        .action-build {
             background: linear-gradient(135deg, #206018 0%, #3ea63f 100%);
             color: #fff;
             box-shadow: 0 14px 24px rgba(32, 96, 24, 0.16);
         }
-        .action-view {
-            background: linear-gradient(135deg, #f7fbf5 0%, #eef7e9 100%);
-            color: #1d5b17;
-            border: 1px solid rgba(32, 96, 24, 0.12);
+        .open-builder-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 18px 28px rgba(32, 96, 24, 0.2);
+        }
+        .program-selector-note {
+            color: #617564;
+            font-size: 13px;
+            line-height: 1.6;
         }
         .empty-programs {
             padding: 28px;
@@ -500,8 +521,12 @@ $adminSidebarCollapsed = false;
             }
             .hero, .panel { padding: 20px; border-radius: 20px; }
             .content-shell { width: 100%; }
-            .program-list {
+            .program-selector-form {
                 grid-template-columns: 1fr;
+            }
+            .open-builder-btn {
+                width: 100%;
+                min-width: 0;
             }
         }
     </style>
@@ -537,31 +562,53 @@ $adminSidebarCollapsed = false;
                     </div>
 
                     <?php if (!empty($programCatalog)): ?>
-                        <div class="program-list">
-                            <?php foreach ($programCatalog as $code => $name): ?>
-                                <?php $years = $curriculumYearsByProgram[$code] ?? []; ?>
-                                <article class="program-card">
-                                    <div>
-                                        <span class="program-code"><?= htmlspecialchars($code, ENT_QUOTES, 'UTF-8') ?></span>
-                                        <h3 class="program-name"><?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?></h3>
-                                        <div class="program-years">
-                                            <?php if (!empty($years)): ?>
-                                                <?php foreach ($years as $year): ?>
-                                                    <span class="year-pill">Curriculum <?= htmlspecialchars($year, ENT_QUOTES, 'UTF-8') ?></span>
-                                                <?php endforeach; ?>
-                                            <?php else: ?>
-                                                <span class="year-pill empty">No checklist/curriculum year yet</span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <div class="program-actions">
-                                        <a class="action-build" href="../program_coordinator/curriculum_management.php?program=<?= urlencode($code) ?>">
-                                            <i class="fas fa-layer-group"></i>
-                                            Open Checklist Builder
-                                        </a>
-                                    </div>
-                                </article>
-                            <?php endforeach; ?>
+                        <div class="program-selector">
+                            <form method="get" action="../program_coordinator/curriculum_management.php" class="program-selector-form">
+                                <div class="field">
+                                    <label for="program_picker">Programs</label>
+                                    <select id="program_picker" name="program" style="width:100%; padding:14px 15px; border-radius:14px; border:1px solid #d7e6d2; background:#fbfdf9; font-size:15px; color:#203022;">
+                                        <?php foreach ($programCatalog as $code => $name): ?>
+                                            <?php $years = $curriculumYearsByProgram[$code] ?? []; ?>
+                                            <option
+                                                value="<?= htmlspecialchars($code, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-name="<?= htmlspecialchars($name, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-years="<?= htmlspecialchars(implode('|', $years), ENT_QUOTES, 'UTF-8') ?>"
+                                                <?= $code === $defaultProgramCode ? 'selected' : '' ?>
+                                            >
+                                                <?= htmlspecialchars($code . ' - ' . $name, ENT_QUOTES, 'UTF-8') ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small>Choose an existing program, then continue directly to the checklist builder.</small>
+                                </div>
+                                <button type="submit" class="open-builder-btn">
+                                    <i class="fas fa-layer-group"></i>
+                                    Open Checklist Builder
+                                </button>
+                            </form>
+
+                            <div class="program-selector-summary">
+                                <div class="program-selector-title">
+                                    <i class="fas fa-list-check"></i>
+                                    Selected Program
+                                </div>
+                                <span class="program-selector-code" id="programSummaryCode"><?= htmlspecialchars($defaultProgramCode, ENT_QUOTES, 'UTF-8') ?></span>
+                                <h3 class="program-selector-name" id="programSummaryName">
+                                    <?= htmlspecialchars($defaultProgramCode !== '' ? ($programCatalog[$defaultProgramCode] ?? '') : '', ENT_QUOTES, 'UTF-8') ?>
+                                </h3>
+                                <div class="program-years" id="programSummaryYears">
+                                    <?php if ($defaultProgramCode !== '' && !empty($curriculumYearsByProgram[$defaultProgramCode] ?? [])): ?>
+                                        <?php foreach ($curriculumYearsByProgram[$defaultProgramCode] as $year): ?>
+                                            <span class="year-pill">Curriculum <?= htmlspecialchars($year, ENT_QUOTES, 'UTF-8') ?></span>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <span class="year-pill empty">No checklist/curriculum year yet</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="program-selector-note">
+                                    All existing programs stay available here without stretching the page vertically.
+                                </div>
+                            </div>
                         </div>
                     <?php else: ?>
                         <div class="empty-programs">
@@ -607,6 +654,52 @@ $adminSidebarCollapsed = false;
             sidebar.classList.toggle('collapsed');
             mainContent.classList.toggle('expanded');
         }
+
+        (function bindProgramPicker() {
+            const picker = document.getElementById('program_picker');
+            if (!picker) {
+                return;
+            }
+
+            const codeEl = document.getElementById('programSummaryCode');
+            const nameEl = document.getElementById('programSummaryName');
+            const yearsEl = document.getElementById('programSummaryYears');
+
+            function renderSelectedProgram() {
+                const option = picker.options[picker.selectedIndex];
+                if (!option) {
+                    return;
+                }
+
+                if (codeEl) {
+                    codeEl.textContent = option.value || '';
+                }
+                if (nameEl) {
+                    nameEl.textContent = option.dataset.name || '';
+                }
+                if (yearsEl) {
+                    const rawYears = (option.dataset.years || '').trim();
+                    yearsEl.innerHTML = '';
+
+                    if (rawYears !== '') {
+                        rawYears.split('|').forEach((year) => {
+                            const pill = document.createElement('span');
+                            pill.className = 'year-pill';
+                            pill.textContent = 'Curriculum ' + year;
+                            yearsEl.appendChild(pill);
+                        });
+                    } else {
+                        const pill = document.createElement('span');
+                        pill.className = 'year-pill empty';
+                        pill.textContent = 'No checklist/curriculum year yet';
+                        yearsEl.appendChild(pill);
+                    }
+                }
+            }
+
+            picker.addEventListener('change', renderSelectedProgram);
+            renderSelectedProgram();
+        })();
     </script>
 </body>
 </html>
