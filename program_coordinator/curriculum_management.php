@@ -1061,6 +1061,7 @@ if (!empty($programOptions)) {
             <div class="menu-group">
               <div class="menu-group-title">User Management</div>
               <li><a href="../admin/account_module.php"><img src="../pix/account.png" alt="User Management" style="filter: brightness(0) invert(1);"> User Management</a></li>
+              <li><a href="../admin/adviser_management.php"><img src="../pix/account.png" alt="Adviser Management" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
             </div>
 
             <div class="menu-group">
@@ -1071,6 +1072,7 @@ if (!empty($programOptions)) {
 
             <div class="menu-group">
               <div class="menu-group-title">System</div>
+              <li><a href="../admin/programs.php"><img src="../pix/update.png" alt="Programs" style="filter: brightness(0) invert(1);"> Programs</a></li>
               <li><a href="curriculum_management.php" class="active"><img src="../pix/curr.png" alt="Curriculum Management" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
             </div>
 
