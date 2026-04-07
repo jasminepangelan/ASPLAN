@@ -1047,45 +1047,18 @@ if (!empty($programOptions)) {
   </div>
 
   <!-- Sidebar -->
-  <div class="sidebar collapsed" id="sidebar">
-    <div class="sidebar-header">
-      <h3><?= htmlspecialchars($panelTitle) ?></h3>
-    </div>
-        <ul class="sidebar-menu">
-          <?php if ($isAdmin): ?>
-            <div class="menu-group">
-              <div class="menu-group-title">Dashboard</div>
-              <li><a href="../admin/index.php"><img src="../pix/home1.png" alt="Dashboard" style="filter: brightness(0) invert(1);"> Dashboard</a></li>
-            </div>
-
-            <div class="menu-group">
-              <div class="menu-group-title">User Management</div>
-              <li><a href="../admin/account_module.php"><img src="../pix/account.png" alt="User Management" style="filter: brightness(0) invert(1);"> User Management</a></li>
-              <li><a href="../admin/adviser_management.php"><img src="../pix/account.png" alt="Adviser Management" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
-            </div>
-
-            <div class="menu-group">
-              <div class="menu-group-title">Student Management</div>
-              <li><a href="../admin/pending_accounts.php"><img src="../pix/pending.png" alt="Pending" style="filter: brightness(0) invert(1);"> Pending Accounts</a></li>
-              <li><a href="../admin/list_of_students.php"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
-            </div>
-
-            <div class="menu-group">
-              <div class="menu-group-title">System</div>
-              <li><a href="../admin/programs.php"><img src="../pix/update.png" alt="Programs" style="filter: brightness(0) invert(1);"> Programs</a></li>
-              <li><a href="curriculum_management.php" class="active"><img src="../pix/curr.png" alt="Curriculum Management" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
-            </div>
-
-            <div class="menu-group">
-              <div class="menu-group-title">Approval</div>
-              <li><a href="../admin/account_approval_settings.php"><img src="../pix/set.png" alt="Approval Settings" style="filter: brightness(0) invert(1);"> Settings</a></li>
-            </div>
-
-            <div class="menu-group">
-              <div class="menu-group-title">Account</div>
-              <li><a href="../admin/logout.php"><img src="../pix/singout.png" alt="Sign Out" style="filter: brightness(0) invert(1);"> Sign Out</a></li>
-            </div>
-          <?php else: ?>
+  <?php if ($isAdmin): ?>
+    <?php
+      $activeAdminPage = 'curriculum_management';
+      $adminSidebarCollapsed = true;
+      require __DIR__ . '/../includes/admin_sidebar.php';
+    ?>
+  <?php else: ?>
+    <div class="sidebar collapsed" id="sidebar">
+      <div class="sidebar-header">
+        <h3><?= htmlspecialchars($panelTitle) ?></h3>
+      </div>
+      <ul class="sidebar-menu">
             <div class="menu-group">
               <div class="menu-group-title">Dashboard</div>
               <li><a href="<?= htmlspecialchars($dashboardHref) ?>"><img src="../pix/home1.png" alt="Dashboard" style="filter: brightness(0) invert(1);"> Dashboard</a></li>
@@ -1104,9 +1077,9 @@ if (!empty($programOptions)) {
               <div class="menu-group-title">Account</div>
               <li><a href="logout.php"><img src="../pix/singout.png" alt="Sign Out" style="filter: brightness(0) invert(1);"> Sign Out</a></li>
             </div>
-          <?php endif; ?>
-        </ul>
-  </div>
+      </ul>
+    </div>
+  <?php endif; ?>
 
   <div class="main-content expanded" id="mainContent">
     <div class="page-header">
