@@ -59,7 +59,7 @@ if (empty($history)) {
 }
 $historyAll = $history;
 $historyFilter = trim((string)($_GET['status'] ?? ''));
-$allowedHistoryStatuses = ['all', 'pending_adviser', 'pending_coordinator', 'approved', 'rejected', 'cancelled'];
+$allowedHistoryStatuses = ['all', 'pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'approved', 'rejected', 'cancelled'];
 if ($historyFilter === '' || !in_array($historyFilter, $allowedHistoryStatuses, true)) {
     $historyFilter = 'all';
 }
@@ -91,7 +91,7 @@ foreach ($historyAll as $item) {
         $historyStats['rejected']++;
     }
 
-    if ($status === 'pending_adviser' || $status === 'pending_coordinator') {
+    if (in_array($status, ['pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
         $historyStats['pending']++;
     }
 }
@@ -599,7 +599,7 @@ closeDBConnection($conn);
             font-weight: 700;
         }
 
-        .status.pending_adviser, .status.pending_coordinator { background: #fef3c7; color: #92400e; }
+        .status.pending_adviser, .status.pending_current_coordinator, .status.pending_destination_coordinator, .status.pending_coordinator { background: #fef3c7; color: #92400e; }
         .status.approved { background: #dcfce7; color: #166534; }
         .status.rejected { background: #fee2e2; color: #b91c1c; }
         .status.cancelled { background: #e5e7eb; color: #374151; }
@@ -792,7 +792,9 @@ closeDBConnection($conn);
                 <select id="status" name="status" onchange="this.form.submit()">
                     <option value="all" <?= $historyFilter === 'all' ? 'selected' : '' ?>>All</option>
                     <option value="pending_adviser" <?= $historyFilter === 'pending_adviser' ? 'selected' : '' ?>>Pending Adviser</option>
-                    <option value="pending_coordinator" <?= $historyFilter === 'pending_coordinator' ? 'selected' : '' ?>>Pending Coordinator</option>
+                    <option value="pending_current_coordinator" <?= $historyFilter === 'pending_current_coordinator' ? 'selected' : '' ?>>Pending Current Program Coordinator</option>
+                    <option value="pending_destination_coordinator" <?= $historyFilter === 'pending_destination_coordinator' ? 'selected' : '' ?>>Pending Destination Program Coordinator</option>
+                    <option value="pending_coordinator" <?= $historyFilter === 'pending_coordinator' ? 'selected' : '' ?>>Pending Coordinator (Legacy)</option>
                     <option value="approved" <?= $historyFilter === 'approved' ? 'selected' : '' ?>>Approved</option>
                     <option value="rejected" <?= $historyFilter === 'rejected' ? 'selected' : '' ?>>Rejected</option>
                     <option value="cancelled" <?= $historyFilter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>

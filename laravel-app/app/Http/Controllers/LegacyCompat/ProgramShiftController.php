@@ -219,7 +219,7 @@ class ProgramShiftController extends Controller
             }
 
             $now = now()->toDateTimeString();
-            $nextStatus = $action === 'approve' ? 'pending_coordinator' : 'rejected';
+            $nextStatus = $action === 'approve' ? 'pending_current_coordinator' : 'rejected';
 
             DB::beginTransaction();
 
@@ -251,7 +251,7 @@ class ProgramShiftController extends Controller
                 ]);
 
                 $this->addAuditLog($requestId, 'adviser_' . $action, $action === 'approve'
-                    ? 'Adviser approved and forwarded the shift request to Program Coordinator.'
+                    ? 'Adviser approved and forwarded the shift request to the current-program coordinator.'
                     : 'Adviser rejected the shift request.', $actorUsername, 'adviser', [
                     'comment' => $comment,
                     'next_status' => $nextStatus,
@@ -266,20 +266,20 @@ class ProgramShiftController extends Controller
             $studentEmail = $this->fetchStudentEmail((string) ($requestRow['student_number'] ?? ''));
             if ($studentEmail !== '') {
                 $this->sendProgramShiftStatusEmail(
-                    $studentEmail,
-                    (string) ($requestRow['student_name'] ?? ''),
-                    (string) ($requestRow['request_code'] ?? ''),
-                    $action === 'approve' ? 'Pending Coordinator Review' : 'Rejected by Adviser',
-                    (string) ($requestRow['current_program'] ?? ''),
-                    (string) ($requestRow['requested_program'] ?? ''),
-                    $action === 'approve'
-                        ? 'Your request has been forwarded to the Program Coordinator.'
-                        : 'Your request was rejected by the Adviser.'
-                );
-            }
+                $studentEmail,
+                (string) ($requestRow['student_name'] ?? ''),
+                (string) ($requestRow['request_code'] ?? ''),
+                $action === 'approve' ? 'Pending Current Program Coordinator Review' : 'Rejected by Adviser',
+                (string) ($requestRow['current_program'] ?? ''),
+                (string) ($requestRow['requested_program'] ?? ''),
+                $action === 'approve'
+                    ? 'Your request has been forwarded to the Program Coordinator of your current program.'
+                    : 'Your request was rejected by the Adviser.'
+            );
+        }
 
-            return $this->response(true, $action === 'approve'
-                ? 'Request approved and forwarded to Program Coordinator.'
+        return $this->response(true, $action === 'approve'
+                ? 'Request approved and forwarded to the current-program coordinator.'
                 : 'Request rejected by adviser.');
         } catch (Throwable $e) {
             return $this->response(false, 'Unable to process adviser decision.', 500);
@@ -315,16 +315,24 @@ class ProgramShiftController extends Controller
                 return $this->response(false, 'Shift request not found.', 404);
             }
 
-            if ((string) ($requestRow['status'] ?? '') !== 'pending_coordinator') {
+            $stage = $this->resolveCoordinatorStage($requestRow);
+            if ($stage === '') {
                 return $this->response(false, 'This request is not pending Program Coordinator review.', 422);
             }
 
-            if (!$this->programMatchesActorKeys((string) ($requestRow['requested_program'] ?? ''), $programKeys)) {
-                return $this->response(false, 'You are not assigned to review this destination program.', 403);
+            $scopeProgram = $stage === 'current'
+                ? (string) ($requestRow['current_program'] ?? '')
+                : (string) ($requestRow['requested_program'] ?? '');
+            if (!$this->programMatchesActorKeys($scopeProgram, $programKeys)) {
+                return $this->response(false, $stage === 'current'
+                    ? 'You are not assigned to review the student\'s current program.'
+                    : 'You are not assigned to review this destination program.', 403);
             }
 
             $now = now()->toDateTimeString();
-            $newStatus = $action === 'approve' ? 'approved' : 'rejected';
+            $newStatus = $action === 'approve'
+                ? ($stage === 'current' ? 'pending_destination_coordinator' : 'approved')
+                : 'rejected';
             $executionResult = null;
 
             DB::beginTransaction();
@@ -332,7 +340,7 @@ class ProgramShiftController extends Controller
             try {
                 $updated = DB::table('program_shift_requests')
                     ->where('id', $requestId)
-                    ->where('status', 'pending_coordinator')
+                    ->where('status', (string) ($requestRow['status'] ?? ''))
                     ->update([
                         'status' => $newStatus,
                         'coordinator_action_by' => $actorUsername,
@@ -356,11 +364,24 @@ class ProgramShiftController extends Controller
                     'created_at' => $now,
                 ]);
 
-                $this->addAuditLog($requestId, 'coordinator_' . $action, 'Program Coordinator ' . $action . 'd the shift request.', $actorUsername, 'program_coordinator', [
+                $auditMessage = 'Program Coordinator ' . $action . 'd the shift request.';
+                if ($stage === 'current' && $action === 'approve') {
+                    $auditMessage = 'Current-program coordinator approved and forwarded the shift request to the destination-program coordinator.';
+                } elseif ($stage === 'current' && $action === 'reject') {
+                    $auditMessage = 'Current-program coordinator rejected the shift request.';
+                } elseif ($stage === 'destination' && $action === 'approve') {
+                    $auditMessage = 'Destination-program coordinator approved and executed the shift request.';
+                } elseif ($stage === 'destination' && $action === 'reject') {
+                    $auditMessage = 'Destination-program coordinator rejected the shift request.';
+                }
+
+                $this->addAuditLog($requestId, 'coordinator_' . $action, $auditMessage, $actorUsername, 'program_coordinator', [
                     'comment' => $comment,
+                    'stage' => $stage,
+                    'next_status' => $newStatus,
                 ]);
 
-                if ($action === 'approve') {
+                if ($action === 'approve' && $stage === 'destination') {
                     $executionResult = $this->executeApprovedShift($requestRow, $actorUsername, $now);
                     if (!$executionResult['ok']) {
                         throw new \RuntimeException((string) ($executionResult['message'] ?? 'Unable to execute approved shift.'));
@@ -375,10 +396,18 @@ class ProgramShiftController extends Controller
 
             $studentEmail = $this->fetchStudentEmail((string) ($requestRow['student_number'] ?? ''));
             if ($studentEmail !== '') {
-                $details = $action === 'approve'
-                    ? ((string) ($executionResult['message'] ?? 'Request approved.') . ' Shift execution completed.')
-                    : 'Your request was rejected by the Program Coordinator.';
-                $statusLabel = $action === 'approve' ? 'Approved' : 'Rejected by Program Coordinator';
+                if ($action === 'approve' && $stage === 'current') {
+                    $details = 'Your request was approved by the Program Coordinator of your current program and has been forwarded to the Program Coordinator of your requested program.';
+                    $statusLabel = 'Pending Destination Program Coordinator Review';
+                } elseif ($action === 'approve') {
+                    $details = ((string) ($executionResult['message'] ?? 'Request approved.') . ' Shift execution completed.');
+                    $statusLabel = 'Approved';
+                } else {
+                    $details = $stage === 'current'
+                        ? 'Your request was rejected by the Program Coordinator of your current program.'
+                        : 'Your request was rejected by the Program Coordinator of your requested program.';
+                    $statusLabel = 'Rejected by Program Coordinator';
+                }
                 $this->sendProgramShiftStatusEmail(
                     $studentEmail,
                     (string) ($requestRow['student_name'] ?? ''),
@@ -391,7 +420,9 @@ class ProgramShiftController extends Controller
             }
 
             return $this->response(true, $action === 'approve'
-                ? 'Request approved and shift execution completed.'
+                ? ($stage === 'current'
+                    ? 'Request approved and forwarded to the destination-program coordinator.'
+                    : 'Request approved and shift execution completed.')
                 : 'Request rejected by Program Coordinator.');
         } catch (Throwable $e) {
             return $this->response(false, 'Unable to process coordinator decision.', 500);
@@ -425,7 +456,7 @@ class ProgramShiftController extends Controller
     {
         try {
             $rows = DB::table('program_shift_requests')
-                ->where('status', 'pending_coordinator')
+                ->whereIn('status', $this->coordinatorPendingStatuses())
                 ->orderBy('adviser_action_at')
                 ->orderBy('requested_at')
                 ->orderBy('id')
@@ -438,7 +469,11 @@ class ProgramShiftController extends Controller
             }
 
             return array_values(array_filter($rows, function (array $row) use ($programKeys): bool {
-                return $this->programMatchesActorKeys((string) ($row['requested_program'] ?? ''), $programKeys);
+                $stage = $this->resolveCoordinatorStage($row);
+                $scopeProgram = $stage === 'current'
+                    ? (string) ($row['current_program'] ?? '')
+                    : (string) ($row['requested_program'] ?? '');
+                return $this->programMatchesActorKeys($scopeProgram, $programKeys);
             }));
         } catch (Throwable $e) {
             return [];
@@ -534,7 +569,7 @@ class ProgramShiftController extends Controller
                 $stats['rejected']++;
             }
 
-            if ($status === 'pending_adviser' || $status === 'pending_coordinator') {
+            if (in_array($status, array_merge(['pending_adviser'], $this->coordinatorPendingStatuses()), true)) {
                 $stats['pending']++;
             }
         }
@@ -594,7 +629,7 @@ class ProgramShiftController extends Controller
         try {
             return DB::table('program_shift_requests')
                 ->where('student_number', $studentNumber)
-                ->whereIn('status', ['pending_adviser', 'pending_coordinator'])
+                ->whereIn('status', array_merge(['pending_adviser'], $this->coordinatorPendingStatuses()))
                 ->exists();
         } catch (Throwable $e) {
             return false;
@@ -1574,6 +1609,24 @@ class ProgramShiftController extends Controller
         }
 
         return $this->studentMatchesAdviserBatches((string) ($requestRow['student_number'] ?? ''), $adviserBatches);
+    }
+
+    private function coordinatorPendingStatuses(): array
+    {
+        return ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'];
+    }
+
+    private function resolveCoordinatorStage(array $requestRow): string
+    {
+        $status = trim((string) ($requestRow['status'] ?? ''));
+        if ($status === 'pending_current_coordinator') {
+            return 'current';
+        }
+        if ($status === 'pending_destination_coordinator' || $status === 'pending_coordinator') {
+            return 'destination';
+        }
+
+        return '';
     }
 
     private function isBridgeAuthorized(Request $request): bool

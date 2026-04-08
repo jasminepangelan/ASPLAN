@@ -11,7 +11,7 @@ if (!function_exists('psEnsureProgramShiftTables')) {
             current_program VARCHAR(255) NOT NULL,
             requested_program VARCHAR(255) NOT NULL,
             reason TEXT DEFAULT NULL,
-            status ENUM('pending_adviser','pending_coordinator','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_adviser',
+            status ENUM('pending_adviser','pending_current_coordinator','pending_destination_coordinator','pending_coordinator','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_adviser',
             adviser_action_by VARCHAR(100) DEFAULT NULL,
             adviser_action_name VARCHAR(255) DEFAULT NULL,
             adviser_action_at DATETIME DEFAULT NULL,
@@ -30,6 +30,13 @@ if (!function_exists('psEnsureProgramShiftTables')) {
             KEY idx_program_shift_student (student_number),
             KEY idx_program_shift_status (status)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        try {
+            $conn->query("ALTER TABLE program_shift_requests MODIFY COLUMN status ENUM('pending_adviser','pending_current_coordinator','pending_destination_coordinator','pending_coordinator','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_adviser'");
+        } catch (Throwable $e) {
+            // Keep the request flow operational even if the enum already matches
+            // or the current MySQL user cannot alter the column during this request.
+        }
 
         $conn->query("CREATE TABLE IF NOT EXISTS program_shift_approvals (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -379,6 +386,26 @@ if (!function_exists('psBuildCourseSignature')) {
         }
 
         return implode('|', [$title, $cuLec, $cuLab, $lhLec, $lhLab]);
+    }
+}
+
+if (!function_exists('psCoordinatorPendingStatuses')) {
+    function psCoordinatorPendingStatuses() {
+        return ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'];
+    }
+}
+
+if (!function_exists('psResolveCoordinatorStage')) {
+    function psResolveCoordinatorStage(array $requestRow) {
+        $status = trim((string)($requestRow['status'] ?? ''));
+        if ($status === 'pending_current_coordinator') {
+            return 'current';
+        }
+        if ($status === 'pending_destination_coordinator' || $status === 'pending_coordinator') {
+            return 'destination';
+        }
+
+        return '';
     }
 }
 
@@ -978,7 +1005,7 @@ if (!function_exists('psFetchCurriculumCourses')) {
 
 if (!function_exists('psHasActiveShiftRequest')) {
     function psHasActiveShiftRequest($conn, $studentNumber) {
-        $stmt = $conn->prepare("SELECT id FROM program_shift_requests WHERE student_number = ? AND status IN ('pending_adviser', 'pending_coordinator') LIMIT 1");
+        $stmt = $conn->prepare("SELECT id FROM program_shift_requests WHERE student_number = ? AND status IN ('pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator') LIMIT 1");
         if (!$stmt) {
             return false;
         }
@@ -1653,7 +1680,7 @@ if (!function_exists('psHandleAdviserDecision')) {
             return ['ok' => false, 'message' => 'Invalid action.'];
         }
 
-        $nextStatus = $action === 'approve' ? 'pending_coordinator' : 'rejected';
+        $nextStatus = $action === 'approve' ? 'pending_current_coordinator' : 'rejected';
 
         $conn->begin_transaction();
 
@@ -1692,7 +1719,7 @@ if (!function_exists('psHandleAdviserDecision')) {
             $approval->close();
 
             $auditMessage = $action === 'approve'
-                ? 'Adviser approved and forwarded the shift request to Program Coordinator.'
+                ? 'Adviser approved and forwarded the shift request to the current-program coordinator.'
                 : 'Adviser rejected the shift request.';
             psAddAuditLog($conn, $requestId, 'adviser_' . $action, $auditMessage, $actorUsername, 'adviser', [
                 'comment' => $comment,
@@ -1710,12 +1737,12 @@ if (!function_exists('psHandleAdviserDecision')) {
             psSendProgramShiftEmail(
                 (string)($studentRow['email'] ?? ''),
                 (string)($request['student_name'] ?? ''),
-                $action === 'approve' ? 'Pending Coordinator Review' : 'Rejected by Adviser',
+                $action === 'approve' ? 'Pending Current Program Coordinator Review' : 'Rejected by Adviser',
                 (string)($request['request_code'] ?? ''),
                 (string)($request['current_program'] ?? ''),
                 (string)($request['requested_program'] ?? ''),
                 $action === 'approve'
-                    ? 'Your request has been forwarded to the Program Coordinator.'
+                    ? 'Your request has been forwarded to the Program Coordinator of your current program.'
                     : 'Your request was rejected by the Adviser.'
             );
         }
@@ -1723,7 +1750,7 @@ if (!function_exists('psHandleAdviserDecision')) {
         return [
             'ok' => true,
             'message' => $action === 'approve'
-                ? 'Request approved and forwarded to Program Coordinator.'
+                ? 'Request approved and forwarded to the current-program coordinator.'
                 : 'Request rejected by adviser.',
         ];
     }
@@ -1736,12 +1763,18 @@ if (!function_exists('psHandleCoordinatorDecision')) {
             return ['ok' => false, 'message' => 'Shift request not found.'];
         }
 
-        if ((string)$request['status'] !== 'pending_coordinator') {
+        $stage = psResolveCoordinatorStage($request);
+        if ($stage === '') {
             return ['ok' => false, 'message' => 'This request is not pending Program Coordinator review.'];
         }
 
-        if (!psProgramMatchesActorKeys((string)$request['requested_program'], $actorProgramKeys)) {
-            return ['ok' => false, 'message' => 'You are not assigned to review this destination program.'];
+        $scopeProgram = $stage === 'current'
+            ? (string)($request['current_program'] ?? '')
+            : (string)($request['requested_program'] ?? '');
+        if (!psProgramMatchesActorKeys($scopeProgram, $actorProgramKeys)) {
+            return ['ok' => false, 'message' => $stage === 'current'
+                ? 'You are not assigned to review the student\'s current program.'
+                : 'You are not assigned to review this destination program.'];
         }
 
         $action = strtolower(trim((string)$action));
@@ -1752,16 +1785,21 @@ if (!function_exists('psHandleCoordinatorDecision')) {
         $conn->begin_transaction();
 
         try {
-            $newStatus = $action === 'approve' ? 'approved' : 'rejected';
+            if ($action === 'approve') {
+                $newStatus = $stage === 'current' ? 'pending_destination_coordinator' : 'approved';
+            } else {
+                $newStatus = 'rejected';
+            }
             $update = $conn->prepare("UPDATE program_shift_requests
                 SET status = ?, coordinator_action_by = ?, coordinator_action_name = ?, coordinator_action_at = NOW(), coordinator_comment = ?
-                WHERE id = ? AND status = 'pending_coordinator'");
+                WHERE id = ? AND status = ?");
             if (!$update) {
                 throw new RuntimeException('Unable to update request.');
             }
 
             $requestId = (int)$requestId;
-            $update->bind_param('ssssi', $newStatus, $actorUsername, $actorName, $comment, $requestId);
+            $currentStatus = (string)($request['status'] ?? '');
+            $update->bind_param('ssssis', $newStatus, $actorUsername, $actorName, $comment, $requestId, $currentStatus);
             if (!$update->execute()) {
                 $update->close();
                 throw new RuntimeException('Unable to update request.');
@@ -1780,11 +1818,24 @@ if (!function_exists('psHandleCoordinatorDecision')) {
                 $approval->close();
             }
 
-            psAddAuditLog($conn, $requestId, 'coordinator_' . $action, 'Program Coordinator ' . $action . 'd the shift request.', $actorUsername, 'program_coordinator', [
+            $auditMessage = 'Program Coordinator ' . $action . 'd the shift request.';
+            if ($stage === 'current' && $action === 'approve') {
+                $auditMessage = 'Current-program coordinator approved and forwarded the shift request to the destination-program coordinator.';
+            } elseif ($stage === 'current' && $action === 'reject') {
+                $auditMessage = 'Current-program coordinator rejected the shift request.';
+            } elseif ($stage === 'destination' && $action === 'approve') {
+                $auditMessage = 'Destination-program coordinator approved and executed the shift request.';
+            } elseif ($stage === 'destination' && $action === 'reject') {
+                $auditMessage = 'Destination-program coordinator rejected the shift request.';
+            }
+
+            psAddAuditLog($conn, $requestId, 'coordinator_' . $action, $auditMessage, $actorUsername, 'program_coordinator', [
                 'comment' => $comment,
+                'stage' => $stage,
+                'next_status' => $newStatus,
             ]);
 
-            if ($action === 'approve') {
+            if ($action === 'approve' && $stage === 'destination') {
                 $executionResult = psExecuteApprovedShift($conn, $request, $actorUsername);
                 if (!$executionResult['ok']) {
                     throw new RuntimeException((string)$executionResult['message']);
@@ -1795,13 +1846,22 @@ if (!function_exists('psHandleCoordinatorDecision')) {
 
             $studentRow = psGetCurrentStudentInfo($conn, (string)$request['student_number']);
             if ($studentRow) {
-                $details = $action === 'approve'
-                    ? 'Your request has been approved. Shift execution completed.'
-                    : 'Your request was rejected by the Program Coordinator.';
+                if ($action === 'approve' && $stage === 'current') {
+                    $details = 'Your request was approved by the Program Coordinator of your current program and has been forwarded to the Program Coordinator of your requested program.';
+                    $statusLabel = 'Pending Destination Program Coordinator Review';
+                } elseif ($action === 'approve') {
+                    $details = 'Your request has been approved. Shift execution completed.';
+                    $statusLabel = 'Approved';
+                } else {
+                    $details = $stage === 'current'
+                        ? 'Your request was rejected by the Program Coordinator of your current program.'
+                        : 'Your request was rejected by the Program Coordinator of your requested program.';
+                    $statusLabel = 'Rejected by Program Coordinator';
+                }
                 psSendProgramShiftEmail(
                     (string)($studentRow['email'] ?? ''),
                     (string)($request['student_name'] ?? ''),
-                    $action === 'approve' ? 'Approved' : 'Rejected by Program Coordinator',
+                    $statusLabel,
                     (string)($request['request_code'] ?? ''),
                     (string)($request['current_program'] ?? ''),
                     (string)($request['requested_program'] ?? ''),
@@ -1812,7 +1872,9 @@ if (!function_exists('psHandleCoordinatorDecision')) {
             return [
                 'ok' => true,
                 'message' => $action === 'approve'
-                    ? 'Request approved and shift execution completed.'
+                    ? ($stage === 'current'
+                        ? 'Request approved and forwarded to the destination-program coordinator.'
+                        : 'Request approved and shift execution completed.')
                     : 'Request rejected by Program Coordinator.',
             ];
         } catch (Throwable $e) {
@@ -1864,13 +1926,18 @@ if (!function_exists('psFetchAdviserQueue')) {
 if (!function_exists('psFetchCoordinatorQueue')) {
     function psFetchCoordinatorQueue($conn, array $programKeys) {
         $rows = [];
-        $result = $conn->query("SELECT * FROM program_shift_requests WHERE status = 'pending_coordinator' ORDER BY adviser_action_at ASC, requested_at ASC, id ASC");
+        $statuses = "'" . implode("','", array_map([$conn, 'real_escape_string'], psCoordinatorPendingStatuses())) . "'";
+        $result = $conn->query("SELECT * FROM program_shift_requests WHERE status IN ($statuses) ORDER BY adviser_action_at ASC, requested_at ASC, id ASC");
         if (!$result) {
             return $rows;
         }
 
         while ($row = $result->fetch_assoc()) {
-            if (empty($programKeys) || psProgramMatchesActorKeys((string)($row['requested_program'] ?? ''), $programKeys)) {
+            $stage = psResolveCoordinatorStage($row);
+            $scopeProgram = $stage === 'current'
+                ? (string)($row['current_program'] ?? '')
+                : (string)($row['requested_program'] ?? '');
+            if (empty($programKeys) || psProgramMatchesActorKeys($scopeProgram, $programKeys)) {
                 $rows[] = $row;
             }
         }
@@ -1948,7 +2015,7 @@ if (!function_exists('psGetStudentShiftSummary')) {
         $stmt = $conn->prepare(
             "SELECT
                 COUNT(*) AS total,
-                SUM(CASE WHEN status IN ('pending_adviser', 'pending_coordinator') THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN status IN ('pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator') THEN 1 ELSE 0 END) AS pending,
                 SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved,
                 SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected
              FROM program_shift_requests
@@ -1998,7 +2065,7 @@ if (!function_exists('psGetAdviserShiftSummary')) {
             'rejected' => 0,
         ];
 
-        $result = $conn->query("SELECT status, current_program FROM program_shift_requests WHERE status IN ('pending_adviser', 'pending_coordinator', 'rejected')");
+        $result = $conn->query("SELECT status, current_program FROM program_shift_requests WHERE status IN ('pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'rejected')");
         if (!$result) {
             return $summary;
         }
@@ -2011,7 +2078,7 @@ if (!function_exists('psGetAdviserShiftSummary')) {
             $status = (string)($row['status'] ?? '');
             if ($status === 'pending_adviser') {
                 $summary['pending']++;
-            } elseif ($status === 'pending_coordinator') {
+            } elseif (in_array($status, ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
                 $summary['forwarded']++;
             } elseif ($status === 'rejected') {
                 $summary['rejected']++;
@@ -2030,14 +2097,14 @@ if (!function_exists('psGetCoordinatorShiftSummary')) {
             'rejected' => 0,
         ];
 
-        $result = $conn->query("SELECT status FROM program_shift_requests WHERE status IN ('pending_coordinator', 'approved', 'rejected')");
+        $result = $conn->query("SELECT status FROM program_shift_requests WHERE status IN ('pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'approved', 'rejected')");
         if (!$result) {
             return $summary;
         }
 
         while ($row = $result->fetch_assoc()) {
             $status = (string)($row['status'] ?? '');
-            if ($status === 'pending_coordinator') {
+            if (in_array($status, ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
                 $summary['pending']++;
             } elseif ($status === 'approved') {
                 $summary['approved']++;

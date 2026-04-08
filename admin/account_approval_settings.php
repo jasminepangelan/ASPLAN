@@ -681,6 +681,8 @@ try {
 
 $programShiftStats = [
     'pending_adviser' => 0,
+    'pending_current_coordinator' => 0,
+    'pending_destination_coordinator' => 0,
     'pending_coordinator' => 0,
     'approved' => 0,
     'rejected' => 0,
@@ -704,6 +706,8 @@ try {
 
         $programShiftStats['total'] =
             (int)$programShiftStats['pending_adviser'] +
+            (int)$programShiftStats['pending_current_coordinator'] +
+            (int)$programShiftStats['pending_destination_coordinator'] +
             (int)$programShiftStats['pending_coordinator'] +
             (int)$programShiftStats['approved'] +
             (int)$programShiftStats['rejected'];
@@ -2486,7 +2490,7 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
                 <div class="stat-label">Pending Adviser</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number"><?php echo (int)$programShiftStats['pending_coordinator']; ?></div>
+                <div class="stat-number"><?php echo (int)$programShiftStats['pending_current_coordinator'] + (int)$programShiftStats['pending_destination_coordinator'] + (int)$programShiftStats['pending_coordinator']; ?></div>
                 <div class="stat-label">Pending Coordinator</div>
             </div>
             <div class="stat-card">

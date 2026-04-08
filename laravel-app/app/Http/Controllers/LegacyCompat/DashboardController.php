@@ -90,7 +90,7 @@ class DashboardController extends Controller
 
         $row = DB::table('program_shift_requests')
             ->selectRaw("COUNT(*) AS total")
-            ->selectRaw("SUM(CASE WHEN status IN ('pending_adviser', 'pending_coordinator') THEN 1 ELSE 0 END) AS pending")
+            ->selectRaw("SUM(CASE WHEN status IN ('pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator') THEN 1 ELSE 0 END) AS pending")
             ->selectRaw("SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved")
             ->selectRaw("SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected")
             ->where('student_number', $studentNumber)
@@ -129,7 +129,7 @@ class DashboardController extends Controller
 
         $rows = DB::table('program_shift_requests')
             ->select(['status', 'current_program'])
-            ->whereIn('status', ['pending_adviser', 'pending_coordinator', 'rejected'])
+            ->whereIn('status', ['pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'rejected'])
             ->get();
 
         foreach ($rows as $row) {
@@ -140,7 +140,7 @@ class DashboardController extends Controller
             $status = (string) ($row->status ?? '');
             if ($status === 'pending_adviser') {
                 $summary['pending']++;
-            } elseif ($status === 'pending_coordinator') {
+            } elseif (in_array($status, ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
                 $summary['forwarded']++;
             } elseif ($status === 'rejected') {
                 $summary['rejected']++;
@@ -160,12 +160,12 @@ class DashboardController extends Controller
 
         $rows = DB::table('program_shift_requests')
             ->select(['status'])
-            ->whereIn('status', ['pending_coordinator', 'approved', 'rejected'])
+            ->whereIn('status', ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'approved', 'rejected'])
             ->get();
 
         foreach ($rows as $row) {
             $status = (string) ($row->status ?? '');
-            if ($status === 'pending_coordinator') {
+            if (in_array($status, ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
                 $summary['pending']++;
             } elseif ($status === 'approved') {
                 $summary['approved']++;

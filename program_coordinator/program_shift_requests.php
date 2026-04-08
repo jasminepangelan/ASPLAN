@@ -436,7 +436,7 @@ closeDBConnection($conn);
             </form>
 
             <?php if (empty($queue)): ?>
-                <p>No pending adviser-approved shift requests.</p>
+                <p>No pending coordinator shift requests.</p>
             <?php else: ?>
                 <?php
                     $baseParams = ['q' => $search, 'per_page' => $perPage];
@@ -514,6 +514,15 @@ closeDBConnection($conn);
                     </thead>
                     <tbody>
                         <?php foreach ($queue as $row): ?>
+                            <?php
+                                $queueStatus = (string)($row['status'] ?? '');
+                                $isCurrentProgramStage = $queueStatus === 'pending_current_coordinator';
+                                $stageLabel = $isCurrentProgramStage ? 'Current Program Review' : 'Destination Program Review';
+                                $approveLabel = $isCurrentProgramStage ? 'Approve + Forward' : 'Approve + Execute';
+                                $commentPlaceholder = $isCurrentProgramStage
+                                    ? 'Optional current-program coordinator remarks'
+                                    : 'Optional destination-program coordinator remarks';
+                            ?>
                             <tr>
                                 <td>
                                     <strong><?= htmlspecialchars((string)$row['request_code']) ?></strong><br>
@@ -526,15 +535,16 @@ closeDBConnection($conn);
                                 <td><?= htmlspecialchars((string)$row['current_program']) ?></td>
                                 <td><?= htmlspecialchars((string)$row['requested_program']) ?></td>
                                 <td>
+                                    <strong style="display:block; margin-bottom:4px; color:#206018;"><?= htmlspecialchars($stageLabel) ?></strong>
                                     <?= nl2br(htmlspecialchars((string)$row['adviser_comment'])) ?>
                                 </td>
                                 <td>
                                     <form method="post">
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                                         <input type="hidden" name="request_id" value="<?= (int)$row['id'] ?>">
-                                        <textarea name="comment" placeholder="Optional coordinator remarks"></textarea>
+                                        <textarea name="comment" placeholder="<?= htmlspecialchars($commentPlaceholder) ?>"></textarea>
                                         <div class="actions">
-                                            <button class="btn approve" type="submit" name="action" value="approve">Approve + Execute</button>
+                                            <button class="btn approve" type="submit" name="action" value="approve"><?= htmlspecialchars($approveLabel) ?></button>
                                             <button class="btn reject" type="submit" name="action" value="reject">Reject</button>
                                         </div>
                                     </form>

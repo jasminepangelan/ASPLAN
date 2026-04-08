@@ -502,7 +502,7 @@ class StudyPlanGenerator {
                 SELECT id
                 FROM program_shift_requests
                 WHERE student_number = ?
-                AND status IN ('pending_adviser', 'pending_coordinator')
+                AND status IN ('pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator')
                 LIMIT 1
             ");
             if ($shiftStmt) {

@@ -204,6 +204,8 @@ class AccountManagementController extends Controller
 
             $programShiftStats = [
                 'pending_adviser' => 0,
+                'pending_current_coordinator' => 0,
+                'pending_destination_coordinator' => 0,
                 'pending_coordinator' => 0,
                 'approved' => 0,
                 'rejected' => 0,
@@ -230,6 +232,8 @@ class AccountManagementController extends Controller
 
                 $programShiftStats['total'] =
                     (int) $programShiftStats['pending_adviser'] +
+                    (int) $programShiftStats['pending_current_coordinator'] +
+                    (int) $programShiftStats['pending_destination_coordinator'] +
                     (int) $programShiftStats['pending_coordinator'] +
                     (int) $programShiftStats['approved'] +
                     (int) $programShiftStats['rejected'];
