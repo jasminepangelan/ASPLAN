@@ -468,6 +468,13 @@ class CurriculumManagementController extends Controller
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
             );
 
+            if (!Schema::hasColumn('student_study_plan_overrides', 'updated_by')) {
+                DB::statement("ALTER TABLE student_study_plan_overrides ADD COLUMN updated_by VARCHAR(120) DEFAULT NULL");
+            }
+            if (!Schema::hasColumn('student_study_plan_overrides', 'updated_at')) {
+                DB::statement("ALTER TABLE student_study_plan_overrides ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            }
+
             $updatedBy = $this->getActorName($request);
 
             DB::table('student_study_plan_overrides')->updateOrInsert(
@@ -482,6 +489,13 @@ class CurriculumManagementController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Course moved successfully']);
         } catch (Throwable $e) {
+            logger()->error('Failed to save study plan override', [
+                'student_id' => $studentId ?? null,
+                'course_code' => $courseCode ?? null,
+                'target_year' => $targetYear ?? null,
+                'target_semester' => $targetSemester ?? null,
+                'exception' => $e->getMessage(),
+            ]);
             return response()->json(['success' => false, 'message' => 'Failed to save override'], 500);
         }
     }

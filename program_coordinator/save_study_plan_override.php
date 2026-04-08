@@ -87,6 +87,24 @@ $conn->query(
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
 );
 
+$overrideColumns = [];
+$overrideColumnsResult = $conn->query("SHOW COLUMNS FROM student_study_plan_overrides");
+if ($overrideColumnsResult) {
+    while ($columnRow = $overrideColumnsResult->fetch_assoc()) {
+        $field = trim((string)($columnRow['Field'] ?? ''));
+        if ($field !== '') {
+            $overrideColumns[$field] = true;
+        }
+    }
+}
+
+if (!isset($overrideColumns['updated_by'])) {
+    $conn->query("ALTER TABLE student_study_plan_overrides ADD COLUMN updated_by VARCHAR(120) DEFAULT NULL");
+}
+if (!isset($overrideColumns['updated_at'])) {
+    $conn->query("ALTER TABLE student_study_plan_overrides ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+}
+
 $stmt = $conn->prepare(
     "INSERT INTO student_study_plan_overrides
         (student_id, course_code, target_year, target_semester, updated_by)
