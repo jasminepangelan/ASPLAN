@@ -25,9 +25,19 @@ $targetSemester = trim((string)($input['target_semester'] ?? ''));
 
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
+    $bridgePayload = $input;
+    $bridgePayload['bridge_authorized'] = true;
+    if ($isAdmin) {
+        $bridgePayload['admin_id'] = (string)($_SESSION['admin_id'] ?? '');
+        $bridgePayload['admin_username'] = (string)($_SESSION['admin_username'] ?? '');
+    } else {
+        $bridgePayload['username'] = (string)($_SESSION['username'] ?? '');
+        $bridgePayload['user_type'] = 'program_coordinator';
+    }
+
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/study-plan/override',
-        $input
+        '/api/study-plan/override',
+        $bridgePayload
     );
     if (is_array($bridgeData)) {
         echo json_encode($bridgeData);
@@ -92,9 +102,11 @@ $updatedBy = $isAdmin
     : (string)($_SESSION['username'] ?? '');
 $stmt->bind_param('sssss', $studentId, $courseCode, $targetYear, $targetSemester, $updatedBy);
 $ok = $stmt->execute();
+$dbError = $stmt->error;
 $stmt->close();
 
 if (!$ok) {
+    error_log('Failed to save study plan override for student ' . $studentId . ' course ' . $courseCode . ': ' . $dbError);
     echo json_encode(['success' => false, 'message' => 'Failed to save override']);
     closeDBConnection($conn);
     exit();
