@@ -1367,6 +1367,12 @@ class ProgramShiftController extends Controller
 
         $normalized = strtoupper((string) preg_replace('/\s+/', ' ', $programName));
 
+        if ((strpos($normalized, 'BUSINESS ADMINISTRATION') !== false || strpos($normalized, 'BSBA') !== false) && strpos($normalized, 'HUMAN RESOURCE') !== false) {
+            return 'BSBA-HRM';
+        }
+        if ((strpos($normalized, 'BUSINESS ADMINISTRATION') !== false || strpos($normalized, 'BSBA') !== false) && strpos($normalized, 'MARKETING') !== false) {
+            return 'BSBA-MM';
+        }
         if (strpos($normalized, 'INFORMATION TECHNOLOGY') !== false) {
             return 'BSIT';
         }
@@ -1385,9 +1391,21 @@ class ProgramShiftController extends Controller
         if (strpos($normalized, 'MECHANICAL ENGINEERING') !== false) {
             return 'BSME';
         }
+        if ((strpos($normalized, 'SECONDARY EDUCATION') !== false || strpos($normalized, 'BSED') !== false) && strpos($normalized, 'ENGLISH') !== false) {
+            return 'BSED-ENGLISH';
+        }
+        if ((strpos($normalized, 'SECONDARY EDUCATION') !== false || strpos($normalized, 'BSED') !== false) && (strpos($normalized, 'MATH') !== false || strpos($normalized, 'MATHEMATICS') !== false)) {
+            return 'BSED-MATH';
+        }
+        if ((strpos($normalized, 'SECONDARY EDUCATION') !== false || strpos($normalized, 'BSED') !== false) && strpos($normalized, 'SCIENCE') !== false) {
+            return 'BSED-SCIENCE';
+        }
 
         if (preg_match('/\b(BSCS|BSIT|BSIS|BSBA|BSA|BSED|BEED|BSCPE|BSCP[E]?|BSCE|BSEE|BSME|BSTM|BSHM|BSN)\b/', $normalized, $codeMatch)) {
             $baseCode = strtoupper($codeMatch[1]);
+        } elseif (strpos($normalized, 'BS ') === 0) {
+            $subject = trim(substr($normalized, 3));
+            $baseCode = 'BS' . $this->acronymFromPhrase($subject);
         } elseif (strpos($normalized, 'BACHELOR OF SCIENCE IN') !== false) {
             $subject = trim(str_replace('BACHELOR OF SCIENCE IN', '', $normalized));
             $baseCode = 'BS' . $this->acronymFromPhrase($subject);
