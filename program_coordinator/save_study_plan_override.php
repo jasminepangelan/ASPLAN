@@ -22,6 +22,7 @@ $studentId = trim((string)($input['student_id'] ?? ''));
 $courseCode = trim((string)($input['course_code'] ?? ''));
 $targetYear = trim((string)($input['target_year'] ?? ''));
 $targetSemester = trim((string)($input['target_semester'] ?? ''));
+$bridgeFailureMessage = '';
 
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
@@ -40,8 +41,12 @@ if ($useLaravelBridge) {
         $bridgePayload
     );
     if (is_array($bridgeData)) {
-        echo json_encode($bridgeData);
-        exit();
+        if (!empty($bridgeData['success'])) {
+            echo json_encode($bridgeData);
+            exit();
+        }
+
+        $bridgeFailureMessage = trim((string)($bridgeData['message'] ?? ''));
     }
 }
 
@@ -125,7 +130,8 @@ $stmt->close();
 
 if (!$ok) {
     error_log('Failed to save study plan override for student ' . $studentId . ' course ' . $courseCode . ': ' . $dbError);
-    echo json_encode(['success' => false, 'message' => 'Failed to save override']);
+    $message = $bridgeFailureMessage !== '' ? $bridgeFailureMessage : 'Failed to save override';
+    echo json_encode(['success' => false, 'message' => $message]);
     closeDBConnection($conn);
     exit();
 }
