@@ -255,6 +255,7 @@ class AdviserManagementController extends Controller
 
     private function loadProgramScopedAdvisers(string $selectedProgram): array
     {
+        $scopedKeys = $this->expandProgramScopeKeys($selectedProgram !== '' ? [$selectedProgram] : []);
         $byUsername = [];
         $ids = [];
 
@@ -264,7 +265,7 @@ class AdviserManagementController extends Controller
 
         foreach ($rows as $row) {
             $programKey = $this->normalizeProgramKey((string) ($row->program ?? ''));
-            if ($selectedProgram !== '' && $programKey !== $selectedProgram) {
+            if ($selectedProgram !== '' && !in_array($programKey, $scopedKeys, true)) {
                 continue;
             }
 
@@ -315,6 +316,7 @@ class AdviserManagementController extends Controller
             return [];
         }
 
+        $scopedKeys = $this->expandProgramScopeKeys([$selectedProgram]);
         $batches = [];
         $rows = DB::table('student_info')
             ->select(DB::raw('DISTINCT LEFT(student_number, 4) as batch'), DB::raw('TRIM(program) AS program'))
@@ -324,7 +326,7 @@ class AdviserManagementController extends Controller
             ->get();
 
         foreach ($rows as $row) {
-            if ($this->normalizeProgramKey((string) ($row->program ?? '')) === $selectedProgram) {
+            if (in_array($this->normalizeProgramKey((string) ($row->program ?? '')), $scopedKeys, true)) {
                 $batches[] = (string) ($row->batch ?? '');
             }
         }
@@ -360,6 +362,7 @@ class AdviserManagementController extends Controller
 
     private function loadAdvisers(string $selectedProgram): array
     {
+        $scopedKeys = $this->expandProgramScopeKeys($selectedProgram !== '' ? [$selectedProgram] : []);
         $advisers = [];
         $rows = DB::table('adviser')
             ->select([
@@ -377,7 +380,7 @@ class AdviserManagementController extends Controller
 
         foreach ($rows as $row) {
             $programKey = $this->normalizeProgramKey((string) ($row->program ?? ''));
-            if ($selectedProgram !== '' && $programKey !== $selectedProgram) {
+            if ($selectedProgram !== '' && !in_array($programKey, $scopedKeys, true)) {
                 continue;
             }
 
@@ -395,6 +398,7 @@ class AdviserManagementController extends Controller
 
     private function loadBatchAssignments(string $selectedProgram): array
     {
+        $scopedKeys = $this->expandProgramScopeKeys($selectedProgram !== '' ? [$selectedProgram] : []);
         $batchAssignments = [];
         $rows = DB::table('adviser_batch as ab')
             ->join('adviser as a', 'ab.adviser_id', '=', 'a.id')
@@ -410,7 +414,7 @@ class AdviserManagementController extends Controller
 
         foreach ($rows as $row) {
             $programKey = $this->normalizeProgramKey((string) ($row->program ?? ''));
-            if ($selectedProgram !== '' && $programKey !== $selectedProgram) {
+            if ($selectedProgram !== '' && !in_array($programKey, $scopedKeys, true)) {
                 continue;
             }
 
@@ -615,6 +619,27 @@ class AdviserManagementController extends Controller
         }
 
         return array_values(array_keys($keys));
+    }
+
+    private function expandProgramScopeKeys(array $programKeys): array
+    {
+        $expanded = [];
+
+        foreach ($programKeys as $programKey) {
+            $programKey = trim((string) $programKey);
+            if ($programKey === '') {
+                continue;
+            }
+
+            $expanded[$programKey] = true;
+
+            if (str_starts_with($programKey, 'BSBA')) {
+                $expanded['BSBA-MM'] = true;
+                $expanded['BSBA-HRM'] = true;
+            }
+        }
+
+        return array_values(array_keys($expanded));
     }
 
     private function normalizeUsernames(mixed $usernames): array

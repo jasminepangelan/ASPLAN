@@ -84,6 +84,29 @@ if (!function_exists('amGetProgramLabelFromKey')) {
     }
 }
 
+if (!function_exists('amExpandProgramScopeKeys')) {
+    function amExpandProgramScopeKeys(array $programKeys): array
+    {
+        $expanded = [];
+
+        foreach ($programKeys as $programKey) {
+            $programKey = trim((string)$programKey);
+            if ($programKey === '') {
+                continue;
+            }
+
+            $expanded[$programKey] = true;
+
+            if (str_starts_with($programKey, 'BSBA')) {
+                $expanded['BSBA-MM'] = true;
+                $expanded['BSBA-HRM'] = true;
+            }
+        }
+
+        return array_values(array_keys($expanded));
+    }
+}
+
 if (!function_exists('amLoadAdviserManagementData')) {
     function amLoadAdviserManagementData(PDO $conn, string $selectedProgram): array
     {
@@ -128,6 +151,8 @@ if (!function_exists('amLoadAdviserManagementData')) {
             $selectedProgram = (string)array_key_first($availablePrograms);
         }
 
+        $scopedProgramKeys = $selectedProgram !== '' ? amExpandProgramScopeKeys([$selectedProgram]) : [];
+
         if ($selectedProgram !== '') {
             $batchQuery = "SELECT DISTINCT LEFT(student_number, 4) as batch, TRIM(program) AS program
                            FROM student_info
@@ -137,7 +162,7 @@ if (!function_exists('amLoadAdviserManagementData')) {
             $batchStmt = $conn->prepare($batchQuery);
             $batchStmt->execute();
             while ($batchRow = $batchStmt->fetch(PDO::FETCH_ASSOC)) {
-                if (amNormalizeProgramKey((string)$batchRow['program']) === $selectedProgram) {
+                if (in_array(amNormalizeProgramKey((string)$batchRow['program']), $scopedProgramKeys, true)) {
                     $batches[] = $batchRow['batch'];
                 }
             }
@@ -173,7 +198,7 @@ if (!function_exists('amLoadAdviserManagementData')) {
         $adviserStmt = $conn->prepare($adviserQuery);
         $adviserStmt->execute();
         while ($adviserRow = $adviserStmt->fetch(PDO::FETCH_ASSOC)) {
-            if ($selectedProgram === '' || amNormalizeProgramKey((string)$adviserRow['program']) === $selectedProgram) {
+            if ($selectedProgram === '' || in_array(amNormalizeProgramKey((string)$adviserRow['program']), $scopedProgramKeys, true)) {
                 $advisers[] = [
                     'id' => $adviserRow['id'],
                     'full_name' => $adviserRow['full_name'],
@@ -191,7 +216,7 @@ if (!function_exists('amLoadAdviserManagementData')) {
         $assignmentStmt->execute();
 
         while ($row = $assignmentStmt->fetch(PDO::FETCH_ASSOC)) {
-            if ($selectedProgram !== '' && amNormalizeProgramKey((string)$row['program']) !== $selectedProgram) {
+            if ($selectedProgram !== '' && !in_array(amNormalizeProgramKey((string)$row['program']), $scopedProgramKeys, true)) {
                 continue;
             }
 
