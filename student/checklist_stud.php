@@ -1736,11 +1736,13 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         const newPage = currentPage + direction;
         if (newPage >= 1 && newPage <= totalPages) {
             currentPage = newPage;
-            updatePageDisplay();
+            updatePageDisplay({ scrollToContainer: true });
         }
     }
 
-    function updatePageDisplay() {
+    function updatePageDisplay(options = {}) {
+        const shouldScrollToContainer = !!options.scrollToContainer;
+
         // Hide all pages
         document.querySelectorAll('.page-content').forEach(function(pageEl) {
             pageEl.classList.remove('active');
@@ -1776,9 +1778,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         if (prevBtnBottom) prevBtnBottom.disabled = currentPage === 1;
         if (nextBtnBottom) nextBtnBottom.disabled = currentPage === totalPages;
 
-        // Scroll to top of container
+        // Only scroll on deliberate pagination changes, not during live refresh.
         const container = document.querySelector('.container');
-        if (container) {
+        if (shouldScrollToContainer && container) {
             container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
@@ -2003,6 +2005,8 @@ function fetchAndUpdateChecklist() {
     }
 
     isChecklistRefreshRunning = true;
+    const mainContent = document.querySelector('.main-content');
+    const previousScrollTop = mainContent ? mainContent.scrollTop : 0;
     const separator = window.location.search.includes('?') ? '&' : '?';
     const requestUrl = `${window.location.pathname}${window.location.search}${separator}_=${Date.now()}`;
 
@@ -2024,7 +2028,10 @@ function fetchAndUpdateChecklist() {
                 currentWrapper.innerHTML = nextWrapper.innerHTML;
                 bindChecklistFieldListeners(currentWrapper);
                 applyAcademicReadOnlyState();
-                updatePageDisplay();
+                updatePageDisplay({ scrollToContainer: false });
+                if (mainContent) {
+                    mainContent.scrollTop = previousScrollTop;
+                }
             }
         })
         .catch(error => console.error('Error fetching checklist data:', error))
@@ -2258,7 +2265,7 @@ window.addEventListener('afterprint', function() {
 // Attach auto-save listeners to all grade selects
 document.addEventListener('DOMContentLoaded', function() {
     applyAcademicReadOnlyState();
-    updatePageDisplay();
+    updatePageDisplay({ scrollToContainer: false });
     startChecklistLiveRefresh();
     fetchAndUpdateChecklist();
     bindChecklistFieldListeners();
