@@ -24,6 +24,13 @@ if ($current_page < 1) {
     $current_page = 1;
 }
 
+$recordsPerPageConn = getDBConnection();
+$recordsPerPageResult = $recordsPerPageConn->query("SELECT setting_value FROM system_settings WHERE setting_name = 'default_records_per_page' ORDER BY id DESC LIMIT 1");
+if ($recordsPerPageResult && $recordsPerPageRow = $recordsPerPageResult->fetch_assoc()) {
+    $records_per_page = max(5, min(100, (int)($recordsPerPageRow['setting_value'] ?? 10)));
+}
+closeDBConnection($recordsPerPageConn);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
     $postedType = isset($_POST['type']) ? strtolower(trim((string)$_POST['type'])) : 'students';
     $postedSearch = isset($_POST['search']) ? trim((string)$_POST['search']) : '';

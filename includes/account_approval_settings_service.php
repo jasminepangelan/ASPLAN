@@ -51,13 +51,18 @@ function aasToDateTimeLocalValue(string $raw): string {
 }
 
 function aasUpsertSystemSetting(PDO $conn, string $key, string $value, string $updatedBy): void {
-    $updateStmt = $conn->prepare("UPDATE system_settings SET setting_value = ?, updated_by = ?, updated_at = NOW() WHERE setting_name = ?");
-    $updateStmt->execute([$value, $updatedBy, $key]);
+    $existsStmt = $conn->prepare("SELECT id FROM system_settings WHERE setting_name = ? ORDER BY id DESC LIMIT 1");
+    $existsStmt->execute([$key]);
+    $existingId = $existsStmt->fetchColumn();
 
-    if ($updateStmt->rowCount() === 0) {
-        $insertStmt = $conn->prepare("INSERT INTO system_settings (setting_name, setting_value, updated_by, updated_at) VALUES (?, ?, ?, NOW())");
-        $insertStmt->execute([$key, $value, $updatedBy]);
+    if ($existingId !== false) {
+        $updateStmt = $conn->prepare("UPDATE system_settings SET setting_value = ?, updated_by = ?, updated_at = NOW() WHERE id = ?");
+        $updateStmt->execute([$value, $updatedBy, $existingId]);
+        return;
     }
+
+    $insertStmt = $conn->prepare("INSERT INTO system_settings (setting_name, setting_value, updated_by, updated_at) VALUES (?, ?, ?, NOW())");
+    $insertStmt->execute([$key, $value, $updatedBy]);
 }
 
 function aasWriteAdminAuditLog(PDO $conn, string $adminId, string $actionType, string $target, string $summary, array $metadata = []): void {

@@ -352,7 +352,27 @@ class StudentProfileController extends Controller
 
     private function isAllowedEmailDomain(string $email): bool
     {
-        return (bool) preg_match('/@cvsu\.edu\.ph$/i', trim($email));
+        $normalizedEmail = strtolower(trim($email));
+        if (!filter_var($normalizedEmail, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        if ((bool) preg_match('/@cvsu\.edu\.ph$/i', $normalizedEmail)) {
+            return true;
+        }
+
+        $allowedDomainsRaw = (string) ($this->getSettingValue('allowed_email_domains') ?? '');
+        $allowedDomains = array_values(array_filter(array_map(
+            static fn ($domain): string => strtolower(trim((string) $domain)),
+            explode(',', $allowedDomainsRaw)
+        ), static fn (string $domain): bool => $domain !== ''));
+
+        if (empty($allowedDomains)) {
+            return true;
+        }
+
+        $emailDomain = strtolower((string) substr(strrchr($normalizedEmail, '@') ?: '', 1));
+        return $emailDomain !== '' && in_array($emailDomain, $allowedDomains, true);
     }
 
     private function isBridgeAuthorized(Request $request): bool

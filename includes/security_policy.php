@@ -122,20 +122,36 @@ if (!function_exists('isRegistrationWindowOpen')) {
 
 if (!function_exists('isAllowedEmailDomain')) {
     function isAllowedEmailDomain($conn, $email) {
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $normalizedEmail = strtolower(trim((string)$email));
+        if (!filter_var($normalizedEmail, FILTER_VALIDATE_EMAIL)) {
             return [
                 'allowed' => false,
                 'message' => 'Please provide a valid email address.'
             ];
         }
 
-        if (function_exists('sevIsCvsuEmail') && sevIsCvsuEmail((string)$email)) {
+        if (function_exists('sevIsCvsuEmail') && sevIsCvsuEmail($normalizedEmail)) {
+            return ['allowed' => true, 'message' => ''];
+        }
+
+        $allowedDomainsRaw = policySettingString($conn, 'allowed_email_domains', '');
+        $allowedDomains = array_values(array_filter(array_map(
+            static fn ($domain) => strtolower(trim((string)$domain)),
+            explode(',', (string)$allowedDomainsRaw)
+        ), static fn ($domain) => $domain !== ''));
+
+        if (empty($allowedDomains)) {
+            return ['allowed' => true, 'message' => ''];
+        }
+
+        $emailDomain = strtolower((string)substr(strrchr($normalizedEmail, '@') ?: '', 1));
+        if ($emailDomain !== '' && in_array($emailDomain, $allowedDomains, true)) {
             return ['allowed' => true, 'message' => ''];
         }
 
         return [
             'allowed' => false,
-            'message' => 'Only official @cvsu.edu.ph email addresses are allowed for student accounts.'
+            'message' => 'Email domain is not allowed for student accounts.'
         ];
     }
 }
