@@ -59,6 +59,7 @@ if (!function_exists('smlNormalizeCompareValue')) {
 if (!function_exists('smlHeaderKey')) {
     function smlHeaderKey(string $value): string
     {
+        $value = str_replace("\xEF\xBB\xBF", '', $value);
         return strtolower(preg_replace('/[^a-z0-9]+/', '', trim($value)) ?? '');
     }
 }
@@ -243,13 +244,20 @@ if (!function_exists('smlParseCsvUpload')) {
             'studentnumber' => 'Student Number',
             'lastname' => 'Last name',
             'firstname' => 'First name',
-            'middleinitial' => 'Middle Initial',
         ];
 
         foreach ($requiredColumns as $requiredKey => $label) {
             if (!array_key_exists($requiredKey, $headerMap)) {
                 fclose($handle);
-                return ['success' => false, 'message' => 'CSV must include the columns: Student Number, Last name, First name, and Middle Initial.'];
+                return ['success' => false, 'message' => 'CSV must include the columns: Student Number, Last name, and First name. Middle Initial is optional.'];
+            }
+        }
+
+        $middleInitialIndex = null;
+        foreach (['middleinitial', 'middle', 'mi', 'middlename'] as $optionalKey) {
+            if (array_key_exists($optionalKey, $headerMap)) {
+                $middleInitialIndex = (int) $headerMap[$optionalKey];
+                break;
             }
         }
 
@@ -260,7 +268,9 @@ if (!function_exists('smlParseCsvUpload')) {
             $studentNumber = trim((string) ($data[$headerMap['studentnumber']] ?? ''));
             $lastName = trim((string) ($data[$headerMap['lastname']] ?? ''));
             $firstName = trim((string) ($data[$headerMap['firstname']] ?? ''));
-            $middleInitial = smlExtractMiddleInitial((string) ($data[$headerMap['middleinitial']] ?? ''));
+            $middleInitial = $middleInitialIndex !== null
+                ? smlExtractMiddleInitial((string) ($data[$middleInitialIndex] ?? ''))
+                : '';
 
             if ($studentNumber === '' && $lastName === '' && $firstName === '' && $middleInitial === '') {
                 continue;

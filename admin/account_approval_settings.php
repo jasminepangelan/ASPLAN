@@ -2578,7 +2578,7 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
                                     <div class="masterlist-input-group">
                                         <label for="masterlist_csv">CSV File</label>
                                         <input type="file" id="masterlist_csv" name="masterlist_csv" accept=".csv,text/csv" required>
-                                        <div class="masterlist-help">Required columns: <strong>Student Number</strong>, <strong>Last name</strong>, <strong>First name</strong>, and <strong>Middle Initial</strong>.</div>
+                                        <div class="masterlist-help">Required columns: <strong>Student Number</strong>, <strong>Last name</strong>, and <strong>First name</strong>. <strong>Middle Initial</strong> is optional.</div>
                                     </div>
                                 </div>
 
