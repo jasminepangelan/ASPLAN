@@ -156,6 +156,27 @@ foreach ($study_plan as $term) {
         'is_completed_term' => false,
     ];
 }
+
+$last_planned_term = null;
+$remaining_semesters = 0;
+foreach ($study_plan as $term) {
+    if (empty($term['skipped']) && !empty($term['courses'])) {
+        $last_planned_term = $term;
+        $remaining_semesters++;
+    }
+}
+
+$estimated_graduation = null;
+$graduation_school_year = '';
+if ($last_planned_term) {
+    $grad_year_num = (int)preg_replace('/[^0-9]/', '', (string)($last_planned_term['year'] ?? ''));
+    $grad_sy_start = $admission_year + ($grad_year_num > 0 ? $grad_year_num - 1 : 0);
+    $grad_sy_end = $grad_sy_start + 1;
+    $estimated_graduation = (string)($last_planned_term['semester'] ?? '') . ', ' . (string)($last_planned_term['year'] ?? '');
+    $graduation_school_year = "A.Y. $grad_sy_start-$grad_sy_end";
+} elseif (!empty($stats['remaining_courses']) && (int)$stats['remaining_courses'] === 0) {
+    $estimated_graduation = 'Completed';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -551,9 +572,204 @@ foreach ($study_plan as $term) {
             font-weight: 600;
             font-size: 12px;
         }
+        .academic-overview {
+            background: #ffffff;
+            border: 1px solid #d7e3d6;
+            border-radius: 12px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 14px rgba(24, 66, 20, 0.08);
+        }
+        .academic-overview__header {
+            color: #1f5d17;
+            margin-bottom: 14px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .overview-meta {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+        .overview-meta.student {
+            margin-left: auto;
+            background: #eaf6e9;
+            color: #2f6e28;
+            border-color: #b9d9b5;
+        }
+        .overview-meta.generated {
+            background: #f4f7f4;
+            color: #5b6c59;
+            border-color: #d9e2d8;
+        }
+        .academic-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+        }
+        .study-plan-container {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 40px 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 980px;
+            margin: 0 auto;
+        }
+        .student-header {
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .student-details {
+            font-size: 14px;
+            line-height: 1.8;
+            margin-top: 12px;
+        }
+        .student-details p {
+            margin: 0;
+        }
+        .student-details .label {
+            font-weight: 700;
+            color: #000;
+            display: inline-block;
+            min-width: 120px;
+        }
+        .student-details .value {
+            color: #000;
+            font-weight: 400;
+        }
+        .semester-section {
+            margin-bottom: 30px;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .semester-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .semester-section.completed-term {
+            opacity: 0.92;
+        }
+        .semester-section.completed-term .course-table tbody tr {
+            background: #f9fdf9;
+        }
+        .completed-badge {
+            font-size: 10px;
+            background: #4CAF50;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 6px;
+            vertical-align: middle;
+            font-weight: 600;
+        }
+        .plan-tag {
+            font-size: 9px;
+            color: white;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-left: 4px;
+            vertical-align: middle;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .plan-tag-retake { background: #f44336; }
+        .plan-tag-cross { background: #2196F3; }
+        .plan-tag-completed { background: #2e7d32; }
+        .plan-tag-failed { background: #c62828; }
+        .completed-divider {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+        }
+        .completed-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #4CAF50, transparent);
+        }
+        .completed-divider span {
+            background: #fff;
+            padding: 5px 20px;
+            position: relative;
+            font-size: 13px;
+            font-weight: 700;
+            color: #206018;
+            border: 2px solid #4CAF50;
+            border-radius: 20px;
+        }
+        .semester-header {
+            background: transparent;
+            color: #000;
+            padding: 8px 0;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            border: none;
+        }
+        .course-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #000;
+            table-layout: auto;
+        }
+        .course-table thead {
+            background: transparent;
+        }
+        .course-table th {
+            padding: 8px 12px;
+            text-align: center;
+            font-weight: 700;
+            color: #000;
+            border: 1px solid #000;
+            font-size: 13px;
+            background: transparent;
+        }
+        .course-table tbody tr {
+            border: 1px solid #000;
+        }
+        .course-table tbody tr:hover {
+            background: #f9f9f9;
+        }
+        .course-table td {
+            padding: 6px 12px;
+            font-size: 13px;
+            color: #000;
+            border: 1px solid #000;
+            text-align: left;
+            vertical-align: middle;
+        }
+        .course-table td:first-child,
+        .course-table td:nth-child(3),
+        .course-table td:nth-child(4) {
+            text-align: center;
+        }
+        .total-row {
+            background: transparent;
+            font-weight: 700;
+        }
+        .total-row td {
+            border: 1px solid #000;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
         @media (max-width: 768px) {
             .sidebar { transform: translateX(-100%); }
             .main-content { margin-left: 0; }
+            .study-plan-container {
+                padding: 24px 18px;
+            }
+            .student-details .label {
+                min-width: 95px;
+            }
         }
         @media (max-width: 600px) {
             .ay-term-body {
@@ -599,148 +815,219 @@ foreach ($study_plan as $term) {
 
     <div class="main-content" id="mainContent">
         <div class="container">
-            <div class="heading">Student Study Plan</div>
-
-            <div class="panel">
-                <a class="btn-back" href="study_plan_list.php">Back to Study Plan List</a>
-                <div class="student-meta" style="margin-top: 10px;">
-                    <div><strong>Student ID:</strong> <?= htmlspecialchars($student['student_number']) ?></div>
-                    <div><strong>Name:</strong> <?= htmlspecialchars($full_name) ?></div>
-                    <div><strong>Program:</strong> <?= htmlspecialchars($student['program']) ?></div>
-                    <div><strong>Admission Date:</strong> <?= htmlspecialchars($student['date_of_admission'] ?? '') ?></div>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="stats">
-                    <div class="stat-card">
-                        <div class="stat-label">Completion</div>
-                        <div class="stat-value"><?= htmlspecialchars((string)$stats['completion_percentage']) ?>%</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Completed Courses</div>
-                        <div class="stat-value"><?= htmlspecialchars((string)$stats['completed_courses']) ?></div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Remaining Courses</div>
-                        <div class="stat-value"><?= htmlspecialchars((string)$stats['remaining_courses']) ?></div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Back Subjects</div>
-                        <div class="stat-value"><?= htmlspecialchars((string)$stats['back_subjects']) ?></div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Retention Status</div>
-                        <div class="stat-value"><?= htmlspecialchars((string)$stats['retention_status']) ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <?php if (!empty($stats['thrice_failed_count'])): ?>
-                <div class="warning">
-                    Study plan generation is limited because this student has <?= (int)$stats['thrice_failed_count'] ?> course(s) failed three or more times.
-                </div>
-            <?php endif; ?>
-
-            <div class="ay-overview-wrap">
-                <button class="ay-overview-btn" type="button" onclick="openAYModal()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="7" height="9"></rect>
-                        <rect x="14" y="3" width="7" height="5"></rect>
-                        <rect x="14" y="12" width="7" height="9"></rect>
-                        <rect x="3" y="16" width="7" height="5"></rect>
+            <div class="academic-overview">
+                <h3 class="academic-overview__header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 18c-4.41 0-8-3.59-8-8V9h16v3c0 4.41-3.59 8-8 8z"/>
                     </svg>
-                    A.Y. Course Overview
-                </button>
+                    Academic Progress Overview
+                    <span class="overview-meta student">Student: <?= htmlspecialchars((string)$student['student_number']) ?></span>
+                    <span class="overview-meta generated" title="Page generated at <?= date('Y-m-d H:i:s') ?>">
+                        Generated: <?= date('H:i:s') ?>
+                    </span>
+                </h3>
+                <div class="academic-stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value"><?= htmlspecialchars((string)$stats['completion_percentage']) ?>%</div>
+                        <div class="stat-sub">Completion Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value"><?= htmlspecialchars((string)$stats['completed_courses']) ?>/<?= htmlspecialchars((string)($stats['total_courses'] ?? 0)) ?></div>
+                        <div class="stat-sub">Courses Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value"><?= htmlspecialchars((string)($stats['completed_units'] ?? 0)) ?>/<?= htmlspecialchars((string)($stats['total_units'] ?? 0)) ?></div>
+                        <div class="stat-sub">Units Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value"><?= htmlspecialchars((string)$stats['remaining_courses']) ?></div>
+                        <div class="stat-sub">Courses Remaining</div>
+                    </div>
+                    <?php if ($estimated_graduation): ?>
+                    <div class="stat-card">
+                        <div class="stat-value compact"><?= htmlspecialchars($estimated_graduation) ?></div>
+                        <?php if ($graduation_school_year !== ''): ?><div class="stat-note"><?= htmlspecialchars($graduation_school_year) ?></div><?php endif; ?>
+                        <div class="stat-sub">Projected Completion</div>
+                    </div>
+                    <?php endif; ?>
+                    <div class="stat-card">
+                        <div class="stat-value"><?= (int)$remaining_semesters ?></div>
+                        <div class="stat-sub">Semesters to Go</div>
+                    </div>
+                </div>
+
+                <?php
+                $retention_status = $stats['retention_status'] ?? 'None';
+                $retention_colors = [
+                    'None' => ['bg' => '#e8f5e9', 'border' => '#4CAF50', 'text' => '#2e7d32', 'label' => 'Good Standing'],
+                    'Warning' => ['bg' => '#fff3e0', 'border' => '#FF9800', 'text' => '#e65100', 'label' => 'Warning Status'],
+                    'Probation' => ['bg' => '#fff3e0', 'border' => '#fd7e14', 'text' => '#bf360c', 'label' => 'Probationary Status'],
+                    'Disqualification' => ['bg' => '#ffebee', 'border' => '#f44336', 'text' => '#c62828', 'label' => 'Disqualification Status']
+                ];
+                $ret_style = $retention_colors[$retention_status] ?? $retention_colors['None'];
+                ?>
+                <div style="margin-top: 15px; padding: 15px; background: <?= $ret_style['bg'] ?>; border-left: 4px solid <?= $ret_style['border'] ?>; border-radius: 4px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <span style="font-size: 18px;"><?php if ($retention_status === 'None'): ?>&#9989;<?php elseif ($retention_status === 'Warning'): ?>&#9888;&#65039;<?php elseif ($retention_status === 'Probation'): ?>&#128680;<?php else: ?>&#10060;<?php endif; ?></span>
+                        <strong style="font-size: 15px; color: <?= $ret_style['text'] ?>;">Retention Policy: <?= $ret_style['label'] ?></strong>
+                    </div>
+                    <p style="margin: 0; font-size: 13px; color: #333;">
+                        <?php if ($retention_status === 'Warning'): ?>
+                            The student has failed 30-50% of enrolled subjects in the latest semester.
+                        <?php elseif ($retention_status === 'Probation'): ?>
+                            The student is under probationary status with a reduced load limit.
+                        <?php elseif ($retention_status === 'Disqualification'): ?>
+                            The student is currently under disqualification status.
+                        <?php else: ?>
+                            No retention issues detected. The student is in good academic standing.
+                        <?php endif; ?>
+                    </p>
+                </div>
+
+                <?php if ($remaining_semesters > 0): ?>
+                <div style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #e8f5e9, #f1f8e9); border-left: 4px solid #4CAF50; border-radius: 4px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <span style="font-size: 18px;">&#128202;</span>
+                        <strong style="font-size: 15px; color: #2e7d32;">Timeline Optimization Summary</strong>
+                    </div>
+                    <p style="margin: 0; font-size: 13px; color: #333;">
+                        This plan completes all remaining courses in <strong><?= $remaining_semesters ?> semester<?= $remaining_semesters > 1 ? 's' : '' ?></strong>,
+                        keeping the student on track based on the current curriculum and eligible course sequencing.
+                    </p>
+                    <?php if ($estimated_graduation): ?>
+                    <p style="margin: 8px 0 0 0; font-size: 13px; color: #206018; font-weight: 600;">
+                        Projected Completion: <?= htmlspecialchars($estimated_graduation) ?><?= $graduation_school_year !== '' ? ' (' . htmlspecialchars($graduation_school_year) . ')' : '' ?>
+                    </p>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+
+                <div style="margin-top: 15px; padding: 12px; background: rgba(32, 96, 24, 0.05); border-left: 4px solid #4CAF50; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 13px; color: #333;">
+                        <strong>Algorithm:</strong> This plan uses <strong>CSP (Constraint Satisfaction Problem)</strong> to validate prerequisites and enforce retention policies, and
+                        <strong>Greedy Algorithm</strong> to optimize course sequencing.
+                    </p>
+                </div>
             </div>
 
-            <?php if (empty($display_terms)): ?>
-                <div class="panel">No study plan terms generated for this student yet.</div>
-            <?php else: ?>
-                <?php
-                    $futureDividerShown = false;
-                    foreach ($display_terms as $term):
-                        $is_completed_term = !empty($term['is_completed_term']);
-                        if (!$is_completed_term && !$futureDividerShown && !empty($completed_terms)) {
-                            $futureDividerShown = true;
-                ?>
-                    <div class="term-divider">
-                        <span>Remaining Semesters</span>
+            <div class="study-plan-container">
+                <div class="student-header">
+                    <a class="btn-back" href="study_plan_list.php">Back to Study Plan List</a>
+                    <div class="student-details">
+                        <p><span class="label">Name</span> : <span class="value"><?= htmlspecialchars($full_name) ?></span></p>
+                        <p><span class="label">Student No.</span> : <span class="value"><?= htmlspecialchars((string)$student['student_number']) ?></span></p>
+                        <p><span class="label">Program</span> : <span class="value"><?= htmlspecialchars((string)$student['program']) ?></span></p>
+                        <p><span class="label">Admission Date</span> : <span class="value"><?= htmlspecialchars((string)($student['date_of_admission'] ?? '')) ?></span></p>
                     </div>
-                <?php
-                        }
-                ?>
-                    <div class="term-card">
-                        <div class="term-header">
-                            <div class="term-title"><?= htmlspecialchars($term['year']) ?> - <?= htmlspecialchars($term['semester']) ?></div>
-                            <div class="term-meta">
-                                <span class="term-badges">
-                                    <?php if ($is_completed_term): ?>
-                                        <span class="term-badge completed">Completed</span>
-                                    <?php else: ?>
-                                        <span class="term-badge upcoming">Planned</span>
-                                    <?php endif; ?>
-                                </span>
-                                Total Units: <?= (int)($term['total_units'] ?? 0) ?>
-                                <?php if (!$is_completed_term && !empty($term['max_units'])): ?> | Max Units: <?= (int)$term['max_units'] ?><?php endif; ?>
-                            </div>
-                        </div>
+                </div>
 
-                        <?php if (!empty($term['skipped'])): ?>
-                            <div class="warning" style="margin:10px;">Skipped Term: <?= htmlspecialchars($term['skip_reason'] ?? 'Retention rule applied') ?></div>
-                        <?php else: ?>
-                            <table>
-                                <colgroup>
-                                    <col style="width:16%;">
-                                    <col style="width:42%;">
-                                    <col style="width:10%;">
-                                    <col style="width:18%;">
-                                    <col style="width:14%;">
-                                </colgroup>
-                                <thead>
-                                    <tr>
-                                        <th>Course Code</th>
-                                        <th>Course Title</th>
-                                        <th>Units</th>
-                                        <th>Prerequisite</th>
-                                        <th>Remarks</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                <?php foreach (($term['courses'] ?? []) as $course): ?>
-                                    <?php
-                                        $prerequisite = trim((string)($course['prerequisite'] ?? ''));
-                                        if ($prerequisite === '') {
-                                            $prerequisite = 'None';
-                                        }
-                                    ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($course['code'] ?? '') ?></td>
-                                        <td><?= htmlspecialchars($course['title'] ?? '') ?></td>
-                                        <td><?= (int)($course['units'] ?? 0) ?></td>
-                                        <td><?= htmlspecialchars($prerequisite) ?></td>
-                                        <td>
-                                            <?php if ($is_completed_term): ?>
-                                                <span class="tag tag-completed">Completed</span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($course['needs_retake'])): ?>
-                                                <span class="tag tag-retake">Retake</span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($course['cross_registered'])): ?>
-                                                <span class="tag tag-cross">Cross-Registered</span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($course['failed'])): ?>
-                                                <span class="tag tag-retake">Failed</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        <?php endif; ?>
+                <div class="ay-overview-wrap">
+                    <button class="ay-overview-btn" type="button" onclick="openAYModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="9"></rect>
+                            <rect x="14" y="3" width="7" height="5"></rect>
+                            <rect x="14" y="12" width="7" height="9"></rect>
+                            <rect x="3" y="16" width="7" height="5"></rect>
+                        </svg>
+                        A.Y. Course Overview
+                    </button>
+                </div>
+
+                <?php if (!empty($stats['thrice_failed_count'])): ?>
+                    <div class="warning">
+                        Study plan generation is limited because this student has <?= (int)$stats['thrice_failed_count'] ?> course(s) failed three or more times.
                     </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
+                <?php endif; ?>
+
+                <?php if (empty($display_terms)): ?>
+                    <div class="warning" style="background:#e8f5e9;border-color:#c8e6c9;color:#206018;">No study plan terms generated for this student yet.</div>
+                <?php else: ?>
+                    <?php
+                        $futureDividerShown = false;
+                        foreach ($display_terms as $term):
+                            $is_completed_term = !empty($term['is_completed_term']);
+                            if (!$is_completed_term && !$futureDividerShown && !empty($completed_terms)) {
+                                $futureDividerShown = true;
+                    ?>
+                        <div class="completed-divider">
+                            <span>&#9660; Remaining Semesters (AI-Optimized Plan) &#9660;</span>
+                        </div>
+                    <?php
+                            }
+                            $term_units = (int)($term['total_units'] ?? 0);
+                    ?>
+                        <?php if (!empty($term['skipped'])): ?>
+                            <div class="semester-section" style="border: 2px dashed #f44336; opacity: 0.78;">
+                                <div style="background: linear-gradient(135deg, #ffebee, #ffcdd2); padding: 25px; text-align: center; border-radius: 8px;">
+                                    <div class="semester-header" style="color: #c62828;">
+                                        <?= htmlspecialchars($term['year']) ?> - <?= htmlspecialchars($term['semester']) ?>
+                                    </div>
+                                    <div style="font-size: 36px; margin: 10px 0;">&#128683;</div>
+                                    <p style="font-size: 14px; color: #c62828; font-weight: 600; margin: 0;">
+                                        <?= htmlspecialchars($term['skip_reason'] ?? 'Semester skipped due to retention policy') ?>
+                                    </p>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="semester-section <?= $is_completed_term ? 'completed-term' : '' ?>" style="<?= $is_completed_term ? 'border: 1px solid #c8e6c9;' : '' ?>">
+                                <?php if ($is_completed_term): ?>
+                                    <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2e7d32;">
+                                        <?= htmlspecialchars($term['year']) ?> - <?= htmlspecialchars($term['semester']) ?>
+                                        <span class="completed-badge">COMPLETED</span>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="semester-header">
+                                        <?= htmlspecialchars($term['year']) ?> - <?= htmlspecialchars($term['semester']) ?>
+                                        <?php if (!empty($term['max_units'])): ?>
+                                            <span style="font-size: 11px; background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600;">
+                                                Max <?= (int)$term['max_units'] ?> units
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                                <table class="course-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Course Code</th>
+                                            <th>Course Title</th>
+                                            <th>Units</th>
+                                            <th>Prerequisite</th>
+                                            <th>Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach (($term['courses'] ?? []) as $course): ?>
+                                        <?php
+                                            $prerequisite = trim((string)($course['prerequisite'] ?? ''));
+                                            if ($prerequisite === '') {
+                                                $prerequisite = 'None';
+                                            }
+                                        ?>
+                                        <tr>
+                                            <td><?= htmlspecialchars((string)($course['code'] ?? '')) ?></td>
+                                            <td><?= htmlspecialchars((string)($course['title'] ?? '')) ?></td>
+                                            <td><?= (int)($course['units'] ?? 0) ?></td>
+                                            <td><?= htmlspecialchars($prerequisite) ?></td>
+                                            <td>
+                                                <?php if ($is_completed_term): ?><span class="plan-tag plan-tag-completed">Completed</span><?php endif; ?>
+                                                <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
+                                                <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross">Cross-Reg</span><?php endif; ?>
+                                                <?php if (!empty($course['failed'])): ?><span class="plan-tag plan-tag-failed">Failed</span><?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                        <tr class="total-row">
+                                            <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
+                                            <td><strong><?= $term_units ?></strong></td>
+                                            <td colspan="2"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
