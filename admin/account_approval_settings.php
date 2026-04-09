@@ -1403,6 +1403,36 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
             line-height: 1.45;
         }
 
+        .masterlist-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .masterlist-template-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 13px;
+            border-radius: 10px;
+            border: 1px solid #cfe0cf;
+            background: #f7fbf7;
+            color: var(--brand-700);
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 6px 14px rgba(24, 71, 18, 0.08);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .masterlist-template-link:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(24, 71, 18, 0.12);
+            border-color: #b8d3b8;
+        }
+
         .masterlist-format-note {
             padding: 10px 12px;
             border-radius: 10px;
@@ -2557,10 +2587,16 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
                                 </div>
                             </div>
 
-                            <div class="settings-actions">
-                                <button type="submit" name="upload_student_masterlist" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
-                                    <i class="fas fa-upload"></i> Upload Official Masterlist
-                                </button>
+                            <div class="masterlist-actions">
+                                <a href="download_student_masterlist_template.php" class="masterlist-template-link">
+                                    <i class="fas fa-file-download"></i> Download CSV Template
+                                </a>
+
+                                <div class="settings-actions" style="margin-top:0;">
+                                    <button type="submit" name="upload_student_masterlist" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
+                                        <i class="fas fa-upload"></i> Upload Official Masterlist
+                                    </button>
+                                </div>
                             </div>
 
                             <?php if (!empty($masterlistSummary)): ?>
