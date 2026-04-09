@@ -685,22 +685,14 @@ class AccountManagementController extends Controller
 
     private function upsertSystemSetting(string $key, string $value, string $updatedBy): void
     {
-        $updated = DB::table('system_settings')
-            ->where('setting_name', $key)
-            ->update([
+        DB::table('system_settings')->updateOrInsert(
+            ['setting_name' => $key],
+            [
                 'setting_value' => $value,
                 'updated_by' => $updatedBy,
                 'updated_at' => now(),
-            ]);
-
-        if ($updated === 0) {
-            DB::table('system_settings')->insert([
-                'setting_name' => $key,
-                'setting_value' => $value,
-                'updated_by' => $updatedBy,
-                'updated_at' => now(),
-            ]);
-        }
+            ]
+        );
     }
 
     private function getSettingValue(string $settingName): ?string
