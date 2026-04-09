@@ -308,6 +308,12 @@ if (empty($all_courses)) {
         margin-top: 30px;
         font-size: 9px;
     }
+    .header h3 .logo-inline {
+        display: none;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+    }
     .info {
         display: flex;
         justify-content: space-between;
@@ -903,10 +909,6 @@ if (empty($all_courses)) {
         padding: 0 !important;
       }
 
-      .CvSUlogo .logo img {
-        display: none !important;
-      }
-
       .header {
         min-height: auto !important;
         margin-bottom: 12px !important;
@@ -925,6 +927,16 @@ if (empty($all_courses)) {
       .header h3 {
         font-size: 11px !important;
         margin-top: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+      }
+
+      .header h3 .logo-inline {
+        display: inline-block !important;
+        width: 40px !important;
+        height: 40px !important;
       }
 
       .info {
@@ -1057,7 +1069,10 @@ if (empty($all_courses)) {
             <h1>Republic of the Philippines</h1>
             <h2>CAVITE STATE UNIVERSITY - CARMONA</h2>
             <h2>Carmona Cavite</h2>
-            <h3><?= strtoupper($student_program) ?></h3>
+            <h3>
+              <img src="../img/cav.png" alt="CvSU Logo" class="logo-inline"/>
+              <?= strtoupper($student_program) ?>
+            </h3>
         </div>
         <div class="CvSUlogo">
             <div class="logo">
