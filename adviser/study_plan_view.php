@@ -682,6 +682,7 @@ if ($last_planned_term) {
         .plan-tag-cross { background: #2196F3; }
         .plan-tag-completed { background: #2e7d32; }
         .plan-tag-failed { background: #c62828; }
+        .plan-tag-to-add { background: #2e7d32; }
         .completed-divider {
             text-align: center;
             margin: 30px 0;
@@ -1012,6 +1013,7 @@ if ($last_planned_term) {
                                                 <?php if ($is_completed_term): ?><span class="plan-tag plan-tag-completed">Completed</span><?php endif; ?>
                                                 <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
                                                 <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross">Cross-Reg</span><?php endif; ?>
+                                                <?php if (!empty($course['needs_retake']) || !empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-to-add">To be added</span><?php endif; ?>
                                                 <?php if (!empty($course['failed'])): ?><span class="plan-tag plan-tag-failed">Failed</span><?php endif; ?>
                                             </td>
                                         </tr>
