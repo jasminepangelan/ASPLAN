@@ -671,6 +671,22 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             font-weight: 600;
         }
 
+        .plan-tag {
+            font-size: 9px;
+            color: white;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-left: 4px;
+            vertical-align: middle;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .plan-tag-retake { background: #f44336; }
+        .plan-tag-cross { background: #2196F3; }
+        .plan-tag-forced { background: #ef6c00; }
+        .plan-tag-to-add { background: #2e7d32; }
+
         .grade-passed {
             color: #2e7d32;
             font-weight: 600;
@@ -1679,13 +1695,15 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                         <td>
                                             <?= htmlspecialchars($course['course_code']) ?>
                                             <?php if ($is_retake): ?>
-                                            <span style="font-size: 9px; background: #f44336; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: middle;">RETAKE</span>
+                                            <span class="plan-tag plan-tag-retake">RETAKE</span>
+                                            <span class="plan-tag plan-tag-to-add">TO BE ADDED</span>
                                             <?php endif; ?>
                                             <?php if ($is_cross_reg): ?>
-                                            <span style="font-size: 9px; background: #2196F3; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: middle;">CROSS-REG</span>
+                                            <span class="plan-tag plan-tag-cross">CROSS-REG</span>
+                                            <span class="plan-tag plan-tag-to-add">TO BE ADDED</span>
                                             <?php endif; ?>
                                             <?php if ($is_forced_added): ?>
-                                            <span style="font-size: 9px; background: #ef6c00; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: middle;">FORCED</span>
+                                            <span class="plan-tag plan-tag-forced">FORCED</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
