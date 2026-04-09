@@ -51,6 +51,7 @@ class StudentIdController extends Controller
             student_number VARCHAR(32) NOT NULL,
             last_name VARCHAR(150) NOT NULL,
             first_name VARCHAR(150) NOT NULL,
+            middle_initial VARCHAR(8) NULL,
             program VARCHAR(255) NOT NULL,
             source_filename VARCHAR(255) NULL,
             uploaded_by VARCHAR(120) NULL,

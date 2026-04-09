@@ -22,8 +22,8 @@ if ($output === false) {
     exit;
 }
 
-fputcsv($output, ['Student Number', 'Last name', 'First name']);
-fputcsv($output, ['220100001', 'Dela Cruz', 'Juan']);
+fputcsv($output, ['Student Number', 'Last name', 'First name', 'Middle Initial']);
+fputcsv($output, ['220100001', 'Dela Cruz', 'Juan', 'S']);
 
 fclose($output);
 exit;

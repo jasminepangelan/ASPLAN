@@ -63,6 +63,23 @@ if (!function_exists('smlHeaderKey')) {
     }
 }
 
+if (!function_exists('smlExtractMiddleInitial')) {
+    function smlExtractMiddleInitial(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (function_exists('mb_substr')) {
+            $initial = mb_substr($value, 0, 1, 'UTF-8');
+            return function_exists('mb_strtoupper') ? mb_strtoupper($initial, 'UTF-8') : strtoupper($initial);
+        }
+
+        return strtoupper(substr($value, 0, 1));
+    }
+}
+
 if (!function_exists('smlEnsureMasterlistTable')) {
     function smlEnsureMasterlistTable($conn): void
     {
@@ -71,6 +88,7 @@ if (!function_exists('smlEnsureMasterlistTable')) {
             student_number VARCHAR(32) NOT NULL,
             last_name VARCHAR(150) NOT NULL,
             first_name VARCHAR(150) NOT NULL,
+            middle_initial VARCHAR(8) NULL,
             program VARCHAR(255) NOT NULL,
             source_filename VARCHAR(255) NULL,
             uploaded_by VARCHAR(120) NULL,
@@ -83,11 +101,31 @@ if (!function_exists('smlEnsureMasterlistTable')) {
 
         if ($conn instanceof PDO) {
             $conn->exec($sql);
+            try {
+                $columns = $conn->query("SHOW COLUMNS FROM student_masterlist")->fetchAll(PDO::FETCH_COLUMN, 0);
+                $normalizedColumns = array_map(static fn ($value) => strtolower((string) $value), $columns ?: []);
+                if (!in_array('middle_initial', $normalizedColumns, true)) {
+                    $conn->exec("ALTER TABLE student_masterlist ADD COLUMN middle_initial VARCHAR(8) NULL AFTER first_name");
+                }
+            } catch (Throwable $e) {
+                // Keep bootstrap resilient even if column introspection fails.
+            }
             return;
         }
 
         if (is_object($conn) && method_exists($conn, 'query')) {
             $conn->query($sql);
+            $columns = [];
+            $result = $conn->query("SHOW COLUMNS FROM student_masterlist");
+            if ($result) {
+                while ($row = $result->fetch_assoc()) {
+                    $columns[] = strtolower((string) ($row['Field'] ?? ''));
+                }
+            }
+
+            if (!in_array('middle_initial', $columns, true)) {
+                $conn->query("ALTER TABLE student_masterlist ADD COLUMN middle_initial VARCHAR(8) NULL AFTER first_name");
+            }
         }
     }
 }
@@ -205,12 +243,13 @@ if (!function_exists('smlParseCsvUpload')) {
             'studentnumber' => 'Student Number',
             'lastname' => 'Last name',
             'firstname' => 'First name',
+            'middleinitial' => 'Middle Initial',
         ];
 
         foreach ($requiredColumns as $requiredKey => $label) {
             if (!array_key_exists($requiredKey, $headerMap)) {
                 fclose($handle);
-                return ['success' => false, 'message' => 'CSV must include the columns: Student Number, Last name, and First name.'];
+                return ['success' => false, 'message' => 'CSV must include the columns: Student Number, Last name, First name, and Middle Initial.'];
             }
         }
 
@@ -221,20 +260,22 @@ if (!function_exists('smlParseCsvUpload')) {
             $studentNumber = trim((string) ($data[$headerMap['studentnumber']] ?? ''));
             $lastName = trim((string) ($data[$headerMap['lastname']] ?? ''));
             $firstName = trim((string) ($data[$headerMap['firstname']] ?? ''));
+            $middleInitial = smlExtractMiddleInitial((string) ($data[$headerMap['middleinitial']] ?? ''));
 
-            if ($studentNumber === '' && $lastName === '' && $firstName === '') {
+            if ($studentNumber === '' && $lastName === '' && $firstName === '' && $middleInitial === '') {
                 continue;
             }
 
             if ($studentNumber === '' || $lastName === '' || $firstName === '') {
                 fclose($handle);
-                return ['success' => false, 'message' => 'Each masterlist row must include Student Number, Last name, and First name. Problem found near line ' . $line . '.'];
+                return ['success' => false, 'message' => 'Each masterlist row must include Student Number, Last name, and First name. Middle Initial may be blank if needed. Problem found near line ' . $line . '.'];
             }
 
             $rows[] = [
                 'student_number' => $studentNumber,
                 'last_name' => $lastName,
                 'first_name' => $firstName,
+                'middle_initial' => $middleInitial,
             ];
         }
 
@@ -268,11 +309,12 @@ if (!function_exists('smlReplaceProgramMasterlist')) {
             $deleteStmt->execute([$program]);
 
             $insertStmt = $conn->prepare("
-                INSERT INTO student_masterlist (student_number, last_name, first_name, program, source_filename, uploaded_by, uploaded_at)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
+                INSERT INTO student_masterlist (student_number, last_name, first_name, middle_initial, program, source_filename, uploaded_by, uploaded_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
                     last_name = VALUES(last_name),
                     first_name = VALUES(first_name),
+                    middle_initial = VALUES(middle_initial),
                     program = VALUES(program),
                     source_filename = VALUES(source_filename),
                     uploaded_by = VALUES(uploaded_by),
@@ -284,6 +326,7 @@ if (!function_exists('smlReplaceProgramMasterlist')) {
                     trim((string) ($row['student_number'] ?? '')),
                     trim((string) ($row['last_name'] ?? '')),
                     trim((string) ($row['first_name'] ?? '')),
+                    trim((string) ($row['middle_initial'] ?? '')),
                     $program,
                     substr($sourceFilename, 0, 255),
                     substr($adminId, 0, 120),
@@ -323,14 +366,14 @@ if (!function_exists('smlFindMasterlistRecord')) {
         smlEnsureMasterlistTable($conn);
 
         if ($conn instanceof PDO) {
-            $stmt = $conn->prepare('SELECT student_number, last_name, first_name, program FROM student_masterlist WHERE student_number = ? LIMIT 1');
+            $stmt = $conn->prepare('SELECT student_number, last_name, first_name, middle_initial, program FROM student_masterlist WHERE student_number = ? LIMIT 1');
             $stmt->execute([$studentNumber]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             return is_array($row) ? $row : null;
         }
 
         if (is_object($conn) && method_exists($conn, 'prepare')) {
-            $stmt = $conn->prepare('SELECT student_number, last_name, first_name, program FROM student_masterlist WHERE student_number = ? LIMIT 1');
+            $stmt = $conn->prepare('SELECT student_number, last_name, first_name, middle_initial, program FROM student_masterlist WHERE student_number = ? LIMIT 1');
             if ($stmt) {
                 $stmt->bind_param('s', $studentNumber);
                 $stmt->execute();
@@ -374,13 +417,22 @@ if (!function_exists('smlValidateStudentRegistrationAgainstMasterlist')) {
 
         $inputLast = smlNormalizeCompareValue((string) ($formData['last_name'] ?? ''));
         $inputFirst = smlNormalizeCompareValue((string) ($formData['first_name'] ?? ''));
+        $inputMiddleInitial = smlExtractMiddleInitial((string) ($formData['middle_name'] ?? ''));
         $recordLast = smlNormalizeCompareValue((string) ($record['last_name'] ?? ''));
         $recordFirst = smlNormalizeCompareValue((string) ($record['first_name'] ?? ''));
+        $recordMiddleInitial = smlExtractMiddleInitial((string) ($record['middle_initial'] ?? ''));
 
         if ($inputLast === '' || $inputFirst === '' || $inputLast !== $recordLast || $inputFirst !== $recordFirst) {
             return [
                 'valid' => false,
                 'message' => 'Your student name does not match the official masterlist for the provided student number.',
+            ];
+        }
+
+        if ($recordMiddleInitial !== '' && $inputMiddleInitial !== $recordMiddleInitial) {
+            return [
+                'valid' => false,
+                'message' => 'Your middle initial does not match the official masterlist for the provided student number.',
             ];
         }
 
