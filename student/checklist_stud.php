@@ -1664,7 +1664,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
       
       <!-- Action Buttons on the Right -->
       <div class="action-buttons">
-          <button id="saveButton">Save</button>
+          <button id="saveButton">Submit</button>
           <button id="printChecklist" onclick="window.print()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 2px;">
                   <polyline points="6 9 6 2 18 2 18 9"></polyline>
