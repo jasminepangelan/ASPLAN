@@ -1036,7 +1036,7 @@ if (empty($all_courses)) {
 
     <!-- Action Buttons Panel -->
     <div class="action-buttons">
-      <button id="downloadPDF" class="btn-primary">Export</button>
+      <button id="downloadPDF" class="btn-primary">Print</button>
       <button class="btn-primary" onclick="window.location.href='checklist_eval.php'">Back</button>
       <button id="saveButton" class="btn-primary">Save</button>
       <button id="showApproveMultiple" class="btn-secondary">Approve Multiple</button>
