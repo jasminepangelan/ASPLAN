@@ -60,7 +60,8 @@ if (!function_exists('smlHeaderKey')) {
     function smlHeaderKey(string $value): string
     {
         $value = str_replace("\xEF\xBB\xBF", '', $value);
-        return strtolower(preg_replace('/[^a-z0-9]+/', '', trim($value)) ?? '');
+        $value = strtolower(trim($value));
+        return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
     }
 }
 
