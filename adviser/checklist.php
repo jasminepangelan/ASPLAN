@@ -840,6 +840,167 @@ if (empty($all_courses)) {
         padding: 2px 1px;
       }
     }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 8mm 6mm 8mm 6mm;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      body {
+        background: #fff !important;
+        background-image: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        font-size: 9px !important;
+      }
+
+      .title-bar,
+      .sidebar,
+      .action-buttons,
+      .notification,
+      .menu-toggle,
+      .adviser-react-shell-slot,
+      .adviser-react-workspace-slot,
+      #bulkApproveButton,
+      #approveColHeader,
+      .approve-col,
+      .semester-selectall-row {
+        display: none !important;
+      }
+
+      .main-content {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        min-height: auto !important;
+        overflow: visible !important;
+      }
+
+      .container {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+      }
+
+      .table-wrapper {
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .CvSUlogo .logo img {
+        display: none !important;
+      }
+
+      .header {
+        min-height: auto !important;
+        margin-bottom: 12px !important;
+        padding-top: 0 !important;
+      }
+
+      .header h1 {
+        font-size: 10px !important;
+        margin-top: 3px !important;
+      }
+
+      .header h2 {
+        font-size: 10px !important;
+      }
+
+      .header h3 {
+        font-size: 11px !important;
+        margin-top: 10px !important;
+      }
+
+      .info {
+        margin-top: 12px !important;
+        margin-bottom: 12px !important;
+        font-size: 10px !important;
+      }
+
+      .info-left {
+        width: 48% !important;
+        margin-left: 0 !important;
+      }
+
+      .info-right {
+        width: 34% !important;
+        left: 0 !important;
+      }
+
+      table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        top: 0 !important;
+        margin: 0 auto 16px auto !important;
+        border-collapse: collapse !important;
+        font-size: 8px !important;
+        table-layout: auto !important;
+        page-break-inside: auto !important;
+      }
+
+      thead {
+        display: table-header-group !important;
+      }
+
+      tr {
+        page-break-inside: avoid !important;
+      }
+
+      th,
+      td {
+        border: 1px solid #000 !important;
+        padding: 3px 4px !important;
+        font-size: 8px !important;
+        word-wrap: break-word !important;
+      }
+
+      th {
+        background-color: #f2f2f2 !important;
+      }
+
+      .semester-title td {
+        background-color: #f2f2f2 !important;
+        font-weight: bold !important;
+        font-size: 9px !important;
+      }
+
+      input[type="text"] {
+        border: none !important;
+        border-bottom: 1px solid #000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        font-size: 8px !important;
+      }
+
+      select {
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        font-size: 8px !important;
+      }
+    }
   </style>
   <?= renderLegacyViteTags([
       'resources/js/adviser-shell.jsx',
