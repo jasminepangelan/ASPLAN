@@ -82,6 +82,89 @@
             box-shadow: 0 0 0 4px rgba(44, 122, 42, 0.14);
             outline: none;
         }
+        .password-strength {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border: 1px solid #dbe6db;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f9fcf8 0%, #f2f7f1 100%);
+        }
+        .password-strength__top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .password-strength__label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #48614a;
+        }
+        .password-strength__value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #5e6d60;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: #edf2ed;
+            border: 1px solid #d8e1d8;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+        .password-strength__bars {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .password-strength__bar {
+            height: 8px;
+            border-radius: 999px;
+            background: #dde6dd;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .password-strength__hint {
+            margin-top: 8px;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #647267;
+        }
+        .password-strength.is-empty .password-strength__value {
+            color: #5e6d60;
+            background: #edf2ed;
+            border-color: #d8e1d8;
+        }
+        .password-strength.is-weak .password-strength__value {
+            color: #9b1c1c;
+            background: #fdecec;
+            border-color: #f4c6c6;
+        }
+        .password-strength.is-medium .password-strength__value {
+            color: #8a4b00;
+            background: #fff3db;
+            border-color: #f5d39d;
+        }
+        .password-strength.is-strong .password-strength__value {
+            color: #1f5d17;
+            background: #eaf6e9;
+            border-color: #bfe0bc;
+        }
+        .password-strength.is-empty .password-strength__bar.is-active {
+            background: #dde6dd;
+        }
+        .password-strength.is-weak .password-strength__bar.is-active {
+            background: linear-gradient(135deg, #ef5350 0%, #d32f2f 100%);
+        }
+        .password-strength.is-medium .password-strength__bar.is-active {
+            background: linear-gradient(135deg, #ffb74d 0%, #fb8c00 100%);
+        }
+        .password-strength.is-strong .password-strength__bar.is-active {
+            background: linear-gradient(135deg, #43a047 0%, #206018 100%);
+        }
+        .password-strength__bar.is-active {
+            transform: scaleY(1.06);
+        }
         .button-group {
             display: flex;
             gap: 10px;
@@ -251,6 +334,21 @@
         <div class="form-group">
             <label for="password">Preferred Password (minimum 8 characters)</label>
             <input type="password" id="password" name="password" placeholder="ex.@juandelacruz123" minlength="8" required>
+            <div class="password-strength is-empty" id="password-strength-meter" aria-live="polite">
+                <div class="password-strength__top">
+                    <span class="password-strength__label">Password Strength</span>
+                    <span class="password-strength__value" id="password-strength-value">Not yet rated</span>
+                </div>
+                <div class="password-strength__bars" aria-hidden="true">
+                    <span class="password-strength__bar"></span>
+                    <span class="password-strength__bar"></span>
+                    <span class="password-strength__bar"></span>
+                    <span class="password-strength__bar"></span>
+                </div>
+                <div class="password-strength__hint" id="password-strength-hint">
+                    Use at least 8 characters with a mix of uppercase, lowercase, numbers, and symbols for a stronger password.
+                </div>
+            </div>
             <span id="password-length-error" style="color: red; display: none; font-size: smaller;">Password must be at least 8 characters.</span>
         </div>
         <div class="form-group">
@@ -335,6 +433,7 @@
         if (data.program) document.getElementById('program').value = data.program;
         if (data.admission_date) document.getElementById('admission_date').value = data.admission_date;
         // picture cannot be prefilled for security reasons
+        updatePasswordStrengthMeter(document.getElementById('password').value);
     };
     // Save page 2 data to localStorage on input
     document.getElementById('form2').addEventListener('input', function() {
@@ -354,7 +453,73 @@
     const confirmPasswordInput = document.getElementById('confirm-password');
     const errorMessage = document.getElementById('error-message');
     const passwordLengthError = document.getElementById('password-length-error');
+    const passwordStrengthMeter = document.getElementById('password-strength-meter');
+    const passwordStrengthValue = document.getElementById('password-strength-value');
+    const passwordStrengthHint = document.getElementById('password-strength-hint');
+    const passwordStrengthBars = Array.from(passwordStrengthMeter.querySelectorAll('.password-strength__bar'));
+
+    function getPasswordStrengthState(password) {
+        const trimmedPassword = password || '';
+        if (trimmedPassword.length === 0) {
+            return {
+                level: 0,
+                stateClass: 'is-empty',
+                label: 'Not yet rated',
+                hint: 'Use at least 8 characters with a mix of uppercase, lowercase, numbers, and symbols for a stronger password.'
+            };
+        }
+
+        let score = 0;
+        if (trimmedPassword.length >= 8) score += 1;
+        if (trimmedPassword.length >= 12) score += 1;
+        if (/[a-z]/.test(trimmedPassword) && /[A-Z]/.test(trimmedPassword)) score += 1;
+        if (/\d/.test(trimmedPassword)) score += 1;
+        if (/[^A-Za-z0-9]/.test(trimmedPassword)) score += 1;
+
+        if (trimmedPassword.length < 8 || score <= 2) {
+            return {
+                level: Math.max(1, Math.min(2, score)),
+                stateClass: 'is-weak',
+                label: 'Weak',
+                hint: 'Add more characters and combine uppercase, lowercase, numbers, and symbols.'
+            };
+        }
+
+        if (score <= 4) {
+            return {
+                level: 3,
+                stateClass: 'is-medium',
+                label: 'Medium',
+                hint: 'Good start. Add another unique symbol or more length to make it stronger.'
+            };
+        }
+
+        return {
+            level: 4,
+            stateClass: 'is-strong',
+            label: 'Strong',
+            hint: 'This password has strong length and character variety.'
+        };
+    }
+
+    function updatePasswordStrengthMeter(password) {
+        const strength = getPasswordStrengthState(password);
+        passwordStrengthMeter.classList.remove('is-empty', 'is-weak', 'is-medium', 'is-strong');
+        passwordStrengthMeter.classList.add(strength.stateClass);
+        passwordStrengthValue.textContent = strength.label;
+        passwordStrengthHint.textContent = strength.hint;
+
+        passwordStrengthBars.forEach((bar, index) => {
+            if (index < strength.level) {
+                bar.classList.add('is-active');
+            } else {
+                bar.classList.remove('is-active');
+            }
+        });
+    }
+
     passwordInput.addEventListener('input', function() {
+        updatePasswordStrengthMeter(passwordInput.value);
         if (passwordInput.value.length > 0 && passwordInput.value.length < 8) {
             passwordLengthError.style.display = 'inline';
             passwordInput.setCustomValidity('Password must be at least 8 characters.');
@@ -373,6 +538,7 @@
             }
         }
     });
+    updatePasswordStrengthMeter(passwordInput.value);
     confirmPasswordInput.addEventListener('input', function() {
         if (passwordInput.value !== confirmPasswordInput.value) {
             errorMessage.style.display = 'inline';
