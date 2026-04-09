@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/student_masterlist_service.php';
 
 $studentId = isset($_POST['student_id']) ? trim((string) $_POST['student_id']) : trim((string) ($_GET['student_id'] ?? ''));
 
@@ -44,7 +45,11 @@ if ($useLaravelBridge) {
     if ($bridgeResponse !== false) {
         $decoded = json_decode($bridgeResponse, true);
         if (is_array($decoded) && array_key_exists('exists', $decoded)) {
-            echo json_encode(['exists' => (bool) $decoded['exists']]);
+            echo json_encode([
+                'exists' => (bool) $decoded['exists'],
+                'allowed' => (bool) ($decoded['allowed'] ?? true),
+                'message' => (string) ($decoded['message'] ?? ''),
+            ]);
             exit;
         }
     }
@@ -64,7 +69,20 @@ $stmt->bind_param('s', $studentId);
 $stmt->execute();
 $stmt->store_result();
 
-echo json_encode(['exists' => $stmt->num_rows > 0]);
+$exists = $stmt->num_rows > 0;
 
 $stmt->close();
+
+if ($exists) {
+    echo json_encode(['exists' => true, 'allowed' => false, 'message' => 'Student number already exists in the system.']);
+    closeDBConnection($conn);
+    exit;
+}
+
+$masterlistGate = smlStudentIdAllowedForRegistration($conn, $studentId);
+echo json_encode([
+    'exists' => false,
+    'allowed' => (bool) $masterlistGate['allowed'],
+    'message' => (string) ($masterlistGate['message'] ?? ''),
+]);
 closeDBConnection($conn);

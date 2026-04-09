@@ -195,6 +195,7 @@
     const nextButton = document.getElementById('next-button');
     const gatedInputs = [lastNameInput, firstNameInput, middleNameInput];
     let isStudentIdValid = false;
+    let studentIdValidationMessage = 'Please enter a valid student number that does not exist in the system';
 
     function updateProfileFieldGate() {
         const hasValidOfficialEmail = isOfficialCvsuEmail(emailInput.value);
@@ -219,12 +220,14 @@
         messageDiv.style.display = 'none';
         messageDiv.textContent = '';
         isStudentIdValid = false;
+        studentIdValidationMessage = 'Please enter a valid student number that does not exist in the system';
 
         if (!studentId) return;
         // Check if not 9 digits
         if (!/^\d{9}$/.test(studentId)) {
             messageDiv.textContent = 'Must be 9 digit student number';
             messageDiv.style.display = 'block';
+            studentIdValidationMessage = 'Must be 9 digit student number';
             return;
         }
         
@@ -241,7 +244,18 @@
                         messageDiv.textContent = 'Student number already exist';
                         messageDiv.style.display = 'block';
                         isStudentIdValid = false;
+                        studentIdValidationMessage = 'Student number already exist';
                         // Clear and disable subsequent fields
+                        emailInput.value = '';
+                        lastNameInput.value = '';
+                        firstNameInput.value = '';
+                        middleNameInput.value = '';
+                        updateProfileFieldGate();
+                    } else if (data.allowed === false) {
+                        messageDiv.textContent = data.message || 'This student number is not included in the official masterlist.';
+                        messageDiv.style.display = 'block';
+                        isStudentIdValid = false;
+                        studentIdValidationMessage = messageDiv.textContent;
                         emailInput.value = '';
                         lastNameInput.value = '';
                         firstNameInput.value = '';
@@ -274,7 +288,7 @@
         }
 
         if (!isStudentIdValid) {
-            messageDiv.textContent = 'Please enter a valid student number that does not exist in the system';
+            messageDiv.textContent = studentIdValidationMessage;
             messageDiv.style.display = 'block';
             studentIdInput.focus();
             e.preventDefault();
@@ -298,7 +312,7 @@
             }
 
             if (!isStudentIdValid) {
-                messageDiv.textContent = 'Please enter a valid student number that does not exist in the system';
+                messageDiv.textContent = studentIdValidationMessage;
                 messageDiv.style.display = 'block';
                 studentIdInput.focus();
                 e.preventDefault();
@@ -367,6 +381,9 @@
             .then(data => {
                 if (data.exists) {
                     messageDiv.textContent = 'Student number already exist';
+                    messageDiv.style.display = 'block';
+                } else if (data.allowed === false) {
+                    messageDiv.textContent = data.message || 'This student number is not included in the official masterlist.';
                     messageDiv.style.display = 'block';
                 } else {
                     // Prepare data with proper formatting

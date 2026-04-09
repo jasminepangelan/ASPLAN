@@ -52,6 +52,13 @@ class AuthController extends Controller
             }
 
             if ($user['type'] === 'student') {
+                if (!$this->studentHasMasterlistAccess((string) ($user['student_id'] ?? ''))) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'This student account is not authorized by the current official masterlist. Please contact the administrator.',
+                    ], 403);
+                }
+
                 $status = (string) ($user['status'] ?? 'approved');
                 if ($status === 'pending') {
                     return response()->json(['status' => 'pending', 'message' => 'Your account is pending approval. Please wait for the admin to approve.']);
@@ -337,5 +344,36 @@ class AuthController extends Controller
         } catch (Throwable $e) {
             return null;
         }
+    }
+
+    private function studentHasMasterlistAccess(string $studentId): bool
+    {
+        if ($studentId === '') {
+            return false;
+        }
+
+        $this->ensureMasterlistTable();
+
+        return DB::table('student_masterlist')
+            ->where('student_number', $studentId)
+            ->exists();
+    }
+
+    private function ensureMasterlistTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS student_masterlist (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_number VARCHAR(32) NOT NULL,
+            last_name VARCHAR(150) NOT NULL,
+            first_name VARCHAR(150) NOT NULL,
+            program VARCHAR(255) NOT NULL,
+            source_filename VARCHAR(255) NULL,
+            uploaded_by VARCHAR(120) NULL,
+            uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_student_masterlist_student_number (student_number),
+            KEY idx_student_masterlist_program (program),
+            KEY idx_student_masterlist_uploaded_at (uploaded_at)
+        )");
     }
 }

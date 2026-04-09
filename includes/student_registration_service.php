@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/program_shift_service.php';
 require_once __DIR__ . '/student_profile_service.php';
+require_once __DIR__ . '/student_masterlist_service.php';
 
 const SRS_MAX_PICTURE_SIZE = 5000000; // 5MB
 const SRS_ALLOWED_IMAGE_TYPES = ['jpg', 'png', 'jpeg', 'gif'];
@@ -37,6 +38,11 @@ function srsValidateRegistration($conn, array $formData): array {
 
     if (!empty($errors)) {
         return ['valid' => false, 'error' => implode(' ', $errors)];
+    }
+
+    $masterlistValidation = smlValidateStudentRegistrationAgainstMasterlist($conn, $formData);
+    if (!$masterlistValidation['valid']) {
+        return ['valid' => false, 'error' => $masterlistValidation['message']];
     }
 
     // Validate email domain

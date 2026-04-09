@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../includes/security_policy.php';
+require_once __DIR__ . '/../includes/student_masterlist_service.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -301,6 +302,13 @@ try {
 
     switch ($userType) {
         case 'student':
+            if (!smlStudentHasSystemAccess($conn, (string) ($userData['student_id'] ?? ''))) {
+                sendJsonResponse([
+                    'status' => 'error',
+                    'message' => 'This student account is not authorized by the current official masterlist. Please contact the administrator.',
+                ]);
+            }
+
             if (($userData['status'] ?? '') === 'pending') {
                 sendJsonResponse(['status' => 'pending', 'message' => 'Your account is pending approval. Please wait for the admin to approve.']);
             }

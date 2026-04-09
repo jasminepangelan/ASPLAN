@@ -48,6 +48,7 @@ require_once __DIR__ . '/../includes/env_loader.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/student_email_verification_service.php';
+require_once __DIR__ . '/../includes/student_masterlist_service.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_only_cookies', '1');
@@ -81,6 +82,21 @@ if ($sessionExpiredNotice) {
 
 if (isset($_SESSION['student_id'])) {
     $sessionConn = getDBConnection();
+    if (!smlStudentHasSystemAccess($sessionConn, (string) ($_SESSION['student_id'] ?? ''))) {
+        $_SESSION = [];
+        if (session_id() !== '') {
+            session_destroy();
+        }
+        closeDBConnection($sessionConn);
+        autoLoginClearCookie('remember_me', '/');
+        autoLoginClearCookie('remember_me', '/PEAS/');
+        autoLoginJson([
+            'redirect' => null,
+            'session_expired' => false,
+            'session_timeout_seconds' => $sessionTimeoutSeconds,
+        ]);
+    }
+
     $requiresVerification = sevApplySessionRequirement(
         $sessionConn,
         (string) ($_SESSION['student_id'] ?? ''),

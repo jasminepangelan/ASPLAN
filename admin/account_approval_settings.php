@@ -11,6 +11,7 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/account_approval_settings_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/student_masterlist_service.php';
 
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 $bridgeUpdateEndpoint = '/api/account-approval-settings/update';
@@ -170,6 +171,7 @@ $adminAccount = [
     'full_name' => (string)($_SESSION['admin_full_name'] ?? ''),
 ];
 $adminCredentialMinLength = 8;
+$selectedMasterlistProgram = '';
 
 // Business logic functions are now in account_approval_settings_service.php
 
@@ -229,6 +231,43 @@ function aasRenderMiniPagination(string $pageParam, int $currentPage, int $total
 
 // Handle settings update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['upload_student_masterlist'])) {
+        if (!$conn instanceof PDO) {
+            $error_message = 'Unable to upload the masterlist right now.';
+        } else {
+            $selectedMasterlistProgram = trim((string) ($_POST['masterlist_program'] ?? ''));
+            $csvFile = $_FILES['masterlist_csv'] ?? null;
+
+            if ($selectedMasterlistProgram === '') {
+                $error_message = 'Please select the target program for the masterlist upload.';
+            } elseif (!is_array($csvFile) || (int) ($csvFile['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                $error_message = 'Please choose a CSV file before uploading the official masterlist.';
+            } elseif ((int) ($csvFile['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+                $error_message = 'The uploaded masterlist file could not be processed. Please try again.';
+            } else {
+                $parsedMasterlist = smlParseCsvUpload((string) ($csvFile['tmp_name'] ?? ''));
+                if (!empty($parsedMasterlist['success'])) {
+                    $saveMasterlist = smlReplaceProgramMasterlist(
+                        $conn,
+                        $selectedMasterlistProgram,
+                        (array) ($parsedMasterlist['rows'] ?? []),
+                        (string) ($csvFile['name'] ?? 'masterlist.csv'),
+                        (string) ($_SESSION['admin_id'] ?? 'admin')
+                    );
+
+                    if (!empty($saveMasterlist['success'])) {
+                        header('Location: account_approval_settings.php?message=' . urlencode((string) ($saveMasterlist['message'] ?? 'Official student masterlist uploaded successfully.')));
+                        exit();
+                    }
+
+                    $error_message = (string) ($saveMasterlist['message'] ?? 'Failed to save the official masterlist.');
+                } else {
+                    $error_message = (string) ($parsedMasterlist['message'] ?? 'The uploaded CSV file is invalid.');
+                }
+            }
+        }
+    }
+
     if (isset($_POST['update_policy_settings'])) {
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
@@ -562,6 +601,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             }
         }
+    }
+}
+
+$masterlistProgramOptions = [];
+$masterlistSummary = [];
+if ($conn instanceof PDO) {
+    try {
+        $masterlistProgramOptions = smlLoadProgramOptions($conn);
+        $masterlistSummary = smlLoadMasterlistSummary($conn);
+    } catch (Throwable $e) {
+        error_log('Failed to load student masterlist settings: ' . $e->getMessage());
     }
 }
 
@@ -1300,6 +1350,113 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
             font-size: 11px;
             color: #5f6d62;
             line-height: 1.4;
+        }
+
+        .masterlist-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .masterlist-upload-panel {
+            background: linear-gradient(135deg, #fbfefb 0%, #f2f8f2 100%);
+            border: 1px solid #d8e6d8;
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .masterlist-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.3fr) minmax(220px, 0.9fr);
+            gap: 12px;
+            align-items: end;
+        }
+
+        .masterlist-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .masterlist-input-group label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--brand-700);
+        }
+
+        .masterlist-input-group select,
+        .masterlist-input-group input[type="file"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cfd9cf;
+            border-radius: 10px;
+            background: #fff;
+            font-size: 13px;
+            color: #17311a;
+        }
+
+        .masterlist-help {
+            font-size: 11px;
+            color: var(--text-700);
+            line-height: 1.45;
+        }
+
+        .masterlist-format-note {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #f7fbf6;
+            border: 1px dashed #c9dcc9;
+            color: #3e5d41;
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        .masterlist-format-note strong {
+            color: var(--brand-700);
+        }
+
+        .masterlist-summary-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            overflow: hidden;
+            border: 1px solid var(--line-soft);
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .masterlist-summary-table th,
+        .masterlist-summary-table td {
+            padding: 11px 12px;
+            font-size: 12px;
+            text-align: left;
+            border-bottom: 1px solid #edf2ed;
+            vertical-align: top;
+        }
+
+        .masterlist-summary-table th {
+            background: #f3f8f3;
+            color: var(--brand-700);
+            font-size: 11px;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+        }
+
+        .masterlist-summary-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .masterlist-program-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #ebf5e9;
+            color: #225c1f;
+            font-weight: 700;
+            font-size: 11px;
         }
 
         .settings-actions {
@@ -2097,6 +2254,10 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
                 grid-template-columns: 1fr;
             }
 
+            .masterlist-grid {
+                grid-template-columns: 1fr;
+            }
+
             .admin-account-summary,
             .admin-account-grid {
                 grid-template-columns: 1fr;
@@ -2360,6 +2521,75 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
                             </div>
                         </div>
                         <input type="hidden" name="update_setting" value="1">
+                    </form>
+                </div>
+
+                <div class="settings-card">
+                    <form method="POST" enctype="multipart/form-data">
+                        <h2><i class="fas fa-file-upload"></i> Official Student Masterlist</h2>
+                        <p class="card-note">Upload the official CSV masterlist per program. Only students present in this masterlist will be allowed to create a student account and access the system.</p>
+
+                        <div class="masterlist-shell">
+                            <div class="masterlist-upload-panel">
+                                <div class="masterlist-grid">
+                                    <div class="masterlist-input-group">
+                                        <label for="masterlist_program">Target Program</label>
+                                        <select id="masterlist_program" name="masterlist_program" required>
+                                            <option value="">-- Select Program --</option>
+                                            <?php foreach ($masterlistProgramOptions as $programLabel): ?>
+                                                <option value="<?php echo htmlspecialchars((string) $programLabel); ?>" <?php echo ((string) $selectedMasterlistProgram === (string) $programLabel) ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars((string) $programLabel); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div class="masterlist-help">Uploading a new CSV replaces the currently authorized student list for the selected program.</div>
+                                    </div>
+
+                                    <div class="masterlist-input-group">
+                                        <label for="masterlist_csv">CSV File</label>
+                                        <input type="file" id="masterlist_csv" name="masterlist_csv" accept=".csv,text/csv" required>
+                                        <div class="masterlist-help">Required columns: <strong>Student Number</strong>, <strong>Last name</strong>, <strong>First name</strong>.</div>
+                                    </div>
+                                </div>
+
+                                <div class="masterlist-format-note">
+                                    <strong>Security rule:</strong> student registration and student login now rely on this official program masterlist. Keep each upload current so only authorized students can create and use student accounts.
+                                </div>
+                            </div>
+
+                            <div class="settings-actions">
+                                <button type="submit" name="upload_student_masterlist" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
+                                    <i class="fas fa-upload"></i> Upload Official Masterlist
+                                </button>
+                            </div>
+
+                            <?php if (!empty($masterlistSummary)): ?>
+                                <table class="masterlist-summary-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Program</th>
+                                            <th>Authorized Students</th>
+                                            <th>Latest Upload</th>
+                                            <th>Updated By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($masterlistSummary as $summaryRow): ?>
+                                            <tr>
+                                                <td><span class="masterlist-program-pill"><?php echo htmlspecialchars((string) ($summaryRow['program'] ?? '')); ?></span></td>
+                                                <td><?php echo (int) ($summaryRow['total_students'] ?? 0); ?></td>
+                                                <td><?php echo htmlspecialchars((string) ($summaryRow['last_uploaded_at'] ?? '')); ?></td>
+                                                <td><?php echo htmlspecialchars((string) ($summaryRow['uploaded_by'] ?? '')); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            <?php else: ?>
+                                <div class="masterlist-format-note">
+                                    No official student masterlist has been uploaded yet. Student registration and student login will stay blocked until the first masterlist is uploaded.
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </form>
                 </div>
 
