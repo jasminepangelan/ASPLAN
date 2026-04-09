@@ -97,6 +97,7 @@ class AccountManagementController extends Controller
 
             $advancedKeys = [
                 'enable_admin_2fa' => '0',
+                'enforce_student_cvsu_email_verification' => '1',
                 'password_history_count' => '5',
                 'account_lockout_duration_seconds' => '900',
                 'allowed_email_domains' => '',
@@ -125,7 +126,7 @@ class AccountManagementController extends Controller
             $advancedSettingValues = [];
             foreach ($advancedKeys as $key => $default) {
                 $value = $settings[$key] ?? $default;
-                if (in_array($key, ['enable_admin_2fa', 'freeze_approvals', 'disable_new_registrations'], true)) {
+                if (in_array($key, ['enable_admin_2fa', 'enforce_student_cvsu_email_verification', 'freeze_approvals', 'disable_new_registrations'], true)) {
                     $advancedSettingValues[$key] = ((string) $value === '1') ? '1' : '0';
                     continue;
                 }
@@ -628,6 +629,7 @@ class AccountManagementController extends Controller
             ],
             'advanced_settings' => [
                 'enable_admin_2fa' => ['type' => 'boolean', 'default' => '0', 'min' => 0, 'max' => 1],
+                'enforce_student_cvsu_email_verification' => ['type' => 'boolean', 'default' => '1', 'min' => 0, 'max' => 1],
                 'password_history_count' => ['type' => 'number', 'default' => '5', 'min' => 0, 'max' => 24],
                 'account_lockout_duration_seconds' => ['type' => 'number', 'default' => '900', 'min' => 60, 'max' => 86400],
                 'allowed_email_domains' => ['type' => 'text', 'default' => '', 'max_length' => 500],

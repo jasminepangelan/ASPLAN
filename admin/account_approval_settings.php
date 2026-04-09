@@ -92,6 +92,12 @@ $advancedSettings = [
         'default' => 0,
         'help' => 'Require an additional verification step when admins sign in.'
     ],
+    'enforce_student_cvsu_email_verification' => [
+        'label' => 'Require Student CvSU Email OTP Verification',
+        'type' => 'boolean',
+        'default' => 1,
+        'help' => 'When enabled, students using a @cvsu.edu.ph email must verify it with an OTP before entering the student workspace. Disable this to let legacy students continue without the OTP gate.'
+    ],
     'password_history_count' => [
         'label' => 'Password History Block Count',
         'type' => 'number',

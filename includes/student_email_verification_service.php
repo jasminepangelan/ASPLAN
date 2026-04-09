@@ -27,6 +27,59 @@ if (!function_exists('sevIsCvsuEmail')) {
     }
 }
 
+if (!function_exists('sevVerificationGateEnabled')) {
+    function sevVerificationGateEnabled($conn): bool
+    {
+        $default = true;
+
+        if (!$conn) {
+            return $default;
+        }
+
+        $settingName = 'enforce_student_cvsu_email_verification';
+
+        try {
+            if ($conn instanceof PDO) {
+                $stmt = $conn->prepare('SELECT setting_value FROM system_settings WHERE setting_name = ? ORDER BY id DESC LIMIT 1');
+                if (!$stmt) {
+                    return $default;
+                }
+
+                $stmt->execute([$settingName]);
+                $value = $stmt->fetchColumn();
+                return $value === false ? $default : ((string) $value !== '0');
+            }
+
+            if (is_object($conn) && method_exists($conn, 'prepare')) {
+                $stmt = $conn->prepare('SELECT setting_value FROM system_settings WHERE setting_name = ? ORDER BY id DESC LIMIT 1');
+                if (!$stmt) {
+                    return $default;
+                }
+
+                $stmt->bind_param('s', $settingName);
+                if (!$stmt->execute()) {
+                    $stmt->close();
+                    return $default;
+                }
+
+                $result = $stmt->get_result();
+                $row = $result ? $result->fetch_assoc() : null;
+                $stmt->close();
+
+                if (!is_array($row)) {
+                    return $default;
+                }
+
+                return ((string) ($row['setting_value'] ?? '1')) !== '0';
+            }
+        } catch (Throwable $e) {
+            return $default;
+        }
+
+        return $default;
+    }
+}
+
 if (!function_exists('sevEnsureTable')) {
     function sevEnsureTable($conn): void
     {
@@ -122,6 +175,10 @@ if (!function_exists('sevDeleteRecord')) {
 if (!function_exists('sevStudentRequiresVerification')) {
     function sevStudentRequiresVerification($conn, string $studentId, string $email): bool
     {
+        if (!sevVerificationGateEnabled($conn)) {
+            return false;
+        }
+
         if ($studentId === '' || !sevIsCvsuEmail($email)) {
             return false;
         }
@@ -143,6 +200,15 @@ if (!function_exists('sevGetStatusMeta')) {
     function sevGetStatusMeta($conn, string $studentId, string $email): array
     {
         $normalizedEmail = sevNormalizeEmail($email);
+
+        if (!sevVerificationGateEnabled($conn)) {
+            return [
+                'variant' => 'neutral',
+                'label' => 'Verification optional',
+                'headline' => 'Student OTP gate disabled',
+                'description' => 'Admin has currently disabled student CvSU email OTP verification, so students can access the workspace without completing this step.',
+            ];
+        }
 
         if ($studentId === '' || $normalizedEmail === '') {
             return [
