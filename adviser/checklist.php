@@ -909,6 +909,12 @@ if (empty($all_courses)) {
         padding: 0 !important;
       }
 
+      .CvSUlogo,
+      .CvSUlogo .logo,
+      .CvSUlogo .logo img {
+        display: none !important;
+      }
+
       .header {
         min-height: auto !important;
         margin-bottom: 12px !important;
