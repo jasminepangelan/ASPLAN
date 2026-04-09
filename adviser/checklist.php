@@ -1485,17 +1485,25 @@ document.getElementById('bulkApproveButton').addEventListener('click', function(
 });
 </script>
 <script>
-        document.getElementById('downloadPDF').addEventListener('click', function() {
-            const element = document.querySelector('.container');
-            const opt = {
-                margin: [0,-6, 3, 5],
-                filename: 'checklist.pdf',
-                image: { type: 'jpeg', quality: 1 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: false, precision: 16}
-            };
-            html2pdf().set(opt).from(element).save();
-        });
-    </script>
+document.getElementById('downloadPDF').addEventListener('click', function() {
+    window.print();
+});
+
+window.addEventListener('beforeprint', function() {
+    document.querySelectorAll('select[name^="final_grade"]').forEach(function(sel) {
+        if (!sel.value || sel.value === '') {
+            sel.setAttribute('data-print-hidden', 'true');
+            sel.style.visibility = 'hidden';
+        }
+    });
+});
+
+window.addEventListener('afterprint', function() {
+    document.querySelectorAll('select[data-print-hidden]').forEach(function(sel) {
+        sel.removeAttribute('data-print-hidden');
+        sel.style.visibility = '';
+    });
+});
+</script>
 </body>
 </html>
