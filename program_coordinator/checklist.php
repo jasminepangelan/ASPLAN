@@ -299,6 +299,12 @@ if (empty($checklistRows)) {
         margin-top: 30px;
         font-size: 9px;
     }
+    .header h3 .logo-inline {
+        display: none;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+    }
     .info {
         display: flex;
         justify-content: space-between;
@@ -833,6 +839,177 @@ if (empty($checklistRows)) {
         padding: 2px 1px;
       }
     }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 8mm 6mm 8mm 6mm;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      body {
+        background: #fff !important;
+        background-image: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        overflow: visible !important;
+        font-size: 9px !important;
+      }
+
+      .title-bar,
+      .sidebar,
+      .action-buttons,
+      .notification,
+      .menu-toggle,
+      #bulkApproveButton,
+      #approveColHeader,
+      .approve-col,
+      .semester-selectall-row {
+        display: none !important;
+      }
+
+      .main-content {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        min-height: auto !important;
+        overflow: visible !important;
+      }
+
+      .container {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+      }
+
+      .table-wrapper {
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .CvSUlogo,
+      .CvSUlogo .logo,
+      .CvSUlogo .logo img {
+        display: none !important;
+      }
+
+      .header {
+        min-height: auto !important;
+        margin-bottom: 12px !important;
+        padding-top: 0 !important;
+      }
+
+      .header h1 {
+        font-size: 10px !important;
+        margin-top: 3px !important;
+      }
+
+      .header h2 {
+        font-size: 10px !important;
+      }
+
+      .header h3 {
+        font-size: 11px !important;
+        margin-top: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+      }
+
+      .header h3 .logo-inline {
+        display: inline-block !important;
+        width: 40px !important;
+        height: 40px !important;
+      }
+
+      .info {
+        margin-top: 12px !important;
+        margin-bottom: 12px !important;
+        font-size: 10px !important;
+      }
+
+      .info-left {
+        width: 48% !important;
+        margin-left: 0 !important;
+      }
+
+      .info-right {
+        width: 34% !important;
+        left: 0 !important;
+      }
+
+      table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        top: 0 !important;
+        margin: 0 auto 16px auto !important;
+        border-collapse: collapse !important;
+        font-size: 8px !important;
+        table-layout: auto !important;
+        page-break-inside: auto !important;
+      }
+
+      thead {
+        display: table-header-group !important;
+      }
+
+      tr {
+        page-break-inside: avoid !important;
+      }
+
+      th,
+      td {
+        border: 1px solid #000 !important;
+        padding: 3px 4px !important;
+        font-size: 8px !important;
+        word-wrap: break-word !important;
+      }
+
+      th {
+        background-color: #f2f2f2 !important;
+      }
+
+      .semester-title td {
+        background-color: #f2f2f2 !important;
+        font-weight: bold !important;
+        font-size: 9px !important;
+      }
+
+      input[type="text"] {
+        border: none !important;
+        border-bottom: 1px solid #000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        font-size: 8px !important;
+      }
+
+      select {
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        font-size: 8px !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -888,7 +1065,10 @@ if (empty($checklistRows)) {
             <h1>Republic of the Philippines</h1>
             <h2>CAVITE STATE UNIVERSITY - CARMONA</h2>
             <h2>Carmona Cavite</h2>
-            <h3><?= strtoupper($student_program) ?></h3>
+            <h3>
+              <img src="../img/cav.png" alt="CvSU Logo" class="logo-inline"/>
+              <?= strtoupper($student_program) ?>
+            </h3>
         </div>
         <div class="CvSUlogo">
             <div class="logo">
@@ -1036,7 +1216,7 @@ if (empty($checklistRows)) {
 
     <!-- Action Buttons Panel -->
     <div class="action-buttons">
-      <button id="downloadPDF" class="btn-primary">Export</button>
+      <button id="downloadPDF" class="btn-primary">Print</button>
       <button class="btn-primary" onclick="window.location.href='<?= htmlspecialchars($listStudentsHref) ?>'">Back</button>
       <button id="saveButton" class="btn-primary">Save</button>
       <button id="showApproveMultiple" class="btn-secondary">Approve Multiple</button>
@@ -1502,17 +1682,27 @@ document.getElementById('bulkApproveButton').addEventListener('click', function(
 });
 </script>
 <script>
-        document.getElementById('downloadPDF').addEventListener('click', function() {
-            const element = document.querySelector('.container');
-            const opt = {
-                margin: [0,-6, 3, 5],
-                filename: 'checklist.pdf',
-                image: { type: 'jpeg', quality: 1 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: false, precision: 16}
-            };
-            html2pdf().set(opt).from(element).save();
-        });
+document.getElementById('downloadPDF').addEventListener('click', function() {
+    window.print();
+});
+
+window.addEventListener('beforeprint', function() {
+    document.querySelectorAll('select[name^="final_grade"]').forEach(function(select) {
+        if (!select.value || select.value === '-- Select --') {
+            select.dataset.originalDisplay = select.style.display || '';
+            select.style.display = 'none';
+        }
+    });
+});
+
+window.addEventListener('afterprint', function() {
+    document.querySelectorAll('select[name^="final_grade"]').forEach(function(select) {
+        if (select.dataset.originalDisplay !== undefined) {
+            select.style.display = select.dataset.originalDisplay;
+            delete select.dataset.originalDisplay;
+        }
+    });
+});
     </script>
 </body>
 </html>
