@@ -2018,26 +2018,54 @@ class StudyPlanGenerator {
         $valid_courses = array_filter($this->all_courses, function($course) {
             return !empty($course['code']) && $course['units'] > 0;
         });
-        
+
+        $valid_course_codes = [];
+        foreach ($valid_courses as $course) {
+            $code = strtoupper(trim((string)($course['code'] ?? '')));
+            if ($code !== '') {
+                $valid_course_codes[$code] = true;
+            }
+        }
+
         $total_courses = count($valid_courses);
-        $completed_count = count($this->completed_courses);
+
+        $completed_count = 0;
+        $completed_units = 0;
+        foreach ($valid_courses as $course) {
+            if (!empty($course['completed'])) {
+                $completed_count++;
+                $completed_units += (int)($course['units'] ?? 0);
+            }
+        }
+
         $remaining_count = max(0, $total_courses - $completed_count);
-        // Exclude courses that were failed/INC/dropped but later passed
-        $active_failed = array_diff($this->failed_courses, $this->completed_courses);
-        $active_inc = array_diff($this->inc_courses, $this->completed_courses);
-        $active_dropped = array_diff($this->dropped_courses, $this->completed_courses);
+
+        // Keep dashboard counters scoped to the student's current curriculum.
+        $normalized_completed = array_flip(array_map(
+            static fn($code) => strtoupper(trim((string)$code)),
+            $this->completed_courses
+        ));
+
+        $active_failed = array_values(array_filter($this->failed_courses, function ($code) use ($normalized_completed, $valid_course_codes) {
+            $normalized = strtoupper(trim((string)$code));
+            return $normalized !== '' && isset($valid_course_codes[$normalized]) && !isset($normalized_completed[$normalized]);
+        }));
+        $active_inc = array_values(array_filter($this->inc_courses, function ($code) use ($normalized_completed, $valid_course_codes) {
+            $normalized = strtoupper(trim((string)$code));
+            return $normalized !== '' && isset($valid_course_codes[$normalized]) && !isset($normalized_completed[$normalized]);
+        }));
+        $active_dropped = array_values(array_filter($this->dropped_courses, function ($code) use ($normalized_completed, $valid_course_codes) {
+            $normalized = strtoupper(trim((string)$code));
+            return $normalized !== '' && isset($valid_course_codes[$normalized]) && !isset($normalized_completed[$normalized]);
+        }));
+
         $failed_count = count($active_failed);
         $inc_count = count($active_inc);
         $dropped_count = count($active_dropped);
-        
+
         $total_units = 0;
-        $completed_units = 0;
-        
         foreach ($valid_courses as $course) {
             $total_units += $course['units'];
-            if ($course['completed']) {
-                $completed_units += $course['units'];
-            }
         }
         
         $completion_percentage = 0;
