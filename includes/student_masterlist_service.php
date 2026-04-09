@@ -81,6 +81,57 @@ if (!function_exists('smlExtractMiddleInitial')) {
     }
 }
 
+if (!function_exists('smlNormalizeCsvContents')) {
+    function smlNormalizeCsvContents(string $contents): string
+    {
+        if ($contents === '') {
+            return $contents;
+        }
+
+        if (str_starts_with($contents, "\xFF\xFE")) {
+            $converted = @mb_convert_encoding(substr($contents, 2), 'UTF-8', 'UTF-16LE');
+            return is_string($converted) ? $converted : $contents;
+        }
+
+        if (str_starts_with($contents, "\xFE\xFF")) {
+            $converted = @mb_convert_encoding(substr($contents, 2), 'UTF-8', 'UTF-16BE');
+            return is_string($converted) ? $converted : $contents;
+        }
+
+        if (str_starts_with($contents, "\xEF\xBB\xBF")) {
+            return substr($contents, 3);
+        }
+
+        if (strpos($contents, "\0") !== false) {
+            $converted = @mb_convert_encoding($contents, 'UTF-8', 'UTF-16LE');
+            if (is_string($converted) && $converted !== '') {
+                return $converted;
+            }
+        }
+
+        return $contents;
+    }
+}
+
+if (!function_exists('smlDetectCsvDelimiter')) {
+    function smlDetectCsvDelimiter(string $line): string
+    {
+        $candidates = [',', ';', "\t"];
+        $bestDelimiter = ',';
+        $bestCount = -1;
+
+        foreach ($candidates as $candidate) {
+            $count = substr_count($line, $candidate);
+            if ($count > $bestCount) {
+                $bestCount = $count;
+                $bestDelimiter = $candidate;
+            }
+        }
+
+        return $bestDelimiter;
+    }
+}
+
 if (!function_exists('smlEnsureMasterlistTable')) {
     function smlEnsureMasterlistTable($conn): void
     {
@@ -224,12 +275,24 @@ if (!function_exists('smlLoadMasterlistSummary')) {
 if (!function_exists('smlParseCsvUpload')) {
     function smlParseCsvUpload(string $tmpPath): array
     {
-        $handle = @fopen($tmpPath, 'rb');
-        if ($handle === false) {
+        $contents = @file_get_contents($tmpPath);
+        if (!is_string($contents) || $contents === '') {
             return ['success' => false, 'message' => 'Unable to read the uploaded CSV file.'];
         }
 
-        $header = fgetcsv($handle);
+        $contents = smlNormalizeCsvContents($contents);
+        $firstLine = strtok($contents, "\r\n");
+        $delimiter = smlDetectCsvDelimiter((string) $firstLine);
+
+        $handle = fopen('php://temp', 'r+');
+        if ($handle === false) {
+            return ['success' => false, 'message' => 'Unable to process the uploaded CSV file.'];
+        }
+
+        fwrite($handle, $contents);
+        rewind($handle);
+
+        $header = fgetcsv($handle, 0, $delimiter);
         if (!is_array($header)) {
             fclose($handle);
             return ['success' => false, 'message' => 'The uploaded CSV file is empty.'];
@@ -263,7 +326,7 @@ if (!function_exists('smlParseCsvUpload')) {
 
         $rows = [];
         $line = 1;
-        while (($data = fgetcsv($handle)) !== false) {
+        while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
             $line++;
             $studentNumber = trim((string) ($data[$headerMap['studentnumber']] ?? ''));
             $lastName = trim((string) ($data[$headerMap['lastname']] ?? ''));
