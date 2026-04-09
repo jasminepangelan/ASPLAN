@@ -372,12 +372,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$conn instanceof PDO) {
                 $error_message = 'Unable to update advanced settings right now.';
             } else {
-            try {
-                aasUpdateAdvancedSettings($conn, $_SESSION['admin_id'], $advancedSettings, $_POST);
-            } catch (PDOException $e) {
-                error_log("Database error updating advanced settings: " . $e->getMessage());
-                $error_message = "Error updating advanced settings: " . $e->getMessage();
-            }
+                try {
+                    aasUpdateAdvancedSettings($conn, $_SESSION['admin_id'], $advancedSettings, $_POST);
+                    header("Location: account_approval_settings.php?message=" . urlencode("Advanced admin controls updated."));
+                    exit();
+                } catch (PDOException $e) {
+                    error_log("Database error updating advanced settings: " . $e->getMessage());
+                    $error_message = "Error updating advanced settings: " . $e->getMessage();
+                }
             }
         }
     }
