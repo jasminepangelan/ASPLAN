@@ -132,6 +132,172 @@ if (!function_exists('smlDetectCsvDelimiter')) {
     }
 }
 
+if (!function_exists('smlColumnLettersToIndex')) {
+    function smlColumnLettersToIndex(string $letters): int
+    {
+        $letters = strtoupper(trim($letters));
+        $index = 0;
+        $length = strlen($letters);
+        for ($i = 0; $i < $length; $i++) {
+            $char = ord($letters[$i]);
+            if ($char < 65 || $char > 90) {
+                continue;
+            }
+            $index = ($index * 26) + ($char - 64);
+        }
+
+        return max(0, $index - 1);
+    }
+}
+
+if (!function_exists('smlParseXlsxUpload')) {
+    function smlParseXlsxUpload(string $tmpPath): ?array
+    {
+        if (!class_exists('ZipArchive')) {
+            return null;
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($tmpPath) !== true) {
+            return null;
+        }
+
+        $workbookXml = $zip->getFromName('xl/workbook.xml');
+        $workbookRelsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
+        if (!is_string($workbookXml) || !is_string($workbookRelsXml)) {
+            $zip->close();
+            return null;
+        }
+
+        $workbook = @simplexml_load_string($workbookXml);
+        $rels = @simplexml_load_string($workbookRelsXml);
+        if (!$workbook || !$rels) {
+            $zip->close();
+            return null;
+        }
+
+        $sheetTarget = null;
+        $namespaces = $workbook->getNamespaces(true);
+        $relNs = $namespaces['r'] ?? 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+        foreach ($workbook->sheets->sheet as $sheet) {
+            $attributes = $sheet->attributes($relNs, true);
+            $relationshipId = (string) ($attributes['id'] ?? '');
+            if ($relationshipId === '') {
+                continue;
+            }
+
+            foreach ($rels->Relationship as $relationship) {
+                $relAttributes = $relationship->attributes();
+                if ((string) ($relAttributes['Id'] ?? '') === $relationshipId) {
+                    $sheetTarget = 'xl/' . ltrim((string) ($relAttributes['Target'] ?? ''), '/');
+                    break 2;
+                }
+            }
+        }
+
+        if (!is_string($sheetTarget) || $sheetTarget === '') {
+            $zip->close();
+            return null;
+        }
+
+        $sheetXml = $zip->getFromName($sheetTarget);
+        if (!is_string($sheetXml)) {
+            $zip->close();
+            return null;
+        }
+
+        $sharedStrings = [];
+        $sharedStringsXml = $zip->getFromName('xl/sharedStrings.xml');
+        if (is_string($sharedStringsXml)) {
+            $shared = @simplexml_load_string($sharedStringsXml);
+            if ($shared) {
+                foreach ($shared->si as $item) {
+                    if (isset($item->t)) {
+                        $sharedStrings[] = (string) $item->t;
+                        continue;
+                    }
+
+                    $text = '';
+                    if (isset($item->r)) {
+                        foreach ($item->r as $run) {
+                            $text .= (string) ($run->t ?? '');
+                        }
+                    }
+                    $sharedStrings[] = $text;
+                }
+            }
+        }
+
+        $sheet = @simplexml_load_string($sheetXml);
+        if (!$sheet || !isset($sheet->sheetData)) {
+            $zip->close();
+            return null;
+        }
+
+        $rows = [];
+        foreach ($sheet->sheetData->row as $row) {
+            $rowData = [];
+            foreach ($row->c as $cell) {
+                $ref = (string) ($cell['r'] ?? '');
+                preg_match('/[A-Z]+/i', $ref, $matches);
+                $columnIndex = isset($matches[0]) ? smlColumnLettersToIndex($matches[0]) : count($rowData);
+                $type = (string) ($cell['t'] ?? '');
+                $value = '';
+
+                if ($type === 's') {
+                    $sharedIndex = (int) ($cell->v ?? 0);
+                    $value = (string) ($sharedStrings[$sharedIndex] ?? '');
+                } elseif ($type === 'inlineStr') {
+                    $value = (string) ($cell->is->t ?? '');
+                } else {
+                    $value = (string) ($cell->v ?? '');
+                }
+
+                $rowData[$columnIndex] = trim($value);
+            }
+
+            if (!empty($rowData)) {
+                ksort($rowData);
+                $rows[] = array_values($rowData);
+            }
+        }
+
+        $zip->close();
+        return $rows;
+    }
+}
+
+if (!function_exists('smlParseDelimitedUploadRows')) {
+    function smlParseDelimitedUploadRows(string $tmpPath): ?array
+    {
+        $contents = @file_get_contents($tmpPath);
+        if (!is_string($contents) || $contents === '') {
+            return null;
+        }
+
+        $contents = smlNormalizeCsvContents($contents);
+        $firstLine = strtok($contents, "\r\n");
+        $delimiter = smlDetectCsvDelimiter((string) $firstLine);
+
+        $handle = fopen('php://temp', 'r+');
+        if ($handle === false) {
+            return null;
+        }
+
+        fwrite($handle, $contents);
+        rewind($handle);
+
+        $rows = [];
+        while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+            $rows[] = array_map(static fn($value): string => trim((string) $value), $data);
+        }
+
+        fclose($handle);
+        return $rows;
+    }
+}
+
 if (!function_exists('smlEnsureMasterlistTable')) {
     function smlEnsureMasterlistTable($conn): void
     {
@@ -275,27 +441,36 @@ if (!function_exists('smlLoadMasterlistSummary')) {
 if (!function_exists('smlParseCsvUpload')) {
     function smlParseCsvUpload(string $tmpPath): array
     {
-        $contents = @file_get_contents($tmpPath);
-        if (!is_string($contents) || $contents === '') {
+        $spreadsheetRows = smlParseXlsxUpload($tmpPath);
+        if ($spreadsheetRows === null) {
+            $spreadsheetRows = smlParseDelimitedUploadRows($tmpPath);
+        }
+
+        if (!is_array($spreadsheetRows) || empty($spreadsheetRows)) {
             return ['success' => false, 'message' => 'Unable to read the uploaded CSV file.'];
         }
 
-        $contents = smlNormalizeCsvContents($contents);
-        $firstLine = strtok($contents, "\r\n");
-        $delimiter = smlDetectCsvDelimiter((string) $firstLine);
+        $header = null;
+        $headerLine = 0;
+        foreach ($spreadsheetRows as $index => $candidateRow) {
+            $candidateMap = [];
+            foreach ($candidateRow as $columnIndex => $column) {
+                $candidateMap[smlHeaderKey((string) $column)] = $columnIndex;
+            }
 
-        $handle = fopen('php://temp', 'r+');
-        if ($handle === false) {
-            return ['success' => false, 'message' => 'Unable to process the uploaded CSV file.'];
+            if (
+                array_key_exists('studentnumber', $candidateMap)
+                && array_key_exists('lastname', $candidateMap)
+                && array_key_exists('firstname', $candidateMap)
+            ) {
+                $header = $candidateRow;
+                $headerLine = $index + 1;
+                break;
+            }
         }
 
-        fwrite($handle, $contents);
-        rewind($handle);
-
-        $header = fgetcsv($handle, 0, $delimiter);
         if (!is_array($header)) {
-            fclose($handle);
-            return ['success' => false, 'message' => 'The uploaded CSV file is empty.'];
+            return ['success' => false, 'message' => 'CSV must include the columns: Student Number, Last name, and First name. Middle Initial is optional.'];
         }
 
         $headerMap = [];
@@ -311,7 +486,6 @@ if (!function_exists('smlParseCsvUpload')) {
 
         foreach ($requiredColumns as $requiredKey => $label) {
             if (!array_key_exists($requiredKey, $headerMap)) {
-                fclose($handle);
                 return ['success' => false, 'message' => 'CSV must include the columns: Student Number, Last name, and First name. Middle Initial is optional.'];
             }
         }
@@ -325,8 +499,9 @@ if (!function_exists('smlParseCsvUpload')) {
         }
 
         $rows = [];
-        $line = 1;
-        while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+        $line = $headerLine;
+        for ($rowIndex = $headerLine; $rowIndex < count($spreadsheetRows); $rowIndex++) {
+            $data = $spreadsheetRows[$rowIndex];
             $line++;
             $studentNumber = trim((string) ($data[$headerMap['studentnumber']] ?? ''));
             $lastName = trim((string) ($data[$headerMap['lastname']] ?? ''));
@@ -351,8 +526,6 @@ if (!function_exists('smlParseCsvUpload')) {
                 'middle_initial' => $middleInitial,
             ];
         }
-
-        fclose($handle);
 
         if (empty($rows)) {
             return ['success' => false, 'message' => 'The uploaded CSV does not contain any student rows.'];
