@@ -240,7 +240,7 @@
         emailPolicyMessage = 'Checking email policy...';
         updateProfileFieldGate();
 
-        fetch('../auth/check_email_policy.php?email=' + encodeURIComponent(trimmedEmail))
+        fetch('../auth/email_policy.php?email=' + encodeURIComponent(trimmedEmail))
             .then(response => response.json())
             .then(data => {
                 if (requestId !== emailPolicyRequestId) {
