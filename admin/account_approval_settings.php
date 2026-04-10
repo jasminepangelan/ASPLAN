@@ -91,7 +91,7 @@ $advancedSettings = [
         'label' => 'Enable 2FA for Admin Login',
         'type' => 'boolean',
         'default' => 0,
-        'help' => 'Require an additional verification step when admins sign in.'
+        'help' => 'Require a 6-digit authenticator-app code after the admin password step.'
     ],
     'enforce_student_cvsu_email_verification' => [
         'label' => 'Require Student CvSU Email OTP Verification',

@@ -4,6 +4,8 @@
  * Handles settings CRUD, validation, and audit logging
  */
 
+require_once __DIR__ . '/admin_two_factor_service.php';
+
 function aasNormalizeSettingValue(array $meta, string $raw): string {
     $value = trim($raw);
     
@@ -293,6 +295,8 @@ function aasUpdateAdminAccountCredentials(PDO $conn, string $adminId, string $cu
 
     $updateStmt = $conn->prepare('UPDATE admin SET username = ?, password = ? WHERE username = ?');
     $updateStmt->execute([$targetUsername, $targetHash, $existingUsername]);
+
+    atfMoveEnrollment($conn, $existingUsername, $targetUsername);
 
     $changedFields = [];
     if (strcasecmp($targetUsername, $existingUsername) !== 0) {

@@ -521,6 +521,14 @@ class AccountManagementController extends Controller
                         'password' => $targetPasswordHash,
                     ]);
 
+                $this->ensureAdminTwoFactorTable();
+                DB::table('admin_two_factor_auth')
+                    ->where('admin_username', (string) ($admin->username ?? $adminId))
+                    ->update([
+                        'admin_username' => $targetUsername,
+                        'updated_at' => now(),
+                    ]);
+
                 if (!empty($changedFields)) {
                     $this->writeAdminAuditLog(
                         $targetUsername,
@@ -891,5 +899,18 @@ class AccountManagementController extends Controller
     {
         $this->ensureStudentRejectionLogTable();
         DB::table('student_rejection_log')->where('student_number', $studentId)->delete();
+    }
+
+    private function ensureAdminTwoFactorTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS admin_two_factor_auth (
+            admin_username VARCHAR(255) NOT NULL PRIMARY KEY,
+            secret_encrypted TEXT NOT NULL,
+            enabled_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_verified_at DATETIME NULL,
+            last_verified_time_slice BIGINT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
     }
 }

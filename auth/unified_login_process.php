@@ -9,6 +9,7 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/rate_limit.php';
 require_once __DIR__ . '/../includes/security_policy.php';
 require_once __DIR__ . '/../includes/student_masterlist_service.php';
+require_once __DIR__ . '/../includes/admin_two_factor_service.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -32,6 +33,16 @@ function clearRememberMeCookies(): void
     clearAppCookie('remember_me', '/');
     clearAppCookie('remember_me', '/PEAS/');
     unset($_COOKIE['remember_me']);
+}
+
+function sendAdminTwoFactorRedirect(string $username, string $fullName, bool $setupRequired)
+{
+    atfStartPendingSession($username, $fullName, (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    sendJsonResponse([
+        'status' => 'success',
+        'redirect' => $setupRequired ? 'admin/setup_2fa.php' : 'admin/verify_2fa.php',
+        'user_type' => 'admin',
+    ]);
 }
 
 function checkStudentCredentials($conn, $username, $password)
@@ -186,6 +197,21 @@ try {
         ], 10);
 
         if (is_array($bridgeData) && isset($bridgeData['status'])) {
+            if (in_array($bridgeData['status'], ['two_factor_setup_required', 'two_factor_verify_required'], true)) {
+                $twoFactorUser = is_array($bridgeData['two_factor_user'] ?? null) ? $bridgeData['two_factor_user'] : [];
+                $pendingUsername = trim((string) ($twoFactorUser['username'] ?? $username));
+                $pendingFullName = trim((string) ($twoFactorUser['full_name'] ?? $pendingUsername));
+
+                resetRateLimitDB($conn, 'login');
+                clearRememberMeCookies();
+                closeDBConnection($conn);
+                sendAdminTwoFactorRedirect(
+                    $pendingUsername,
+                    $pendingFullName,
+                    $bridgeData['status'] === 'two_factor_setup_required'
+                );
+            }
+
             if ($bridgeData['status'] === 'success') {
                 resetRateLimitDB($conn, 'login');
                 session_regenerate_id(true);
@@ -364,6 +390,19 @@ try {
             break;
 
         case 'admin':
+            if (atfIsEnabled()) {
+                atfEnsureTable($conn);
+                $existingTwoFactor = atfLoadRecord($conn, (string) ($userData['username'] ?? ''));
+                resetRateLimitDB($conn, 'login');
+                clearRememberMeCookies();
+                closeDBConnection($conn);
+                sendAdminTwoFactorRedirect(
+                    (string) ($userData['username'] ?? ''),
+                    (string) ($userData['full_name'] ?? $username),
+                    !is_array($existingTwoFactor)
+                );
+            }
+
             resetRateLimitDB($conn, 'login');
             session_regenerate_id(true);
 

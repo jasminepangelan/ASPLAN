@@ -51,6 +51,26 @@ class AuthController extends Controller
                 return response()->json(['status' => 'error', 'message' => 'Invalid password. Please try again.']);
             }
 
+            if ($user['type'] === 'admin' && $this->adminTwoFactorEnabled()) {
+                $this->ensureAdminTwoFactorTable();
+                $this->resetRateLimit($request, 'login');
+
+                $twoFactorRecord = DB::table('admin_two_factor_auth')
+                    ->select(['admin_username'])
+                    ->where('admin_username', (string) ($user['username'] ?? $username))
+                    ->first();
+
+                return response()->json([
+                    'status' => $twoFactorRecord !== null ? 'two_factor_verify_required' : 'two_factor_setup_required',
+                    'redirect' => $twoFactorRecord !== null ? 'admin/verify_2fa.php' : 'admin/setup_2fa.php',
+                    'user_type' => 'admin',
+                    'two_factor_user' => [
+                        'username' => (string) ($user['username'] ?? $username),
+                        'full_name' => (string) ($user['full_name'] ?? $username),
+                    ],
+                ]);
+            }
+
             if ($user['type'] === 'student') {
                 if (!$this->studentHasMasterlistAccess((string) ($user['student_id'] ?? ''))) {
                     return response()->json([
@@ -375,6 +395,33 @@ class AuthController extends Controller
             UNIQUE KEY uniq_student_masterlist_student_number (student_number),
             KEY idx_student_masterlist_program (program),
             KEY idx_student_masterlist_uploaded_at (uploaded_at)
+        )");
+    }
+
+    private function adminTwoFactorEnabled(): bool
+    {
+        try {
+            $value = DB::table('system_settings')
+                ->where('setting_name', 'enable_admin_2fa')
+                ->orderByDesc('id')
+                ->value('setting_value');
+
+            return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'on'], true);
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    private function ensureAdminTwoFactorTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS admin_two_factor_auth (
+            admin_username VARCHAR(255) NOT NULL PRIMARY KEY,
+            secret_encrypted TEXT NOT NULL,
+            enabled_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_verified_at DATETIME NULL,
+            last_verified_time_slice BIGINT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
     }
 }

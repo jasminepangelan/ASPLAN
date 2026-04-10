@@ -18,6 +18,7 @@ function getRateLimitDefaults($action) {
         'verify_reset_code' => ['attempts' => 5, 'window' => 600],
         'reset_password_code' => ['attempts' => 5, 'window' => 600],
         'student_email_otp_verify' => ['attempts' => 5, 'window' => 900],
+        'admin_2fa_verify' => ['attempts' => 5, 'window' => 900],
     ];
 
     return $defaults[$action] ?? ['attempts' => 5, 'window' => 300];
