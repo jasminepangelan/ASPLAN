@@ -381,10 +381,8 @@ if (!function_exists('atfGetPendingSession')) {
         }
 
         $startedAt = (int) ($_SESSION['admin_2fa_pending_started_at'] ?? 0);
-        $ip = (string) ($_SESSION['admin_2fa_pending_ip'] ?? '');
-        $currentIp = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
 
-        if ($startedAt <= 0 || (time() - $startedAt) > ATF_PREAUTH_TTL_SECONDS || ($ip !== '' && $ip !== $currentIp)) {
+        if ($startedAt <= 0 || (time() - $startedAt) > ATF_PREAUTH_TTL_SECONDS) {
             atfClearPendingSession();
             return null;
         }
@@ -398,7 +396,7 @@ if (!function_exists('atfGetPendingSession')) {
         return [
             'username' => $username,
             'full_name' => trim((string) ($_SESSION['admin_2fa_pending_full_name'] ?? $username)),
-            'ip' => $currentIp,
+            'ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
             'started_at' => $startedAt,
         ];
     }
