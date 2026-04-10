@@ -8,6 +8,13 @@ function resolveAppUrl(relativePath) {
     return new URL(relativePath, window.location.href).href;
 }
 
+function setErrorModalTitle(title) {
+    const titleEl = document.getElementById('errorModalTitle');
+    if (titleEl) {
+        titleEl.textContent = String(title || 'Login Error');
+    }
+}
+
 // Initialize on page load
 window.onload = function() {
     initializeEventListeners();
@@ -55,6 +62,8 @@ function showSessionLimitNotificationFromUrl() {
         return;
     }
 
+    setErrorModalTitle('Session Expired');
+
     errorMessageEl.textContent = limitSeconds > 0
         ? `Session limit reached. You were logged out after ${limitSeconds} seconds of inactivity. Please log in again.`
         : 'Session limit reached. You were logged out due to inactivity. Please log in again.';
@@ -97,6 +106,8 @@ function showAdminSessionReplacementNoticeFromUrl() {
     if (!errorMessageEl) {
         return;
     }
+
+    setErrorModalTitle('Session Replaced');
 
     errorMessageEl.textContent = 'This admin account was signed in on another device. Please log in again to continue.';
     showModal('errorModal');
@@ -247,6 +258,7 @@ function initializeCreateAccountGuard() {
 
             const errorMessageEl = document.getElementById('errorMessage');
             if (errorMessageEl) {
+                setErrorModalTitle('Registration Closed');
                 errorMessageEl.textContent = (data && data.message)
                     ? data.message
                     : 'Registration is currently blocked. Please try again later.';
@@ -291,6 +303,8 @@ function selectRole(role) {
  */
 function handleLoginSubmit(e) {
     e.preventDefault();
+
+    setErrorModalTitle('Login Error');
     
     const form = e.target;
     const submitButton = form.querySelector('button[type="submit"]');
