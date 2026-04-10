@@ -79,6 +79,7 @@ require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/email.php';
 require_once __DIR__ . '/../includes/student_email_verification_service.php';
 require_once __DIR__ . '/../includes/coordinator_email_verification_service.php';
+require_once __DIR__ . '/../includes/admin_session_service.php';
 require_once __DIR__ . '/../includes/settings.php';
 require_once __DIR__ . '/../includes/error_logging_service.php';
 
@@ -108,6 +109,14 @@ if (!function_exists('buildLoginUrlWithTimeoutNotice')) {
         $loginPath = buildAppRelativeUrl('/index.html');
 
         return $loginPath . '?session_expired=1&limit=' . urlencode((string)$sessionTimeout);
+    }
+}
+
+if (!function_exists('buildLoginUrlWithAdminSessionNotice')) {
+    function buildLoginUrlWithAdminSessionNotice() {
+        $loginPath = buildAppRelativeUrl('/index.html');
+
+        return $loginPath . '?admin_session_replaced=1';
     }
 }
 
@@ -198,6 +207,33 @@ if (!function_exists('shouldBypassCoordinatorVerificationGate')) {
     }
 }
 
+if (!function_exists('shouldBypassAdminSessionGuard')) {
+    function shouldBypassAdminSessionGuard(): bool
+    {
+        if (PHP_SAPI === 'cli') {
+            return true;
+        }
+
+        $scriptName = str_replace('\\', '/', strtolower((string)($_SERVER['SCRIPT_NAME'] ?? '')));
+        $allowed = [
+            '/admin/logout.php',
+            '/auth/signout.php',
+            '/auth/unified_login_process.php',
+            '/auth/get_csrf_token.php',
+            '/admin/setup_2fa.php',
+            '/admin/verify_2fa.php',
+        ];
+
+        foreach ($allowed as $path) {
+            if (str_ends_with($scriptName, $path)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 if (
     !empty($_SESSION['student_id']) &&
     !empty($_SESSION['student_email_verification_required']) &&
@@ -247,6 +283,47 @@ if (
 
     header('Location: ' . $verificationRedirect);
     exit();
+}
+
+if (
+    !shouldBypassAdminSessionGuard() &&
+    ((string) ($_SESSION['user_type'] ?? '') === 'admin' || !empty($_SESSION['admin_id']) || !empty($_SESSION['admin_username']))
+) {
+    $adminUsername = trim((string) ($_SESSION['admin_username'] ?? $_SESSION['admin_id'] ?? ''));
+
+    if ($adminUsername !== '') {
+        $adminSessionConn = getDBConnection();
+        $sessionStillCurrent = assIsCurrentAdminSession($adminSessionConn, $adminUsername);
+
+        if (!$sessionStillCurrent) {
+            session_unset();
+            session_destroy();
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['admin_session_replaced'] = true;
+
+            $expectsJson =
+                (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
+                (isset($_SERVER['HTTP_ACCEPT']) && stripos((string)$_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+            if ($expectsJson) {
+                header('Content-Type: application/json; charset=UTF-8');
+                http_response_code(401);
+                echo json_encode([
+                    'status' => 'session_expired',
+                    'message' => 'Your admin account was signed in on another device. Please log in again.',
+                    'redirect' => buildLoginUrlWithAdminSessionNotice(),
+                ]);
+                exit();
+            }
+
+            header('Location: ' . buildLoginUrlWithAdminSessionNotice());
+            exit();
+        }
+
+        assTouchActiveSession($adminSessionConn, $adminUsername);
+    }
 }
 
 // Enforce session timeout for authenticated sessions.

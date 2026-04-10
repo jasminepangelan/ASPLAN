@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 
+if (!empty($_SESSION['admin_username']) || !empty($_SESSION['admin_id'])) {
+	$adminSessionConn = getDBConnection();
+	assClearActiveSession($adminSessionConn, (string) ($_SESSION['admin_username'] ?? $_SESSION['admin_id'] ?? ''), true);
+}
+
 $useLaravelAuthBridge = getenv('USE_LARAVEL_AUTH_BRIDGE') === '1';
 
 if ($useLaravelAuthBridge) {

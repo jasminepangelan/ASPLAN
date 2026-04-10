@@ -240,6 +240,10 @@ try {
                     clearRememberMeCookies();
                 }
 
+                if (($bridgeData['user_type'] ?? '') === 'admin') {
+                    assRegisterActiveSession($conn, (string) ($_SESSION['admin_username'] ?? $_SESSION['admin_id'] ?? ''));
+                }
+
                 closeDBConnection($conn);
                 sendJsonResponse([
                     'status' => 'success',
@@ -412,6 +416,8 @@ try {
             $_SESSION['login_time'] = time();
             $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $_SESSION['user_type'] = 'admin';
+
+            assRegisterActiveSession($conn, (string) ($userData['username'] ?? ''));
 
             clearRememberMeCookies();
 

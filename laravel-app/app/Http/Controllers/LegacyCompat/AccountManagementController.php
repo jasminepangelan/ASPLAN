@@ -529,6 +529,14 @@ class AccountManagementController extends Controller
                         'updated_at' => now(),
                     ]);
 
+                $this->ensureAdminActiveSessionTable();
+                DB::table('admin_active_sessions')
+                    ->where('admin_username', (string) ($admin->username ?? $adminId))
+                    ->update([
+                        'admin_username' => $targetUsername,
+                        'updated_at' => now(),
+                    ]);
+
                 if (!empty($changedFields)) {
                     $this->writeAdminAuditLog(
                         $targetUsername,
@@ -909,6 +917,19 @@ class AccountManagementController extends Controller
             enabled_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             last_verified_at DATETIME NULL,
             last_verified_time_slice BIGINT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+    }
+
+    private function ensureAdminActiveSessionTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS admin_active_sessions (
+            admin_username VARCHAR(255) NOT NULL PRIMARY KEY,
+            session_id VARCHAR(255) NOT NULL,
+            user_ip VARCHAR(64) NULL,
+            user_agent VARCHAR(255) NULL,
+            last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");

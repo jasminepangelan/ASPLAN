@@ -6,6 +6,8 @@
  * pre-auth session used between password verification and final admin login.
  */
 
+require_once __DIR__ . '/admin_session_service.php';
+
 if (!defined('ATF_PREAUTH_TTL_SECONDS')) {
     define('ATF_PREAUTH_TTL_SECONDS', 600);
 }
@@ -418,5 +420,10 @@ if (!function_exists('atfFinalizeAdminLogin')) {
         $_SESSION['login_time'] = time();
         $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
         $_SESSION['user_type'] = 'admin';
+
+        if (function_exists('getDBConnection')) {
+            $conn = getDBConnection();
+            assRegisterActiveSession($conn, $username);
+        }
     }
 }

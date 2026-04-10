@@ -14,6 +14,7 @@ window.onload = function() {
     initializePasswordStrength(); // Initialize password strength indicator
     fetchCSRFToken(); // Fetch CSRF token on page load
     showSessionLimitNotificationFromUrl();
+    showAdminSessionReplacementNoticeFromUrl();
 };
 
 /**
@@ -66,6 +67,43 @@ function showSessionLimitNotificationFromUrl() {
     // Keep the URL clean so the notice appears only once on refresh/navigation.
     params.delete('session_expired');
     params.delete('limit');
+    const cleanedQuery = params.toString();
+    const cleanUrl = window.location.pathname + (cleanedQuery ? `?${cleanedQuery}` : '') + window.location.hash;
+    window.history.replaceState({}, document.title, cleanUrl);
+}
+
+function showAdminSessionReplacementNoticeFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const replacedFromUrl = params.get('admin_session_replaced') === '1';
+    const replacedFromStorage = sessionStorage.getItem('admin_session_replaced_notice') === '1';
+    const noticeAlreadyShown = sessionStorage.getItem('admin_session_replaced_notice_shown') === '1';
+
+    if (noticeAlreadyShown) {
+        sessionStorage.removeItem('admin_session_replaced_notice_shown');
+        sessionStorage.removeItem('admin_session_replaced_notice');
+
+        params.delete('admin_session_replaced');
+        const cleanedNoticeQuery = params.toString();
+        const cleanNoticeUrl = window.location.pathname + (cleanedNoticeQuery ? `?${cleanedNoticeQuery}` : '') + window.location.hash;
+        window.history.replaceState({}, document.title, cleanNoticeUrl);
+        return;
+    }
+
+    if (!replacedFromUrl && !replacedFromStorage) {
+        return;
+    }
+
+    const errorMessageEl = document.getElementById('errorMessage');
+    if (!errorMessageEl) {
+        return;
+    }
+
+    errorMessageEl.textContent = 'This admin account was signed in on another device. Please log in again to continue.';
+    showModal('errorModal');
+
+    sessionStorage.removeItem('admin_session_replaced_notice');
+
+    params.delete('admin_session_replaced');
     const cleanedQuery = params.toString();
     const cleanUrl = window.location.pathname + (cleanedQuery ? `?${cleanedQuery}` : '') + window.location.hash;
     window.history.replaceState({}, document.title, cleanUrl);
