@@ -352,7 +352,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (isset($_POST['update_setting'])) {
-        $auto_approve = isset($_POST['auto_approve']) ? 1 : 0;
+        $rawAutoApprove = $_POST['auto_approve'] ?? '0';
+        if (is_array($rawAutoApprove)) {
+            $lastAutoApprove = end($rawAutoApprove);
+            $rawAutoApprove = $lastAutoApprove === false ? '0' : $lastAutoApprove;
+        }
+        $autoApproveToken = strtolower(trim((string)$rawAutoApprove));
+        $auto_approve = in_array($autoApproveToken, ['1', 'on', 'true', 'yes'], true) ? 1 : 0;
 
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
@@ -369,6 +375,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (is_array($bridgeData) && !empty($bridgeData['success'])) {
                 header("Location: account_approval_settings.php?message=" . urlencode((string)($bridgeData['message'] ?? 'Approval setting updated.')));
                 exit();
+            }
+
+            if ($conn instanceof PDO) {
+                try {
+                    if (aasIsFreezingEnabled($conn)) {
+                        header("Location: account_approval_settings.php?message=" . urlencode("Approval actions are currently frozen. Disable freeze first to change auto-approval mode."));
+                        exit();
+                    }
+
+                    $approvedCount = aasUpdateAutoApproveSetting($conn, $_SESSION['admin_id'], (bool)$auto_approve);
+                    if ($auto_approve) {
+                        $message = "Auto-approval enabled. " . $approvedCount . " pending accounts have been automatically approved.";
+                    } else {
+                        $message = "Auto-approval disabled. New accounts will require manual approval.";
+                    }
+
+                    header("Location: account_approval_settings.php?message=" . urlencode($message));
+                    exit();
+                } catch (PDOException $e) {
+                    error_log("Bridge fallback error updating setting: " . $e->getMessage());
+                }
             }
 
             $error_message = (string)($bridgeData['message'] ?? 'Error updating setting.');
@@ -2687,7 +2714,8 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                 </div>
                             </div>
                             <div class="toggle-switch">
-                                <input type="checkbox" name="auto_approve" id="auto_approve" <?php echo $auto_approve_enabled ? 'checked' : ''; ?> <?php echo $freezeApprovalsEnabled ? 'disabled' : ''; ?>>
+                                <input type="hidden" name="auto_approve" value="0">
+                                <input type="checkbox" name="auto_approve" value="1" id="auto_approve" <?php echo $auto_approve_enabled ? 'checked' : ''; ?> <?php echo $freezeApprovalsEnabled ? 'disabled' : ''; ?>>
                                 <label for="auto_approve" class="slider"></label>
                             </div>
                         </div>
@@ -3109,7 +3137,9 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         }
 
         // Auto-submit form when toggle is changed
-        document.getElementById('auto_approve').addEventListener('change', function() {
+        const autoApproveToggle = document.getElementById('auto_approve');
+        if (autoApproveToggle) {
+            autoApproveToggle.addEventListener('change', function() {
             const form = document.getElementById('settingsForm');
             const toggleState = this.checked ? 'enable' : 'disable';
             const isEnabling = this.checked;
@@ -3129,7 +3159,8 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                     this.checked = !this.checked;
                 }
             });
-        });
+            });
+        }
 
         function showToggleConfirmation(action, isEnabling, callback) {
             // Create modal overlay
