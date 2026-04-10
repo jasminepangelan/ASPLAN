@@ -959,6 +959,13 @@ $auditTotalRecords = count($auditLogs);
 $auditTotalPages = max(1, (int)ceil($auditTotalRecords / $auditRecordsPerPage));
 $auditCurrentPage = min($auditCurrentPage, $auditTotalPages);
 $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecordsPerPage, $auditRecordsPerPage);
+
+$masterlistRecordsPerPage = max(5, min(100, $defaultRecordsPerPage));
+$masterlistCurrentPage = isset($_GET['masterlist_page']) && is_numeric($_GET['masterlist_page']) ? max(1, (int)$_GET['masterlist_page']) : 1;
+$masterlistTotalRecords = count($masterlistSummary);
+$masterlistTotalPages = max(1, (int)ceil($masterlistTotalRecords / $masterlistRecordsPerPage));
+$masterlistCurrentPage = min($masterlistCurrentPage, $masterlistTotalPages);
+$masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage - 1) * $masterlistRecordsPerPage, $masterlistRecordsPerPage);
 ?>
 
 <!DOCTYPE html>
@@ -2628,7 +2635,7 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($masterlistSummary as $summaryRow): ?>
+                                        <?php foreach ($masterlistSummaryPage as $summaryRow): ?>
                                             <tr>
                                                 <td><span class="masterlist-program-pill"><?php echo htmlspecialchars((string) ($summaryRow['program'] ?? '')); ?></span></td>
                                                 <td><?php echo (int) ($summaryRow['total_students'] ?? 0); ?></td>
@@ -2638,6 +2645,7 @@ $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecords
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
+                                <?php echo aasRenderMiniPagination('masterlist_page', $masterlistCurrentPage, $masterlistTotalPages); ?>
                             <?php else: ?>
                                 <div class="masterlist-format-note">
                                     No official student masterlist has been uploaded yet. Student registration and student login will stay blocked until the first masterlist is uploaded.
