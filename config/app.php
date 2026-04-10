@@ -6,6 +6,25 @@
 
 require_once __DIR__ . '/../includes/env_loader.php';
 
+if (!function_exists('resolveAppTimezone')) {
+    function resolveAppTimezone(): string {
+        $configuredTimezone = trim((string) (getenv('APP_TIMEZONE') ?: 'Asia/Manila'));
+        if ($configuredTimezone === '' || !in_array($configuredTimezone, timezone_identifiers_list(), true)) {
+            return 'Asia/Manila';
+        }
+
+        return $configuredTimezone;
+    }
+}
+
+if (!defined('APP_TIMEZONE')) {
+    define('APP_TIMEZONE', resolveAppTimezone());
+}
+
+if (function_exists('date_default_timezone_set')) {
+    date_default_timezone_set(APP_TIMEZONE);
+}
+
 if (!function_exists('normalizeConfiguredPathValue')) {
     function normalizeConfiguredPathValue($value): string {
         $path = trim((string) $value);
