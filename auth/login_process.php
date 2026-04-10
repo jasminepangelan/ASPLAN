@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $row = $result->fetch_assoc();
 
         // Check if auto-approval is currently enabled
-        $auto_approve_query = "SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students'";
+        $auto_approve_query = "SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students' ORDER BY id DESC LIMIT 1";
         $auto_approve_result = $conn->query($auto_approve_query);
         $auto_approve_enabled = false;
         

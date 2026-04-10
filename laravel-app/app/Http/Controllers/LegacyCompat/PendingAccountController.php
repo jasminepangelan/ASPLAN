@@ -340,6 +340,7 @@ class PendingAccountController extends Controller
     {
         return (string) DB::table('system_settings')
             ->where('setting_name', 'auto_approve_students')
+            ->orderByDesc('id')
             ->value('setting_value') === '1';
     }
 

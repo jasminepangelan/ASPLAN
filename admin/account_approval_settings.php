@@ -279,6 +279,29 @@ function aasDescribeUserAgent(string $userAgent): string
     return $device . ' / ' . $browser . ' / ' . $os;
 }
 
+function aasBridgeToBool($value): bool
+{
+    if (is_bool($value)) {
+        return $value;
+    }
+
+    if (is_int($value) || is_float($value)) {
+        return ((int)$value) === 1;
+    }
+
+    if (is_string($value)) {
+        $token = strtolower(trim($value));
+        if ($token === '1' || $token === 'true' || $token === 'yes' || $token === 'on') {
+            return true;
+        }
+        if ($token === '0' || $token === 'false' || $token === 'no' || $token === 'off' || $token === '') {
+            return false;
+        }
+    }
+
+    return !empty($value);
+}
+
 // Handle settings update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['upload_student_masterlist'])) {
@@ -373,6 +396,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
 
             if (is_array($bridgeData) && !empty($bridgeData['success'])) {
+                if ($conn instanceof PDO) {
+                    try {
+                        $localAutoApproveEnabled = aasLoadAutoApproveSetting($conn);
+                        if ((bool)$localAutoApproveEnabled !== (bool)$auto_approve) {
+                            aasUpdateAutoApproveSetting($conn, (string)$_SESSION['admin_id'], (bool)$auto_approve);
+                        }
+                    } catch (Throwable $e) {
+                        error_log('Bridge/local auto-approve sync failed: ' . $e->getMessage());
+                    }
+                }
+
                 header("Location: account_approval_settings.php?message=" . urlencode((string)($bridgeData['message'] ?? 'Approval setting updated.')));
                 exit();
             }
@@ -896,14 +930,18 @@ if ($useLaravelBridge) {
     );
 
     if (is_array($bridgeData) && !empty($bridgeData['success'])) {
-        $auto_approve_enabled = !empty($bridgeData['auto_approve_enabled']);
+        if (!($conn instanceof PDO) && array_key_exists('auto_approve_enabled', $bridgeData)) {
+            $auto_approve_enabled = aasBridgeToBool($bridgeData['auto_approve_enabled']);
+        }
         if (isset($bridgeData['policy_setting_values']) && is_array($bridgeData['policy_setting_values'])) {
             $policySettingValues = $bridgeData['policy_setting_values'];
         }
         if (isset($bridgeData['advanced_setting_values']) && is_array($bridgeData['advanced_setting_values'])) {
             $advancedSettingValues = $bridgeData['advanced_setting_values'];
         }
-        $freezeApprovalsEnabled = !empty($bridgeData['freeze_approvals_enabled']);
+        if (!($conn instanceof PDO) && array_key_exists('freeze_approvals_enabled', $bridgeData)) {
+            $freezeApprovalsEnabled = aasBridgeToBool($bridgeData['freeze_approvals_enabled']);
+        }
         $defaultRecordsPerPage = (int) ($bridgeData['default_records_per_page'] ?? $defaultRecordsPerPage);
 
         if (isset($bridgeData['stats']) && is_array($bridgeData['stats'])) {
@@ -912,7 +950,9 @@ if ($useLaravelBridge) {
 
         $pendingAlertThreshold = (int) ($bridgeData['pending_alert_threshold'] ?? $pendingAlertThreshold);
         $currentPendingCount = (int) ($bridgeData['current_pending_count'] ?? $currentPendingCount);
-        $pendingThresholdReached = !empty($bridgeData['pending_threshold_reached']);
+        if (!($conn instanceof PDO) && array_key_exists('pending_threshold_reached', $bridgeData)) {
+            $pendingThresholdReached = aasBridgeToBool($bridgeData['pending_threshold_reached']);
+        }
 
         if (isset($bridgeData['registration']) && is_array($bridgeData['registration'])) {
             $registrationStartRaw = (string) ($bridgeData['registration']['start_raw'] ?? $registrationStartRaw);

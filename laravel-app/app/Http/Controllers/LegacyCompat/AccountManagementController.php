@@ -114,12 +114,29 @@ class AccountManagementController extends Controller
 
             $settings = [];
             if ($hasSystemSettingsTable) {
-                $settings = DB::table('system_settings')
-                    ->select(['setting_name', 'setting_value'])
-                    ->get()
-                    ->groupBy('setting_name')
-                    ->map(static fn ($rows) => (string) ($rows->last()->setting_value ?? ''))
-                    ->all();
+                try {
+                    $settingRows = DB::table('system_settings')
+                        ->select(['id', 'setting_name', 'setting_value'])
+                        ->orderByDesc('id')
+                        ->get();
+
+                    foreach ($settingRows as $settingRow) {
+                        $settingName = (string) ($settingRow->setting_name ?? '');
+                        if ($settingName === '' || array_key_exists($settingName, $settings)) {
+                            continue;
+                        }
+
+                        $settings[$settingName] = (string) ($settingRow->setting_value ?? '');
+                    }
+                } catch (Throwable $e) {
+                    // Fallback for legacy schemas that may not expose an id column.
+                    $settings = DB::table('system_settings')
+                        ->select(['setting_name', 'setting_value'])
+                        ->get()
+                        ->groupBy('setting_name')
+                        ->map(static fn ($rows) => (string) ($rows->last()->setting_value ?? ''))
+                        ->all();
+                }
             }
 
             $policySettingValues = [];
@@ -387,7 +404,14 @@ class AccountManagementController extends Controller
                     ], 423);
                 }
 
-                $autoApprove = $request->boolean('auto_approve');
+                $rawAutoApprove = $request->input('auto_approve', '0');
+                if (is_array($rawAutoApprove)) {
+                    $lastValue = end($rawAutoApprove);
+                    $rawAutoApprove = ($lastValue === false) ? '0' : $lastValue;
+                }
+                $autoApproveToken = strtolower(trim((string) $rawAutoApprove));
+                $autoApprove = in_array($autoApproveToken, ['1', 'true', 'yes', 'on'], true);
+
                 $approvedCount = $this->updateAutoApproveSetting($adminId, $autoApprove);
                 $message = $autoApprove
                     ? 'Auto-approval enabled. ' . $approvedCount . ' pending accounts have been automatically approved.'

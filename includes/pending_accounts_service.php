@@ -37,7 +37,7 @@ function paIsAutoApproveEnabled()
 {
     $conn = getDBConnection();
     $enabled = false;
-    $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_name = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT setting_value FROM system_settings WHERE setting_name = ? ORDER BY id DESC LIMIT 1");
     if ($stmt) {
         $settingName = 'auto_approve_students';
         $stmt->bind_param('s', $settingName);

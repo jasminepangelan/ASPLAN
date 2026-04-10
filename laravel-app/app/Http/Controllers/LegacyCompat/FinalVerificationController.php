@@ -45,6 +45,7 @@ class FinalVerificationController extends Controller
 
             $autoValue = DB::table('system_settings')
                 ->where('setting_name', 'auto_approve_students')
+                ->orderByDesc('id')
                 ->value('setting_value');
             if ($autoValue !== null) {
                 $autoMode = (string) $autoValue === '1' ? 'ENABLED' : 'DISABLED';

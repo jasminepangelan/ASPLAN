@@ -82,7 +82,7 @@ if ($all_good) {
     echo "<h2>System Status Summary</h2>";
     
     // Check system_settings
-    $result = $conn->query("SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students'");
+    $result = $conn->query("SELECT setting_value FROM system_settings WHERE setting_name = 'auto_approve_students' ORDER BY id DESC LIMIT 1");
     if ($result && $result->num_rows > 0) {
         $row = $result->fetch_assoc();
         $auto_mode = $row['setting_value'] === '1' ? 'ENABLED' : 'DISABLED';
