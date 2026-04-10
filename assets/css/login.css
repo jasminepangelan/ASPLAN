@@ -299,6 +299,95 @@ body.modal-open {
   background: linear-gradient(135deg, #dc3545, #c82333) !important;
 }
 
+/* Premium styling specifically for the login error modal */
+#errorModal .error-modal {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 36%),
+    radial-gradient(circle at 86% 8%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(145deg, #d81f36 0%, #c3152c 52%, #a50f24 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 22px 48px rgba(95, 9, 20, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+#errorModal .error-modal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+#errorModal .modal-icon {
+  width: 84px;
+  height: 84px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 12px 24px rgba(115, 11, 23, 0.40);
+  margin-bottom: 14px;
+}
+
+#errorModal .modal-title {
+  font-size: clamp(29px, 5vw, 34px) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  text-shadow: 0 2px 8px rgba(83, 10, 18, 0.34) !important;
+  margin-bottom: 8px !important;
+}
+
+#errorModal .modal-message {
+  width: 100%;
+  padding: 12px 10px;
+  margin: 8px 0 14px !important;
+  font-size: 15px !important;
+  line-height: 1.52 !important;
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  border-radius: 12px;
+  text-wrap: balance;
+}
+
+#errorModal .modal-button {
+  width: 100%;
+  border-radius: 999px;
+  padding: 13px 22px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.12) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  box-shadow:
+    0 10px 22px rgba(122, 13, 26, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+#errorModal .modal-button:hover {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.16) 100%);
+  transform: translateY(-1px);
+}
+
+@media screen and (max-width: 560px) {
+  #errorModal .modal-title {
+    font-size: 29px !important;
+  }
+
+  #errorModal .modal-message {
+    font-size: 14px !important;
+  }
+
+  #errorModal .modal-button {
+    font-size: 18px;
+  }
+}
+
 .rejected-modal {
   background: linear-gradient(135deg, #6c757d, #495057) !important;
 }
