@@ -142,8 +142,8 @@
         </div>
         <div class="form-group">
             <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" placeholder="ex. juan.delacruz@cvsu.edu.ph" required>
-            <div style="color: #5d715e; font-size: 12px; margin-top: 5px;">Use your official <strong>@cvsu.edu.ph</strong> email only.</div>
+            <input type="email" id="email" name="email" placeholder="ex. juan.delacruz@student.edu.ph" required>
+            <div style="color: #5d715e; font-size: 12px; margin-top: 5px;">Use an email domain allowed by the administrator. <strong>@cvsu.edu.ph</strong> is always accepted.</div>
             <div id="email-message" style="color: red; font-size: 13px; margin-top: 3px; display: none;"></div>
         </div>
         <div class="form-group">
@@ -165,8 +165,8 @@
     </form>
 </div>
 <script>
-    function isOfficialCvsuEmail(value) {
-        return /^[^\s@]+@cvsu\.edu\.ph$/i.test(String(value || '').trim());
+    function isValidEmailFormat(value) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(String(value || '').trim());
     }
 
     function showEmailMessage(message) {
@@ -183,7 +183,7 @@
         if (data.first_name) document.getElementById('first-name').value = data.first_name;
         if (data.middle_name) document.getElementById('middle-name').value = data.middle_name;
         if (data.email) document.getElementById('email').value = data.email;
-        updateProfileFieldGate();
+        validateEmailAgainstPolicy(emailInput.value);
     };
     // Live check for student number uniqueness
     let studentIdCheckTimeout = null;
@@ -195,23 +195,77 @@
     const nextButton = document.getElementById('next-button');
     const gatedInputs = [lastNameInput, firstNameInput, middleNameInput];
     let isStudentIdValid = false;
+    let isEmailPolicyAllowed = false;
+    let emailPolicyMessage = '';
+    let emailCheckTimeout = null;
+    let emailPolicyRequestId = 0;
     let studentIdValidationMessage = 'Please enter a valid student number that does not exist in the system';
 
     function updateProfileFieldGate() {
-        const hasValidOfficialEmail = isOfficialCvsuEmail(emailInput.value);
+        const hasValidAllowedEmail = isEmailPolicyAllowed;
         gatedInputs.forEach((input) => {
-            input.disabled = !hasValidOfficialEmail;
+            input.disabled = !hasValidAllowedEmail;
         });
-        nextButton.disabled = !hasValidOfficialEmail;
-        nextButton.style.opacity = hasValidOfficialEmail ? '1' : '0.65';
-        nextButton.style.cursor = hasValidOfficialEmail ? 'pointer' : 'not-allowed';
+        nextButton.disabled = !hasValidAllowedEmail;
+        nextButton.style.opacity = hasValidAllowedEmail ? '1' : '0.65';
+        nextButton.style.cursor = hasValidAllowedEmail ? 'pointer' : 'not-allowed';
 
         if (!emailInput.value.trim()) {
             showEmailMessage('');
             return;
         }
 
-        showEmailMessage(hasValidOfficialEmail ? '' : 'Enter a valid official @cvsu.edu.ph email first.');
+        showEmailMessage(hasValidAllowedEmail ? '' : emailPolicyMessage);
+    }
+
+    function validateEmailAgainstPolicy(emailValue) {
+        const trimmedEmail = String(emailValue || '').trim();
+        const requestId = ++emailPolicyRequestId;
+
+        if (!trimmedEmail) {
+            isEmailPolicyAllowed = false;
+            emailPolicyMessage = '';
+            updateProfileFieldGate();
+            return;
+        }
+
+        if (!isValidEmailFormat(trimmedEmail)) {
+            isEmailPolicyAllowed = false;
+            emailPolicyMessage = 'Enter a valid email address first.';
+            updateProfileFieldGate();
+            return;
+        }
+
+        isEmailPolicyAllowed = false;
+        emailPolicyMessage = 'Checking email policy...';
+        updateProfileFieldGate();
+
+        fetch('../auth/check_email_policy.php?email=' + encodeURIComponent(trimmedEmail))
+            .then(response => response.json())
+            .then(data => {
+                if (requestId !== emailPolicyRequestId) {
+                    return;
+                }
+
+                if (data && data.allowed === true) {
+                    isEmailPolicyAllowed = true;
+                    emailPolicyMessage = '';
+                } else {
+                    isEmailPolicyAllowed = false;
+                    emailPolicyMessage = (data && data.message) ? data.message : 'Email domain is not allowed for student accounts.';
+                }
+
+                updateProfileFieldGate();
+            })
+            .catch(() => {
+                if (requestId !== emailPolicyRequestId) {
+                    return;
+                }
+
+                isEmailPolicyAllowed = false;
+                emailPolicyMessage = 'Unable to validate email policy right now. Please try again.';
+                updateProfileFieldGate();
+            });
     }
 
     studentIdInput.addEventListener('input', function() {
@@ -250,7 +304,7 @@
                         lastNameInput.value = '';
                         firstNameInput.value = '';
                         middleNameInput.value = '';
-                        updateProfileFieldGate();
+                        validateEmailAgainstPolicy('');
                     } else if (data.allowed === false) {
                         messageDiv.textContent = data.message || 'This student number is not included in the official masterlist.';
                         messageDiv.style.display = 'block';
@@ -260,7 +314,7 @@
                         lastNameInput.value = '';
                         firstNameInput.value = '';
                         middleNameInput.value = '';
-                        updateProfileFieldGate();
+                        validateEmailAgainstPolicy('');
                     } else {
                         messageDiv.style.display = 'none';
                         isStudentIdValid = true;
@@ -296,7 +350,11 @@
     });
 
     emailInput.addEventListener('input', function() {
-        updateProfileFieldGate();
+        const emailValue = emailInput.value;
+        clearTimeout(emailCheckTimeout);
+        emailCheckTimeout = setTimeout(() => {
+            validateEmailAgainstPolicy(emailValue);
+        }, 300);
     });
 
     gatedInputs.forEach((input) => {
@@ -319,8 +377,8 @@
                 return;
             }
 
-            if (!isOfficialCvsuEmail(emailInput.value)) {
-                showEmailMessage('Enter a valid official @cvsu.edu.ph email first.');
+            if (!isEmailPolicyAllowed) {
+                showEmailMessage(emailPolicyMessage || 'Enter an allowed email first.');
                 emailInput.focus();
                 e.preventDefault();
             }
@@ -369,8 +427,8 @@
             return;
         }
 
-        if (!isOfficialCvsuEmail(email)) {
-            showEmailMessage('Enter a valid official @cvsu.edu.ph email first.');
+        if (!isEmailPolicyAllowed) {
+            showEmailMessage(emailPolicyMessage || 'Enter an allowed email first.');
             form.email.focus();
             return;
         }

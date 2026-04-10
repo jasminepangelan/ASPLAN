@@ -198,7 +198,7 @@ class StudentProfileController extends Controller
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'Please provide a valid email address.';
             } elseif (!$this->isAllowedEmailDomain($email)) {
-                $errors[] = 'Only official @cvsu.edu.ph email addresses are allowed for student accounts.';
+                $errors[] = 'Email domain is not allowed for student accounts.';
             } else {
                 $fields['email'] = htmlspecialchars($email);
             }
