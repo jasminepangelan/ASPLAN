@@ -374,6 +374,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             }
 
+            if ($conn instanceof PDO) {
+                try {
+                    aasUpdateAdvancedSettings($conn, $_SESSION['admin_id'], $advancedSettings, $_POST);
+                    header("Location: account_approval_settings.php?message=" . urlencode("Advanced admin controls updated."));
+                    exit();
+                } catch (PDOException $e) {
+                    error_log("Bridge fallback error updating advanced settings: " . $e->getMessage());
+                }
+            }
+
             $error_message = (string)($bridgeData['message'] ?? 'Error updating advanced settings.');
         } else {
             if (!$conn instanceof PDO) {
