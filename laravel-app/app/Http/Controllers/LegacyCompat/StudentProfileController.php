@@ -361,14 +361,17 @@ class StudentProfileController extends Controller
             return true;
         }
 
-        $allowedDomainsRaw = (string) ($this->getSettingValue('allowed_email_domains') ?? '');
+        $allowedDomainsRaw = (string) ($this->getSettingValue('allowed_email_domains') ?? 'cvsu.edu.ph');
+        if (trim($allowedDomainsRaw) === '') {
+            $allowedDomainsRaw = 'cvsu.edu.ph';
+        }
         $allowedDomains = array_values(array_filter(array_map(
             static fn ($domain): string => strtolower(trim((string) $domain)),
             explode(',', $allowedDomainsRaw)
         ), static fn (string $domain): bool => $domain !== ''));
 
         if (empty($allowedDomains)) {
-            return true;
+            $allowedDomains = ['cvsu.edu.ph'];
         }
 
         $emailDomain = strtolower((string) substr(strrchr($normalizedEmail, '@') ?: '', 1));

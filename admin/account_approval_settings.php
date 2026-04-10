@@ -118,10 +118,10 @@ $advancedSettings = [
     'allowed_email_domains' => [
         'label' => 'Allowed Student Email Domains',
         'type' => 'text',
-        'default' => '',
+        'default' => 'cvsu.edu.ph',
         'max_length' => 500,
         'placeholder' => 'example.edu, students.example.edu',
-        'help' => 'Comma-separated domains. Leave blank to allow all domains.'
+        'help' => 'Comma-separated domains. Leave blank to default to cvsu.edu.ph only.'
     ],
     'rejection_cooldown_days' => [
         'label' => 'Re-application Cooldown After Rejection (days)',

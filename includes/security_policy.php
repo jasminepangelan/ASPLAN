@@ -134,14 +134,17 @@ if (!function_exists('isAllowedEmailDomain')) {
             return ['allowed' => true, 'message' => ''];
         }
 
-        $allowedDomainsRaw = policySettingString($conn, 'allowed_email_domains', '');
+        $allowedDomainsRaw = policySettingString($conn, 'allowed_email_domains', 'cvsu.edu.ph');
+        if (trim((string)$allowedDomainsRaw) === '') {
+            $allowedDomainsRaw = 'cvsu.edu.ph';
+        }
         $allowedDomains = array_values(array_filter(array_map(
             static fn ($domain) => strtolower(trim((string)$domain)),
             explode(',', (string)$allowedDomainsRaw)
         ), static fn ($domain) => $domain !== ''));
 
         if (empty($allowedDomains)) {
-            return ['allowed' => true, 'message' => ''];
+            $allowedDomains = ['cvsu.edu.ph'];
         }
 
         $emailDomain = strtolower((string)substr(strrchr($normalizedEmail, '@') ?: '', 1));
