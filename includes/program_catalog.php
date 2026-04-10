@@ -66,6 +66,20 @@ function pcNormalizeProgramCode(string $value): string
         return $known[$upper];
     }
 
+    if (
+        strpos($upper, 'BSBA') !== false
+        && (strpos($upper, 'HUMAN RESOURCE') !== false || strpos($upper, 'HRM') !== false)
+    ) {
+        return 'BSBA-HRM';
+    }
+
+    if (
+        strpos($upper, 'BSBA') !== false
+        && (strpos($upper, 'MARKETING') !== false || preg_match('/\bMM\b/', $upper))
+    ) {
+        return 'BSBA-MM';
+    }
+
     if (strpos($upper, 'COMPUTER SCIENCE') !== false) {
         return 'BSCS';
     }
