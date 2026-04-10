@@ -73,110 +73,201 @@ closeDBConnection($conn);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin 2FA Verification</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
+
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Manrope', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background:
-                radial-gradient(circle at top right, rgba(91, 168, 84, 0.20), transparent 34%),
-                linear-gradient(135deg, #eef5ec 0%, #f8fbf7 55%, #e8f0e5 100%);
+                radial-gradient(circle at 11% 17%, rgba(78, 161, 69, 0.25), transparent 31%),
+                radial-gradient(circle at 86% 7%, rgba(136, 204, 122, 0.26), transparent 40%),
+                linear-gradient(132deg, #ecf4ea 0%, #f6faf4 45%, #e4efe1 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 28px;
+            padding: 26px;
             color: #143d11;
-        }
-        .panel {
-            width: min(520px, 100%);
-            background: rgba(255,255,255,0.96);
-            border-radius: 28px;
-            border: 1px solid rgba(73, 132, 65, 0.18);
-            box-shadow: 0 24px 54px rgba(24, 56, 17, 0.14);
+            position: relative;
             overflow: hidden;
         }
+
+        body::before,
+        body::after {
+            content: '';
+            position: absolute;
+            width: 440px;
+            height: 440px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            top: -210px;
+            right: -130px;
+            background: radial-gradient(circle at center, rgba(67, 151, 58, 0.34), rgba(67, 151, 58, 0));
+        }
+
+        body::after {
+            bottom: -260px;
+            left: -120px;
+            background: radial-gradient(circle at center, rgba(112, 189, 102, 0.30), rgba(112, 189, 102, 0));
+        }
+
+        .panel {
+            width: min(520px, 100%);
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            border: 1px solid rgba(73, 132, 65, 0.19);
+            box-shadow:
+                0 28px 72px rgba(21, 63, 16, 0.17),
+                inset 0 1px 0 rgba(255, 255, 255, 0.75);
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .panel::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.30);
+        }
+
         .hero {
-            padding: 28px 28px 18px;
-            background: linear-gradient(135deg, rgba(32,96,24,0.08), rgba(92,168,84,0.16));
-            border-bottom: 1px solid rgba(32,96,24,0.08);
+            padding: 30px 30px 20px;
+            background:
+                radial-gradient(circle at top center, rgba(95, 177, 86, 0.24), rgba(95, 177, 86, 0) 67%),
+                linear-gradient(140deg, rgba(24, 88, 18, 0.10), rgba(127, 200, 116, 0.17));
+            border-bottom: 1px solid rgba(32,96,24,0.10);
             text-align: center;
         }
+
         .hero img {
-            width: 44px;
-            height: 44px;
-            margin-bottom: 12px;
+            width: 48px;
+            height: 48px;
+            margin-bottom: 13px;
+            filter: drop-shadow(0 8px 16px rgba(27, 89, 22, 0.20));
         }
+
         .badge {
             display: inline-flex;
             align-items: center;
+            gap: 8px;
             padding: 7px 14px;
             border-radius: 999px;
-            background: rgba(38, 117, 29, 0.10);
-            color: #206018;
+            background: rgba(27, 101, 19, 0.12);
+            color: #1b5f16;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 800;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             margin-bottom: 14px;
         }
+
+        .badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2f8f27;
+            box-shadow: 0 0 0 4px rgba(47, 143, 39, 0.20);
+        }
+
         h1 {
             margin: 0 0 8px;
-            font-size: 33px;
-            color: #103c14;
+            font-size: clamp(32px, 5vw, 44px);
+            letter-spacing: -0.03em;
+            line-height: 1.08;
+            color: #0f3c13;
         }
+
         .subtitle {
             margin: 0;
-            color: #446548;
-            font-size: 15px;
+            color: #3f5f43;
+            font-size: 17px;
             line-height: 1.6;
         }
+
         .content {
-            padding: 28px;
+            padding: 30px;
         }
+
         .info-card {
-            background: linear-gradient(180deg, rgba(246,250,244,0.98), rgba(236,244,233,0.95));
-            border: 1px solid rgba(73, 132, 65, 0.14);
-            border-radius: 22px;
-            padding: 20px 20px 18px;
-            margin-bottom: 20px;
+            background: linear-gradient(180deg, rgba(246,250,244,0.98), rgba(233,243,229,0.95));
+            border: 1px solid rgba(73, 132, 65, 0.15);
+            border-radius: 20px;
+            padding: 18px 18px 16px;
+            margin-bottom: 14px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
         }
+
         .info-card strong {
             color: #17491d;
         }
+
+        .security-note {
+            margin: 0 0 22px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(30, 94, 24, 0.07);
+            color: #2e5931;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
         .form-label {
             display: block;
             margin: 0 0 10px;
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 14px;
+            font-weight: 800;
             color: #1f5623;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
         }
+
         .code-input {
             width: 100%;
-            padding: 18px;
+            padding: 18px 16px;
             border-radius: 18px;
             border: 2px solid rgba(33, 95, 26, 0.14);
-            background: #fff;
-            font-size: 30px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fcf7 100%);
+            font-family: 'Space Grotesk', 'Manrope', sans-serif;
+            font-size: 39px;
             font-weight: 700;
-            letter-spacing: 0.36em;
+            letter-spacing: 0.34em;
             text-align: center;
             color: #123d15;
             outline: none;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
+
         .code-input:focus {
             border-color: #2b8a22;
-            box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.16);
+            box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.15), 0 12px 28px rgba(32, 96, 24, 0.11);
         }
+
+        .code-input.invalid {
+            border-color: rgba(176, 52, 52, 0.45);
+            box-shadow: 0 0 0 4px rgba(176, 52, 52, 0.12);
+        }
+
         .helper {
             margin: 12px 0 0;
             color: #5e7662;
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.6;
         }
+
         .error-message {
             margin-top: 12px;
             padding: 12px 14px;
@@ -187,17 +278,19 @@ closeDBConnection($conn);
             font-size: 13px;
             font-weight: 600;
         }
+
         .actions {
-            margin-top: 20px;
+            margin-top: 24px;
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
         }
+
         .primary-btn, .secondary-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 160px;
+            min-width: 172px;
             padding: 14px 18px;
             border-radius: 16px;
             font-size: 15px;
@@ -209,16 +302,56 @@ closeDBConnection($conn);
         .primary-btn {
             border: none;
             color: #fff;
-            background: linear-gradient(135deg, #206018 0%, #3da336 100%);
+            background: linear-gradient(135deg, #1d6217 0%, #43ab3a 100%);
             box-shadow: 0 16px 30px rgba(37, 105, 31, 0.20);
         }
+
         .secondary-btn {
             border: 1px solid rgba(33, 95, 26, 0.18);
-            color: #1c4f20;
+            color: #1a4b1e;
             background: #f7faf6;
         }
+
         .primary-btn:hover, .secondary-btn:hover {
             transform: translateY(-1px);
+        }
+
+        .primary-btn:hover {
+            box-shadow: 0 18px 32px rgba(37, 105, 31, 0.25);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 16px;
+            }
+
+            .hero,
+            .content {
+                padding: 22px;
+            }
+
+            .subtitle {
+                font-size: 15px;
+            }
+
+            .code-input {
+                font-size: 34px;
+                letter-spacing: 0.28em;
+            }
+
+            .primary-btn,
+            .secondary-btn {
+                flex: 1 1 100%;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition: none !important;
+            }
         }
     </style>
 </head>
@@ -240,13 +373,15 @@ closeDBConnection($conn);
                 <strong>Username:</strong> <?php echo htmlspecialchars($pending['username']); ?>
             </div>
 
+            <p class="security-note">This challenge protects administrator access. Use the latest one-time code from your authenticator app.</p>
+
             <form method="post" action="">
                 <?php csrfTokenField(); ?>
                 <label class="form-label" for="verification_code">Authenticator Code</label>
                 <input
                     id="verification_code"
                     name="verification_code"
-                    class="code-input"
+                    class="code-input<?php echo $errorMessage !== '' ? ' invalid' : ''; ?>"
                     type="text"
                     inputmode="numeric"
                     autocomplete="one-time-code"
@@ -271,5 +406,26 @@ closeDBConnection($conn);
             </form>
         </div>
     </div>
+
+    <script>
+        (function () {
+            const codeInput = document.getElementById('verification_code');
+            if (!codeInput) {
+                return;
+            }
+
+            const sanitize = (value) => String(value || '').replace(/\D+/g, '').slice(0, 6);
+
+            const applySanitizedValue = () => {
+                codeInput.value = sanitize(codeInput.value);
+            };
+
+            codeInput.addEventListener('input', applySanitizedValue);
+            codeInput.addEventListener('paste', function () {
+                window.requestAnimationFrame(applySanitizedValue);
+            });
+            codeInput.focus();
+        })();
+    </script>
 </body>
 </html>
