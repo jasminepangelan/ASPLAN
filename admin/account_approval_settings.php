@@ -236,6 +236,49 @@ function aasRenderMiniPagination(string $pageParam, int $currentPage, int $total
     return $html;
 }
 
+function aasDescribeUserAgent(string $userAgent): string
+{
+    $ua = strtolower(trim($userAgent));
+    if ($ua === '' || $ua === 'unknown') {
+        return 'Unknown device';
+    }
+
+    $device = 'Desktop';
+    if (preg_match('/mobile|iphone|windows phone|android.*mobile/', $ua)) {
+        $device = 'Mobile';
+    } elseif (preg_match('/ipad|tablet|android(?!.*mobile)/', $ua)) {
+        $device = 'Tablet';
+    }
+
+    $browser = 'Unknown Browser';
+    if (strpos($ua, 'edg/') !== false) {
+        $browser = 'Edge';
+    } elseif (strpos($ua, 'opr/') !== false || strpos($ua, 'opera') !== false) {
+        $browser = 'Opera';
+    } elseif (strpos($ua, 'chrome/') !== false) {
+        $browser = 'Chrome';
+    } elseif (strpos($ua, 'safari/') !== false && strpos($ua, 'chrome/') === false) {
+        $browser = 'Safari';
+    } elseif (strpos($ua, 'firefox/') !== false) {
+        $browser = 'Firefox';
+    }
+
+    $os = 'Unknown OS';
+    if (strpos($ua, 'windows') !== false) {
+        $os = 'Windows';
+    } elseif (strpos($ua, 'mac os x') !== false || strpos($ua, 'macintosh') !== false) {
+        $os = 'macOS';
+    } elseif (strpos($ua, 'android') !== false) {
+        $os = 'Android';
+    } elseif (strpos($ua, 'iphone') !== false || strpos($ua, 'ipad') !== false || strpos($ua, 'ios') !== false) {
+        $os = 'iOS';
+    } elseif (strpos($ua, 'linux') !== false) {
+        $os = 'Linux';
+    }
+
+    return $device . ' / ' . $browser . ' / ' . $os;
+}
+
 // Handle settings update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['upload_student_masterlist'])) {
@@ -869,6 +912,38 @@ if ($useLaravelBridge) {
         if (isset($bridgeData['admin_account']) && is_array($bridgeData['admin_account'])) {
             $adminAccount = array_merge($adminAccount, $bridgeData['admin_account']);
         }
+    }
+}
+
+$adminSessionDeviceLabel = 'No active session record yet';
+$adminSessionIpLabel = 'Unavailable';
+$adminSessionLastSeenLabel = 'Unavailable';
+$adminSessionCurrentLabel = 'Unknown';
+
+$activeAdminUsername = trim((string)($adminAccount['username'] ?? $_SESSION['admin_username'] ?? $_SESSION['admin_id'] ?? ''));
+if ($conn instanceof PDO && $activeAdminUsername !== '') {
+    try {
+        $activeSession = assLoadActiveSession($conn, $activeAdminUsername);
+        if (is_array($activeSession)) {
+            $adminSessionDeviceLabel = aasDescribeUserAgent((string)($activeSession['user_agent'] ?? ''));
+
+            $activeIp = trim((string)($activeSession['user_ip'] ?? ''));
+            $adminSessionIpLabel = $activeIp !== '' ? $activeIp : 'Unknown';
+
+            $lastSeenRaw = (string)($activeSession['last_seen_at'] ?? '');
+            $lastSeenTs = $lastSeenRaw !== '' ? strtotime($lastSeenRaw) : false;
+            if ($lastSeenTs !== false) {
+                $adminSessionLastSeenLabel = date('M d, Y h:i A', $lastSeenTs);
+            }
+
+            $adminSessionCurrentLabel = assIsCurrentAdminSession($conn, $activeAdminUsername)
+                ? 'This session is active on this device.'
+                : 'Another device is currently the active session.';
+        } else {
+            $adminSessionCurrentLabel = 'No active session currently recorded.';
+        }
+    } catch (Throwable $e) {
+        error_log('Failed to load admin active session snapshot: ' . $e->getMessage());
     }
 }
 
@@ -1660,6 +1735,19 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             line-height: 1.35;
             color: var(--brand-700);
             word-break: break-word;
+        }
+
+        .admin-account-pill small {
+            display: block;
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1.45;
+            color: var(--text-700);
+            word-break: break-word;
+        }
+
+        .admin-account-pill.session-pill {
+            grid-column: 1 / -1;
         }
 
         .admin-account-grid {
@@ -2679,6 +2767,15 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                 <div class="admin-account-pill">
                                     <span>Account Holder</span>
                                     <strong><?php echo htmlspecialchars((string)($adminAccount['full_name'] ?? $_SESSION['admin_full_name'] ?? 'Administrator')); ?></strong>
+                                </div>
+                                <div class="admin-account-pill session-pill">
+                                    <span>Last Active Session Device/IP</span>
+                                    <strong><?php echo htmlspecialchars($adminSessionDeviceLabel); ?></strong>
+                                    <small>
+                                        IP: <?php echo htmlspecialchars($adminSessionIpLabel); ?><br>
+                                        Last seen: <?php echo htmlspecialchars($adminSessionLastSeenLabel); ?><br>
+                                        <?php echo htmlspecialchars($adminSessionCurrentLabel); ?>
+                                    </small>
                                 </div>
                             </div>
 
