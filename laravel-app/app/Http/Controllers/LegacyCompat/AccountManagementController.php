@@ -85,7 +85,7 @@ class AccountManagementController extends Controller
                 ], 401);
             }
 
-            $this->ensureSystemSettingsTable();
+            $hasSystemSettingsTable = $this->ensureSystemSettingsTable();
 
             $policyKeys = [
                 'session_timeout_seconds' => 3600,
@@ -112,12 +112,15 @@ class AccountManagementController extends Controller
                 'registration_open_end' => '',
             ];
 
-            $settings = DB::table('system_settings')
-                ->select(['setting_name', 'setting_value'])
-                ->get()
-                ->groupBy('setting_name')
-                ->map(static fn ($rows) => (string) ($rows->last()->setting_value ?? ''))
-                ->all();
+            $settings = [];
+            if ($hasSystemSettingsTable) {
+                $settings = DB::table('system_settings')
+                    ->select(['setting_name', 'setting_value'])
+                    ->get()
+                    ->groupBy('setting_name')
+                    ->map(static fn ($rows) => (string) ($rows->last()->setting_value ?? ''))
+                    ->all();
+            }
 
             $policySettingValues = [];
             foreach ($policyKeys as $key => $default) {
@@ -326,7 +329,12 @@ class AccountManagementController extends Controller
                 ], 401);
             }
 
-            $this->ensureSystemSettingsTable();
+            if (!$this->ensureSystemSettingsTable()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Settings storage is not available right now. Please try again later.',
+                ], 503);
+            }
 
             $schema = $this->approvalSettingsSchema();
             $policySettings = $schema['policy_settings'];
@@ -625,7 +633,7 @@ class AccountManagementController extends Controller
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update approval settings.',
+                'message' => 'Failed to update approval settings. ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -705,7 +713,10 @@ class AccountManagementController extends Controller
 
     private function upsertSystemSetting(string $key, string $value, string $updatedBy): void
     {
-        $this->ensureSystemSettingsTable();
+        if (!$this->ensureSystemSettingsTable()) {
+            throw new \RuntimeException('Unable to access system settings storage.');
+        }
+
         $columns = $this->getSystemSettingsColumns();
 
         $payload = [
@@ -726,34 +737,67 @@ class AccountManagementController extends Controller
         );
     }
 
-    private function ensureSystemSettingsTable(): void
+    private function ensureSystemSettingsTable(): bool
     {
-        DB::statement("CREATE TABLE IF NOT EXISTS system_settings (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            setting_name VARCHAR(255) UNIQUE NOT NULL,
-            setting_value TEXT NOT NULL,
-            updated_by VARCHAR(255) NULL,
-            updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )");
+        static $checked = false;
+        static $available = false;
 
-        try {
-            DB::statement('ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS updated_by VARCHAR(255) NULL');
-        } catch (Throwable $e) {
-            // Older MySQL variants may not support IF NOT EXISTS; ignore and continue.
+        if ($checked) {
+            return $available;
         }
 
+        $checked = true;
+
         try {
-            DB::statement('ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+            DB::table('system_settings')->select(['setting_name'])->limit(1)->get();
+            $available = true;
         } catch (Throwable $e) {
-            // Older MySQL variants may not support IF NOT EXISTS; ignore and continue.
+            try {
+                DB::statement("CREATE TABLE IF NOT EXISTS system_settings (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    setting_name VARCHAR(255) UNIQUE NOT NULL,
+                    setting_value TEXT NOT NULL,
+                    updated_by VARCHAR(255) NULL,
+                    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )");
+                $available = true;
+            } catch (Throwable $createException) {
+                $available = false;
+                return false;
+            }
         }
+
+        if (!$available) {
+            return false;
+        }
+
+        // Best-effort column upgrades only. Do not fail the request for schema drift.
+        $columns = $this->getSystemSettingsColumns(true);
+
+        if (!isset($columns['updated_by'])) {
+            try {
+                DB::statement('ALTER TABLE system_settings ADD COLUMN updated_by VARCHAR(255) NULL');
+            } catch (Throwable $e) {
+                // Ignore column migration failures.
+            }
+        }
+
+        if (!isset($columns['updated_at'])) {
+            try {
+                DB::statement('ALTER TABLE system_settings ADD COLUMN updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+            } catch (Throwable $e) {
+                // Ignore column migration failures.
+            }
+        }
+
+        return true;
     }
 
-    private function getSystemSettingsColumns(): array
+    private function getSystemSettingsColumns(bool $refresh = false): array
     {
         static $columns = null;
 
-        if (is_array($columns)) {
+        if (!$refresh && is_array($columns)) {
             return $columns;
         }
 
