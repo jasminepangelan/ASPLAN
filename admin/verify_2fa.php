@@ -154,7 +154,10 @@ closeDBConnection($conn);
         .hero img {
             width: 48px;
             height: 48px;
+            display: block;
             margin-bottom: 13px;
+            margin-left: auto;
+            margin-right: auto;
             filter: drop-shadow(0 8px 16px rgba(27, 89, 22, 0.20));
         }
 
