@@ -37,6 +37,7 @@ if (empty($_SESSION['admin_2fa_setup_secret'])) {
 $secret = (string) $_SESSION['admin_2fa_setup_secret'];
 $formattedSecret = atfFormatSecret($secret);
 $otpauthUri = atfBuildOtpAuthUri($pending['username'], $secret);
+$qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=' . rawurlencode($otpauthUri);
 $errorMessage = '';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
@@ -167,6 +168,38 @@ closeDBConnection($conn);
             flex-wrap: wrap;
             gap: 12px;
             margin-top: 18px;
+        }
+        .qr-card {
+            margin: 18px 0 16px;
+            padding: 16px;
+            border-radius: 20px;
+            background: #fff;
+            border: 1px solid rgba(35, 92, 29, 0.12);
+            text-align: center;
+        }
+        .qr-frame {
+            width: 236px;
+            height: 236px;
+            margin: 0 auto 12px;
+            padding: 8px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(32,96,24,0.08), rgba(92,168,84,0.18));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-frame img {
+            width: 220px;
+            height: 220px;
+            display: block;
+            border-radius: 14px;
+            background: #fff;
+        }
+        .qr-caption {
+            margin: 0;
+            color: #456547;
+            font-size: 13px;
+            line-height: 1.6;
         }
         .meta-pill {
             display: inline-flex;
@@ -309,13 +342,28 @@ closeDBConnection($conn);
                 <h2>1. Add this account to your authenticator app</h2>
                 <ol class="steps">
                     <li>Open Microsoft Authenticator, Google Authenticator, or another TOTP app.</li>
-                    <li>Add a new account and choose <strong>Enter a setup key</strong> if your app asks.</li>
+                    <li>Scan the QR code below. If your app does not support scanning, choose <strong>Enter a setup key</strong>.</li>
                     <li>Use the secret below and keep the type set to <strong>Time based</strong>.</li>
                 </ol>
 
                 <div class="meta-row">
                     <span class="meta-pill">Issuer: ASPLAN Admin</span>
                     <span class="meta-pill">Account: <?php echo htmlspecialchars($pending['username']); ?></span>
+                </div>
+
+                <div class="qr-card">
+                    <div class="qr-frame">
+                        <img
+                            src="<?php echo htmlspecialchars($qrImageUrl); ?>"
+                            alt="Admin 2FA QR code"
+                            loading="eager"
+                            referrerpolicy="no-referrer"
+                        >
+                    </div>
+                    <p class="qr-caption">
+                        Scan this QR code with your authenticator app for the fastest setup.
+                        If the image does not load, use the manual setup key below.
+                    </p>
                 </div>
 
                 <div class="secret-box"><?php echo htmlspecialchars($formattedSecret); ?></div>
