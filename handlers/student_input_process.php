@@ -44,10 +44,10 @@ try {
     $program = trim($_POST['program']);
     $admission_date = trim($_POST['admission_date']);
 
-    // Check if student ID already exists
-    if (srsStudentIdExists($conn, $student_id)) {
-        elsWarning('Duplicate student ID', ['student_id' => $student_id], 'student_registration');
-        echo json_encode(['status' => 'error', 'message' => 'Student ID already exists.']);
+    $registrationAvailability = srsGetRegistrationAvailability($conn, $student_id);
+    if (!$registrationAvailability['allowed']) {
+        elsWarning('Student registration blocked', ['student_id' => $student_id, 'message' => $registrationAvailability['message']], 'student_registration');
+        echo json_encode(['status' => 'error', 'message' => $registrationAvailability['message']]);
         closeDBConnection($conn);
         exit;
     }

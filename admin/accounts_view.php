@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/accounts_view_service.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/student_registration_service.php';
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
@@ -107,11 +108,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
     $executed = $stmt->execute();
     $updated = $executed && $stmt->affected_rows > 0;
     $stmt->close();
-    closeDBConnection($actionConn);
 
     if ($updated) {
+        if ($targetStatus === 'rejected') {
+            srsRecordStudentRejection($actionConn, $studentId, $approvedBy);
+        } else {
+            srsClearStudentRejectionLog($actionConn, $studentId);
+        }
+        closeDBConnection($actionConn);
         header('Location: accounts_view.php?' . $redirectParams . '&message=' . urlencode($statusMap[$statusAction]['message']));
     } else {
+        closeDBConnection($actionConn);
         header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('No account was updated. Please verify the selected student.'));
     }
     exit();

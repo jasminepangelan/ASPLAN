@@ -12,6 +12,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/account_approval_settings_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/student_masterlist_service.php';
+require_once __DIR__ . '/../includes/student_registration_service.php';
 
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 $bridgeUpdateEndpoint = '/api/account-approval-settings/update';
@@ -514,14 +515,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($action === 'approve') {
                 $stmt = $conn->prepare("UPDATE student_info SET status = 'approved', approved_by = ? WHERE student_number = ?");
                 $stmt->execute([$_SESSION['admin_id'], $student_id]);
+                srsClearStudentRejectionLog($conn, (string)$student_id);
                 $message = "Account approved successfully.";
             } elseif ($action === 'reject') {
                 $stmt = $conn->prepare("UPDATE student_info SET status = 'rejected', approved_by = ? WHERE student_number = ?");
                 $stmt->execute([$_SESSION['admin_id'], $student_id]);
+                srsRecordStudentRejection($conn, (string)$student_id, (string)$_SESSION['admin_id']);
                 $message = "Account rejected.";
             } elseif ($action === 'revert_pending') {
                 $stmt = $conn->prepare("UPDATE student_info SET status = 'pending', approved_by = NULL WHERE student_number = ?");
                 $stmt->execute([$student_id]);
+                srsClearStudentRejectionLog($conn, (string)$student_id);
                 $message = "Account reverted to pending status.";
             }
 
@@ -583,11 +587,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt = $conn->prepare("UPDATE student_info SET status = 'approved', approved_by = ? WHERE student_number IN ($placeholders)");
                     $params = array_merge([$_SESSION['admin_id']], $selected_students);
                     $stmt->execute($params);
+                    foreach ($selected_students as $selectedStudentId) {
+                        srsClearStudentRejectionLog($conn, (string)$selectedStudentId);
+                    }
                     $message = count($selected_students) . " accounts approved.";
                 } elseif ($action === 'reject_selected') {
                     $stmt = $conn->prepare("UPDATE student_info SET status = 'rejected', approved_by = ? WHERE student_number IN ($placeholders)");
                     $params = array_merge([$_SESSION['admin_id']], $selected_students);
                     $stmt->execute($params);
+                    foreach ($selected_students as $selectedStudentId) {
+                        srsRecordStudentRejection($conn, (string)$selectedStudentId, (string)$_SESSION['admin_id']);
+                    }
                     $message = count($selected_students) . " accounts rejected.";
                 }
 

@@ -124,6 +124,8 @@ class PendingAccountController extends Controller
                 return $this->response(false, 'Student account not found', 'error', 404);
             }
 
+            $this->clearStudentRejectionMarker($studentId);
+
             return $this->response(true, 'Account approved successfully.');
         } catch (Throwable $e) {
             return $this->response(false, 'Database error', 'error', 500);
@@ -159,6 +161,8 @@ class PendingAccountController extends Controller
             if ($updated <= 0) {
                 return $this->response(false, 'Student account not found', 'error', 404);
             }
+
+            $this->markStudentRejected($studentId, $adminId);
 
             return $this->response(true, 'Account rejected successfully.');
         } catch (Throwable $e) {
@@ -209,6 +213,8 @@ class PendingAccountController extends Controller
                 ->where('student_number', $studentId)
                 ->update(['status' => 'approved']);
 
+            $this->clearStudentRejectionMarker($studentId);
+
             return $this->response(true, 'Account approved successfully');
         } catch (Throwable $e) {
             return $this->response(false, 'Error rejecting account.', 'message', 500);
@@ -253,6 +259,8 @@ class PendingAccountController extends Controller
             if ($updated <= 0) {
                 return $this->response(false, 'Student account not found.', 'message', 404);
             }
+
+            $this->markStudentRejected($studentId, (string) $adviserId);
 
             return $this->response(true, 'Account rejected successfully.');
         } catch (Throwable $e) {
@@ -353,5 +361,34 @@ class PendingAccountController extends Controller
             'message' => $message,
             'query_key' => $queryKey,
         ], $status);
+    }
+
+    private function ensureStudentRejectionLogTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS student_rejection_log (
+            student_number VARCHAR(50) PRIMARY KEY,
+            rejected_at DATETIME NOT NULL,
+            rejected_by VARCHAR(120) NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+    }
+
+    private function markStudentRejected(string $studentId, ?string $actorId = null): void
+    {
+        $this->ensureStudentRejectionLogTable();
+        DB::table('student_rejection_log')->updateOrInsert(
+            ['student_number' => $studentId],
+            [
+                'rejected_at' => now(),
+                'rejected_by' => $actorId,
+                'updated_at' => now(),
+            ]
+        );
+    }
+
+    private function clearStudentRejectionMarker(string $studentId): void
+    {
+        $this->ensureStudentRejectionLogTable();
+        DB::table('student_rejection_log')->where('student_number', $studentId)->delete();
     }
 }

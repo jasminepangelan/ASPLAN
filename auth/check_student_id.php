@@ -4,6 +4,7 @@ header('X-Content-Type-Options: nosniff');
 
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/student_masterlist_service.php';
+require_once __DIR__ . '/../includes/student_registration_service.php';
 
 $studentId = isset($_POST['student_id']) ? trim((string) $_POST['student_id']) : trim((string) ($_GET['student_id'] ?? ''));
 
@@ -56,24 +57,8 @@ if ($useLaravelBridge) {
 }
 
 $conn = getDBConnection();
-$stmt = $conn->prepare('SELECT student_number FROM student_info WHERE student_number = ?');
-
-if (!$stmt) {
-    closeDBConnection($conn);
-    http_response_code(500);
-    echo json_encode(['exists' => false, 'error' => 'Unable to prepare student lookup.']);
-    exit;
-}
-
-$stmt->bind_param('s', $studentId);
-$stmt->execute();
-$stmt->store_result();
-
-$exists = $stmt->num_rows > 0;
-
-$stmt->close();
-
-if ($exists) {
+$availability = srsGetRegistrationAvailability($conn, $studentId);
+if (!$availability['allowed']) {
     echo json_encode(['exists' => true, 'allowed' => false, 'message' => 'Student number already exists in the system.']);
     closeDBConnection($conn);
     exit;
@@ -83,6 +68,8 @@ $masterlistGate = smlStudentIdAllowedForRegistration($conn, $studentId);
 echo json_encode([
     'exists' => false,
     'allowed' => (bool) $masterlistGate['allowed'],
-    'message' => (string) ($masterlistGate['message'] ?? ''),
+    'message' => !$masterlistGate['allowed']
+        ? (string) ($masterlistGate['message'] ?? '')
+        : (string) ($availability['message'] ?? ''),
 ]);
 closeDBConnection($conn);

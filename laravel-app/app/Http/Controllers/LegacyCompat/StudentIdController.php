@@ -20,15 +20,12 @@ class StudentIdController extends Controller
             ]);
         }
 
-        $exists = DB::table('student_info')
-            ->where('student_number', $studentId)
-            ->exists();
-
-        if ($exists) {
+        $availability = $this->registrationAvailability($studentId);
+        if (!$availability['allowed']) {
             return response()->json([
                 'exists' => true,
                 'allowed' => false,
-                'message' => 'Student number already exists in the system.',
+                'message' => $availability['message'],
             ]);
         }
 
@@ -40,8 +37,58 @@ class StudentIdController extends Controller
         return response()->json([
             'exists' => false,
             'allowed' => $allowed,
-            'message' => $allowed ? '' : 'This student number is not included in the official masterlist. Please contact the administrator.',
+            'message' => $allowed
+                ? (string) ($availability['message'] ?? '')
+                : 'This student number is not included in the official masterlist. Please contact the administrator.',
         ]);
+    }
+
+    private function registrationAvailability(string $studentId): array
+    {
+        $student = DB::table('student_info')
+            ->select(['student_number', 'status'])
+            ->where('student_number', $studentId)
+            ->first();
+
+        if ($student === null) {
+            return ['allowed' => true, 'reapply' => false, 'message' => ''];
+        }
+
+        $status = strtolower(trim((string) ($student->status ?? '')));
+        if ($status !== 'rejected') {
+            return [
+                'allowed' => false,
+                'reapply' => false,
+                'message' => 'Student number already exists in the system.',
+            ];
+        }
+
+        $cooldownDays = max(0, min(365, (int) ($this->settingValue('rejection_cooldown_days', '0'))));
+        if ($cooldownDays <= 0) {
+            return ['allowed' => true, 'reapply' => true, 'message' => ''];
+        }
+
+        $this->ensureRejectionLogTable();
+        $log = DB::table('student_rejection_log')
+            ->select(['rejected_at'])
+            ->where('student_number', $studentId)
+            ->first();
+
+        $rejectedAtTs = $log !== null ? strtotime((string) ($log->rejected_at ?? '')) : false;
+        if ($rejectedAtTs === false) {
+            return ['allowed' => true, 'reapply' => true, 'message' => ''];
+        }
+
+        $eligibleAt = strtotime('+' . $cooldownDays . ' days', $rejectedAtTs);
+        if ($eligibleAt !== false && $eligibleAt > time()) {
+            return [
+                'allowed' => false,
+                'reapply' => false,
+                'message' => 'This account was rejected. You may re-apply after ' . date('M d, Y h:i A', $eligibleAt) . '.',
+            ];
+        }
+
+        return ['allowed' => true, 'reapply' => true, 'message' => ''];
     }
 
     private function ensureMasterlistTable(): void
@@ -61,5 +108,25 @@ class StudentIdController extends Controller
             KEY idx_student_masterlist_program (program),
             KEY idx_student_masterlist_uploaded_at (uploaded_at)
         )");
+    }
+
+    private function ensureRejectionLogTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS student_rejection_log (
+            student_number VARCHAR(50) PRIMARY KEY,
+            rejected_at DATETIME NOT NULL,
+            rejected_by VARCHAR(120) NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+    }
+
+    private function settingValue(string $name, string $default = ''): string
+    {
+        $value = DB::table('system_settings')
+            ->where('setting_name', $name)
+            ->orderByDesc('id')
+            ->value('setting_value');
+
+        return $value === null ? $default : (string) $value;
     }
 }

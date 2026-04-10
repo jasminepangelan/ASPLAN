@@ -780,6 +780,12 @@ class AccountManagementController extends Controller
             ];
         }
 
+        if ($action === 'reject') {
+            $this->markStudentRejected($studentId, $adminId);
+        } else {
+            $this->clearStudentRejectionMarker($studentId);
+        }
+
         $this->writeAdminAuditLog(
             $adminId,
             'account_action',
@@ -812,6 +818,16 @@ class AccountManagementController extends Controller
                 'status' => $status,
                 'approved_by' => $adminId,
             ]);
+
+        if ($status === 'rejected') {
+            foreach ($selectedStudents as $studentId) {
+                $this->markStudentRejected((string) $studentId, $adminId);
+            }
+        } else {
+            foreach ($selectedStudents as $studentId) {
+                $this->clearStudentRejectionMarker((string) $studentId);
+            }
+        }
 
         $this->writeAdminAuditLog(
             $adminId,
@@ -846,5 +862,34 @@ class AccountManagementController extends Controller
         } catch (Throwable $e) {
             // Keep audit failures from breaking the user flow.
         }
+    }
+
+    private function ensureStudentRejectionLogTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS student_rejection_log (
+            student_number VARCHAR(50) PRIMARY KEY,
+            rejected_at DATETIME NOT NULL,
+            rejected_by VARCHAR(120) NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+    }
+
+    private function markStudentRejected(string $studentId, ?string $actorId = null): void
+    {
+        $this->ensureStudentRejectionLogTable();
+        DB::table('student_rejection_log')->updateOrInsert(
+            ['student_number' => $studentId],
+            [
+                'rejected_at' => now(),
+                'rejected_by' => $actorId,
+                'updated_at' => now(),
+            ]
+        );
+    }
+
+    private function clearStudentRejectionMarker(string $studentId): void
+    {
+        $this->ensureStudentRejectionLogTable();
+        DB::table('student_rejection_log')->where('student_number', $studentId)->delete();
     }
 }

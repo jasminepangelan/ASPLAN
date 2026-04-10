@@ -11,6 +11,158 @@ require_once __DIR__ . '/student_masterlist_service.php';
 const SRS_MAX_PICTURE_SIZE = 5000000; // 5MB
 const SRS_ALLOWED_IMAGE_TYPES = ['jpg', 'png', 'jpeg', 'gif'];
 const SRS_DEFAULT_PICTURE = 'pix/anonymous.jpg';
+
+function srsEnsureRejectionLogTable($conn): void {
+    $sql = "CREATE TABLE IF NOT EXISTS student_rejection_log (
+        student_number VARCHAR(50) PRIMARY KEY,
+        rejected_at DATETIME NOT NULL,
+        rejected_by VARCHAR(120) NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )";
+
+    if ($conn instanceof PDO) {
+        $conn->exec($sql);
+        return;
+    }
+
+    if (is_object($conn) && method_exists($conn, 'query')) {
+        $conn->query($sql);
+    }
+}
+
+function srsRecordStudentRejection($conn, string $studentId, ?string $rejectedBy = null): void {
+    srsEnsureRejectionLogTable($conn);
+
+    if ($conn instanceof PDO) {
+        $stmt = $conn->prepare("
+            INSERT INTO student_rejection_log (student_number, rejected_at, rejected_by, updated_at)
+            VALUES (?, NOW(), ?, NOW())
+            ON DUPLICATE KEY UPDATE rejected_at = NOW(), rejected_by = VALUES(rejected_by), updated_at = NOW()
+        ");
+        $stmt->execute([$studentId, $rejectedBy]);
+        return;
+    }
+
+    if (is_object($conn) && method_exists($conn, 'prepare')) {
+        $stmt = $conn->prepare("
+            INSERT INTO student_rejection_log (student_number, rejected_at, rejected_by, updated_at)
+            VALUES (?, NOW(), ?, NOW())
+            ON DUPLICATE KEY UPDATE rejected_at = NOW(), rejected_by = VALUES(rejected_by), updated_at = NOW()
+        ");
+        if ($stmt && method_exists($stmt, 'bind_param')) {
+            $stmt->bind_param('ss', $studentId, $rejectedBy);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+}
+
+function srsClearStudentRejectionLog($conn, string $studentId): void {
+    srsEnsureRejectionLogTable($conn);
+
+    if ($conn instanceof PDO) {
+        $stmt = $conn->prepare('DELETE FROM student_rejection_log WHERE student_number = ?');
+        $stmt->execute([$studentId]);
+        return;
+    }
+
+    if (is_object($conn) && method_exists($conn, 'prepare')) {
+        $stmt = $conn->prepare('DELETE FROM student_rejection_log WHERE student_number = ?');
+        if ($stmt && method_exists($stmt, 'bind_param')) {
+            $stmt->bind_param('s', $studentId);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+}
+
+function srsLoadExistingStudentRegistrationRow($conn, string $studentId): ?array {
+    if ($conn instanceof PDO) {
+        $stmt = $conn->prepare('SELECT student_number, status FROM student_info WHERE student_number = ? LIMIT 1');
+        $stmt->execute([$studentId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    if (is_object($conn) && method_exists($conn, 'prepare')) {
+        $stmt = $conn->prepare('SELECT student_number, status FROM student_info WHERE student_number = ? LIMIT 1');
+        if ($stmt && method_exists($stmt, 'bind_param')) {
+            $stmt->bind_param('s', $studentId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result ? $result->fetch_assoc() : null;
+            $stmt->close();
+            return is_array($row) ? $row : null;
+        }
+    }
+
+    return null;
+}
+
+function srsLoadStudentRejectionLog($conn, string $studentId): ?array {
+    srsEnsureRejectionLogTable($conn);
+
+    if ($conn instanceof PDO) {
+        $stmt = $conn->prepare('SELECT student_number, rejected_at, rejected_by FROM student_rejection_log WHERE student_number = ? LIMIT 1');
+        $stmt->execute([$studentId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    if (is_object($conn) && method_exists($conn, 'prepare')) {
+        $stmt = $conn->prepare('SELECT student_number, rejected_at, rejected_by FROM student_rejection_log WHERE student_number = ? LIMIT 1');
+        if ($stmt && method_exists($stmt, 'bind_param')) {
+            $stmt->bind_param('s', $studentId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result ? $result->fetch_assoc() : null;
+            $stmt->close();
+            return is_array($row) ? $row : null;
+        }
+    }
+
+    return null;
+}
+
+function srsGetRegistrationAvailability($conn, string $studentId): array {
+    $existing = srsLoadExistingStudentRegistrationRow($conn, $studentId);
+    if (!is_array($existing)) {
+        return ['allowed' => true, 'reapply' => false, 'message' => ''];
+    }
+
+    $status = strtolower(trim((string)($existing['status'] ?? '')));
+    if ($status !== 'rejected') {
+        return [
+            'allowed' => false,
+            'reapply' => false,
+            'message' => 'Student number already exists in the system.',
+        ];
+    }
+
+    $cooldownDays = policySettingInt($conn, 'rejection_cooldown_days', 0, 0, 365);
+    if ($cooldownDays <= 0) {
+        return ['allowed' => true, 'reapply' => true, 'message' => ''];
+    }
+
+    $rejectionLog = srsLoadStudentRejectionLog($conn, $studentId);
+    $rejectedAtRaw = (string)($rejectionLog['rejected_at'] ?? '');
+    $rejectedAtTs = $rejectedAtRaw !== '' ? strtotime($rejectedAtRaw) : false;
+
+    if ($rejectedAtTs === false) {
+        return ['allowed' => true, 'reapply' => true, 'message' => ''];
+    }
+
+    $eligibleAt = strtotime('+' . $cooldownDays . ' days', $rejectedAtTs);
+    if ($eligibleAt !== false && $eligibleAt > time()) {
+        return [
+            'allowed' => false,
+            'reapply' => false,
+            'message' => 'This account was rejected. You may re-apply after ' . date('M d, Y h:i A', $eligibleAt) . '.',
+        ];
+    }
+
+    return ['allowed' => true, 'reapply' => true, 'message' => ''];
+}
 /**
  * Validate all student registration fields
  */
@@ -176,6 +328,11 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
     }
 
     if (is_object($conn) && method_exists($conn, 'prepare')) {
+        $availability = srsGetRegistrationAvailability($conn, (string)$formData['student_id']);
+        if (!$availability['allowed']) {
+            return ['success' => false, 'error' => $availability['message']];
+        }
+
         $status = srsIsAutoApprovalEnabled($conn) ? 'approved' : 'pending';
         
         $student_id = $formData['student_id'];
@@ -195,21 +352,37 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
             $curriculum_year = null;
         }
         
-        $stmt = $conn->prepare(
-            "INSERT INTO student_info 
-            (student_number, last_name, first_name, middle_name, email, password, contact_number, house_number_street, strand, program, curriculum_year, date_of_admission, picture, status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        );
+        if (!empty($availability['reapply'])) {
+            $stmt = $conn->prepare(
+                "UPDATE student_info
+                SET last_name = ?, first_name = ?, middle_name = ?, email = ?, password = ?, contact_number = ?, house_number_street = ?, strand = ?, program = ?, curriculum_year = ?, date_of_admission = ?, picture = ?, status = ?, approved_by = NULL
+                WHERE student_number = ?"
+            );
+        } else {
+            $stmt = $conn->prepare(
+                "INSERT INTO student_info 
+                (student_number, last_name, first_name, middle_name, email, password, contact_number, house_number_street, strand, program, curriculum_year, date_of_admission, picture, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+        }
         
         if (!$stmt) {
             return ['success' => false, 'error' => 'Database error: ' . ($conn->error ?? 'prepare failed')];
         }
         
-        $bind_result = $stmt->bind_param(
-            "ssssssssssssss",
-            $student_id, $last_name, $first_name, $middle_name, $email, $hashedPassword,
-            $contact_no, $address, $strand, $program, $curriculum_year, $admission_date, $picturePath, $status
-        );
+        if (!empty($availability['reapply'])) {
+            $bind_result = $stmt->bind_param(
+                "ssssssssssssss",
+                $last_name, $first_name, $middle_name, $email, $hashedPassword,
+                $contact_no, $address, $strand, $program, $curriculum_year, $admission_date, $picturePath, $status, $student_id
+            );
+        } else {
+            $bind_result = $stmt->bind_param(
+                "ssssssssssssss",
+                $student_id, $last_name, $first_name, $middle_name, $email, $hashedPassword,
+                $contact_no, $address, $strand, $program, $curriculum_year, $admission_date, $picturePath, $status
+            );
+        }
         
         if (!$bind_result) {
             return ['success' => false, 'error' => 'Database error: ' . ($stmt->error ?? 'bind failed')];
@@ -220,6 +393,7 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
         }
         
         $stmt->close();
+        srsClearStudentRejectionLog($conn, $student_id);
         
         // Record password history
         recordPasswordHistory($conn, $student_id, $hashedPassword);
@@ -228,8 +402,12 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
             'success' => true,
             'status' => $status,
             'message' => $status === 'approved' 
-                ? 'Student account created and approved successfully. You can now login.' 
-                : 'Student data saved successfully. Your account is pending approval.'
+                ? (!empty($availability['reapply'])
+                    ? 'Student account re-applied and approved successfully. You can now login.'
+                    : 'Student account created and approved successfully. You can now login.')
+                : (!empty($availability['reapply'])
+                    ? 'Student account re-applied successfully. Your account is pending approval.'
+                    : 'Student data saved successfully. Your account is pending approval.')
         ];
     }
     
