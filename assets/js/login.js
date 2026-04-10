@@ -210,6 +210,54 @@ function initializeEventListeners() {
 
     // Keyboard accessibility for modals
     document.addEventListener('keydown', handleModalKeyPress);
+
+    // Create account guard against registration window/disable rules
+    initializeCreateAccountGuard();
+}
+
+function initializeCreateAccountGuard() {
+    const createAccountLink = document.getElementById('createAccountLink');
+    if (!createAccountLink) {
+        return;
+    }
+
+    createAccountLink.addEventListener('click', function (event) {
+        event.preventDefault();
+
+        const targetUrl = createAccountLink.getAttribute('href') || 'forms/student_input_form_1.html';
+
+        fetch(resolveAppUrl('auth/registration_window_status.php'), {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Unable to check registration status');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.open === true) {
+                window.location.href = new URL(targetUrl, window.location.href).href;
+                return;
+            }
+
+            const errorMessageEl = document.getElementById('errorMessage');
+            if (errorMessageEl) {
+                errorMessageEl.textContent = (data && data.message)
+                    ? data.message
+                    : 'Registration is currently blocked. Please try again later.';
+            }
+            showModal('errorModal');
+        })
+        .catch(() => {
+            // Fall back to existing server-side enforcement if status check is unavailable.
+            window.location.href = new URL(targetUrl, window.location.href).href;
+        });
+    });
 }
 
 /**

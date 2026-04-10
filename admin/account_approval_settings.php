@@ -768,6 +768,8 @@ $registrationEndRaw = (string)($advancedSettingValues['registration_open_end'] ?
 $registrationStartTs = strtotime(str_replace('T', ' ', $registrationStartRaw));
 $registrationEndTs = strtotime(str_replace('T', ' ', $registrationEndRaw));
 $registrationNow = time();
+$registrationTimezoneLabel = (string) (defined('APP_TIMEZONE') ? APP_TIMEZONE : date_default_timezone_get());
+$registrationServerNowLabel = date('M d, Y h:i:s A', $registrationNow);
 
 $registrationStatusLabel = 'OPEN';
 $registrationStatusClass = 'enabled';
@@ -1460,6 +1462,16 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             font-size: 11px;
             color: #5f6d62;
             line-height: 1.4;
+        }
+
+        .policy-item .server-time-note {
+            margin-top: 8px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            background: #f5faf4;
+            border: 1px solid #d9e7d9;
+            color: #3f5a42;
+            font-weight: 600;
         }
 
         .masterlist-shell {
@@ -2633,6 +2645,12 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                             name="<?php echo htmlspecialchars($key); ?>"
                                             value="<?php echo htmlspecialchars(aasToDateTimeLocalValue((string)$advancedSettingValues[$key])); ?>"
                                         >
+                                        <?php if ($key === 'registration_open_start' || $key === 'registration_open_end'): ?>
+                                            <small class="server-time-note">
+                                                Current server time (<?php echo htmlspecialchars($registrationTimezoneLabel); ?>):
+                                                <?php echo htmlspecialchars($registrationServerNowLabel); ?>
+                                            </small>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <textarea
                                             id="<?php echo htmlspecialchars($key); ?>"
