@@ -85,6 +85,8 @@ class AccountManagementController extends Controller
                 ], 401);
             }
 
+            $this->ensureSystemSettingsTable();
+
             $policyKeys = [
                 'session_timeout_seconds' => 3600,
                 'min_password_length' => 8,
@@ -323,6 +325,8 @@ class AccountManagementController extends Controller
                     'message' => 'Access denied. Please log in as admin.',
                 ], 401);
             }
+
+            $this->ensureSystemSettingsTable();
 
             $schema = $this->approvalSettingsSchema();
             $policySettings = $schema['policy_settings'];
@@ -701,14 +705,69 @@ class AccountManagementController extends Controller
 
     private function upsertSystemSetting(string $key, string $value, string $updatedBy): void
     {
+        $this->ensureSystemSettingsTable();
+        $columns = $this->getSystemSettingsColumns();
+
+        $payload = [
+            'setting_value' => $value,
+        ];
+
+        if (isset($columns['updated_by'])) {
+            $payload['updated_by'] = $updatedBy;
+        }
+
+        if (isset($columns['updated_at'])) {
+            $payload['updated_at'] = now();
+        }
+
         DB::table('system_settings')->updateOrInsert(
             ['setting_name' => $key],
-            [
-                'setting_value' => $value,
-                'updated_by' => $updatedBy,
-                'updated_at' => now(),
-            ]
+            $payload
         );
+    }
+
+    private function ensureSystemSettingsTable(): void
+    {
+        DB::statement("CREATE TABLE IF NOT EXISTS system_settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            setting_name VARCHAR(255) UNIQUE NOT NULL,
+            setting_value TEXT NOT NULL,
+            updated_by VARCHAR(255) NULL,
+            updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        try {
+            DB::statement('ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS updated_by VARCHAR(255) NULL');
+        } catch (Throwable $e) {
+            // Older MySQL variants may not support IF NOT EXISTS; ignore and continue.
+        }
+
+        try {
+            DB::statement('ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+        } catch (Throwable $e) {
+            // Older MySQL variants may not support IF NOT EXISTS; ignore and continue.
+        }
+    }
+
+    private function getSystemSettingsColumns(): array
+    {
+        static $columns = null;
+
+        if (is_array($columns)) {
+            return $columns;
+        }
+
+        $columns = [];
+        try {
+            $list = DB::getSchemaBuilder()->getColumnListing('system_settings');
+            foreach ($list as $columnName) {
+                $columns[(string) $columnName] = true;
+            }
+        } catch (Throwable $e) {
+            $columns = [];
+        }
+
+        return $columns;
     }
 
     private function getSettingValue(string $settingName): ?string
