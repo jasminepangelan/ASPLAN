@@ -731,10 +731,26 @@ class AccountManagementController extends Controller
             $payload['updated_at'] = now();
         }
 
-        DB::table('system_settings')->updateOrInsert(
-            ['setting_name' => $key],
-            $payload
-        );
+        try {
+            DB::table('system_settings')->updateOrInsert(
+                ['setting_name' => $key],
+                $payload
+            );
+            return;
+        } catch (Throwable $e) {
+            $message = strtolower($e->getMessage());
+            if (str_contains($message, 'incorrect integer value') && str_contains($message, 'setting_value')) {
+                $this->ensureSystemSettingsValueColumnIsText();
+
+                DB::table('system_settings')->updateOrInsert(
+                    ['setting_name' => $key],
+                    $payload
+                );
+                return;
+            }
+
+            throw $e;
+        }
     }
 
     private function ensureSystemSettingsTable(): bool
@@ -771,6 +787,8 @@ class AccountManagementController extends Controller
             return false;
         }
 
+        $this->ensureSystemSettingsValueColumnIsText();
+
         // Best-effort column upgrades only. Do not fail the request for schema drift.
         $columns = $this->getSystemSettingsColumns(true);
 
@@ -791,6 +809,31 @@ class AccountManagementController extends Controller
         }
 
         return true;
+    }
+
+    private function ensureSystemSettingsValueColumnIsText(): void
+    {
+        try {
+            $columnRows = DB::select("SHOW COLUMNS FROM system_settings LIKE 'setting_value'");
+            if (!is_array($columnRows) || empty($columnRows)) {
+                return;
+            }
+
+            $column = $columnRows[0];
+            $typeRaw = strtolower((string) ($column->Type ?? $column->type ?? ''));
+            if ($typeRaw === '') {
+                return;
+            }
+
+            $isTextCompatible = str_contains($typeRaw, 'text') || str_contains($typeRaw, 'char');
+            if ($isTextCompatible) {
+                return;
+            }
+
+            DB::statement('ALTER TABLE system_settings MODIFY COLUMN setting_value TEXT NOT NULL');
+        } catch (Throwable $e) {
+            // Ignore schema migration failures and let the caller surface the write error if it persists.
+        }
     }
 
     private function getSystemSettingsColumns(bool $refresh = false): array
