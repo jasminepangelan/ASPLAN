@@ -1730,6 +1730,15 @@ class StudyPlanGenerator {
     }
 
     /**
+     * Transferees and shifting students should be able to fill an irregular
+     * term up to the target curriculum cap using any truly eligible remaining
+     * courses, not only courses from the currently labeled semester bucket.
+     */
+    private function shouldUseFlexibleIrregularFill() {
+        return !empty($this->policy_gate_status['applies']);
+    }
+
+    /**
      * Build a term-by-term plan that mirrors the student's curriculum/checklist
      * exactly, preserving the original year and semester of each course.
      */
@@ -1944,7 +1953,20 @@ class StudyPlanGenerator {
                     unset($available[$code]);
                 }
             }
-            
+
+            if ($this->shouldUseFlexibleIrregularFill()) {
+                $allEligible = $this->applyConstraintsForSimulation(null, $simulated_completed, $simulated_all_courses);
+                foreach ($allEligible as $code => $course) {
+                    if (isset($available[$code])) {
+                        continue;
+                    }
+                    if (!$this->standingConstraintSatisfied($code, $term['year'], $term['semester'])) {
+                        continue;
+                    }
+                    $available[$code] = $course;
+                }
+            }
+              
             if (empty($available)) {
                 // Check if there are any remaining courses at all
                 $remaining_check = array_filter($simulated_all_courses, function($c) {
