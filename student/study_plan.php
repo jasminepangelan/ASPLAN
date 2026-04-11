@@ -262,7 +262,10 @@ foreach ($optimized_plan as $term_index => $term) {
         $study_plan[$target_year][$target_semester][] = [
             'course_code' => $course['code'],
             'course_title' => $course['title'],
-            'credit_unit_lec' => 0,
+            // Keep legacy unit fields aligned with generated totals so
+            // one-unit courses like CvSU 101 are counted correctly anywhere
+            // older display code still sums lec + lab.
+            'credit_unit_lec' => $course['units'],
             'credit_unit_lab' => 0,
             'total_units' => $course['units'],
             'prerequisite' => $course['prerequisite'] ?? 'None',
@@ -281,7 +284,11 @@ closeDBConnection($conn);
 function calculateTotalUnits($courses) {
     $total = 0;
     foreach ($courses as $course) {
-        $total += ($course['credit_unit_lec'] ?? 0) + ($course['credit_unit_lab'] ?? 0);
+        if (isset($course['total_units'])) {
+            $total += (float)($course['total_units'] ?? 0);
+            continue;
+        }
+        $total += (float)($course['credit_unit_lec'] ?? 0) + (float)($course['credit_unit_lab'] ?? 0);
     }
     return $total;
 }
