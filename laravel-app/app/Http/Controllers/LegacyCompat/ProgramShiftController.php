@@ -1068,16 +1068,35 @@ class ProgramShiftController extends Controller
     {
         try {
             $row = DB::table('student_checklists')
-                ->select(['final_grade', 'evaluator_remarks', 'approved_by'])
+                ->select([
+                    'final_grade',
+                    'evaluator_remarks',
+                    'approved_by',
+                    'grade_approved',
+                    'final_grade_2',
+                    'evaluator_remarks_2',
+                    'final_grade_3',
+                    'evaluator_remarks_3',
+                ])
                 ->where('student_id', trim($studentNumber))
                 ->whereRaw('TRIM(course_code) = ?', [trim($courseCode)])
-                ->whereNotNull('final_grade')
-                ->whereRaw("TRIM(final_grade) != ''")
+                ->where(function ($query): void {
+                    $query->where(function ($nested): void {
+                        $nested->whereNotNull('final_grade')
+                            ->whereRaw("TRIM(final_grade) != ''");
+                    })->orWhere(function ($nested): void {
+                        $nested->whereNotNull('final_grade_2')
+                            ->whereRaw("TRIM(final_grade_2) != ''");
+                    })->orWhere(function ($nested): void {
+                        $nested->whereNotNull('final_grade_3')
+                            ->whereRaw("TRIM(final_grade_3) != ''");
+                    });
+                })
                 ->orderByDesc('created_at')
                 ->orderByDesc('id')
                 ->first();
 
-            return $row ? (array) $row : null;
+            return $row ? $this->resolveChecklistCreditAttempt((array) $row) : null;
         } catch (Throwable $e) {
             return null;
         }
@@ -1261,7 +1280,66 @@ class ProgramShiftController extends Controller
             $title = $code;
         }
 
-        return implode('|', [$title, $cuLec, $cuLab, $lhLec, $lhLab]);
+        return implode('|', [$code, $title, $cuLec, $cuLab, $lhLec, $lhLab]);
+    }
+
+    private function checklistAttemptApproved(string $remark, string $approvedBy, int $gradeApproved): bool
+    {
+        if ($gradeApproved === 1) {
+            return true;
+        }
+
+        if (trim($approvedBy) !== '') {
+            return true;
+        }
+
+        $remark = strtoupper(trim($remark));
+        if ($remark === '') {
+            return false;
+        }
+
+        return strpos($remark, 'APPROVED') !== false || strpos($remark, 'CREDITED') !== false;
+    }
+
+    private function resolveChecklistCreditAttempt(array $row): ?array
+    {
+        $attempts = [
+            [
+                'grade' => trim((string) ($row['final_grade'] ?? '')),
+                'remark' => trim((string) ($row['evaluator_remarks'] ?? '')),
+            ],
+            [
+                'grade' => trim((string) ($row['final_grade_2'] ?? '')),
+                'remark' => trim((string) ($row['evaluator_remarks_2'] ?? '')),
+            ],
+            [
+                'grade' => trim((string) ($row['final_grade_3'] ?? '')),
+                'remark' => trim((string) ($row['evaluator_remarks_3'] ?? '')),
+            ],
+        ];
+
+        $approvedBy = trim((string) ($row['approved_by'] ?? ''));
+        $gradeApproved = (int) ($row['grade_approved'] ?? 0);
+
+        for ($index = count($attempts) - 1; $index >= 0; $index--) {
+            $grade = $attempts[$index]['grade'];
+            if ($grade === '') {
+                continue;
+            }
+
+            if (!$this->checklistAttemptApproved($attempts[$index]['remark'], $approvedBy, $gradeApproved)) {
+                continue;
+            }
+
+            return [
+                'final_grade' => $grade,
+                'evaluator_remarks' => $attempts[$index]['remark'],
+                'approved_by' => $approvedBy,
+                'attempt_slot' => $index + 1,
+            ];
+        }
+
+        return null;
     }
 
     private function resolveAdviserProgramKeys(int $adviserId, string $username): array

@@ -385,7 +385,69 @@ if (!function_exists('psBuildCourseSignature')) {
             $title = $code;
         }
 
-        return implode('|', [$title, $cuLec, $cuLab, $lhLec, $lhLab]);
+        return implode('|', [$code, $title, $cuLec, $cuLab, $lhLec, $lhLab]);
+    }
+}
+
+if (!function_exists('psChecklistAttemptApproved')) {
+    function psChecklistAttemptApproved($remark, $approvedBy, $gradeApproved) {
+        if ((int)$gradeApproved === 1) {
+            return true;
+        }
+
+        $approvedBy = trim((string)$approvedBy);
+        if ($approvedBy !== '') {
+            return true;
+        }
+
+        $remark = strtoupper(trim((string)$remark));
+        if ($remark === '') {
+            return false;
+        }
+
+        return strpos($remark, 'APPROVED') !== false || strpos($remark, 'CREDITED') !== false;
+    }
+}
+
+if (!function_exists('psResolveChecklistCreditAttempt')) {
+    function psResolveChecklistCreditAttempt(array $row) {
+        $attempts = [
+            [
+                'grade' => trim((string)($row['final_grade'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks'] ?? '')),
+            ],
+            [
+                'grade' => trim((string)($row['final_grade_2'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks_2'] ?? '')),
+            ],
+            [
+                'grade' => trim((string)($row['final_grade_3'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks_3'] ?? '')),
+            ],
+        ];
+
+        $approvedBy = trim((string)($row['approved_by'] ?? ''));
+        $gradeApproved = (int)($row['grade_approved'] ?? 0);
+
+        for ($index = count($attempts) - 1; $index >= 0; $index--) {
+            $grade = $attempts[$index]['grade'];
+            if ($grade === '') {
+                continue;
+            }
+
+            if (!psChecklistAttemptApproved($attempts[$index]['remark'], $approvedBy, $gradeApproved)) {
+                continue;
+            }
+
+            return [
+                'final_grade' => $grade,
+                'evaluator_remarks' => $attempts[$index]['remark'],
+                'approved_by' => $approvedBy,
+                'attempt_slot' => $index + 1,
+            ];
+        }
+
+        return null;
     }
 }
 
@@ -1447,12 +1509,17 @@ if (!function_exists('psGradeIsPassing')) {
 if (!function_exists('psFetchLatestChecklistGrade')) {
     function psFetchLatestChecklistGrade($conn, $studentNumber, $courseCode) {
         $stmt = $conn->prepare(
-            "SELECT final_grade, evaluator_remarks, approved_by
+            "SELECT final_grade, evaluator_remarks, approved_by, grade_approved,
+                    final_grade_2, evaluator_remarks_2,
+                    final_grade_3, evaluator_remarks_3
              FROM student_checklists
              WHERE student_id = ?
                AND TRIM(course_code) = ?
-               AND final_grade IS NOT NULL
-               AND TRIM(final_grade) != ''
+               AND (
+                    (final_grade IS NOT NULL AND TRIM(final_grade) != '')
+                    OR (final_grade_2 IS NOT NULL AND TRIM(final_grade_2) != '')
+                    OR (final_grade_3 IS NOT NULL AND TRIM(final_grade_3) != '')
+               )
              ORDER BY created_at DESC, id DESC
              LIMIT 1"
         );
@@ -1468,7 +1535,11 @@ if (!function_exists('psFetchLatestChecklistGrade')) {
         $row = $result ? $result->fetch_assoc() : null;
         $stmt->close();
 
-        return $row ?: null;
+        if (!$row) {
+            return null;
+        }
+
+        return psResolveChecklistCreditAttempt($row);
     }
 }
 
