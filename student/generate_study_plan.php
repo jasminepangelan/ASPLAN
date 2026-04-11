@@ -1363,6 +1363,34 @@ class StudyPlanGenerator {
         return $year_order[$year_label] ?? 0;
     }
 
+    private function isNonCreditCourse(array $course) {
+        $code = strtoupper(trim((string)($course['code'] ?? '')));
+        $title = strtoupper(trim((string)($course['title'] ?? '')));
+
+        if ($code === 'CVSU 101') {
+            return true;
+        }
+
+        return strpos($title, 'NON-CREDIT') !== false || strpos($title, 'NON CREDIT') !== false;
+    }
+
+    private function getCountedCourseUnits(array $course) {
+        if ($this->isNonCreditCourse($course)) {
+            return 0;
+        }
+
+        return (float)($course['units'] ?? 0);
+    }
+
+    private function sumCountedCourseUnits(array $courses) {
+        $total = 0.0;
+        foreach ($courses as $course) {
+            $total += $this->getCountedCourseUnits($course);
+        }
+
+        return $total;
+    }
+
     /**
      * Enforce explicit year-standing constraints while still allowing
      * transferees/credited students to take any same-semester course whose
@@ -1644,7 +1672,7 @@ class StudyPlanGenerator {
             $course['forced_added'] = true;
             $course['forced_reason'] = 'Forced Added - Near Graduation';
             $study_plan[$target_index]['courses'][$course_code] = $course;
-            $study_plan[$target_index]['total_units'] += (float)($course['units'] ?? 0);
+            $study_plan[$target_index]['total_units'] += $this->getCountedCourseUnits($course);
             $study_plan[$target_index]['forced_add_count'] = ($study_plan[$target_index]['forced_add_count'] ?? 0) + 1;
 
             $simulated_completed[] = $course_code;
@@ -1742,7 +1770,7 @@ class StudyPlanGenerator {
                 'year' => $term['year'],
                 'semester' => $term['semester'],
                 'courses' => $term_courses,
-                'total_units' => array_sum(array_column($term_courses, 'units')),
+                'total_units' => $this->sumCountedCourseUnits($term_courses),
                 'max_units' => $this->getMaxUnitsForTerm('None', $term['year'], $term['semester']),
                 'retention_status' => 'None',
                 'retake_count' => 0,
@@ -1944,7 +1972,7 @@ class StudyPlanGenerator {
                     'year' => $term['year'],
                     'semester' => $term['semester'],
                     'courses' => $term_courses,
-                    'total_units' => array_sum(array_column($term_courses, 'units')),
+                    'total_units' => $this->sumCountedCourseUnits($term_courses),
                     'max_units' => $max_units,
                     'retention_status' => ($max_units < 21) ? $this->retention_status : 'None',
                     'retake_count' => $retake_count,
@@ -2137,9 +2165,10 @@ class StudyPlanGenerator {
         
         foreach ($prioritized as $code => $course) {
             // NO OVERLOADING: Strict unit limit enforcement
-            if ($total_units + $course['units'] <= $max_units) {
+            $course_units = $this->getCountedCourseUnits($course);
+            if ($total_units + $course_units <= $max_units) {
                 $selected[$code] = $course;
-                $total_units += $course['units'];
+                $total_units += $course_units;
             }
         }
         
@@ -2236,7 +2265,7 @@ class StudyPlanGenerator {
         foreach ($valid_courses as $course) {
             if (!empty($course['completed'])) {
                 $completed_count++;
-                $completed_units += (int)($course['units'] ?? 0);
+                $completed_units += $this->getCountedCourseUnits($course);
             }
         }
 
@@ -2267,7 +2296,7 @@ class StudyPlanGenerator {
 
         $total_units = 0;
         foreach ($valid_courses as $course) {
-            $total_units += $course['units'];
+            $total_units += $this->getCountedCourseUnits($course);
         }
         
         $completion_percentage = 0;
@@ -2350,7 +2379,7 @@ class StudyPlanGenerator {
                 'year' => $term_data['year'],
                 'semester' => $term_data['semester'],
                 'courses' => $courses,
-                'total_units' => array_sum(array_column($courses, 'units')),
+                'total_units' => $this->sumCountedCourseUnits($courses),
                 'retention_status' => $this->retention_history[$term_key] ?? 'None'
             ];
         }

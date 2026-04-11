@@ -259,15 +259,16 @@ foreach ($optimized_plan as $term_index => $term) {
             $study_plan[$target_year][$target_semester] = [];
         }
 
+        $is_non_credit_course = strtoupper(trim((string)($course['code'] ?? ''))) === 'CVSU 101'
+            || stripos((string)($course['title'] ?? ''), 'non-credit') !== false
+            || stripos((string)($course['title'] ?? ''), 'non credit') !== false;
+
         $study_plan[$target_year][$target_semester][] = [
             'course_code' => $course['code'],
             'course_title' => $course['title'],
-            // Keep legacy unit fields aligned with generated totals so
-            // one-unit courses like CvSU 101 are counted correctly anywhere
-            // older display code still sums lec + lab.
-            'credit_unit_lec' => $course['units'],
+            'credit_unit_lec' => $is_non_credit_course ? 0 : $course['units'],
             'credit_unit_lab' => 0,
-            'total_units' => $course['units'],
+            'total_units' => $is_non_credit_course ? 0 : $course['units'],
             'prerequisite' => $course['prerequisite'] ?? 'None',
             'needs_retake' => !empty($course['needs_retake']),
             'cross_registered' => !empty($course['cross_registered']),
@@ -284,6 +285,11 @@ closeDBConnection($conn);
 function calculateTotalUnits($courses) {
     $total = 0;
     foreach ($courses as $course) {
+        $courseCode = strtoupper(trim((string)($course['course_code'] ?? $course['code'] ?? '')));
+        $courseTitle = strtoupper(trim((string)($course['course_title'] ?? $course['title'] ?? '')));
+        if ($courseCode === 'CVSU 101' || strpos($courseTitle, 'NON-CREDIT') !== false || strpos($courseTitle, 'NON CREDIT') !== false) {
+            continue;
+        }
         if (isset($course['total_units'])) {
             $total += (float)($course['total_units'] ?? 0);
             continue;
