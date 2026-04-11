@@ -1487,16 +1487,40 @@ class StudyPlanGenerator {
     }
 
     /**
-     * Brand-new students with no validated academic history should see the
-     * curriculum exactly as defined, without cross-registration or greedy
-     * substitutions from other terms.
+     * Students who are still following a clean, regular progression should
+     * see the curriculum exactly as defined, without greedy reordering,
+     * cross-registration substitutions, or extra projected semesters.
+     *
+     * This applies to:
+     * - brand-new students with no academic history yet
+     * - students with only passing history and no active back subjects
+     *
+     * Irregular scenarios such as active failed/INC/dropped courses,
+     * transferee/shift gating, or retention issues should continue to use the
+     * optimization engine.
      */
     private function shouldUseExactCurriculumPlan() {
-        return empty($this->semester_grade_history)
-            && empty($this->completed_courses)
-            && empty($this->failed_courses)
-            && empty($this->inc_courses)
-            && empty($this->dropped_courses);
+        $active_failed = array_values(array_filter(array_diff($this->failed_courses, $this->completed_courses)));
+        $active_inc = array_values(array_filter(array_diff($this->inc_courses, $this->completed_courses)));
+        $active_dropped = array_values(array_filter(array_diff($this->dropped_courses, $this->completed_courses)));
+
+        if (!empty($active_failed) || !empty($active_inc) || !empty($active_dropped)) {
+            return false;
+        }
+
+        if (!empty($this->policy_gate_status['applies'])) {
+            return false;
+        }
+
+        if (!empty($this->thrice_failed_courses)) {
+            return false;
+        }
+
+        if ($this->retention_status !== 'None' && $this->retention_status !== '') {
+            return false;
+        }
+
+        return true;
     }
 
     /**
