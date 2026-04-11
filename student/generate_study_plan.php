@@ -1102,9 +1102,124 @@ class StudyPlanGenerator {
      * Handles "&" separators (e.g., "GNED 11 & 12" → ["GNED 11", "GNED 12"])
      */
     private function parsePrerequisites($prereq_string) {
-        if (empty($prereq_string) || strtoupper(trim($prereq_string)) === 'NONE') {
+        $normalizeToken = static function ($value) {
+            $value = strtoupper(trim((string)$value));
+            if ($value === '') {
+                return '';
+            }
+
+            $value = preg_replace('/\s+/', ' ', $value);
+            $value = preg_replace('/^([A-Z]{2,})(\d+[A-Z]*)$/', '$1 $2', $value);
+            $value = preg_replace('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)[\s-]+(\d+[A-Z]*)$/', '$1 $2', $value);
+
+            return trim((string)$value);
+        };
+
+        $looksNonCourse = static function ($value) {
+            $upper = strtoupper(trim((string)$value));
+            if ($upper === '') {
+                return true;
+            }
+
+            foreach ([
+                'YEAR',
+                'STANDING',
+                'INCOMING',
+                '%',
+                'ALL SUBJECT',
+                'ALL MAJOR',
+                'GRADUATING',
+                'PROF ED',
+                'TOTAL UNIT',
+                'TOTAL UNITS',
+                'HS ',
+                'HIGH SCHOOL',
+                'GWA',
+                'AVERAGE GRADE',
+            ] as $fragment) {
+                if (strpos($upper, $fragment) !== false) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        $prereq_string = trim((string)$prereq_string);
+        if ($prereq_string === '' || strtoupper($prereq_string) === 'NONE') {
             return [];
         }
+
+        $normalized = str_replace(["\r\n", "\r", "\n"], ', ', $prereq_string);
+        $normalized = preg_replace('/\s*[;\/]\s*/', ', ', $normalized);
+        $normalized = preg_replace('/\s+(?:AND|and)\s+/', ', ', $normalized);
+        $normalized = preg_replace_callback(
+            '/\b([A-Z]{2,}(?:\s+[A-Z]{1,})?[\s-]*\d+[A-Z]*)\s*(?:&|,)\s*((?:\d+[A-Z]*\s*(?:,|&)\s*)*\d+[A-Z]*)/i',
+            static function ($m) use ($normalizeToken) {
+                $first = $normalizeToken($m[1]);
+                if ($first === '') {
+                    return $m[0];
+                }
+
+                $prefix = preg_replace('/\s+\d+[A-Z]*$/', '', $first);
+                $tailParts = preg_split('/\s*(?:,|&)\s*/', trim((string)$m[2]));
+                $expanded = [$first];
+                foreach ($tailParts as $part) {
+                    $part = trim((string)$part);
+                    if ($part === '') {
+                        continue;
+                    }
+                    $expanded[] = $normalizeToken($prefix . ' ' . $part);
+                }
+
+                return implode(', ', array_filter($expanded));
+            },
+            $normalized
+        );
+
+        $segments = preg_split('/\s*,\s*/', $normalized);
+        $valid_prereqs = [];
+        $seen = [];
+        $last_prefix = '';
+
+        foreach ($segments as $segment) {
+            $segment = trim((string)$segment);
+            if ($segment === '' || $looksNonCourse($segment)) {
+                continue;
+            }
+
+            $matches = [];
+            preg_match_all('/\b([A-Z]{2,}(?:\s+[A-Z]{1,})?[\s-]*\d+[A-Z]*)\b/i', $segment, $matches);
+
+            $codes = [];
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $match) {
+                    $normalizedCode = $normalizeToken($match);
+                    if ($normalizedCode !== '') {
+                        $codes[] = $normalizedCode;
+                    }
+                }
+            } elseif ($last_prefix !== '' && preg_match('/^\d+[A-Z]*$/i', $segment)) {
+                $normalizedCode = $normalizeToken($last_prefix . ' ' . $segment);
+                if ($normalizedCode !== '') {
+                    $codes[] = $normalizedCode;
+                }
+            }
+
+            foreach ($codes as $code) {
+                if (!preg_match('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)\s+\d+[A-Z]*$/', $code, $pm)) {
+                    continue;
+                }
+
+                $last_prefix = $pm[1];
+                if (!isset($seen[$code])) {
+                    $seen[$code] = true;
+                    $valid_prereqs[] = $code;
+                }
+            }
+        }
+
+        return $valid_prereqs;
         
         // Normalize "&" separators to commas before splitting
         // Handle "GNED 11 & 12" → "GNED 11, GNED 12" by expanding abbreviated codes
@@ -1154,9 +1269,72 @@ class StudyPlanGenerator {
      * - "4th Year Standing"
      */
     private function extractStandingConstraint($prereq_string) {
+        $parseYear = static function ($value) {
+            $value = strtolower(trim((string)$value));
+            if ($value === '') {
+                return 0;
+            }
+
+            if (preg_match('/(\d+)/', $value, $m)) {
+                return (int)$m[1];
+            }
+
+            $wordMap = [
+                'first' => 1,
+                'second' => 2,
+                'third' => 3,
+                'fourth' => 4,
+                'fifth' => 5,
+            ];
+
+            return $wordMap[$value] ?? 0;
+        };
+
         $prereq_string = trim((string)$prereq_string);
         if ($prereq_string === '') {
             return null;
+        }
+
+        $normalized = preg_replace('/\s+/', ' ', $prereq_string);
+
+        if (preg_match('/(?:for\s+)?incoming\s+(first|second|third|fourth|fifth|\d(?:st|nd|rd|th)?)\s*(?:yr|year)\b/i', $normalized, $m)) {
+            $year = $parseYear($m[1]);
+            if ($year > 0) {
+                return [
+                    'type' => 'incoming',
+                    'year' => $year,
+                ];
+            }
+        }
+
+        if (preg_match('/(?:^|[^a-z])(first|second|third|fourth|fifth|\d(?:st|nd|rd|th)?)\s*(?:yr|year)\s*(?:standing|level)?\b/i', $normalized, $m)) {
+            $year = $parseYear($m[1]);
+            if ($year > 0) {
+                return [
+                    'type' => 'standing',
+                    'year' => $year,
+                ];
+            }
+        }
+
+        if (preg_match('/\b(?:standing|level)\s+for\s+(first|second|third|fourth|fifth|\d(?:st|nd|rd|th)?)\s*(?:yr|year)\b/i', $normalized, $m)) {
+            $year = $parseYear($m[1]);
+            if ($year > 0) {
+                return [
+                    'type' => 'standing',
+                    'year' => $year,
+                ];
+            }
+        }
+
+        if (preg_match('/\b(first|second|third|fourth|fifth)\s+year\s+standing\b/i', $normalized, $m)) {
+            $year = $parseYear($m[1]);
+            if ($year > 0) {
+                return [
+                    'type' => 'standing',
+                    'year' => $year,
+                ];
+            }
         }
 
         if (preg_match('/incoming\s+(\d)(?:st|nd|rd|th)?\s*(?:yr|year)/i', $prereq_string, $m)) {
