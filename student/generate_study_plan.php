@@ -1979,7 +1979,13 @@ class StudyPlanGenerator {
             }
             
             // GREEDY PHASE: Build optimal course selection respecting unit limits
-            $term_courses = $this->buildTermPlanFromAvailable($available, $max_units, $term['year'], $simulated_completed);
+            $term_courses = $this->buildTermPlanFromAvailable(
+                $available,
+                $max_units,
+                $term['year'],
+                $simulated_completed,
+                $this->shouldUseFlexibleIrregularFill()
+            );
             
             if (!empty($term_courses)) {
                 // Count retake courses in this term
@@ -2091,7 +2097,13 @@ class StudyPlanGenerator {
                 continue;
             }
             
-            $term_courses = $this->buildTermPlanFromAvailable($available, $extra_max_units, '4th Yr', $simulated_completed);
+            $term_courses = $this->buildTermPlanFromAvailable(
+                $available,
+                $extra_max_units,
+                '4th Yr',
+                $simulated_completed,
+                $this->shouldUseFlexibleIrregularFill()
+            );
             if (empty($term_courses)) {
                 $consecutive_empty++;
                 $extra_term_count++;
@@ -2172,28 +2184,84 @@ class StudyPlanGenerator {
         
         return $available;
     }
+
+    private function prerequisitesSatisfiedForCompletedSet($course_code, array $completedSet) {
+        if (!isset($this->prerequisite_map[$course_code])) {
+            return true;
+        }
+
+        $prereqs = $this->prerequisite_map[$course_code];
+        if (empty($prereqs)) {
+            return true;
+        }
+
+        $normalized_completed = array_map(
+            static fn($value) => strtoupper(trim((string)$value)),
+            $completedSet
+        );
+
+        foreach ($prereqs as $prereq) {
+            if (!in_array(strtoupper(trim((string)$prereq)), $normalized_completed, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
     
     /**
      * Build term plan from available courses (doesn't modify class properties)
      * Uses prioritizeCourses with target_year for better scheduling
      * Enforces NO OVERLOADING constraint (respects max_units strictly)
      */
-    private function buildTermPlanFromAvailable($available, $max_units, $target_year = null, $simulated_completed = []) {
+    private function buildTermPlanFromAvailable($available, $max_units, $target_year = null, $simulated_completed = [], $allowConcurrentPrereqChaining = false) {
         // Use the greedy prioritization algorithm
-        $prioritized = $this->prioritizeCourses($available, $target_year, $simulated_completed);
-        
+        if (!$allowConcurrentPrereqChaining) {
+            $prioritized = $this->prioritizeCourses($available, $target_year, $simulated_completed);
+
+            $selected = [];
+            $total_units = 0;
+
+            foreach ($prioritized as $code => $course) {
+                // NO OVERLOADING: Strict unit limit enforcement
+                $course_units = $this->getCountedCourseUnits($course);
+                if ($total_units + $course_units <= $max_units) {
+                    $selected[$code] = $course;
+                    $total_units += $course_units;
+                }
+            }
+
+            return $selected;
+        }
+
         $selected = [];
         $total_units = 0;
-        
-        foreach ($prioritized as $code => $course) {
-            // NO OVERLOADING: Strict unit limit enforcement
-            $course_units = $this->getCountedCourseUnits($course);
-            if ($total_units + $course_units <= $max_units) {
+        $remaining = $available;
+        $progress = true;
+
+        while ($progress && !empty($remaining)) {
+            $progress = false;
+            $effectiveCompleted = array_values(array_unique(array_merge($simulated_completed, array_keys($selected))));
+            $prioritized = $this->prioritizeCourses($remaining, $target_year, $effectiveCompleted);
+
+            foreach ($prioritized as $code => $course) {
+                $course_units = $this->getCountedCourseUnits($course);
+                if ($total_units + $course_units > $max_units) {
+                    continue;
+                }
+
+                if (!$this->prerequisitesSatisfiedForCompletedSet($code, $effectiveCompleted)) {
+                    continue;
+                }
+
                 $selected[$code] = $course;
                 $total_units += $course_units;
+                unset($remaining[$code]);
+                $progress = true;
+                break;
             }
         }
-        
+
         return $selected;
     }
     
