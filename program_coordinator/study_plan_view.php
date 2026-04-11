@@ -23,6 +23,7 @@ $coordinatorName = $isAdmin
     : (isset($_SESSION['full_name']) ? htmlspecialchars((string)$_SESSION['full_name']) : 'Program Coordinator');
 $roleLabel = $isAdmin ? 'Admin' : 'Program Coordinator';
 $panelTitle = $isAdmin ? 'Admin Panel' : 'Program Coordinator Panel';
+$headerBadge = $isAdmin ? 'Admin Panel' : ($coordinatorName . ' | ' . $roleLabel);
 $dashboardHref = $isAdmin ? '../admin/index.php' : 'index.php';
 $listStudentsHref = $isAdmin ? '../admin/list_of_students.php' : 'list_of_students.php';
 $logoutHref = $isAdmin ? '../admin/logout.php' : 'logout.php';
@@ -263,7 +264,7 @@ if ($lastPlannedTerm) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Study Plan - Program Coordinator</title>
+    <title><?= $isAdmin ? 'Student Study Plan - Admin' : 'Student Study Plan - Program Coordinator' ?></title>
     <link rel="icon" type="image/png" href="../img/cav.png">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -929,37 +930,38 @@ if ($lastPlannedTerm) {
             <img src="../img/cav.png" alt="CvSU Logo" onclick="toggleSidebar()">
             <span style="color: #d9e441;">ASPLAN</span>
         </div>
-        <div class="admin-info"><?= $coordinatorName; ?> | <?= $roleLabel; ?></div>
+        <div class="admin-info"><?= htmlspecialchars($headerBadge); ?></div>
     </div>
 
-    <div class="sidebar collapsed" id="sidebar">
-        <div class="sidebar-header"><h3><?= htmlspecialchars($panelTitle) ?></h3></div>
-        <ul class="sidebar-menu">
-            <div class="menu-group">
-                <div class="menu-group-title">Dashboard</div>
-                <li><a href="<?= htmlspecialchars($dashboardHref) ?>"><img src="../pix/home1.png" alt="Dashboard" style="filter: brightness(0) invert(1);"> Dashboard</a></li>
-            </div>
-            <div class="menu-group">
-                <div class="menu-group-title">Modules</div>
-                <?php if ($isAdmin): ?>
-                <li><a href="../program_coordinator/curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
-                <li><a href="../admin/account_module.php"><img src="../pix/account.png" alt="User Management" style="filter: brightness(0) invert(1);"> User Management</a></li>
-                <li><a href="<?= htmlspecialchars($listStudentsHref) ?>" class="active"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
-                <li><a href="../program_coordinator/program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift" style="filter: brightness(0) invert(1);"> Program Shift Requests</a></li>
-                <?php else: ?>
-                <li><a href="curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
-                <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
-                <li><a href="<?= htmlspecialchars($listStudentsHref) ?>" class="active"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
-                <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift" style="filter: brightness(0) invert(1);"> Program Shift Requests</a></li>
-                <li><a href="profile.php"><img src="../pix/account.png" alt="Profile" style="filter: brightness(0) invert(1);"> Update Profile</a></li>
-                <?php endif; ?>
-            </div>
-            <div class="menu-group">
-                <div class="menu-group-title">Account</div>
-                <li><a href="<?= htmlspecialchars($logoutHref) ?>"><img src="../pix/singout.png" alt="Sign Out" style="filter: brightness(0) invert(1);"> Sign Out</a></li>
-            </div>
-        </ul>
-    </div>
+    <?php if ($isAdmin): ?>
+        <?php
+        $activeAdminPage = 'list_of_students';
+        $adminSidebarCollapsed = true;
+        require __DIR__ . '/../includes/admin_sidebar.php';
+        ?>
+    <?php else: ?>
+        <div class="sidebar collapsed" id="sidebar">
+            <div class="sidebar-header"><h3><?= htmlspecialchars($panelTitle) ?></h3></div>
+            <ul class="sidebar-menu">
+                <div class="menu-group">
+                    <div class="menu-group-title">Dashboard</div>
+                    <li><a href="<?= htmlspecialchars($dashboardHref) ?>"><img src="../pix/home1.png" alt="Dashboard" style="filter: brightness(0) invert(1);"> Dashboard</a></li>
+                </div>
+                <div class="menu-group">
+                    <div class="menu-group-title">Modules</div>
+                    <li><a href="curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
+                    <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
+                    <li><a href="<?= htmlspecialchars($listStudentsHref) ?>" class="active"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
+                    <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift" style="filter: brightness(0) invert(1);"> Program Shift Requests</a></li>
+                    <li><a href="profile.php"><img src="../pix/account.png" alt="Profile" style="filter: brightness(0) invert(1);"> Update Profile</a></li>
+                </div>
+                <div class="menu-group">
+                    <div class="menu-group-title">Account</div>
+                    <li><a href="<?= htmlspecialchars($logoutHref) ?>"><img src="../pix/singout.png" alt="Sign Out" style="filter: brightness(0) invert(1);"> Sign Out</a></li>
+                </div>
+            </ul>
+        </div>
+    <?php endif; ?>
 
     <div class="main-content" id="mainContent">
         <div class="academic-overview">
@@ -1162,7 +1164,7 @@ if ($lastPlannedTerm) {
                                             <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if (!$isCompletedTerm): ?>
+                                            <?php if (!$isCompletedTerm && !$isAdmin): ?>
                                                 <?php
                                                     $courseCode = (string)($course['code'] ?? '');
                                                     $currentPlacement = ((string)($term['year'] ?? '')) . '|' . ((string)($term['semester'] ?? ''));
