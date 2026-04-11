@@ -387,6 +387,27 @@ if ($last_planned_term) {
         .ay-overview-btn:hover {
             background: linear-gradient(135deg, #0d47a1, #1565C0);
         }
+        .print-button {
+            background: #206018;
+            color: #ffffff;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(32, 96, 24, 0.3);
+            transition: all 0.3s ease;
+        }
+        .print-button:hover {
+            background: #2d8f22;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(32, 96, 24, 0.4);
+        }
         #ay-modal-overlay {
             display: none;
             position: fixed;
@@ -781,6 +802,37 @@ if ($last_planned_term) {
                 border-bottom: 1px solid #eee;
             }
         }
+        @media print {
+            body {
+                background: #fff;
+            }
+            .header,
+            .sidebar,
+            .btn-back,
+            .ay-overview-wrap,
+            #ay-modal-overlay {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 0 !important;
+            }
+            .container,
+            .panel,
+            .academic-overview,
+            .study-plan-container,
+            .semester-section {
+                box-shadow: none !important;
+            }
+            .study-plan-container {
+                padding: 0 !important;
+                border: none !important;
+            }
+            .academic-overview,
+            .semester-section {
+                page-break-inside: avoid;
+            }
+        }
     </style>
 </head>
 <body>
@@ -923,6 +975,14 @@ if ($last_planned_term) {
                 </div>
 
                 <div class="ay-overview-wrap">
+                    <button class="print-button" type="button" onclick="window.print()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Print Study Plan
+                    </button>
                     <button class="ay-overview-btn" type="button" onclick="openAYModal()">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="7" height="9"></rect>
