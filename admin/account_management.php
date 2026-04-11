@@ -57,6 +57,8 @@ $address = amBuildAddressString(
     $row['province'] ?? ''
 );
 $admission_date = htmlspecialchars((string)($row['date_of_admission'] ?? ''));
+$stud_classification_raw = trim((string)($row['stud_classification'] ?? ''));
+$stud_classification = $stud_classification_raw === 'Transferee' ? 'Transferee' : 'Regular';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -392,7 +394,25 @@ $admission_date = htmlspecialchars((string)($row['date_of_admission'] ?? ''));
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     }
 
+    .profile .details .field select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d7e4d5;
+      border-radius: 10px;
+      font-size: 14px;
+      background: #ffffff;
+      color: #495057;
+      transition: all 0.3s ease;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    }
+
     .profile .details .field input:focus {
+      border-color: var(--brand-700);
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(45, 143, 34, 0.12);
+    }
+
+    .profile .details .field select:focus {
       border-color: var(--brand-700);
       outline: none;
       box-shadow: 0 0 0 4px rgba(45, 143, 34, 0.12);
@@ -683,6 +703,13 @@ $admission_date = htmlspecialchars((string)($row['date_of_admission'] ?? ''));
           <div class="field">
             <label for="admission_date">Date of Admission</label>
             <input id="admission_date" name="admission_date" type="text" value="<?= $admission_date ?>">
+          </div>
+          <div class="field">
+            <label for="stud_classification">Student Classification</label>
+            <select id="stud_classification" name="stud_classification">
+              <option value="Regular" <?= $stud_classification === 'Regular' ? 'selected' : '' ?>>Regular</option>
+              <option value="Transferee" <?= $stud_classification === 'Transferee' ? 'selected' : '' ?>>Transferee</option>
+            </select>
           </div>
           <div class="field">
             <label for="address">Address</label>

@@ -168,6 +168,8 @@ $contact_no = htmlspecialchars($row['contact_number'] ?? '');
 $address = htmlspecialchars($row['house_number_street'] ?? '');
 $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
 $program = htmlspecialchars($row['program'] ?? '');
+$stud_classification_raw = trim((string)($row['stud_classification'] ?? ''));
+$stud_classification = $stud_classification_raw === 'Transferee' ? 'Transferee' : 'Regular';
 $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_name . ' ' : '') . $last_name);
 
 ?>
@@ -575,7 +577,25 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
       color: #495057;
     }
 
+    .field select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e1e5e9;
+      border-radius: 12px;
+      font-size: 14px;
+      background: white;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      color: #495057;
+    }
+
     .field input:focus {
+      border-color: #206018;
+      outline: none;
+      box-shadow: 0 4px 20px rgba(32, 96, 24, 0.15);
+    }
+
+    .field select:focus {
       border-color: #206018;
       outline: none;
       box-shadow: 0 4px 20px rgba(32, 96, 24, 0.15);
@@ -845,6 +865,13 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
                   <div class="field">
                     <label>Date of Admission *</label>
                     <input type="date" name="admission_date" value="<?= $admission_date ?>" required>
+                  </div>
+                  <div class="field">
+                    <label>Student Classification *</label>
+                    <select name="stud_classification" required>
+                      <option value="Regular" <?= $stud_classification === 'Regular' ? 'selected' : '' ?>>Regular</option>
+                      <option value="Transferee" <?= $stud_classification === 'Transferee' ? 'selected' : '' ?>>Transferee</option>
+                    </select>
                   </div>
                   <div class="field">
                     <label>Address *</label>

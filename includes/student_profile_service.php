@@ -88,7 +88,8 @@ define('SPS_ALLOWED_FIELDS', [
     'password',
     'contact_no',
     'address',
-    'admission_date'
+    'admission_date',
+    'stud_classification'
 ]);
 
 // Field mapping from POST to database columns
@@ -100,7 +101,8 @@ define('SPS_FIELD_MAP', [
     'password' => 'password',
     'contact_no' => 'contact_number',
     'address' => 'house_number_street',
-    'admission_date' => 'date_of_admission'
+    'admission_date' => 'date_of_admission',
+    'stud_classification' => 'stud_classification'
 ]);
 
 /**
@@ -113,6 +115,7 @@ define('SPS_FIELD_MAP', [
 function spsValidateProfileUpdate($conn, array $formData): array {
     $validatedFields = [];
     $errors = [];
+    $allowedClassifications = ['Regular', 'Transferee'];
 
     // Check email if provided
     if (isset($formData['email']) && !empty($formData['email'])) {
@@ -149,6 +152,17 @@ function spsValidateProfileUpdate($conn, array $formData): array {
     foreach ($textFields as $field) {
         if (isset($formData[$field]) && $formData[$field] !== '') {
             $validatedFields[$field] = htmlspecialchars(trim($formData[$field]));
+        }
+    }
+
+    if (array_key_exists('stud_classification', $formData)) {
+        $classification = trim((string) $formData['stud_classification']);
+        if ($classification === '') {
+            $errors[] = 'Student classification is required.';
+        } elseif (!in_array($classification, $allowedClassifications, true)) {
+            $errors[] = 'Student classification must be either Regular or Transferee.';
+        } else {
+            $validatedFields['stud_classification'] = $classification;
         }
     }
 

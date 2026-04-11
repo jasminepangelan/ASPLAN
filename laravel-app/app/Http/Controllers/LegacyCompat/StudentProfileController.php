@@ -48,6 +48,7 @@ class StudentProfileController extends Controller
                     'first_name',
                     'middle_name',
                     'email',
+                    'stud_classification',
                     DB::raw('contact_number as contact_no'),
                     DB::raw("CONCAT_WS(', ', house_number_street, brgy, town, province) as address"),
                     DB::raw('date_of_admission as admission_date'),
@@ -231,6 +232,17 @@ class StudentProfileController extends Controller
             }
         }
 
+        if ($request->has('stud_classification')) {
+            $classification = trim((string) $request->input('stud_classification', ''));
+            if ($classification === '') {
+                $errors[] = 'Student classification is required.';
+            } elseif (!in_array($classification, ['Regular', 'Transferee'], true)) {
+                $errors[] = 'Student classification must be either Regular or Transferee.';
+            } else {
+                $fields['stud_classification'] = $classification;
+            }
+        }
+
         if (!empty($errors)) {
             return [
                 'valid' => false,
@@ -257,6 +269,7 @@ class StudentProfileController extends Controller
             'contact_no' => 'contact_number',
             'address' => 'house_number_street',
             'admission_date' => 'date_of_admission',
+            'stud_classification' => 'stud_classification',
         ];
 
         $dbFields = [];
