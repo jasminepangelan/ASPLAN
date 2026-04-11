@@ -1074,10 +1074,14 @@ if ($last_planned_term) {
                                             <td><?= htmlspecialchars((string)($course['title'] ?? '')) ?></td>
                                             <td><?= $isNonCredit ? '(' . number_format((float)($course['units'] ?? 0), 1) . ')' : number_format((float)($course['units'] ?? 0), 1) ?></td>
                                             <td><?= htmlspecialchars($prerequisite) ?></td>
-                                            <td>
+                                        <td>
+                                                <?php
+                                                    $crossRegSourceProgram = trim((string)($course['cross_reg_source_program'] ?? ''));
+                                                    $crossRegTooltip = $crossRegSourceProgram !== '' ? 'Cross-registered from: ' . $crossRegSourceProgram : 'Cross-registered course';
+                                                ?>
                                                 <?php if ($is_completed_term): ?><span class="plan-tag plan-tag-completed">Completed</span><?php endif; ?>
                                                 <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
-                                                <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross">Cross-Reg</span><?php endif; ?>
+                                                <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($crossRegTooltip) ?>" aria-label="<?= htmlspecialchars($crossRegTooltip) ?>">Cross-Reg</span><?php endif; ?>
                                                 <?php if (!empty($course['needs_retake']) || !empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-to-add">To be added</span><?php endif; ?>
                                                 <?php if (!empty($course['failed'])): ?><span class="plan-tag plan-tag-failed">Failed</span><?php endif; ?>
                                             </td>

@@ -280,6 +280,34 @@ class StudyPlanGenerator {
         ];
     }
 
+    private function formatCrossRegistrationSourceProgram($programRaw) {
+        $programRaw = trim((string)$programRaw);
+        if ($programRaw === '') {
+            return '';
+        }
+
+        if (function_exists('psParseProgramList') && function_exists('psCanonicalProgramLabel')) {
+            $tokens = psParseProgramList($programRaw);
+            $labels = [];
+
+            foreach ($tokens as $token) {
+                $label = trim((string) psCanonicalProgramLabel($token));
+                if ($label === '') {
+                    $label = trim((string) $token);
+                }
+                if ($label !== '') {
+                    $labels[$label] = true;
+                }
+            }
+
+            if (!empty($labels)) {
+                return implode(', ', array_keys($labels));
+            }
+        }
+
+        return $programRaw;
+    }
+
     /**
      * Determine whether a stored final grade should count as passed for
      * completion/progression logic.
@@ -874,6 +902,7 @@ class StudyPlanGenerator {
                 'year' => $row['year'],
                 'semester' => $row['semester'],
                 'programs' => $row['programs'],
+                'cross_reg_source_program' => $this->formatCrossRegistrationSourceProgram($row['programs'] ?? ''),
                 'cross_registered' => true
             ];
         }
@@ -1964,6 +1993,7 @@ class StudyPlanGenerator {
                         if ($prereqs_met) {
                             $available[$code] = $simulated_all_courses[$code];
                             $available[$code]['cross_registered'] = true;
+                            $available[$code]['cross_reg_source_program'] = $cross_course['cross_reg_source_program'] ?? ($cross_course['programs'] ?? '');
                         }
                     }
                 }
@@ -1994,6 +2024,7 @@ class StudyPlanGenerator {
                         if ($prereqs_met) {
                             $available[$needed_code] = $simulated_all_courses[$needed_code];
                             $available[$needed_code]['cross_registered'] = true;
+                            $available[$needed_code]['cross_reg_source_program'] = $cross_course['cross_reg_source_program'] ?? ($cross_course['programs'] ?? '');
                         }
                     }
                 }
@@ -2133,6 +2164,7 @@ class StudyPlanGenerator {
                         if ($prereqs_met) {
                             $available[$needed_code] = $simulated_all_courses[$needed_code];
                             $available[$needed_code]['cross_registered'] = true;
+                            $available[$needed_code]['cross_reg_source_program'] = $cross_course['cross_reg_source_program'] ?? ($cross_course['programs'] ?? '');
                         }
                     }
                 }

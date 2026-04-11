@@ -273,6 +273,7 @@ foreach ($optimized_plan as $term_index => $term) {
             'prerequisite' => $course['prerequisite'] ?? 'None',
             'needs_retake' => !empty($course['needs_retake']),
             'cross_registered' => !empty($course['cross_registered']),
+            'cross_reg_source_program' => $course['cross_reg_source_program'] ?? '',
             'forced_added' => !empty($course['forced_added']),
             'forced_reason' => $course['forced_reason'] ?? ''
         ];
@@ -1709,6 +1710,8 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                     }
                                     $is_retake = !empty($course['needs_retake']);
                                     $is_cross_reg = !empty($course['cross_registered']);
+                                    $cross_reg_source_program = trim((string)($course['cross_reg_source_program'] ?? ''));
+                                    $cross_reg_tooltip = $cross_reg_source_program !== '' ? 'Cross-registered from: ' . $cross_reg_source_program : 'Cross-registered course';
                                     $is_forced_added = !empty($course['forced_added']);
                                     $prerequisite = trim((string)($course['prerequisite'] ?? ''));
                                     if ($prerequisite === '' || strtoupper($prerequisite) === 'NONE') {
@@ -1726,7 +1729,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                             <span class="plan-tag plan-tag-to-add">TO BE ADDED</span>
                                             <?php endif; ?>
                                             <?php if ($is_cross_reg): ?>
-                                            <span class="plan-tag plan-tag-cross">CROSS-REG</span>
+                                            <span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($cross_reg_tooltip) ?>" aria-label="<?= htmlspecialchars($cross_reg_tooltip) ?>">CROSS-REG</span>
                                             <span class="plan-tag plan-tag-to-add">TO BE ADDED</span>
                                             <?php endif; ?>
                                             <?php if ($is_forced_added): ?>
