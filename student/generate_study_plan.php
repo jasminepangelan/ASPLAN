@@ -1955,9 +1955,8 @@ class StudyPlanGenerator {
             }
 
             if ($this->shouldUseFlexibleIrregularFill()) {
-                $allEligible = $this->applyConstraintsForSimulation(null, $simulated_completed, $simulated_all_courses);
-                foreach ($allEligible as $code => $course) {
-                    if (isset($available[$code])) {
+                foreach ($simulated_all_courses as $code => $course) {
+                    if (!empty($course['completed']) || isset($available[$code])) {
                         continue;
                     }
                     if (!$this->standingConstraintSatisfied($code, $term['year'], $term['semester'])) {
