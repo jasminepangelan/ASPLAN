@@ -266,9 +266,10 @@ foreach ($optimized_plan as $term_index => $term) {
         $study_plan[$target_year][$target_semester][] = [
             'course_code' => $course['code'],
             'course_title' => $course['title'],
-            'credit_unit_lec' => $is_non_credit_course ? 0 : $course['units'],
+            'credit_unit_lec' => $course['units'],
             'credit_unit_lab' => 0,
-            'total_units' => $is_non_credit_course ? 0 : $course['units'],
+            'total_units' => $course['units'],
+            'non_credit' => $is_non_credit_course,
             'prerequisite' => $course['prerequisite'] ?? 'None',
             'needs_retake' => !empty($course['needs_retake']),
             'cross_registered' => !empty($course['cross_registered']),
@@ -281,13 +282,20 @@ foreach ($optimized_plan as $term_index => $term) {
 $query->close();
 closeDBConnection($conn);
 
+function isNonCreditStudyPlanCourse($course) {
+    $courseCode = strtoupper(trim((string)($course['course_code'] ?? $course['code'] ?? '')));
+    $courseTitle = strtoupper(trim((string)($course['course_title'] ?? $course['title'] ?? '')));
+    return !empty($course['non_credit'])
+        || $courseCode === 'CVSU 101'
+        || strpos($courseTitle, 'NON-CREDIT') !== false
+        || strpos($courseTitle, 'NON CREDIT') !== false;
+}
+
 // Helper function to calculate total units
 function calculateTotalUnits($courses) {
     $total = 0;
     foreach ($courses as $course) {
-        $courseCode = strtoupper(trim((string)($course['course_code'] ?? $course['code'] ?? '')));
-        $courseTitle = strtoupper(trim((string)($course['course_title'] ?? $course['title'] ?? '')));
-        if ($courseCode === 'CVSU 101' || strpos($courseTitle, 'NON-CREDIT') !== false || strpos($courseTitle, 'NON CREDIT') !== false) {
+        if (isNonCreditStudyPlanCourse($course)) {
             continue;
         }
         if (isset($course['total_units'])) {
@@ -1596,7 +1604,10 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                 $semester_total = 0;
                                 foreach ($courses as $course): 
                                     $units = $course['units'] ?? 0;
-                                    $semester_total += $units;
+                                    $is_non_credit = isNonCreditStudyPlanCourse($course);
+                                    if (!$is_non_credit) {
+                                        $semester_total += $units;
+                                    }
                                     $prerequisite = $course['prerequisite'] ?? 'None';
                                     $is_failed_grade = !empty($course['failed']);
                                     $prereq_class = ($prerequisite === 'None') ? 'grade-passed' : 'grade-failed';
@@ -1692,7 +1703,10 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                 $semester_total = 0;
                                 foreach ($courses as $course): 
                                     $units = isset($course['total_units']) ? $course['total_units'] : (($course['credit_unit_lec'] ?? 0) + ($course['credit_unit_lab'] ?? 0));
-                                    $semester_total += $units;
+                                    $is_non_credit = isNonCreditStudyPlanCourse($course);
+                                    if (!$is_non_credit) {
+                                        $semester_total += $units;
+                                    }
                                     $is_retake = !empty($course['needs_retake']);
                                     $is_cross_reg = !empty($course['cross_registered']);
                                     $is_forced_added = !empty($course['forced_added']);
@@ -1727,7 +1741,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                             </div>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= number_format($units, 1) ?></td>
+                                        <td><?= $is_non_credit ? '(' . number_format($units, 1) . ')' : number_format($units, 1) ?></td>
                                         <td><?= htmlspecialchars($prerequisite) ?></td>
                                     </tr>
                                 <?php endforeach; ?>

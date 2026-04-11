@@ -1214,11 +1214,16 @@ if ($lastPlannedTerm) {
                                         if ($prerequisite === '') {
                                             $prerequisite = 'None';
                                         }
+                                        $courseCode = strtoupper(trim((string)($course['code'] ?? '')));
+                                        $courseTitle = strtoupper(trim((string)($course['title'] ?? '')));
+                                        $isNonCredit = $courseCode === 'CVSU 101'
+                                            || strpos($courseTitle, 'NON-CREDIT') !== false
+                                            || strpos($courseTitle, 'NON CREDIT') !== false;
                                     ?>
                                     <tr>
                                         <td><?= htmlspecialchars((string)($course['code'] ?? '')); ?></td>
                                         <td><?= htmlspecialchars((string)($course['title'] ?? '')); ?></td>
-                                        <td><?= (int)($course['units'] ?? 0); ?></td>
+                                        <td><?= $isNonCredit ? '(' . number_format((float)($course['units'] ?? 0), 1) . ')' : number_format((float)($course['units'] ?? 0), 1) ?></td>
                                         <td><?= htmlspecialchars($prerequisite); ?></td>
                                         <td>
                                             <?php if ($isCompletedTerm): ?><span class="plan-tag plan-tag-completed">Completed</span><?php endif; ?>
