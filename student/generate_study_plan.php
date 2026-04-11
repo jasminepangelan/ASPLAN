@@ -2013,6 +2013,9 @@ class StudyPlanGenerator {
                     if (!$this->standingConstraintSatisfied($code, $term['year'], $term['semester'])) {
                         continue;
                     }
+                    if (!$this->prerequisitesSatisfiedForCompletedSet($code, $simulated_completed)) {
+                        continue;
+                    }
                     $available[$code] = $course;
                 }
             }
@@ -2034,7 +2037,7 @@ class StudyPlanGenerator {
                 $max_units,
                 $term['year'],
                 $simulated_completed,
-                $this->shouldUseFlexibleIrregularFill()
+                false
             );
             
             if (!empty($term_courses)) {
@@ -2139,6 +2142,9 @@ class StudyPlanGenerator {
                 if (!$this->standingConstraintSatisfied($code, $year_label ?? '4th Yr', $semester)) {
                     unset($available[$code]);
                 }
+                if (isset($available[$code]) && !$this->prerequisitesSatisfiedForCompletedSet($code, $simulated_completed)) {
+                    unset($available[$code]);
+                }
             }
             
             if (empty($available)) {
@@ -2152,7 +2158,7 @@ class StudyPlanGenerator {
                 $extra_max_units,
                 '4th Yr',
                 $simulated_completed,
-                $this->shouldUseFlexibleIrregularFill()
+                false
             );
             if (empty($term_courses)) {
                 $consecutive_empty++;
