@@ -41,6 +41,7 @@ class StudyPlanGenerator {
     private $student_classification = '';
     private $student_gwa = null;
     private $has_active_shift_request = false;
+    private $legacy_transferee_inferred = false;
     private $policy_gate_status = [
         'applies' => false,
         'eligible' => true,
@@ -1020,9 +1021,58 @@ class StudyPlanGenerator {
         $stmt->close();
     }
 
+    private function inferLegacyTransfereeStatus() {
+        $classification = strtolower(trim($this->student_classification));
+        if ($classification !== '') {
+            return false;
+        }
+
+        if ($this->has_active_shift_request) {
+            return false;
+        }
+
+        $active_failed = array_diff($this->failed_courses, $this->completed_courses);
+        $active_inc = array_diff($this->inc_courses, $this->completed_courses);
+        $active_dropped = array_diff($this->dropped_courses, $this->completed_courses);
+        if (!empty($active_failed) || !empty($active_inc) || !empty($active_dropped)) {
+            return false;
+        }
+
+        $termCourseCounts = [];
+        $termCompletedCounts = [];
+
+        foreach ($this->all_courses as $course) {
+            $termKey = ($course['year'] ?? '') . '|' . ($course['semester'] ?? '');
+            if ($termKey === '|') {
+                continue;
+            }
+
+            if (!isset($termCourseCounts[$termKey])) {
+                $termCourseCounts[$termKey] = 0;
+                $termCompletedCounts[$termKey] = 0;
+            }
+
+            $termCourseCounts[$termKey]++;
+            if (!empty($course['completed'])) {
+                $termCompletedCounts[$termKey]++;
+            }
+        }
+
+        foreach ($termCourseCounts as $termKey => $totalCourses) {
+            $completedCourses = $termCompletedCounts[$termKey] ?? 0;
+            if ($completedCourses > 0 && $completedCourses < $totalCourses) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function evaluateShiftTransfereePolicyGate() {
         $classification = strtolower(trim($this->student_classification));
-        $is_transferee = ($classification !== '' && strpos($classification, 'transferee') !== false);
+        $this->legacy_transferee_inferred = $this->inferLegacyTransfereeStatus();
+        $is_transferee = ($classification !== '' && strpos($classification, 'transferee') !== false)
+            || $this->legacy_transferee_inferred;
         $applies = $is_transferee || $this->has_active_shift_request;
 
         $active_failed = array_diff($this->failed_courses, $this->completed_courses);
@@ -1047,8 +1097,9 @@ class StudyPlanGenerator {
             'reasons' => $reasons,
             'average_grade' => $average_grade,
             'failed_course_count' => $failed_course_count,
-            'classification' => $this->student_classification,
+            'classification' => $this->student_classification !== '' ? $this->student_classification : ($this->legacy_transferee_inferred ? 'Transferee (inferred)' : ''),
             'has_active_shift_request' => $this->has_active_shift_request,
+            'legacy_transferee_inferred' => $this->legacy_transferee_inferred,
         ];
     }
 
