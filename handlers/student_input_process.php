@@ -42,6 +42,7 @@ try {
     $address = trim($_POST['address'] ?? '');
     $strand = trim($_POST['strand']);
     $program = trim($_POST['program']);
+    $stud_classification = (string)($validationResult['classification_normalized'] ?? 'Regular');
     $admission_date = trim($_POST['admission_date']);
 
     $registrationAvailability = srsGetRegistrationAvailability($conn, $student_id);
@@ -76,6 +77,7 @@ try {
         'address' => $address,
         'strand' => $strand,
         'program' => $program,
+        'stud_classification' => $stud_classification,
         'admission_date' => $admission_date
     ], $hashed_password, $picture_db_path);
 

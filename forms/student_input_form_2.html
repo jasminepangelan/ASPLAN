@@ -397,6 +397,16 @@
             </select>
         </div>
         <div class="form-group">
+            <label for="stud-classification">Student Classification</label>
+            <select id="stud-classification" name="stud_classification" required>
+                <option value="Regular">Regular Student</option>
+                <option value="Transferee">Transferee Student</option>
+            </select>
+            <div style="color: #5d715e; font-size: 12px; margin-top: 5px;">
+                Choose <strong>Transferee</strong> only if some credited courses were taken outside CvSU and your study plan should be generated from credited equivalents.
+            </div>
+        </div>
+        <div class="form-group">
             <label for="admission_date">Date of Admission</label>
             <input type="date" id="admission_date" name="admission_date" required>
         </div>
@@ -431,6 +441,7 @@
         if (data.address) document.getElementById('address').value = data.address;
         if (data.strand) document.getElementById('strand').value = data.strand;
         if (data.program) document.getElementById('program').value = data.program;
+        if (data.stud_classification) document.getElementById('stud-classification').value = data.stud_classification;
         if (data.admission_date) document.getElementById('admission_date').value = data.admission_date;
         // picture cannot be prefilled for security reasons
         updatePasswordStrengthMeter(document.getElementById('password').value);
@@ -444,6 +455,7 @@
             address: document.getElementById('address').value,
             strand: document.getElementById('strand').value,
             program: document.getElementById('program').value,
+            stud_classification: document.getElementById('stud-classification').value,
             admission_date: document.getElementById('admission_date').value
         };
         localStorage.setItem('studentFormPage2', JSON.stringify(data));
