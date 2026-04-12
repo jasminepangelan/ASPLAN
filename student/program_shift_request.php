@@ -83,6 +83,7 @@ $historyStats = [
     'approved' => 0,
     'rejected' => 0,
 ];
+$latestHistoryItem = null;
 foreach ($historyAll as $item) {
     $status = (string)($item['status'] ?? '');
     if ($status === 'approved') {
@@ -93,6 +94,15 @@ foreach ($historyAll as $item) {
 
     if (in_array($status, ['pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
         $historyStats['pending']++;
+    }
+
+    $requestedAt = (string)($item['requested_at'] ?? '');
+    if ($requestedAt !== '') {
+        $requestedAtTs = strtotime($requestedAt);
+        $latestRequestedAtTs = $latestHistoryItem ? strtotime((string)($latestHistoryItem['requested_at'] ?? '')) : false;
+        if ($requestedAtTs !== false && ($latestRequestedAtTs === false || $requestedAtTs > $latestRequestedAtTs)) {
+            $latestHistoryItem = $item;
+        }
     }
 }
 
@@ -400,6 +410,57 @@ closeDBConnection($conn);
 
         .mini .k { font-size: 11px; color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.4px; }
         .mini .v { font-size: 20px; font-weight: 800; margin-top: 3px; }
+
+        .summary-banner {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 251, 247, 0.98) 100%);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+        }
+
+        .summary-stat {
+            border: 1px solid #d8e7dc;
+            border-radius: 13px;
+            background: linear-gradient(180deg, #fbfefc 0%, #eef8f0 100%);
+            padding: 14px;
+        }
+
+        .summary-stat .count {
+            font-size: 33px;
+            line-height: 1;
+            font-weight: 800;
+            color: #14532d;
+            margin-bottom: 7px;
+        }
+
+        .summary-stat .label {
+            font-size: 12px;
+            line-height: 1.45;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: #2f5d3a;
+        }
+
+        .summary-latest {
+            grid-column: 1 / -1;
+            border: 1px dashed #bad0c0;
+            border-radius: 12px;
+            background: #f8fcf9;
+            color: var(--ink-700);
+            padding: 13px 14px;
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .summary-latest strong {
+            color: #0f172a;
+        }
 
         .layout {
             display: grid;
@@ -728,6 +789,34 @@ closeDBConnection($conn);
                     <div class="k">Rejected</div>
                     <div class="v"><?= (int)$historyStats['rejected'] ?></div>
                 </div>
+            </div>
+        </section>
+
+        <section class="summary-banner" aria-label="Program shift summary">
+            <div class="summary-stat">
+                <div class="count"><?= (int)$historyStats['all'] ?></div>
+                <div class="label">Total Shift Requests</div>
+            </div>
+            <div class="summary-stat">
+                <div class="count"><?= (int)$historyStats['pending'] ?></div>
+                <div class="label">Pending Review</div>
+            </div>
+            <div class="summary-stat">
+                <div class="count"><?= (int)$historyStats['approved'] ?></div>
+                <div class="label">Approved</div>
+            </div>
+            <div class="summary-stat">
+                <div class="count"><?= (int)$historyStats['rejected'] ?></div>
+                <div class="label">Rejected</div>
+            </div>
+            <div class="summary-latest">
+                <?php if ($latestHistoryItem): ?>
+                    Latest request: <strong><?= htmlspecialchars(ucwords(str_replace('_', ' ', (string)($latestHistoryItem['status'] ?? '')))) ?></strong>
+                    for <strong><?= htmlspecialchars((string)($latestHistoryItem['requested_program'] ?? '')) ?></strong>
+                    submitted on <strong><?= htmlspecialchars(date('M d, Y h:i A', strtotime((string)$latestHistoryItem['requested_at']))) ?></strong>.
+                <?php else: ?>
+                    No shift requests submitted yet.
+                <?php endif; ?>
             </div>
         </section>
 

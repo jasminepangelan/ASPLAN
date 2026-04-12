@@ -16,7 +16,6 @@ $last_name = htmlspecialchars($_SESSION['last_name'] ?? '');
 $first_name = htmlspecialchars($_SESSION['first_name'] ?? '');
 $middle_name = htmlspecialchars($_SESSION['middle_name'] ?? '');
 $picture = resolveScopedPictureSrc($_SESSION['picture'] ?? '', '../', 'pix/anonymous.jpg');
-$studentShiftSummary = ['total' => 0, 'pending' => 0, 'approved' => 0, 'rejected' => 0, 'latest_status' => null, 'latest_requested_program' => null, 'latest_requested_at' => null];
 $academicHold = ['active' => false, 'title' => '', 'message' => '', 'courses' => []];
 $bridgeLoaded = false;
 
@@ -41,9 +40,6 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
                 $picture = resolveScopedPictureSrc($picturePath, '../', 'pix/anonymous.jpg');
             }
         }
-        if (isset($bridgeData['summary']) && is_array($bridgeData['summary'])) {
-            $studentShiftSummary = $bridgeData['summary'];
-        }
         $bridgeLoaded = true;
     }
 }
@@ -65,7 +61,6 @@ if (!$bridgeLoaded) {
         $picture = resolveScopedPictureSrc($row['picture'] ?? '', '../', 'pix/anonymous.jpg');
     }
 
-    $studentShiftSummary = psGetStudentShiftSummary($conn, $student_id);
     $academicHold = ahsGetStudentAcademicHold($conn, $student_id);
     closeDBConnection($conn);
 } else {
@@ -355,52 +350,6 @@ if (!$bridgeLoaded) {
       border: 1px solid rgba(32, 96, 24, 0.12);
     }
 
-    .shift-summary {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.97);
-      border-radius: 12px;
-      border: 1px solid rgba(32, 96, 24, 0.15);
-      padding: 16px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
-    }
-
-    .shift-stat {
-      background: #f4faf3;
-      border: 1px solid #d5e8d4;
-      border-radius: 10px;
-      padding: 12px;
-      text-align: left;
-    }
-
-    .shift-stat .count {
-      font-size: 22px;
-      font-weight: 700;
-      color: #206018;
-      line-height: 1.1;
-    }
-
-    .shift-stat .label {
-      margin-top: 4px;
-      font-size: 12px;
-      color: #395238;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      font-weight: 600;
-    }
-
-    .shift-latest {
-      grid-column: 1 / -1;
-      background: #fff;
-      border: 1px dashed #b7d0b6;
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: #2f472f;
-      font-size: 13px;
-    }
-
     .academic-hold-banner {
       width: 100%;
       background: linear-gradient(135deg, #fff4f4, #ffe3e3);
@@ -613,33 +562,6 @@ if (!$bridgeLoaded) {
           For new users: Please input first all your grades in checklist
         </div>
 
-        <div class="shift-summary">
-          <div class="shift-stat">
-            <div class="count"><?php echo (int)($studentShiftSummary['total'] ?? 0); ?></div>
-            <div class="label">Total Shift Requests</div>
-          </div>
-          <div class="shift-stat">
-            <div class="count"><?php echo (int)($studentShiftSummary['pending'] ?? 0); ?></div>
-            <div class="label">Pending Review</div>
-          </div>
-          <div class="shift-stat">
-            <div class="count"><?php echo (int)($studentShiftSummary['approved'] ?? 0); ?></div>
-            <div class="label">Approved</div>
-          </div>
-          <div class="shift-stat">
-            <div class="count"><?php echo (int)($studentShiftSummary['rejected'] ?? 0); ?></div>
-            <div class="label">Rejected</div>
-          </div>
-          <div class="shift-latest">
-            <?php if (!empty($studentShiftSummary['latest_status'])): ?>
-              Latest request: <strong><?php echo htmlspecialchars((string)$studentShiftSummary['latest_status']); ?></strong>
-              for <strong><?php echo htmlspecialchars((string)$studentShiftSummary['latest_requested_program']); ?></strong>
-              submitted on <?php echo htmlspecialchars(date('M d, Y h:i A', strtotime((string)$studentShiftSummary['latest_requested_at']))); ?>.
-            <?php else: ?>
-              No shift requests submitted yet.
-            <?php endif; ?>
-          </div>
-        </div>
       </div>
 
       <div class="section-card">
