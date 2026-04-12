@@ -271,14 +271,6 @@ if (!$bridgeLoaded) {
       letter-spacing: -0.6px;
     }
 
-    .page-header p {
-      margin: 8px 0 0;
-      font-size: 14px;
-      color: #4b5f49;
-      max-width: 720px;
-      line-height: 1.6;
-    }
-
     .section-card {
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 248, 0.98) 100%);
       border: 1px solid rgba(32, 96, 24, 0.12);
@@ -520,10 +512,6 @@ if (!$bridgeLoaded) {
         font-size: 28px;
       }
 
-      .page-header p {
-        font-size: 13px;
-      }
-
       .section-card {
         padding: 18px;
       }
@@ -665,7 +653,6 @@ if (!$bridgeLoaded) {
   <div class="main-content" id="mainContent">
     <div class="page-header">
       <h1>Student Dashboard</h1>
-      <p>Keep your academic records updated, review your optimized path, and move through the system with everything important one click away.</p>
     </div>
     <div class="content">
       <div class="dashboard-intro">
