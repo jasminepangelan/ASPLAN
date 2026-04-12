@@ -338,11 +338,8 @@ closeDBConnection($conn);
         }
 
         .hero {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 270px;
-            gap: 14px;
+            display: block;
             margin-bottom: 16px;
-            align-items: stretch;
         }
 
         .hero-card {
@@ -387,29 +384,6 @@ closeDBConnection($conn);
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-
-        .hero-stats {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 16px;
-            padding: 12px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            align-content: start;
-            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.09);
-            height: 100%;
-        }
-
-        .mini {
-            border: 1px solid var(--line);
-            background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);
-            border-radius: 10px;
-            padding: 10px;
-        }
-
-        .mini .k { font-size: 11px; color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.4px; }
-        .mini .v { font-size: 20px; font-weight: 800; margin-top: 3px; }
 
         .summary-banner {
             display: grid;
@@ -679,7 +653,6 @@ closeDBConnection($conn);
         }
 
         @media (max-width: 960px) {
-            .hero,
             .layout {
                 grid-template-columns: 1fr;
             }
@@ -771,24 +744,6 @@ closeDBConnection($conn);
                 <h1>Shift With Clarity</h1>
                 <p>Submit your destination program and reason. Requests move through Adviser review and Program Coordinator approval. Auto-credit is applied only for strict equivalent courses.</p>
                 <div class="program-chip"><strong>Current Program</strong><span><?= htmlspecialchars($currentProgram !== '' ? $currentProgram : 'Not Set') ?></span></div>
-            </div>
-            <div class="hero-stats">
-                <div class="mini">
-                    <div class="k">Total Requests</div>
-                    <div class="v"><?= (int)$historyStats['all'] ?></div>
-                </div>
-                <div class="mini">
-                    <div class="k">Pending</div>
-                    <div class="v"><?= (int)$historyStats['pending'] ?></div>
-                </div>
-                <div class="mini">
-                    <div class="k">Approved</div>
-                    <div class="v"><?= (int)$historyStats['approved'] ?></div>
-                </div>
-                <div class="mini">
-                    <div class="k">Rejected</div>
-                    <div class="v"><?= (int)$historyStats['rejected'] ?></div>
-                </div>
             </div>
         </section>
 
