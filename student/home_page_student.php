@@ -255,7 +255,7 @@ if (!$bridgeLoaded) {
     }
 
     .page-header {
-      padding: 4px 2px 0;
+      padding: 4px 4px 0;
       margin: 0 0 12px;
     }
 
