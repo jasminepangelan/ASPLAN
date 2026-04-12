@@ -255,12 +255,8 @@ if (!$bridgeLoaded) {
     }
 
     .page-header {
-      background: rgba(255, 255, 255, 0.78);
-      backdrop-filter: blur(10px);
-      padding: 18px 30px;
-      margin: -30px -30px 24px -30px;
-      border-bottom: 1px solid rgba(32, 96, 24, 0.08);
-      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+      padding: 4px 2px 0;
+      margin: 0 0 12px;
     }
 
     .page-header h1 {
@@ -269,6 +265,7 @@ if (!$bridgeLoaded) {
       font-size: 34px;
       font-weight: 800;
       letter-spacing: -0.6px;
+      line-height: 1.08;
     }
 
     .section-card {
@@ -504,8 +501,8 @@ if (!$bridgeLoaded) {
       }
 
       .page-header {
-        padding: 16px 18px;
-        margin: -12px -12px 18px -12px;
+        padding: 2px 0 0;
+        margin: 0 0 10px;
       }
 
       .page-header h1 {
@@ -580,8 +577,8 @@ if (!$bridgeLoaded) {
       }
 
       .page-header {
-        padding: 14px 16px;
-        margin: -12px -12px 16px -12px;
+        padding: 0;
+        margin: 0 0 8px;
       }
 
       .page-header h1 {
