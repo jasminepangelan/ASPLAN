@@ -238,116 +238,282 @@ if (!$bridgeLoaded) {
     }
 
     .content {
-      padding: 24px 30px 30px;
+      padding: 28px 30px 34px;
       max-width: 1240px;
       margin: 0 auto;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 20px;
       align-items: stretch;
     }
 
     .dashboard-intro {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      display: grid;
+      gap: 16px;
       width: 100%;
     }
 
+    .page-header {
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(10px);
+      padding: 18px 30px;
+      margin: -30px -30px 24px -30px;
+      border-bottom: 1px solid rgba(32, 96, 24, 0.08);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    .page-header h1 {
+      margin: 0;
+      color: #163417;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+    }
+
+    .page-header p {
+      margin: 8px 0 0;
+      font-size: 14px;
+      color: #4b5f49;
+      max-width: 720px;
+      line-height: 1.6;
+    }
+
+    .dashboard-hero {
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top right, rgba(191, 233, 194, 0.72) 0, transparent 28%),
+        linear-gradient(135deg, rgba(22, 79, 20, 0.98) 0%, rgba(35, 95, 52, 0.96) 52%, rgba(28, 76, 93, 0.95) 100%);
+      border-radius: 24px;
+      padding: 28px 28px 26px;
+      color: #fff;
+      box-shadow: 0 20px 40px rgba(17, 51, 70, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .dashboard-hero::after {
+      content: '';
+      position: absolute;
+      inset: auto -30px -44px auto;
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 68%);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #e6f7e7;
+      margin-bottom: 14px;
+    }
+
+    .dashboard-hero h2 {
+      margin: 0;
+      font-size: 36px;
+      line-height: 1.08;
+      letter-spacing: -0.8px;
+      max-width: 620px;
+    }
+
+    .dashboard-hero p {
+      margin: 14px 0 0;
+      max-width: 700px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .hero-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .hero-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #effcf1;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
     .section-card {
-      background: rgba(255, 255, 255, 0.97);
-      border: 1px solid rgba(32, 96, 24, 0.14);
-      border-radius: 14px;
-      padding: 18px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 248, 0.98) 100%);
+      border: 1px solid rgba(32, 96, 24, 0.12);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
     .section-title {
-      margin: 0 0 14px;
-      font-size: 15px;
-      color: #1d3f1b;
-      font-weight: 700;
-      letter-spacing: 0.3px;
+      margin: 0;
+      font-size: 26px;
+      color: #163417;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+    }
+
+    .section-subtitle {
+      margin: 6px 0 0;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #58705a;
+      max-width: 720px;
     }
 
     .quick-actions-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
+      gap: 16px;
       width: 100%;
     }
 
-    .page-header {
-      background: rgba(255, 255, 255, 0.95);
-      padding: 20px 30px;
-      margin: -30px -30px 30px -30px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .page-header h1 {
-      position: relative;
-      top: 13px;
-      left: 10px;
-      margin: 0;
-      color: #333;
-      font-size: 24px;
-      font-weight: 600;
-    }
-
     .option-container {
-      background-color: rgba(255, 255, 255, 0.95);
-      border: 1px solid rgba(32, 96, 24, 0.16);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      padding: 24px 18px;
-      border-radius: 10px;
-      text-align: center;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(245, 249, 246, 0.98) 100%);
+      border: 1px solid rgba(22, 79, 20, 0.12);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+      padding: 22px 20px 20px;
+      border-radius: 18px;
+      text-align: left;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
       width: 100%;
       min-width: 0;
       max-width: none;
       margin: 0;
       box-sizing: border-box;
+      min-height: 210px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .option-container::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(22, 79, 20, 0.95) 0%, rgba(76, 175, 80, 0.88) 100%);
+      opacity: 0.95;
     }
 
     .option-container:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+      transform: translateY(-8px);
+      box-shadow: 0 22px 36px rgba(15, 23, 42, 0.14);
+      border-color: rgba(22, 79, 20, 0.24);
+    }
+
+    .option-icon {
+      width: 74px;
+      height: 74px;
+      border-radius: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(234, 247, 236, 0.98) 0%, rgba(221, 241, 226, 0.98) 100%);
+      border: 1px solid rgba(22, 79, 20, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      margin-bottom: 18px;
     }
 
     .option-container img {
-      width: 62px;
-      height: 58px;
-      margin-bottom: 8px;
+      width: 40px;
+      height: 40px;
       transition: transform 0.3s ease;
     }
 
     .option-container:hover img {
-      transform: scale(1.1);
+      transform: scale(1.08);
     }
 
-    .option-container label {
-      font-size: 16px;
+    .option-title {
+      font-size: 22px;
       display: block;
-      font-weight: bold;
-      margin-top: 5px;
-      color: #333;
+      font-weight: 800;
+      color: #173318;
+      letter-spacing: -0.3px;
+      margin: 0 0 8px;
       cursor: pointer;
     }
 
-    .message-container {
-      text-align: center;
-      font-size: 16px;
-      color: #206018;
-      font-weight: 700;
-      letter-spacing: 0.5px;
+    .option-caption {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #5c6f5d;
       margin: 0;
-      padding: 14px 18px;
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 10px;
+    }
+
+    .message-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: #17421a;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      margin: 0;
+      padding: 16px 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(243, 250, 245, 0.96) 100%);
+      border-radius: 16px;
       width: 100%;
       border: 1px solid rgba(32, 96, 24, 0.12);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+    }
+
+    .message-icon {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(228, 244, 229, 0.95) 0%, rgba(211, 237, 214, 0.95) 100%);
+      color: #206018;
+      font-size: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+    }
+
+    .message-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .message-copy small {
+      font-size: 12px;
+      color: #5f765f;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
     .academic-hold-banner {
@@ -421,44 +587,66 @@ if (!$bridgeLoaded) {
       }
 
       .page-header {
-        padding: 15px 20px;
-        margin: -15px -15px 15px -15px;
+        padding: 16px 18px;
+        margin: -12px -12px 18px -12px;
       }
 
       .page-header h1 {
-        font-size: 20px;
-        left: 0;
-        top: 0;
+        font-size: 28px;
       }
 
-      .option-container {
-        padding: 16px 12px;
-        width: 100%;
-        max-width: 100%;
-      }
-
-      .option-container img {
-        width: 60px;
-        height: 60px;
-      }
-
-      .option-container label {
-        font-size: 16px;
-      }
-
-      .message-container {
+      .page-header p {
         font-size: 13px;
-        padding: 12px;
-        max-width: 100%;
-        margin: 0;
+      }
+
+      .dashboard-hero {
+        padding: 22px 18px 20px;
+        border-radius: 20px;
+      }
+
+      .dashboard-hero h2 {
+        font-size: 28px;
+      }
+
+      .hero-chips {
+        gap: 8px;
+      }
+
+      .section-card {
+        padding: 18px;
+      }
+
+      .section-head {
+        align-items: flex-start;
       }
 
       .quick-actions-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .section-card {
+      .option-container {
+        min-height: 188px;
+        padding: 18px 16px 16px;
+      }
+
+      .option-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+      }
+
+      .option-container img {
+        width: 34px;
+        height: 34px;
+      }
+
+      .option-title {
+        font-size: 18px;
+      }
+
+      .message-container {
         padding: 14px;
+        align-items: flex-start;
       }
 
       .student-info {
@@ -485,6 +673,27 @@ if (!$bridgeLoaded) {
     @media (max-width: 480px) {
       .quick-actions-grid {
         grid-template-columns: 1fr;
+      }
+
+      .content {
+        padding: 12px;
+      }
+
+      .page-header {
+        padding: 14px 16px;
+        margin: -12px -12px 16px -12px;
+      }
+
+      .page-header h1 {
+        font-size: 24px;
+      }
+
+      .dashboard-hero h2 {
+        font-size: 24px;
+      }
+
+      .message-container {
+        padding: 14px;
       }
 
       .title-bar {
@@ -548,9 +757,21 @@ if (!$bridgeLoaded) {
   <div class="main-content" id="mainContent">
     <div class="page-header">
       <h1>Student Dashboard</h1>
+      <p>Keep your academic records updated, review your optimized path, and move through the system with everything important one click away.</p>
     </div>
     <div class="content">
       <div class="dashboard-intro">
+        <div class="dashboard-hero">
+          <div class="hero-eyebrow">Academic Command Center</div>
+          <h2>Stay on top of your checklist, study plan, and next academic move.</h2>
+          <p>Your dashboard is designed to keep your academic records clean and your planning workflow focused, so you can move from grade updates to long-term planning without friction.</p>
+          <div class="hero-chips">
+            <span class="hero-chip">Checklist First</span>
+            <span class="hero-chip">Plan With Accuracy</span>
+            <span class="hero-chip">Shift With Clarity</span>
+          </div>
+        </div>
+
         <?php if (!empty($academicHold['active'])): ?>
         <div class="academic-hold-banner">
           <strong><?= htmlspecialchars((string)$academicHold['title']) ?></strong>
@@ -559,32 +780,61 @@ if (!$bridgeLoaded) {
         <?php endif; ?>
 
         <div class="message-container">
-          For new users: Please input first all your grades in checklist
+          <span class="message-icon">i</span>
+          <span class="message-copy">
+            <small>Getting Started</small>
+            <span>For new users, complete your checklist grades first so the system can generate a more accurate study plan.</span>
+          </span>
         </div>
 
       </div>
 
       <div class="section-card">
-        <h2 class="section-title">Quick Access</h2>
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Quick Access</h2>
+            <p class="section-subtitle">Jump into the four core student tools with a cleaner, more focused launch area built for everyday use.</p>
+          </div>
+        </div>
         <div class="quick-actions-grid">
           <div class="option-container" onclick="window.location.href='checklist_stud.php'">
-            <img src="../pix/update.png" alt="Update Checklist Icon">
-            <label>Update Checklist</label>
+            <div class="option-icon">
+              <img src="../pix/update.png" alt="Update Checklist Icon">
+            </div>
+            <div>
+              <label class="option-title">Update Checklist</label>
+              <p class="option-caption">Encode your grades first so course completion, back subjects, and study-plan rules stay accurate.</p>
+            </div>
           </div>
 
           <div class="option-container" onclick="window.location.href='study_plan.php'">
-            <img src="../pix/studyplan.png" alt="Study Plan Icon">
-            <label>Study Plan</label>
+            <div class="option-icon">
+              <img src="../pix/studyplan.png" alt="Study Plan Icon">
+            </div>
+            <div>
+              <label class="option-title">Study Plan</label>
+              <p class="option-caption">Review your generated academic path, remaining semesters, and course sequence with clearer guidance.</p>
+            </div>
           </div>
 
           <div class="option-container" onclick="window.location.href='program_shift_request.php'">
-            <img src="../pix/checklist.png" alt="Program Shift Icon">
-            <label>Program Shift</label>
+            <div class="option-icon">
+              <img src="../pix/checklist.png" alt="Program Shift Icon">
+            </div>
+            <div>
+              <label class="option-title">Program Shift</label>
+              <p class="option-caption">Track request status, review approvals, and prepare a well-supported shift request when needed.</p>
+            </div>
           </div>
 
           <div class="option-container" onclick="window.location.href='acc_mng.php'">
-            <img src="../pix/account.png" alt="Account Manager Icon">
-            <label>Update Profile</label>
+            <div class="option-icon">
+              <img src="../pix/account.png" alt="Account Manager Icon">
+            </div>
+            <div>
+              <label class="option-title">Update Profile</label>
+              <p class="option-caption">Keep your personal details, account settings, and official student information current.</p>
+            </div>
           </div>
         </div>
       </div>
