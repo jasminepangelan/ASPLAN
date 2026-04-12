@@ -279,81 +279,6 @@ if (!$bridgeLoaded) {
       line-height: 1.6;
     }
 
-    .dashboard-hero {
-      position: relative;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at top right, rgba(191, 233, 194, 0.72) 0, transparent 28%),
-        linear-gradient(135deg, rgba(22, 79, 20, 0.98) 0%, rgba(35, 95, 52, 0.96) 52%, rgba(28, 76, 93, 0.95) 100%);
-      border-radius: 24px;
-      padding: 28px 28px 26px;
-      color: #fff;
-      box-shadow: 0 20px 40px rgba(17, 51, 70, 0.18);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-    }
-
-    .dashboard-hero::after {
-      content: '';
-      position: absolute;
-      inset: auto -30px -44px auto;
-      width: 240px;
-      height: 240px;
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 68%);
-      pointer-events: none;
-    }
-
-    .hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: #e6f7e7;
-      margin-bottom: 14px;
-    }
-
-    .dashboard-hero h2 {
-      margin: 0;
-      font-size: 36px;
-      line-height: 1.08;
-      letter-spacing: -0.8px;
-      max-width: 620px;
-    }
-
-    .dashboard-hero p {
-      margin: 14px 0 0;
-      max-width: 700px;
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 15px;
-      line-height: 1.7;
-    }
-
-    .hero-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .hero-chip {
-      display: inline-flex;
-      align-items: center;
-      padding: 9px 14px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.14);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      color: #effcf1;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.2px;
-    }
-
     .section-card {
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 248, 0.98) 100%);
       border: 1px solid rgba(32, 96, 24, 0.12);
@@ -599,19 +524,6 @@ if (!$bridgeLoaded) {
         font-size: 13px;
       }
 
-      .dashboard-hero {
-        padding: 22px 18px 20px;
-        border-radius: 20px;
-      }
-
-      .dashboard-hero h2 {
-        font-size: 28px;
-      }
-
-      .hero-chips {
-        gap: 8px;
-      }
-
       .section-card {
         padding: 18px;
       }
@@ -688,10 +600,6 @@ if (!$bridgeLoaded) {
         font-size: 24px;
       }
 
-      .dashboard-hero h2 {
-        font-size: 24px;
-      }
-
       .message-container {
         padding: 14px;
       }
@@ -761,17 +669,6 @@ if (!$bridgeLoaded) {
     </div>
     <div class="content">
       <div class="dashboard-intro">
-        <div class="dashboard-hero">
-          <div class="hero-eyebrow">Academic Command Center</div>
-          <h2>Stay on top of your checklist, study plan, and next academic move.</h2>
-          <p>Your dashboard is designed to keep your academic records clean and your planning workflow focused, so you can move from grade updates to long-term planning without friction.</p>
-          <div class="hero-chips">
-            <span class="hero-chip">Checklist First</span>
-            <span class="hero-chip">Plan With Accuracy</span>
-            <span class="hero-chip">Shift With Clarity</span>
-          </div>
-        </div>
-
         <?php if (!empty($academicHold['active'])): ?>
         <div class="academic-hold-banner">
           <strong><?= htmlspecialchars((string)$academicHold['title']) ?></strong>
