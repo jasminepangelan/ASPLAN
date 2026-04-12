@@ -591,15 +591,6 @@ if (!$bridgeLoaded) {
             <p class="option-caption">Handle shift endorsements and pass qualified requests forward with the same focused workflow style.</p>
           </div>
         </div>
-        <div class="option">
-          <a href="logout.php">
-            <div class="option-icon"><img src="../pix/singout.png" alt="Sign Out Icon"></div>
-            <div>
-              <label class="option-title">Sign Out</label>
-              <p class="option-caption">End the current adviser session securely after finishing your review and approval tasks.</p>
-            </div>
-          </a>
-        </div>
         </div>
       </div>
     </div>
