@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/security_policy.php';
 
 if (!function_exists('psEnsureProgramShiftTables')) {
     function psEnsureProgramShiftTables($conn) {
@@ -251,7 +252,7 @@ if (!function_exists('psParseProgramList')) {
 
 if (!function_exists('psGetCurrentStudentInfo')) {
     function psGetCurrentStudentInfo($conn, $studentNumber) {
-        $stmt = $conn->prepare("SELECT student_number, last_name, first_name, middle_name, program, curriculum_year, email FROM student_info WHERE student_number = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT student_number, last_name, first_name, middle_name, program, curriculum_year, email, strand FROM student_info WHERE student_number = ? LIMIT 1");
         if (!$stmt) {
             return null;
         }
@@ -386,6 +387,110 @@ if (!function_exists('psBuildCourseSignature')) {
         }
 
         return implode('|', [$code, $title, $cuLec, $cuLab, $lhLec, $lhLab]);
+    }
+}
+
+if (!function_exists('psNormalizeStrandKey')) {
+    function psNormalizeStrandKey($strand) {
+        $value = strtoupper(trim((string)$strand));
+        if ($value === '') {
+            return '';
+        }
+
+        $value = preg_replace('/[^A-Z0-9]+/', ' ', $value);
+        $value = preg_replace('/\s+/', ' ', (string)$value);
+        $value = trim((string)$value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        if (strpos($value, 'SCIENCE TECHNOLOGY ENGINEERING MATHEMATICS') !== false || $value === 'STEM') {
+            return 'STEM';
+        }
+        if (strpos($value, 'ACCOUNTANCY BUSINESS MANAGEMENT') !== false || $value === 'ABM') {
+            return 'ABM';
+        }
+        if (strpos($value, 'HUMANITIES AND SOCIAL SCIENCES') !== false || $value === 'HUMSS') {
+            return 'HUMSS';
+        }
+        if ($value === 'GAS' || strpos($value, 'GENERAL ACADEMIC') !== false) {
+            return 'GAS';
+        }
+        if (strpos($value, 'TVL') !== false || strpos($value, 'TECHNICAL VOCATIONAL') !== false || strpos($value, 'ICT') !== false || strpos($value, 'HOME ECONOMICS') !== false) {
+            return 'TVL';
+        }
+        if (strpos($value, 'ARTS') !== false && strpos($value, 'DESIGN') !== false) {
+            return 'ARTS-DESIGN';
+        }
+        if (strpos($value, 'SPORTS') !== false) {
+            return 'SPORTS';
+        }
+
+        return $value;
+    }
+}
+
+if (!function_exists('psAllowedStrandsForShiftProgram')) {
+    function psAllowedStrandsForShiftProgram($programLabel) {
+        $programKey = strtoupper(trim(psNormalizeProgramKey((string)$programLabel)));
+
+        $strandMap = [
+            'BSCS' => ['STEM', 'TVL', 'GAS'],
+            'BSIT' => ['STEM', 'TVL', 'GAS'],
+            'BSCPE' => ['STEM', 'TVL'],
+            'BSCE' => ['STEM'],
+            'BSEE' => ['STEM'],
+            'BSME' => ['STEM'],
+            'BSINDT' => ['TVL', 'STEM'],
+            'BSBA-HRM' => ['ABM', 'GAS'],
+            'BSBA-MM' => ['ABM', 'GAS'],
+            'BSHM' => ['ABM', 'TVL', 'GAS'],
+            'BSTM' => ['ABM', 'TVL', 'GAS'],
+            'BSED-ENGLISH' => ['HUMSS', 'GAS'],
+            'BSED-MATH' => ['STEM', 'GAS'],
+            'BSED-SCIENCE' => ['STEM', 'GAS'],
+            'BEED' => ['HUMSS', 'GAS'],
+            'BSN' => ['STEM', 'GAS'],
+        ];
+
+        return $strandMap[$programKey] ?? [];
+    }
+}
+
+if (!function_exists('psIsShiftStrandAlignmentEnforced')) {
+    function psIsShiftStrandAlignmentEnforced($conn) {
+        return policySettingBool($conn, 'enforce_shift_strand_alignment', false);
+    }
+}
+
+if (!function_exists('psValidateShiftStrandAlignment')) {
+    function psValidateShiftStrandAlignment($conn, array $studentRow, $requestedProgram) {
+        if (!psIsShiftStrandAlignmentEnforced($conn)) {
+            return ['allowed' => true, 'message' => ''];
+        }
+
+        $studentStrand = psNormalizeStrandKey((string)($studentRow['strand'] ?? ''));
+        if ($studentStrand === '') {
+            return [
+                'allowed' => false,
+                'message' => 'Your strand is not set yet. Please update your profile or contact the administrator before requesting a program shift.',
+            ];
+        }
+
+        $allowedStrands = psAllowedStrandsForShiftProgram((string)$requestedProgram);
+        if (empty($allowedStrands)) {
+            return ['allowed' => true, 'message' => ''];
+        }
+
+        if (in_array($studentStrand, $allowedStrands, true)) {
+            return ['allowed' => true, 'message' => ''];
+        }
+
+        return [
+            'allowed' => false,
+            'message' => 'Your strand (' . $studentStrand . ') is not aligned with the selected destination program.',
+        ];
     }
 }
 
@@ -1101,6 +1206,11 @@ if (!function_exists('psCreateStudentRequest')) {
 
         if (strcasecmp(psNormalizeProgramLabel($currentProgram), psNormalizeProgramLabel($requestedProgram)) === 0) {
             return ['ok' => false, 'message' => 'You are already enrolled in the selected program.'];
+        }
+
+        $strandValidation = psValidateShiftStrandAlignment($conn, $studentRow, $requestedProgram);
+        if (empty($strandValidation['allowed'])) {
+            return ['ok' => false, 'message' => (string)($strandValidation['message'] ?? 'Your strand is not aligned with the selected destination program.')];
         }
 
         if (psHasActiveShiftRequest($conn, (string)$studentRow['student_number'])) {

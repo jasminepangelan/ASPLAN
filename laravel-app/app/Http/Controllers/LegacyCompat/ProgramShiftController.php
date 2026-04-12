@@ -84,6 +84,11 @@ class ProgramShiftController extends Controller
                 return $this->response(false, 'You are already enrolled in the selected program.', 422);
             }
 
+            $strandValidationMessage = $this->validateShiftStrandAlignment($student, $requestedProgram);
+            if ($strandValidationMessage !== null) {
+                return $this->response(false, $strandValidationMessage, 422);
+            }
+
             if ($this->hasActiveShiftRequest($studentNumber)) {
                 return $this->response(false, 'You already have a pending shift request.', 409);
             }
@@ -1570,6 +1575,108 @@ class ProgramShiftController extends Controller
 
         $value = preg_replace('/\s+/', ' ', $value);
         return $value ?? '';
+    }
+
+    private function normalizeStrandKey(string $strand): string
+    {
+        $value = strtoupper(trim($strand));
+        if ($value === '') {
+            return '';
+        }
+
+        $value = preg_replace('/[^A-Z0-9]+/', ' ', $value);
+        $value = preg_replace('/\s+/', ' ', (string) $value);
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        if (strpos($value, 'SCIENCE TECHNOLOGY ENGINEERING MATHEMATICS') !== false || $value === 'STEM') {
+            return 'STEM';
+        }
+        if (strpos($value, 'ACCOUNTANCY BUSINESS MANAGEMENT') !== false || $value === 'ABM') {
+            return 'ABM';
+        }
+        if (strpos($value, 'HUMANITIES AND SOCIAL SCIENCES') !== false || $value === 'HUMSS') {
+            return 'HUMSS';
+        }
+        if ($value === 'GAS' || strpos($value, 'GENERAL ACADEMIC') !== false) {
+            return 'GAS';
+        }
+        if (strpos($value, 'TVL') !== false || strpos($value, 'TECHNICAL VOCATIONAL') !== false || strpos($value, 'ICT') !== false || strpos($value, 'HOME ECONOMICS') !== false) {
+            return 'TVL';
+        }
+        if (strpos($value, 'ARTS') !== false && strpos($value, 'DESIGN') !== false) {
+            return 'ARTS-DESIGN';
+        }
+        if (strpos($value, 'SPORTS') !== false) {
+            return 'SPORTS';
+        }
+
+        return $value;
+    }
+
+    private function allowedStrandsForShiftProgram(string $programLabel): array
+    {
+        $programKey = strtoupper(trim($this->normalizeProgramKey($programLabel)));
+
+        $strandMap = [
+            'BSCS' => ['STEM', 'TVL', 'GAS'],
+            'BSIT' => ['STEM', 'TVL', 'GAS'],
+            'BSCPE' => ['STEM', 'TVL'],
+            'BSCE' => ['STEM'],
+            'BSEE' => ['STEM'],
+            'BSME' => ['STEM'],
+            'BSINDT' => ['TVL', 'STEM'],
+            'BSBA-HRM' => ['ABM', 'GAS'],
+            'BSBA-MM' => ['ABM', 'GAS'],
+            'BSHM' => ['ABM', 'TVL', 'GAS'],
+            'BSTM' => ['ABM', 'TVL', 'GAS'],
+            'BSED-ENGLISH' => ['HUMSS', 'GAS'],
+            'BSED-MATH' => ['STEM', 'GAS'],
+            'BSED-SCIENCE' => ['STEM', 'GAS'],
+            'BEED' => ['HUMSS', 'GAS'],
+            'BSN' => ['STEM', 'GAS'],
+        ];
+
+        return $strandMap[$programKey] ?? [];
+    }
+
+    private function isShiftStrandAlignmentEnforced(): bool
+    {
+        try {
+            $value = DB::table('system_settings')
+                ->where('setting_key', 'enforce_shift_strand_alignment')
+                ->value('setting_value');
+
+            return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'on'], true);
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    private function validateShiftStrandAlignment(array $student, string $requestedProgram): ?string
+    {
+        if (!$this->isShiftStrandAlignmentEnforced()) {
+            return null;
+        }
+
+        $studentStrand = $this->normalizeStrandKey((string) ($student['strand'] ?? ''));
+        if ($studentStrand === '') {
+            return 'Your strand is not set yet. Please update your profile or contact the administrator before requesting a program shift.';
+        }
+
+        $allowedStrands = $this->allowedStrandsForShiftProgram($requestedProgram);
+        if (empty($allowedStrands)) {
+            return null;
+        }
+
+        if (in_array($studentStrand, $allowedStrands, true)) {
+            return null;
+        }
+
+        return 'Your strand (' . $studentStrand . ') is not aligned with the selected destination program.';
     }
 
     private function generateRequestCode(): string

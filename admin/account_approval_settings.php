@@ -99,6 +99,12 @@ $advancedSettings = [
         'default' => 1,
         'help' => 'When enabled, students using a @cvsu.edu.ph email must verify it with an OTP before entering the student workspace. Disable this to let legacy students continue without the OTP gate.'
     ],
+    'enforce_shift_strand_alignment' => [
+        'label' => 'Require Strand Alignment For Program Shift',
+        'type' => 'boolean',
+        'default' => 0,
+        'help' => 'When enabled, students can only request a program shift if their saved strand aligns with the selected destination program.'
+    ],
     'password_history_count' => [
         'label' => 'Password History Block Count',
         'type' => 'number',
