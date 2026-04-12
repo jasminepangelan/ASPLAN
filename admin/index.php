@@ -181,71 +181,185 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
     }
 
     .content {
-      padding: 30px;
-      max-width: 100%;
+      padding: 28px 30px 34px;
+      max-width: 1240px;
+      margin: 0 auto;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
 
     .page-header {
-      background: white;
-      padding: 20px 30px;
-      margin: -30px -30px 30px -30px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 4px 2px 0;
+      margin: 0 0 12px;
     }
 
     .page-header h1 {
-      position: relative;
-      top: 14px;
-      left: 10px;
       margin: 0;
-      color: #333;
-      font-size: 24px;
+      color: #163417;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      line-height: 1.08;
+    }
+
+    .message-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: #17421a;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      margin: 0;
+      padding: 16px 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(243, 250, 245, 0.96) 100%);
+      border-radius: 16px;
+      width: 100%;
+      border: 1px solid rgba(32, 96, 24, 0.12);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+    }
+
+    .message-icon {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(228, 244, 229, 0.95) 0%, rgba(211, 237, 214, 0.95) 100%);
+      color: #206018;
+      font-size: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+    }
+
+    .message-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .message-copy small {
+      font-size: 12px;
+      color: #5f765f;
       font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .message-copy strong { color: #163417; }
+
+    .section-card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 248, 0.98) 100%);
+      border: 1px solid rgba(32, 96, 24, 0.12);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 26px;
+      color: #163417;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+    }
+
+    .section-subtitle {
+      margin: 6px 0 0;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #58705a;
+      max-width: 720px;
     }
 
     .options {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 30px;
-      max-width: 100%;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
       width: 100%;
     }
 
     .option {
-      background: white;
-      padding: 30px 20px;
-      border-radius: 10px;
-      text-align: center;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(245, 249, 246, 0.98) 100%);
+      border: 1px solid rgba(22, 79, 20, 0.12);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+      padding: 22px 20px 20px;
+      border-radius: 18px;
+      text-align: left;
       cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      border: 2px solid transparent;
+      transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+      min-height: 210px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .option::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(22, 79, 20, 0.95) 0%, rgba(76, 175, 80, 0.88) 100%);
+      opacity: 0.95;
     }
 
     .option:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-      border-color: #4CAF50;
+      transform: translateY(-8px);
+      box-shadow: 0 22px 36px rgba(15, 23, 42, 0.14);
+      border-color: rgba(22, 79, 20, 0.24);
+    }
+
+    .option-icon {
+      width: 74px;
+      height: 74px;
+      border-radius: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(234, 247, 236, 0.98) 0%, rgba(221, 241, 226, 0.98) 100%);
+      border: 1px solid rgba(22, 79, 20, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+      margin-bottom: 18px;
     }
 
     .option img {
-      width: 80px;
-      height: 80px;
-      margin-bottom: 15px;
+      width: 40px;
+      height: 40px;
+      margin-bottom: 0;
       transition: transform 0.3s ease;
       filter: none;
     }
 
-    .option:hover img {
-      transform: scale(1.1);
+    .option:hover img { transform: scale(1.08); }
+
+    .option-title {
+      font-size: 22px;
+      display: block;
+      font-weight: 800;
+      color: #173318;
+      letter-spacing: -0.3px;
+      margin: 0 0 8px;
     }
 
-    .option label {
-      font-size: 16px;
-      display: block;
-      font-weight: 600;
-      margin-top: 10px;
-      color: #333;
+    .option-caption {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #5c6f5d;
+      margin: 0;
     }
 
     .menu-toggle {
@@ -280,6 +394,18 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
       .main-header span {
         font-size: 1.05rem;
       }
+
+      .content { padding: 12px; gap: 12px; }
+      .page-header { padding: 2px 0 0; margin: 0 0 10px; }
+      .page-header h1 { font-size: 28px; }
+      .message-container { padding: 14px; align-items: flex-start; }
+      .section-card { padding: 18px; }
+      .section-head { align-items: flex-start; }
+      .options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .option { min-height: 188px; padding: 18px 16px 16px; }
+      .option-icon { width: 64px; height: 64px; border-radius: 18px; }
+      .option img { width: 34px; height: 34px; }
+      .option-title { font-size: 18px; }
     }
   
         /* Sidebar normalization: consistent spacing and interaction across admin pages */
@@ -362,28 +488,57 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
       <h1>Admin Dashboard</h1>
     </div>
     <div class="content">
-      <div class="options">
-        <!-- User Management Option -->
-        <div class="option" onclick="window.location.href='account_module.php'">
-          <img src="../pix/account.png" alt="User Management Icon">
-          <label>User Management</label>
+      <div class="message-container">
+        <span class="message-icon">i</span>
+        <span class="message-copy">
+          <small>Admin Command Center</small>
+          <span>Jump into the system’s main control areas quickly and keep <strong>user access</strong>, <strong>curriculum setup</strong>, and <strong>platform settings</strong> organized from one cleaner dashboard.</span>
+        </span>
+      </div>
+
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Quick Access</h2>
+            <p class="section-subtitle">Use the same polished dashboard structure as the student view while keeping the key admin modules easy to reach.</p>
+          </div>
         </div>
-        <!-- List of Students Option -->
+        <div class="options">
+        <div class="option" onclick="window.location.href='account_module.php'">
+          <div class="option-icon"><img src="../pix/account.png" alt="User Management Icon"></div>
+          <div>
+            <label class="option-title">User Management</label>
+            <p class="option-caption">Manage platform access, account records, and administrative user actions from one central module.</p>
+          </div>
+        </div>
         <div class="option" onclick="window.location.href='list_of_students.php'">
-          <img src="../pix/generic_user.svg" alt="List of Students Icon">
-          <label>List of students</label>
+          <div class="option-icon"><img src="../pix/generic_user.svg" alt="List of Students Icon"></div>
+          <div>
+            <label class="option-title">List of Students</label>
+            <p class="option-caption">Browse student records directly and move into profile, checklist, or study plan workflows with less friction.</p>
+          </div>
         </div>
         <div class="option" onclick="window.location.href='curriculum_management.php'">
-          <img src="../pix/curr.png" alt="Curriculum Management Icon">
-          <label>Curriculum Management</label>
+          <div class="option-icon"><img src="../pix/curr.png" alt="Curriculum Management Icon"></div>
+          <div>
+            <label class="option-title">Curriculum Management</label>
+            <p class="option-caption">Configure curriculum structures and checklist foundations with the same cleaner dashboard presentation.</p>
+          </div>
         </div>
         <div class="option" onclick="window.location.href='programs.php'">
-          <img src="../pix/update.png" alt="Programs Icon">
-          <label>Programs</label>
+          <div class="option-icon"><img src="../pix/update.png" alt="Programs Icon"></div>
+          <div>
+            <label class="option-title">Programs</label>
+            <p class="option-caption">Open the program catalog, review current offerings, and move directly into checklist-builder workflows.</p>
+          </div>
         </div>
         <div class="option" onclick="window.location.href='account_approval_settings.php'">
-          <img src="../pix/set.png" alt="Settings Icon">
-          <label>Settings</label>
+          <div class="option-icon"><img src="../pix/set.png" alt="Settings Icon"></div>
+          <div>
+            <label class="option-title">Settings</label>
+            <p class="option-caption">Control approval rules, security options, and advanced system settings from one premium card-based entry.</p>
+          </div>
+        </div>
         </div>
       </div>
     </div>

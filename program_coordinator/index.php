@@ -221,79 +221,178 @@ if (!$bridgeLoaded) {
     }
 
     .main-content.expanded { margin-left: 0; width: 100vw; }
-    .content { padding: 30px; }
+    .content {
+      padding: 28px 30px 34px;
+      max-width: 1240px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
 
     .page-header {
-      background: white;
-      padding: 20px 30px;
-      margin: -30px -30px 30px -30px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 4px 2px 0;
+      margin: 0 0 12px;
     }
 
     .page-header h1 {
-      position: relative;
-      top: 14px;
-      left: 10px;
-      color: #333;
-      font-size: 24px;
+      margin: 0;
+      color: #163417;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      line-height: 1.08;
+    }
+
+    .message-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: #17421a;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      margin: 0;
+      padding: 16px 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(243, 250, 245, 0.96) 100%);
+      border-radius: 16px;
+      width: 100%;
+      border: 1px solid rgba(32, 96, 24, 0.12);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+    }
+
+    .message-icon {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(228, 244, 229, 0.95) 0%, rgba(211, 237, 214, 0.95) 100%);
+      color: #206018;
+      font-size: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+    }
+
+    .message-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .message-copy small {
+      font-size: 12px;
+      color: #5f765f;
       font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .message-copy strong { color: #163417; }
+
+    .section-card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 248, 0.98) 100%);
+      border: 1px solid rgba(32, 96, 24, 0.12);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 26px;
+      color: #163417;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+    }
+
+    .section-subtitle {
+      margin: 6px 0 0;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #58705a;
+      max-width: 720px;
     }
 
     .options {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 30px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
       width: 100%;
     }
 
     .option {
-      background: white;
-      padding: 30px 20px;
-      border-radius: 10px;
-      text-align: center;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(245, 249, 246, 0.98) 100%);
+      border: 1px solid rgba(22, 79, 20, 0.12);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+      padding: 22px 20px 20px;
+      border-radius: 18px;
+      text-align: left;
       cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      border: 2px solid transparent;
+      transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+      min-height: 210px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
-    .option:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,0,0,0.15); border-color: #4CAF50; }
-    .option img { width: 80px; height: 80px; margin-bottom: 15px; }
-    .option label { font-size: 16px; display: block; font-weight: 600; margin-top: 10px; color: #333; }
-    .option a { text-decoration: none; color: inherit; }
-
-    .shift-summary {
-      background: #fff;
-      border-radius: 12px;
-      border: 1px solid #d8e3d8;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-      padding: 16px;
-      margin-bottom: 24px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
+    .option::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(22, 79, 20, 0.95) 0%, rgba(76, 175, 80, 0.88) 100%);
+      opacity: 0.95;
     }
 
-    .shift-stat {
-      background: #f4faf3;
-      border: 1px solid #d4e7d3;
-      border-radius: 10px;
-      padding: 12px;
+    .option:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 22px 36px rgba(15, 23, 42, 0.14);
+      border-color: rgba(22, 79, 20, 0.24);
     }
 
-    .shift-stat .count {
+    .option-icon {
+      width: 74px;
+      height: 74px;
+      border-radius: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(234, 247, 236, 0.98) 0%, rgba(221, 241, 226, 0.98) 100%);
+      border: 1px solid rgba(22, 79, 20, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+      margin-bottom: 18px;
+    }
+
+    .option img { width: 40px; height: 40px; margin-bottom: 0; transition: transform 0.3s ease; }
+    .option:hover img { transform: scale(1.08); }
+
+    .option-title {
       font-size: 22px;
-      font-weight: 700;
-      color: #206018;
+      display: block;
+      font-weight: 800;
+      color: #173318;
+      letter-spacing: -0.3px;
+      margin: 0 0 8px;
     }
 
-    .shift-stat .label {
-      margin-top: 4px;
-      font-size: 12px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      color: #3b5339;
-      font-weight: 600;
+    .option-caption {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #5c6f5d;
+      margin: 0;
     }
 
     @media (max-width: 768px) {
@@ -302,6 +401,17 @@ if (!$bridgeLoaded) {
       .main-content { margin-left: 0; width: 100vw; }
       .header { padding: 5px 8px; font-size: 12px; }
       .header img { height: 22px; margin-right: 6px; }
+      .content { padding: 12px; gap: 12px; }
+      .page-header { padding: 2px 0 0; margin: 0 0 10px; }
+      .page-header h1 { font-size: 28px; }
+      .message-container { padding: 14px; align-items: flex-start; }
+      .section-card { padding: 18px; }
+      .section-head { align-items: flex-start; }
+      .options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .option { min-height: 188px; padding: 18px 16px 16px; }
+      .option-icon { width: 64px; height: 64px; border-radius: 18px; }
+      .option img { width: 34px; height: 34px; }
+      .option-title { font-size: 18px; }
     }
   </style>
 </head>
@@ -346,51 +456,71 @@ if (!$bridgeLoaded) {
       <h1>Program Coordinator Dashboard</h1>
     </div>
     <div class="content">
-      <div class="shift-summary">
-        <div class="shift-stat">
-          <div class="count"><?php echo (int)($coordinatorShiftSummary['pending'] ?? 0); ?></div>
-          <div class="label">Pending Coordinator Review</div>
-        </div>
-        <div class="shift-stat">
-          <div class="count"><?php echo (int)($coordinatorShiftSummary['approved'] ?? 0); ?></div>
-          <div class="label">Approved and Executed</div>
-        </div>
-        <div class="shift-stat">
-          <div class="count"><?php echo (int)($coordinatorShiftSummary['rejected'] ?? 0); ?></div>
-          <div class="label">Rejected in Final Stage</div>
-        </div>
+      <div class="message-container">
+        <span class="message-icon">i</span>
+        <span class="message-copy">
+          <small>Coordinator Snapshot</small>
+          <span><strong><?= (int)($coordinatorShiftSummary['pending'] ?? 0) ?></strong> pending coordinator reviews, <strong><?= (int)($coordinatorShiftSummary['approved'] ?? 0) ?></strong> approved and executed shifts, and <strong><?= (int)($coordinatorShiftSummary['rejected'] ?? 0) ?></strong> rejected in the final stage.</span>
+        </span>
       </div>
-      <div class="options">
+
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title">Quick Access</h2>
+            <p class="section-subtitle">Use the same cleaner dashboard structure as the student view while keeping your coordinator-specific modules front and center.</p>
+          </div>
+        </div>
+        <div class="options">
         <div class="option" onclick="window.location.href='curriculum_management.php'">
-          <img src="../pix/curr.png" alt="Curriculum Management">
-          <label>Curriculum Management</label>
+          <div class="option-icon"><img src="../pix/curr.png" alt="Curriculum Management"></div>
+          <div>
+            <label class="option-title">Curriculum Management</label>
+            <p class="option-caption">Manage curriculum structures and checklist definitions with a more focused coordinator launch area.</p>
+          </div>
         </div>
 
         <div class="option" onclick="window.location.href='adviser_management.php'">
-          <img src="../pix/account.png" alt="Adviser Management">
-          <label>Adviser Management</label>
+          <div class="option-icon"><img src="../pix/account.png" alt="Adviser Management"></div>
+          <div>
+            <label class="option-title">Adviser Management</label>
+            <p class="option-caption">Review adviser assignments and keep responsibility mapping organized from one cleaner entry point.</p>
+          </div>
         </div>
 
         <div class="option" onclick="window.location.href='list_of_students.php'">
-          <img src="../pix/checklist.png" alt="List of Students">
-          <label>List of Students</label>
+          <div class="option-icon"><img src="../pix/checklist.png" alt="List of Students"></div>
+          <div>
+            <label class="option-title">List of Students</label>
+            <p class="option-caption">Open student records, checklist pages, and study plans from a more polished dashboard card layout.</p>
+          </div>
         </div>
 
         <div class="option" onclick="window.location.href='program_shift_requests.php'">
-          <img src="../pix/update.png" alt="Program Shift Requests">
-          <label>Program Shift Requests</label>
+          <div class="option-icon"><img src="../pix/update.png" alt="Program Shift Requests"></div>
+          <div>
+            <label class="option-title">Program Shift Requests</label>
+            <p class="option-caption">Handle destination-program decisions and final approvals with a clearer dashboard workflow.</p>
+          </div>
         </div>
 
         <div class="option" onclick="window.location.href='profile.php'">
-          <img src="../pix/account.png" alt="Update Profile">
-          <label>Update Profile</label>
+          <div class="option-icon"><img src="../pix/account.png" alt="Update Profile"></div>
+          <div>
+            <label class="option-title">Update Profile</label>
+            <p class="option-caption">Keep your coordinator profile and contact details updated without leaving the new card-based layout.</p>
+          </div>
         </div>
 
         <div class="option">
           <a href="logout.php">
-            <img src="../pix/singout.png" alt="Sign Out">
-            <label>Sign Out</label>
+            <div class="option-icon"><img src="../pix/singout.png" alt="Sign Out"></div>
+            <div>
+              <label class="option-title">Sign Out</label>
+              <p class="option-caption">End the current coordinator session securely after your curriculum and approval work is complete.</p>
+            </div>
           </a>
+        </div>
         </div>
       </div>
     </div>
