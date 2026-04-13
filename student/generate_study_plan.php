@@ -887,14 +887,11 @@ class StudyPlanGenerator {
         
         while ($row = $result->fetch_assoc()) {
             $course_code = $this->normalizeCourseCode($row['course_code'] ?? '');
-            if ($course_code === '' || isset($this->cross_reg_courses[$course_code])) {
+            if ($course_code === '') {
                 continue;
             }
-            // Only add if this course_code is in the student's curriculum (needs to be taken)
-            // and not already loaded in all_courses
-            // Cross-reg is for when a course IS in your curriculum but the offering
-            // for your semester is in another program's schedule
-            $this->cross_reg_courses[$course_code] = [
+
+            $offering = [
                 'code' => $course_code,
                 'title' => $row['course_title'],
                 'units' => ($row['credit_unit_lec'] ?? 0) + ($row['credit_unit_lab'] ?? 0),
@@ -905,8 +902,35 @@ class StudyPlanGenerator {
                 'cross_reg_source_program' => $this->formatCrossRegistrationSourceProgram($row['programs'] ?? ''),
                 'cross_registered' => true
             ];
+
+            if (!isset($this->cross_reg_courses[$course_code])) {
+                $this->cross_reg_courses[$course_code] = [];
+            }
+
+            $signature = implode('|', [
+                $offering['year'],
+                $offering['semester'],
+                strtoupper(trim((string)$offering['programs'])),
+            ]);
+
+            $this->cross_reg_courses[$course_code][$signature] = $offering;
         }
         $stmt->close();
+    }
+
+    private function findCrossRegistrationOffering($course_code, $target_semester) {
+        $offerings = $this->cross_reg_courses[$course_code] ?? [];
+        if (empty($offerings)) {
+            return null;
+        }
+
+        foreach ($offerings as $offering) {
+            if (($offering['semester'] ?? null) === $target_semester) {
+                return $offering;
+            }
+        }
+
+        return null;
     }
     
     /**
@@ -1976,10 +2000,10 @@ class StudyPlanGenerator {
                 // Only allow if course is from a lower year and its semester matches the current semester
                 if ($course_year < $term_year_order && $course['semester'] === $term['semester']) {
                     $available[$code] = $course;
-                } else if ($course_year < $term_year_order && isset($this->cross_reg_courses[$code])) {
-                    $cross_course = $this->cross_reg_courses[$code];
+                } else if ($course_year < $term_year_order) {
+                    $cross_course = $this->findCrossRegistrationOffering($code, $term['semester']);
                     // Only cross-register if the course is offered in the current semester by another program
-                    if ($cross_course['semester'] === $term['semester']) {
+                    if ($cross_course !== null) {
                         // Check prerequisites (case-insensitive)
                         $prereqs = $this->prerequisite_map[$code] ?? [];
                         $prereqs_met = true;
@@ -2007,10 +2031,10 @@ class StudyPlanGenerator {
             
             foreach ($remaining_course_codes as $needed_code) {
                 // If course is not already available and not yet planned
-                if (!isset($available[$needed_code]) && isset($this->cross_reg_courses[$needed_code])) {
-                    $cross_course = $this->cross_reg_courses[$needed_code];
+                if (!isset($available[$needed_code])) {
+                    $cross_course = $this->findCrossRegistrationOffering($needed_code, $term['semester']);
                     // Only cross-register if the course is offered in the current semester by another program
-                    if ($cross_course['semester'] === $term['semester']) {
+                    if ($cross_course !== null) {
                         // Check prerequisites (case-insensitive)
                         $prereqs = $this->prerequisite_map[$needed_code] ?? [];
                         $prereqs_met = true;
@@ -2149,9 +2173,9 @@ class StudyPlanGenerator {
                 return !$c['completed'];
             }));
             foreach ($remaining_codes as $needed_code) {
-                if (!isset($available[$needed_code]) && isset($this->cross_reg_courses[$needed_code])) {
-                    $cross_course = $this->cross_reg_courses[$needed_code];
-                    if ($cross_course['semester'] === $semester) {
+                if (!isset($available[$needed_code])) {
+                    $cross_course = $this->findCrossRegistrationOffering($needed_code, $semester);
+                    if ($cross_course !== null) {
                         $prereqs = $this->prerequisite_map[$needed_code] ?? [];
                         $prereqs_met = true;
                         $completed_upper = array_map('strtoupper', $simulated_completed);
@@ -2406,6 +2430,24 @@ class StudyPlanGenerator {
         ];
     }
 
+    private function termHasActiveNonRetakeIncompleteCourses($year, $semester) {
+        foreach ($this->all_courses as $course) {
+            if (($course['year'] ?? '') !== $year || ($course['semester'] ?? '') !== $semester) {
+                continue;
+            }
+
+            if (!empty($course['completed'])) {
+                continue;
+            }
+
+            if (empty($course['needs_retake'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Determine the anchor term for future planning.
      *
@@ -2425,6 +2467,18 @@ class StudyPlanGenerator {
             $termIndexMap[$term['year'] . '|' . $term['semester']] = $index;
         }
 
+        $firstIncompleteIndex = -1;
+        foreach ($terms as $index => $term) {
+            if (!$this->isSemesterCompleted($term['year'], $term['semester'])) {
+                $firstIncompleteIndex = $index;
+                break;
+            }
+        }
+
+        if ($firstIncompleteIndex < 0) {
+            return ['year' => '4th Yr', 'semester' => 'Mid Year'];
+        }
+
         $latestHistoryIndex = -1;
         foreach ($this->semester_grade_history as $termKey => $termData) {
             if (!isset($termIndexMap[$termKey])) {
@@ -2434,18 +2488,21 @@ class StudyPlanGenerator {
             $latestHistoryIndex = max($latestHistoryIndex, $termIndexMap[$termKey]);
         }
 
-        if ($latestHistoryIndex >= 0) {
+        $firstIncompleteTerm = $terms[$firstIncompleteIndex];
+
+        // Keep the earliest incomplete term when it still has normal untaken
+        // subjects. Only skip forward when the old term is incomplete solely
+        // because of retakes/back subjects already carried into future planning.
+        if ($this->termHasActiveNonRetakeIncompleteCourses($firstIncompleteTerm['year'], $firstIncompleteTerm['semester'])) {
+            return $firstIncompleteTerm;
+        }
+
+        if ($latestHistoryIndex >= 0 && $firstIncompleteIndex <= $latestHistoryIndex) {
             $nextIndex = min($latestHistoryIndex + 1, count($terms) - 1);
             return $terms[$nextIndex];
         }
 
-        foreach ($terms as $term) {
-            if (!$this->isSemesterCompleted($term['year'], $term['semester'])) {
-                return $term;
-            }
-        }
-
-        return ['year' => '4th Yr', 'semester' => 'Mid Year'];
+        return $firstIncompleteTerm;
     }
     
     /**
