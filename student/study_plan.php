@@ -1483,7 +1483,9 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                 endif;
                 // Build completed semesters for display
                 $completed_semesters = [];
+                $completed_term_keys = [];
                 foreach ($completed_terms as $ct) {
+                    $completed_term_keys[$ct['year'] . '|' . $ct['semester']] = true;
                     $completed_semesters[] = [
                         'year' => $ct['year'],
                         'semester' => $ct['semester'],
@@ -1507,9 +1509,79 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                         ];
                     }
                 }
+
+                $future_term_keys = [];
+                foreach ($future_semesters as $future_term) {
+                    $future_term_keys[$future_term['year'] . '|' . $future_term['semester']] = true;
+                }
+
+                $partial_semesters = [];
+                foreach ($ay_courses_by_term as $term_key => $term_data) {
+                    if (
+                        isset($completed_term_keys[$term_key]) ||
+                        isset($future_term_keys[$term_key]) ||
+                        empty($term_data['completed']) ||
+                        empty($term_data['uncomplete'])
+                    ) {
+                        continue;
+                    }
+
+                    $courses = [];
+                    foreach ($term_data['completed'] as $course) {
+                        $courses[] = [
+                            'code' => $course['code'],
+                            'title' => $course['title'],
+                            'units' => $course['units'],
+                            'prerequisite' => $course['prerequisite'] ?? 'None',
+                            'status' => 'Credited',
+                            'status_variant' => 'credited',
+                            'grade' => $course['grade'] ?? '',
+                        ];
+                    }
+                    foreach ($term_data['uncomplete'] as $course) {
+                        $reason = trim((string)($course['reason'] ?? 'Not Yet Taken'));
+                        $courses[] = [
+                            'code' => $course['code'],
+                            'title' => $course['title'],
+                            'units' => $course['units'],
+                            'prerequisite' => $course['prerequisite'] ?? 'None',
+                            'status' => $reason,
+                            'status_variant' => strtolower(str_replace(' ', '-', $reason)),
+                            'grade' => $course['grade'] ?? '',
+                        ];
+                    }
+
+                    $partial_semesters[] = [
+                        'year' => $term_data['year'],
+                        'semester' => $term_data['semester'],
+                        'courses' => $courses,
+                        'meta' => ['partial' => true],
+                        'is_completed_term' => false,
+                        'is_partial_term' => true,
+                    ];
+                }
+
+                $year_order = ['1st Yr' => 1, '2nd Yr' => 2, '3rd Yr' => 3, '4th Yr' => 4, '5th Yr' => 5, '6th Yr' => 6, '7th Yr' => 7];
+                $sem_order = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3];
+                $sort_terms = static function (array &$terms) use ($year_order, $sem_order): void {
+                    usort($terms, static function ($a, $b) use ($year_order, $sem_order) {
+                        $ya = $year_order[$a['year']] ?? 999;
+                        $yb = $year_order[$b['year']] ?? 999;
+                        if ($ya !== $yb) {
+                            return $ya <=> $yb;
+                        }
+
+                        $sa = $sem_order[$a['semester']] ?? 999;
+                        $sb = $sem_order[$b['semester']] ?? 999;
+                        return $sa <=> $sb;
+                    });
+                };
+
+                $sort_terms($partial_semesters);
+                $sort_terms($future_semesters);
                 
-                // Combine: completed first, then future
-                $all_semesters = array_merge($completed_semesters, $future_semesters);
+                // Combine: completed first, then partially completed historical terms, then future plan
+                $all_semesters = array_merge($completed_semesters, $partial_semesters, $future_semesters);
                 
                 // Group into pages (2 semesters per page)
                 $pages = array_chunk($all_semesters, 2);
@@ -1557,6 +1629,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                         $courses = $sem_data['courses'];
                         $meta = $sem_data['meta'] ?? [];
                         $is_completed_term = !empty($sem_data['is_completed_term']);
+                        $is_partial_term = !empty($sem_data['is_partial_term']);
                         $is_skipped = !empty($meta['skipped']);
                         $term_retention = $meta['retention_status'] ?? 'None';
                         $term_max_units = $meta['max_units'] ?? 21;
@@ -1623,6 +1696,67 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                         <td><?= htmlspecialchars($course['title']) ?></td>
                                         <td><?= number_format($units, 1) ?></td>
                                         <td class="<?= $prereq_class ?>" style="text-align: center;"><?= htmlspecialchars($prerequisite) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                <tr class="total-row">
+                                    <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
+                                    <td><strong><?= number_format($semester_total, 1) ?></strong></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php elseif ($is_partial_term): ?>
+                    <div class="semester-section" style="border: 2px solid #cfe4d2; background: linear-gradient(180deg, #fbfefb 0%, #f6fbf7 100%);">
+                        <div style="background: linear-gradient(135deg, #edf7ee, #dbeadf); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2f5d34;">
+                            <?= htmlspecialchars($year) ?> - <?= htmlspecialchars($semester) ?>, <?= $school_year ?>
+                            <span style="font-size: 10px; background: #fff8e1; color: #8d6e00; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;">IN PROGRESS</span>
+                        </div>
+                        <div style="padding: 8px 12px; font-size: 12px; color: #4e6452; border-bottom: 1px solid #e1ece3;">
+                            This term already has credited or approved courses, but it is not fully completed yet, so it stays visible here for reference.
+                        </div>
+                        <table class="course-table">
+                            <thead>
+                                <tr>
+                                    <th>Course Code</th>
+                                    <th>Course Title</th>
+                                    <th>Units</th>
+                                    <th>Prerequisite</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $semester_total = 0;
+                                foreach ($courses as $course): 
+                                    $units = $course['units'] ?? 0;
+                                    $is_non_credit = isNonCreditStudyPlanCourse($course);
+                                    if (!$is_non_credit) {
+                                        $semester_total += $units;
+                                    }
+                                    $prerequisite = $course['prerequisite'] ?? 'None';
+                                    $status = trim((string)($course['status'] ?? ''));
+                                    $status_variant = trim((string)($course['status_variant'] ?? ''));
+                                    $badge_style = 'background: #e8f5e9; color: #2e7d32;';
+                                    if ($status_variant === 'failed') {
+                                        $badge_style = 'background: #ffebee; color: #c62828;';
+                                    } elseif ($status_variant === 'inc' || $status_variant === 'dropped') {
+                                        $badge_style = 'background: #fff3e0; color: #ef6c00;';
+                                    } elseif ($status_variant === 'not-yet-taken') {
+                                        $badge_style = 'background: #eceff1; color: #455a64;';
+                                    }
+                                ?>
+                                    <tr>
+                                        <td>
+                                            <?= htmlspecialchars($course['code']) ?>
+                                            <?php if ($status !== ''): ?>
+                                            <span style="font-size: 9px; padding: 2px 5px; border-radius: 999px; margin-left: 6px; font-weight: 700; vertical-align: middle; <?= $badge_style ?>">
+                                                <?= htmlspecialchars(strtoupper($status)) ?>
+                                            </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?= htmlspecialchars($course['title']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . number_format($units, 1) . ')' : number_format($units, 1) ?></td>
+                                        <td style="text-align: center;"><?= htmlspecialchars($prerequisite) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="total-row">
