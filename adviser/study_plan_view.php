@@ -37,6 +37,29 @@ function aspvLoadStudentWithinAdviserScope(mysqli $conn, string $studentId, stri
     return $student ?: null;
 }
 
+function aspvSortTaggedCoursesLast(array $courses): array
+{
+    $indexed = [];
+    foreach ($courses as $index => $course) {
+        $hasDeferredTag = !empty($course['needs_retake']) || !empty($course['cross_registered']);
+        $indexed[] = [
+            'index' => $index,
+            'has_deferred_tag' => $hasDeferredTag,
+            'course' => $course,
+        ];
+    }
+
+    usort($indexed, function ($a, $b) {
+        if ($a['has_deferred_tag'] === $b['has_deferred_tag']) {
+            return $a['index'] <=> $b['index'];
+        }
+
+        return $a['has_deferred_tag'] <=> $b['has_deferred_tag'];
+    });
+
+    return array_column($indexed, 'course');
+}
+
 $conn = getDBConnection();
 
 if (!isset($_SESSION['id'])) {
@@ -1057,7 +1080,8 @@ if ($last_planned_term) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                    <?php foreach (($term['courses'] ?? []) as $course): ?>
+                                        <?php $termCourses = aspvSortTaggedCoursesLast((array)($term['courses'] ?? [])); ?>
+                                        <?php foreach ($termCourses as $course): ?>
                                         <?php
                                             $prerequisite = trim((string)($course['prerequisite'] ?? ''));
                                             if ($prerequisite === '') {

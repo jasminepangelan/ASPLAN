@@ -18,6 +18,29 @@ if (!isset($_GET['student_id']) || trim((string)$_GET['student_id']) === '') {
 $conn = getDBConnection();
 $conn->set_charset('utf8mb4');
 
+function pcSortTaggedCoursesLast(array $courses): array
+{
+    $indexed = [];
+    foreach ($courses as $index => $course) {
+        $hasDeferredTag = !empty($course['needs_retake']) || !empty($course['cross_registered']) || !empty($course['forced_added']);
+        $indexed[] = [
+            'index' => $index,
+            'has_deferred_tag' => $hasDeferredTag,
+            'course' => $course,
+        ];
+    }
+
+    usort($indexed, function ($a, $b) {
+        if ($a['has_deferred_tag'] === $b['has_deferred_tag']) {
+            return $a['index'] <=> $b['index'];
+        }
+
+        return $a['has_deferred_tag'] <=> $b['has_deferred_tag'];
+    });
+
+    return array_column($indexed, 'course');
+}
+
 $coordinatorName = $isAdmin
     ? (isset($_SESSION['admin_full_name']) ? htmlspecialchars((string)$_SESSION['admin_full_name']) : 'Admin')
     : (isset($_SESSION['full_name']) ? htmlspecialchars((string)$_SESSION['full_name']) : 'Program Coordinator');
@@ -1208,7 +1231,8 @@ if ($lastPlannedTerm) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                <?php foreach (($term['courses'] ?? []) as $course): ?>
+                                <?php $termCourses = pcSortTaggedCoursesLast((array)($term['courses'] ?? [])); ?>
+                                <?php foreach ($termCourses as $course): ?>
                                     <?php
                                         $prerequisite = trim((string)($course['prerequisite'] ?? ''));
                                         if ($prerequisite === '') {

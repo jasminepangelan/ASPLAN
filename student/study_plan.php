@@ -308,6 +308,30 @@ function calculateTotalUnits($courses) {
     return $total;
 }
 
+function sortTaggedStudyPlanCoursesLast(array $courses): array {
+    $indexed = [];
+    foreach ($courses as $index => $course) {
+        $hasDeferredTag = !empty($course['needs_retake'])
+            || !empty($course['cross_registered'])
+            || !empty($course['forced_added']);
+        $indexed[] = [
+            'index' => $index,
+            'has_deferred_tag' => $hasDeferredTag,
+            'course' => $course,
+        ];
+    }
+
+    usort($indexed, function ($a, $b) {
+        if ($a['has_deferred_tag'] === $b['has_deferred_tag']) {
+            return $a['index'] <=> $b['index'];
+        }
+
+        return $a['has_deferred_tag'] <=> $b['has_deferred_tag'];
+    });
+
+    return array_column($indexed, 'course');
+}
+
 $studentShellPayload = htmlspecialchars(json_encode([
     'title' => 'Study Plan Workspace',
     'description' => 'Review your generated roadmap, keep an eye on completion progress, and stay inside the existing student planning workflow while we modernize the shell around it.',
@@ -1633,7 +1657,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                     foreach ($page_semesters as $sem_index => $sem_data): 
                         $year = $sem_data['year'];
                         $semester = $sem_data['semester'];
-                        $courses = $sem_data['courses'];
+                        $courses = sortTaggedStudyPlanCoursesLast($sem_data['courses'] ?? []);
                         $meta = $sem_data['meta'] ?? [];
                         $is_completed_term = !empty($sem_data['is_completed_term']);
                         $is_partial_term = !empty($sem_data['is_partial_term']);
