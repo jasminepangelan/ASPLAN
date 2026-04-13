@@ -417,11 +417,23 @@ if (!function_exists('psNormalizeStrandKey')) {
         if ($value === 'GAS' || strpos($value, 'GENERAL ACADEMIC') !== false) {
             return 'GAS';
         }
-        if (strpos($value, 'TVL') !== false || strpos($value, 'TECHNICAL VOCATIONAL') !== false || strpos($value, 'ICT') !== false || strpos($value, 'HOME ECONOMICS') !== false) {
+        if ($value === 'TVL ICT' || $value === 'TVL-ICT' || strpos($value, 'INFORMATION COMMUNICATIONS TECHNOLOGY') !== false) {
+            return 'TVL-ICT';
+        }
+        if ($value === 'TVL HE' || $value === 'TVL-HE' || strpos($value, 'HOME ECONOMICS') !== false) {
+            return 'TVL-HE';
+        }
+        if ($value === 'TVL IA' || $value === 'TVL-IA' || strpos($value, 'INDUSTRIAL ARTS') !== false) {
+            return 'TVL-IA';
+        }
+        if ($value === 'TVL AFA' || $value === 'TVL-AFA' || strpos($value, 'AGRI FISHERY ARTS') !== false) {
+            return 'TVL-AFA';
+        }
+        if ($value === 'TVL' || strpos($value, 'TECHNICAL VOCATIONAL') !== false) {
             return 'TVL';
         }
-        if (strpos($value, 'ARTS') !== false && strpos($value, 'DESIGN') !== false) {
-            return 'ARTS-DESIGN';
+        if ($value === 'ADT' || (strpos($value, 'ARTS') !== false && strpos($value, 'DESIGN') !== false)) {
+            return 'ADT';
         }
         if (strpos($value, 'SPORTS') !== false) {
             return 'SPORTS';
@@ -436,17 +448,17 @@ if (!function_exists('psAllowedStrandsForShiftProgram')) {
         $programKey = strtoupper(trim(psNormalizeProgramKey((string)$programLabel)));
 
         $strandMap = [
-            'BSCS' => ['STEM', 'TVL', 'GAS'],
-            'BSIT' => ['STEM', 'TVL', 'GAS'],
-            'BSCPE' => ['STEM', 'TVL'],
-            'BSCE' => ['STEM'],
-            'BSEE' => ['STEM'],
-            'BSME' => ['STEM'],
-            'BSINDT' => ['TVL', 'STEM'],
+            'BSCS' => ['STEM', 'TVL-ICT', 'GAS'],
+            'BSIT' => ['STEM', 'TVL-ICT', 'GAS'],
+            'BSCPE' => ['STEM', 'TVL-ICT', 'TVL-IA'],
+            'BSCE' => ['STEM', 'TVL-IA'],
+            'BSEE' => ['STEM', 'TVL-IA'],
+            'BSME' => ['STEM', 'TVL-IA'],
+            'BSINDT' => ['TVL-IA', 'TVL-HE', 'TVL-AFA', 'STEM', 'GAS'],
             'BSBA-HRM' => ['ABM', 'GAS'],
             'BSBA-MM' => ['ABM', 'GAS'],
-            'BSHM' => ['ABM', 'TVL', 'GAS'],
-            'BSTM' => ['ABM', 'TVL', 'GAS'],
+            'BSHM' => ['ABM', 'TVL-HE', 'GAS'],
+            'BSTM' => ['ABM', 'HUMSS', 'TVL-HE', 'GAS'],
             'BSED-ENGLISH' => ['HUMSS', 'GAS'],
             'BSED-MATH' => ['STEM', 'GAS'],
             'BSED-SCIENCE' => ['STEM', 'GAS'],
@@ -455,6 +467,35 @@ if (!function_exists('psAllowedStrandsForShiftProgram')) {
         ];
 
         return $strandMap[$programKey] ?? [];
+    }
+}
+
+if (!function_exists('psStudentStrandMatchesAllowed')) {
+    function psStudentStrandMatchesAllowed($studentStrand, array $allowedStrands) {
+        $studentStrand = strtoupper(trim((string)$studentStrand));
+        $allowedUpper = array_map(static function ($value) {
+            return strtoupper(trim((string)$value));
+        }, $allowedStrands);
+
+        if (in_array($studentStrand, $allowedUpper, true)) {
+            return true;
+        }
+
+        if ($studentStrand === 'TVL') {
+            foreach ($allowedUpper as $allowed) {
+                if (strpos($allowed, 'TVL-') === 0) {
+                    return true;
+                }
+            }
+        }
+
+        foreach ($allowedUpper as $allowed) {
+            if ($allowed === 'TVL' && strpos($studentStrand, 'TVL-') === 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -483,7 +524,7 @@ if (!function_exists('psValidateShiftStrandAlignment')) {
             return ['allowed' => true, 'message' => ''];
         }
 
-        if (in_array($studentStrand, $allowedStrands, true)) {
+        if (psStudentStrandMatchesAllowed($studentStrand, $allowedStrands)) {
             return ['allowed' => true, 'message' => ''];
         }
 
