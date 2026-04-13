@@ -17,6 +17,10 @@ $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 $studentRow = null;
 $programOptions = [];
 $history = [];
+$shiftStrandAlignmentEnabled = false;
+$studentStrandKey = '';
+$availableProgramOptions = [];
+$strandRestrictionMessage = '';
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
@@ -51,6 +55,8 @@ if (!$studentRow) {
 }
 
 $currentProgram = trim((string)($studentRow['program'] ?? ''));
+$studentStrandKey = psNormalizeStrandKey((string)($studentRow['strand'] ?? ''));
+$shiftStrandAlignmentEnabled = psIsShiftStrandAlignmentEnforced($conn);
 if (empty($programOptions)) {
     $programOptions = psGetProgramOptions($conn);
 }
@@ -132,6 +138,33 @@ $studentProgramShiftWorkspacePayload = htmlspecialchars(json_encode([
         'Strict course equivalency still decides which subjects can be credited after approval.',
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+foreach ($programOptions as $programOption) {
+    if (strcasecmp(psNormalizeProgramLabel((string)$programOption), psNormalizeProgramLabel($currentProgram)) === 0) {
+        continue;
+    }
+
+    if ($shiftStrandAlignmentEnabled) {
+        $allowedStrands = psAllowedStrandsForShiftProgram((string)$programOption);
+        if ($studentStrandKey === '') {
+            continue;
+        }
+
+        if (!empty($allowedStrands) && !psStudentStrandMatchesAllowed($studentStrandKey, $allowedStrands)) {
+            continue;
+        }
+    }
+
+    $availableProgramOptions[] = (string)$programOption;
+}
+
+if ($shiftStrandAlignmentEnabled) {
+    if ($studentStrandKey === '') {
+        $strandRestrictionMessage = 'Program shifting is limited by strand right now. Please update your strand first before requesting a shift.';
+    } elseif (empty($availableProgramOptions)) {
+        $strandRestrictionMessage = 'No destination programs are currently aligned with your saved strand (' . $studentStrandKey . ').';
+    }
+}
 
 closeDBConnection($conn);
 ?>
@@ -792,13 +825,20 @@ closeDBConnection($conn);
 
                 <div class="field">
                     <label for="requested_program">Destination Program</label>
-                    <select id="requested_program" name="requested_program" required>
+                    <select id="requested_program" name="requested_program" required <?= ($shiftStrandAlignmentEnabled && empty($availableProgramOptions)) ? 'disabled' : '' ?>>
                         <option value="">Select destination program...</option>
-                        <?php foreach ($programOptions as $program): ?>
-                            <?php if (strcasecmp(psNormalizeProgramLabel($program), psNormalizeProgramLabel($currentProgram)) === 0) { continue; } ?>
+                        <?php foreach ($availableProgramOptions as $program): ?>
                             <option value="<?= htmlspecialchars($program) ?>"><?= htmlspecialchars($program) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <?php if ($shiftStrandAlignmentEnabled): ?>
+                        <p class="muted" style="margin:8px 0 0;">
+                            Allowed by your strand: <strong><?= htmlspecialchars($studentStrandKey !== '' ? $studentStrandKey : 'Not set') ?></strong>
+                        </p>
+                    <?php endif; ?>
+                    <?php if ($strandRestrictionMessage !== ''): ?>
+                        <div class="alert error" style="margin-top:10px;"><?= htmlspecialchars($strandRestrictionMessage) ?></div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="field">
@@ -807,7 +847,7 @@ closeDBConnection($conn);
                 </div>
 
                 <div class="submit-row">
-                    <button type="submit">Submit Shift Request</button>
+                    <button type="submit" <?= ($shiftStrandAlignmentEnabled && empty($availableProgramOptions)) ? 'disabled' : '' ?>>Submit Shift Request</button>
                     <span class="muted">Ensure your reason is specific and complete.</span>
                 </div>
             </form>
