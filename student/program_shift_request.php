@@ -20,6 +20,7 @@ $history = [];
 $shiftStrandAlignmentEnabled = false;
 $studentStrandKey = '';
 $availableProgramOptions = [];
+$hasSelectableProgramOption = false;
 $strandRestrictionMessage = '';
 
 if ($useLaravelBridge) {
@@ -144,24 +145,35 @@ foreach ($programOptions as $programOption) {
         continue;
     }
 
+    $disabled = false;
+    $tooltip = '';
+
     if ($shiftStrandAlignmentEnabled) {
         $allowedStrands = psAllowedStrandsForShiftProgram((string)$programOption);
         if ($studentStrandKey === '') {
-            continue;
-        }
-
-        if (!empty($allowedStrands) && !psStudentStrandMatchesAllowed($studentStrandKey, $allowedStrands)) {
-            continue;
+            $disabled = true;
+            $tooltip = 'Your strand is not set yet.';
+        } elseif (!empty($allowedStrands) && !psStudentStrandMatchesAllowed($studentStrandKey, $allowedStrands)) {
+            $disabled = true;
+            $tooltip = 'Not aligned with your strand (' . $studentStrandKey . ').';
         }
     }
 
-    $availableProgramOptions[] = (string)$programOption;
+    if (!$disabled) {
+        $hasSelectableProgramOption = true;
+    }
+
+    $availableProgramOptions[] = [
+        'label' => (string)$programOption,
+        'disabled' => $disabled,
+        'tooltip' => $tooltip,
+    ];
 }
 
 if ($shiftStrandAlignmentEnabled) {
     if ($studentStrandKey === '') {
         $strandRestrictionMessage = 'Program shifting is limited by strand right now. Please update your strand first before requesting a shift.';
-    } elseif (empty($availableProgramOptions)) {
+    } elseif (!$hasSelectableProgramOption) {
         $strandRestrictionMessage = 'No destination programs are currently aligned with your saved strand (' . $studentStrandKey . ').';
     }
 }
@@ -825,10 +837,17 @@ closeDBConnection($conn);
 
                 <div class="field">
                     <label for="requested_program">Destination Program</label>
-                    <select id="requested_program" name="requested_program" required <?= ($shiftStrandAlignmentEnabled && empty($availableProgramOptions)) ? 'disabled' : '' ?>>
+                    <select id="requested_program" name="requested_program" required <?= ($shiftStrandAlignmentEnabled && !$hasSelectableProgramOption) ? 'disabled' : '' ?>>
                         <option value="">Select destination program...</option>
                         <?php foreach ($availableProgramOptions as $program): ?>
-                            <option value="<?= htmlspecialchars($program) ?>"><?= htmlspecialchars($program) ?></option>
+                            <option
+                                value="<?= htmlspecialchars((string)$program['label']) ?>"
+                                <?= !empty($program['disabled']) ? 'disabled' : '' ?>
+                                title="<?= htmlspecialchars((string)$program['tooltip']) ?>"
+                                data-tooltip="<?= htmlspecialchars((string)$program['tooltip']) ?>"
+                            >
+                                <?= htmlspecialchars((string)$program['label']) ?><?= !empty($program['disabled']) ? ' [Not aligned]' : '' ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                     <?php if ($shiftStrandAlignmentEnabled): ?>
@@ -836,6 +855,9 @@ closeDBConnection($conn);
                             Allowed by your strand: <strong><?= htmlspecialchars($studentStrandKey !== '' ? $studentStrandKey : 'Not set') ?></strong>
                         </p>
                     <?php endif; ?>
+                    <p id="destinationProgramTooltip" class="muted" style="margin:8px 0 0; min-height:18px;">
+                        <?= htmlspecialchars($shiftStrandAlignmentEnabled ? 'Programs marked as not aligned are shown for reference only.' : '') ?>
+                    </p>
                     <?php if ($strandRestrictionMessage !== ''): ?>
                         <div class="alert error" style="margin-top:10px;"><?= htmlspecialchars($strandRestrictionMessage) ?></div>
                     <?php endif; ?>
@@ -847,7 +869,7 @@ closeDBConnection($conn);
                 </div>
 
                 <div class="submit-row">
-                    <button type="submit" <?= ($shiftStrandAlignmentEnabled && empty($availableProgramOptions)) ? 'disabled' : '' ?>>Submit Shift Request</button>
+                    <button type="submit" <?= ($shiftStrandAlignmentEnabled && !$hasSelectableProgramOption) ? 'disabled' : '' ?>>Submit Shift Request</button>
                     <span class="muted">Ensure your reason is specific and complete.</span>
                 </div>
             </form>
@@ -950,6 +972,29 @@ closeDBConnection($conn);
             }
         });
 
+        function updateDestinationProgramTooltip() {
+            const destinationField = document.getElementById('requested_program');
+            const tooltipField = document.getElementById('destinationProgramTooltip');
+            if (!destinationField || !tooltipField) {
+                return;
+            }
+
+            const selectedOption = destinationField.options[destinationField.selectedIndex];
+            const tooltip = selectedOption ? (selectedOption.getAttribute('data-tooltip') || '') : '';
+
+            if (tooltip !== '') {
+                tooltipField.textContent = tooltip;
+                return;
+            }
+
+            if (destinationField.value !== '') {
+                tooltipField.textContent = '';
+                return;
+            }
+
+            tooltipField.textContent = <?= json_encode($shiftStrandAlignmentEnabled ? 'Programs marked as not aligned are shown for reference only.' : '') ?>;
+        }
+
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
@@ -980,6 +1025,7 @@ closeDBConnection($conn);
         window.addEventListener('DOMContentLoaded', function () {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
+            const destinationField = document.getElementById('requested_program');
             if (!sidebar || !mainContent) {
                 return;
             }
@@ -990,6 +1036,11 @@ closeDBConnection($conn);
             } else {
                 sidebar.classList.remove('collapsed');
                 mainContent.classList.remove('expanded');
+            }
+
+            if (destinationField) {
+                destinationField.addEventListener('change', updateDestinationProgramTooltip);
+                updateDestinationProgramTooltip();
             }
         });
 
