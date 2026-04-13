@@ -1526,6 +1526,10 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                         continue;
                     }
 
+                    $is_credit_migration_term = !empty($policy_gate['applies'])
+                        && ($term_data['year'] ?? '') === '1st Yr'
+                        && ($term_data['semester'] ?? '') === '1st Sem';
+
                     $courses = [];
                     foreach ($term_data['completed'] as $course) {
                         $courses[] = [
@@ -1533,8 +1537,8 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                             'title' => $course['title'],
                             'units' => $course['units'],
                             'prerequisite' => $course['prerequisite'] ?? 'None',
-                            'status' => 'Credited',
-                            'status_variant' => 'credited',
+                            'status' => $is_credit_migration_term ? 'Credited' : 'Passed',
+                            'status_variant' => $is_credit_migration_term ? 'credited' : 'passed',
                             'grade' => $course['grade'] ?? '',
                         ];
                     }
@@ -1555,7 +1559,10 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                         'year' => $term_data['year'],
                         'semester' => $term_data['semester'],
                         'courses' => $courses,
-                        'meta' => ['partial' => true],
+                        'meta' => [
+                            'partial' => true,
+                            'credit_migration_term' => $is_credit_migration_term,
+                        ],
                         'is_completed_term' => false,
                         'is_partial_term' => true,
                     ];
@@ -1713,7 +1720,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                             <span style="font-size: 10px; background: #fff8e1; color: #8d6e00; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;">IN PROGRESS</span>
                         </div>
                         <div style="padding: 8px 12px; font-size: 12px; color: #4e6452; border-bottom: 1px solid #e1ece3;">
-                            This term already has credited or approved courses, but it is not fully completed yet, so it stays visible here for reference.
+                            This term already has completed courses, but it is not fully completed yet, so it stays visible here for reference.
                         </div>
                         <table class="course-table">
                             <thead>
