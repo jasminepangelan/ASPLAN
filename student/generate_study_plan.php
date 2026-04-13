@@ -34,6 +34,7 @@ class StudyPlanGenerator {
     private $retention_status = 'None';  // Current retention status
     private $retention_history = [];     // Retention status per semester
     private $cross_reg_courses = [];     // Courses available via cross-registration
+    private $cross_reg_equivalent_courses = []; // Equivalent offerings grouped by structure
     private $disqualification_count = 0; // Number of disqualification statuses received
     private $term_max_units = [];        // Max units per year|semester from curriculum
     private $course_failure_counts = []; // Number of failures per course code
@@ -42,6 +43,7 @@ class StudyPlanGenerator {
     private $student_gwa = null;
     private $has_active_shift_request = false;
     private $legacy_transferee_inferred = false;
+    private $table_column_cache = [];
     private $policy_gate_status = [
         'applies' => false,
         'eligible' => true,
@@ -218,6 +220,30 @@ class StudyPlanGenerator {
             : false;
     }
 
+    private function tableHasColumn($table, $column) {
+        $table = trim((string)$table);
+        $column = trim((string)$column);
+        if ($table === '' || $column === '') {
+            return false;
+        }
+
+        $cacheKey = $table . '|' . $column;
+        if (array_key_exists($cacheKey, $this->table_column_cache)) {
+            return $this->table_column_cache[$cacheKey];
+        }
+
+        $tableSafe = str_replace('`', '``', $table);
+        $columnSafe = str_replace(['`', "'"], ['', "''"], $column);
+        $result = $this->conn->query("SHOW COLUMNS FROM `{$tableSafe}` LIKE '{$columnSafe}'");
+        $exists = ($result instanceof mysqli_result) && $result->num_rows > 0;
+        if ($result instanceof mysqli_result) {
+            $result->close();
+        }
+
+        $this->table_column_cache[$cacheKey] = $exists;
+        return $exists;
+    }
+
     private function legacyProgramTokens() {
         if (function_exists('psResolveProgramTokens')) {
             return psResolveProgramTokens($this->program_code !== '' ? $this->program_code : $this->program_label);
@@ -306,6 +332,37 @@ class StudyPlanGenerator {
         }
 
         return $programRaw;
+    }
+
+    private function normalizeCourseTitleForComparison($value) {
+        $value = strtoupper(trim((string)$value));
+        if ($value === '') {
+            return '';
+        }
+
+        $value = str_replace('&', ' AND ', $value);
+        $value = preg_replace('/[^A-Z0-9]+/', ' ', $value);
+        return trim((string) preg_replace('/\s+/', ' ', $value));
+    }
+
+    private function buildCourseEquivalencySignature($title, $creditUnitLec, $creditUnitLab, $lectHrsLec = 0, $lectHrsLab = 0) {
+        return implode('|', [
+            $this->normalizeCourseTitleForComparison($title),
+            (int) $creditUnitLec,
+            (int) $creditUnitLab,
+            (int) $lectHrsLec,
+            (int) $lectHrsLab,
+        ]);
+    }
+
+    private function buildCourseEquivalencySignatureFromCourse(array $course) {
+        return $this->buildCourseEquivalencySignature(
+            $course['title'] ?? '',
+            $course['credit_unit_lec'] ?? 0,
+            $course['credit_unit_lab'] ?? 0,
+            $course['lect_hrs_lec'] ?? 0,
+            $course['lect_hrs_lab'] ?? 0
+        );
     }
 
     /**
@@ -798,6 +855,11 @@ class StudyPlanGenerator {
      * but is offered in another program's same semester, it can be cross-registered
      */
     private function loadCrossRegistrationCourses() {
+        $curriculumHasLecHours = $this->tableHasColumn('curriculum_courses', 'lect_hrs_lec');
+        $curriculumHasLabHours = $this->tableHasColumn('curriculum_courses', 'lect_hrs_lab');
+        $legacyHasLecHours = $this->tableHasColumn('cvsucarmona_courses', 'lect_hrs_lec');
+        $legacyHasLabHours = $this->tableHasColumn('cvsucarmona_courses', 'lect_hrs_lab');
+
         if ($this->curriculumCoursesTableExists()) {
             $condition = $this->buildCurriculumProgramCondition('UPPER(TRIM(program))');
             $yearCondition = $this->buildCurriculumYearCondition('curriculum_year');
@@ -807,6 +869,8 @@ class StudyPlanGenerator {
                     course_title,
                     credit_units_lec AS credit_unit_lec,
                     credit_units_lab AS credit_unit_lab,
+                    " . ($curriculumHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
+                    " . ($curriculumHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
                     pre_requisite,
                     program AS programs,
                     CASE year_level
@@ -848,6 +912,8 @@ class StudyPlanGenerator {
                     course_title,
                     credit_units_lec AS credit_unit_lec,
                     credit_units_lab AS credit_unit_lab,
+                    " . ($legacyHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
+                    " . ($legacyHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
                     pre_requisite,
                     programs,
                     CASE year_level
@@ -895,6 +961,10 @@ class StudyPlanGenerator {
                 'code' => $course_code,
                 'title' => $row['course_title'],
                 'units' => ($row['credit_unit_lec'] ?? 0) + ($row['credit_unit_lab'] ?? 0),
+                'credit_unit_lec' => (int)($row['credit_unit_lec'] ?? 0),
+                'credit_unit_lab' => (int)($row['credit_unit_lab'] ?? 0),
+                'lect_hrs_lec' => (int)($row['lect_hrs_lec'] ?? 0),
+                'lect_hrs_lab' => (int)($row['lect_hrs_lab'] ?? 0),
                 'prerequisite' => $row['pre_requisite'],
                 'year' => $row['year'],
                 'semester' => $row['semester'],
@@ -914,19 +984,37 @@ class StudyPlanGenerator {
             ]);
 
             $this->cross_reg_courses[$course_code][$signature] = $offering;
+
+            $equivalencySignature = $this->buildCourseEquivalencySignature(
+                $offering['title'],
+                $offering['credit_unit_lec'],
+                $offering['credit_unit_lab'],
+                $offering['lect_hrs_lec'],
+                $offering['lect_hrs_lab']
+            );
+            if (!isset($this->cross_reg_equivalent_courses[$equivalencySignature])) {
+                $this->cross_reg_equivalent_courses[$equivalencySignature] = [];
+            }
+            $this->cross_reg_equivalent_courses[$equivalencySignature][$signature] = $offering;
         }
         $stmt->close();
     }
 
-    private function findCrossRegistrationOffering($course_code, $target_semester) {
+    private function findCrossRegistrationOffering($course_code, $target_semester, array $courseContext = []) {
         $offerings = $this->cross_reg_courses[$course_code] ?? [];
-        if (empty($offerings)) {
-            return null;
-        }
-
         foreach ($offerings as $offering) {
             if (($offering['semester'] ?? null) === $target_semester) {
                 return $offering;
+            }
+        }
+
+        if (!empty($courseContext)) {
+            $equivalencySignature = $this->buildCourseEquivalencySignatureFromCourse($courseContext);
+            $equivalentOfferings = $this->cross_reg_equivalent_courses[$equivalencySignature] ?? [];
+            foreach ($equivalentOfferings as $offering) {
+                if (($offering['semester'] ?? null) === $target_semester) {
+                    return $offering;
+                }
             }
         }
 
@@ -939,6 +1027,11 @@ class StudyPlanGenerator {
      * Also marks failed/INC/dropped courses for retake scheduling
      */
     private function loadCurriculumData() {
+        $curriculumHasLecHours = $this->tableHasColumn('curriculum_courses', 'lect_hrs_lec');
+        $curriculumHasLabHours = $this->tableHasColumn('curriculum_courses', 'lect_hrs_lab');
+        $legacyHasLecHours = $this->tableHasColumn('cvsucarmona_courses', 'lect_hrs_lec');
+        $legacyHasLabHours = $this->tableHasColumn('cvsucarmona_courses', 'lect_hrs_lab');
+
         if ($this->curriculumCoursesTableExists()) {
             $condition = $this->buildCurriculumProgramCondition('UPPER(TRIM(program))');
             $yearCondition = $this->buildCurriculumYearCondition('curriculum_year');
@@ -948,6 +1041,8 @@ class StudyPlanGenerator {
                     course_title,
                     credit_units_lec AS credit_unit_lec,
                     credit_units_lab AS credit_unit_lab,
+                    " . ($curriculumHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
+                    " . ($curriculumHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
                     pre_requisite,
                     CASE year_level
                         WHEN 'First Year' THEN '1st Yr'
@@ -989,6 +1084,8 @@ class StudyPlanGenerator {
                     course_title,
                     credit_units_lec AS credit_unit_lec,
                     credit_units_lab AS credit_unit_lab,
+                    " . ($legacyHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
+                    " . ($legacyHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
                     pre_requisite,
                     CASE year_level
                         WHEN 'First Year' THEN '1st Yr'
@@ -1056,6 +1153,10 @@ class StudyPlanGenerator {
                 'code' => $course_code,
                 'title' => $row['course_title'],
                 'units' => $units,
+                'credit_unit_lec' => (int)($row['credit_unit_lec'] ?? 0),
+                'credit_unit_lab' => (int)($row['credit_unit_lab'] ?? 0),
+                'lect_hrs_lec' => (int)($row['lect_hrs_lec'] ?? 0),
+                'lect_hrs_lab' => (int)($row['lect_hrs_lab'] ?? 0),
                 'prerequisite' => $row['pre_requisite'],
                 'year' => $year,
                 'semester' => $semester,
@@ -1091,34 +1192,29 @@ class StudyPlanGenerator {
             return false;
         }
 
-        $termCourseCounts = [];
-        $termCompletedCounts = [];
+        $terms = $this->getOrderedCurriculumTerms();
+        if (empty($terms)) {
+            return false;
+        }
+
+        $firstTerm = $terms[0];
+        $firstTermKey = ($firstTerm['year'] ?? '') . '|' . ($firstTerm['semester'] ?? '');
+        $totalCourses = 0;
+        $completedCourses = 0;
 
         foreach ($this->all_courses as $course) {
             $termKey = ($course['year'] ?? '') . '|' . ($course['semester'] ?? '');
-            if ($termKey === '|') {
+            if ($termKey !== $firstTermKey) {
                 continue;
             }
 
-            if (!isset($termCourseCounts[$termKey])) {
-                $termCourseCounts[$termKey] = 0;
-                $termCompletedCounts[$termKey] = 0;
-            }
-
-            $termCourseCounts[$termKey]++;
+            $totalCourses++;
             if (!empty($course['completed'])) {
-                $termCompletedCounts[$termKey]++;
+                $completedCourses++;
             }
         }
 
-        foreach ($termCourseCounts as $termKey => $totalCourses) {
-            $completedCourses = $termCompletedCounts[$termKey] ?? 0;
-            if ($completedCourses > 0 && $completedCourses < $totalCourses) {
-                return true;
-            }
-        }
-
-        return false;
+        return $totalCourses > 0 && $completedCourses > 0 && $completedCourses < $totalCourses;
     }
 
     private function evaluateShiftTransfereePolicyGate() {
@@ -2040,7 +2136,7 @@ class StudyPlanGenerator {
                 if ($course_year < $term_year_order && $course['semester'] === $term['semester']) {
                     $available[$code] = $course;
                 } else if ($course_year < $term_year_order) {
-                    $cross_course = $this->findCrossRegistrationOffering($code, $term['semester']);
+                    $cross_course = $this->findCrossRegistrationOffering($code, $term['semester'], $course);
                     // Only cross-register if the course is offered in the current semester by another program
                     if ($cross_course !== null) {
                         // Check prerequisites (case-insensitive)
@@ -2071,7 +2167,7 @@ class StudyPlanGenerator {
             foreach ($remaining_course_codes as $needed_code) {
                 // If course is not already available and not yet planned
                 if (!isset($available[$needed_code])) {
-                    $cross_course = $this->findCrossRegistrationOffering($needed_code, $term['semester']);
+                    $cross_course = $this->findCrossRegistrationOffering($needed_code, $term['semester'], $simulated_all_courses[$needed_code] ?? []);
                     // Only cross-register if the course is offered in the current semester by another program
                     if ($cross_course !== null) {
                         // Check prerequisites (case-insensitive)
@@ -2213,7 +2309,7 @@ class StudyPlanGenerator {
             }));
             foreach ($remaining_codes as $needed_code) {
                 if (!isset($available[$needed_code])) {
-                    $cross_course = $this->findCrossRegistrationOffering($needed_code, $semester);
+                    $cross_course = $this->findCrossRegistrationOffering($needed_code, $semester, $simulated_all_courses[$needed_code] ?? []);
                     if ($cross_course !== null) {
                         $prereqs = $this->prerequisite_map[$needed_code] ?? [];
                         $prereqs_met = true;
