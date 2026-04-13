@@ -1819,6 +1819,108 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         return normalized !== '' && normalized !== 'No Grade';
     }
 
+    function isPendingUnsettledGradeValue(value) {
+        const normalized = String(value || '').trim().toUpperCase();
+        return normalized === 'INC' || normalized === '4.00';
+    }
+
+    function getAttemptLabelFromSelectName(name) {
+        const normalized = String(name || '');
+        if (normalized.indexOf('final_grade_3[') === 0) {
+            return '3rd Attempt';
+        }
+        if (normalized.indexOf('final_grade_2[') === 0) {
+            return '2nd Attempt';
+        }
+        return '1st Attempt';
+    }
+
+    function getCourseDisplayLabel(courseCode) {
+        const courseCell = document.querySelector(`[name="final_grade[${courseCode}]"]`)?.closest('tr')?.querySelector('td');
+        return courseCell ? courseCell.textContent.trim() : courseCode;
+    }
+
+    function showPendingUnsettledConfirm(contextItems) {
+        return new Promise((resolve) => {
+            const oldModal = document.getElementById('pending-unsettled-modal');
+            if (oldModal) oldModal.remove();
+
+            const modal = document.createElement('div');
+            modal.id = 'pending-unsettled-modal';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+            modal.style.background = 'rgba(11, 23, 14, 0.42)';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.padding = '24px';
+            modal.style.zIndex = '10001';
+
+            const card = document.createElement('div');
+            card.style.width = 'min(520px, 100%)';
+            card.style.background = 'linear-gradient(180deg, #ffffff 0%, #f8fcf7 100%)';
+            card.style.border = '1px solid rgba(32,96,24,0.16)';
+            card.style.borderRadius = '18px';
+            card.style.boxShadow = '0 24px 60px rgba(11, 23, 14, 0.24)';
+            card.style.padding = '28px';
+
+            const itemsMarkup = (Array.isArray(contextItems) ? contextItems : []).map(function(item) {
+                return `<div style="padding:8px 10px;border-radius:10px;background:#f3f8f2;border:1px solid #dbe8d8;font-size:13px;color:#264228;">
+                    <strong>${item.course}</strong> • ${item.attempt} • ${item.grade}
+                </div>`;
+            }).join('');
+
+            card.innerHTML = `
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+                    <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#fff4d6 0%,#ffe3a3 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9a5a00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 9v4"></path>
+                            <path d="M12 17h.01"></path>
+                            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#6a7a67;">Pending and Unsettled Grades</div>
+                        <div style="font-size:24px;font-weight:800;color:#173d19;line-height:1.2;">Are you sure you want to submit this grade?</div>
+                    </div>
+                </div>
+                <div style="font-size:14px;line-height:1.6;color:#3c5140;margin-bottom:14px;">
+                    Grades marked as <strong>INC</strong> or <strong>4.00</strong> are not yet final and may still change. If you continue, the checklist will be saved as <strong>Pending</strong> and the study plan can be generated based on this unsettled grade.
+                </div>
+                ${itemsMarkup !== '' ? `<div style="display:grid;gap:8px;margin-bottom:16px;">${itemsMarkup}</div>` : ''}
+                <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+                    <button type="button" id="pending-unsettled-cancel" style="min-width:130px;padding:12px 16px;border-radius:12px;border:1px solid #d3ddd3;background:#eef2ef;color:#1f3b22;font-size:14px;font-weight:700;cursor:pointer;">Cancel</button>
+                    <button type="button" id="pending-unsettled-confirm" style="min-width:170px;padding:12px 16px;border-radius:12px;border:1px solid #1f7a2f;background:linear-gradient(135deg,#206018 0%,#2f8a2b 100%);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Submit Anyway</button>
+                </div>
+            `;
+
+            modal.appendChild(card);
+            document.body.appendChild(modal);
+
+            function close(result) {
+                modal.remove();
+                resolve(result);
+            }
+
+            card.querySelector('#pending-unsettled-cancel').addEventListener('click', function() {
+                close(false);
+            });
+
+            card.querySelector('#pending-unsettled-confirm').addEventListener('click', function() {
+                close(true);
+            });
+
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    close(false);
+                }
+            });
+        });
+    }
+
     function setChecklistRemarksBadge(courseCode, status) {
         const remarksCell = document.getElementById(`remarks_${courseCode}`);
         if (!remarksCell) return;
@@ -1838,7 +1940,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
     // Add event listeners to all Save buttons
     document.querySelectorAll('#saveButton').forEach(btn => {
-        btn.addEventListener('click', function () {
+        btn.addEventListener('click', async function () {
             if (academicHold.active) {
                 showNotification('error', academicHold.title || 'Academic Hold', academicHold.message || 'Your account is currently read-only.');
                 return;
@@ -1846,6 +1948,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
             let formData = new FormData();
             let professorInputs = document.querySelectorAll('[name^="professor_instructor"]');
+            let unsettledItems = [];
 
             // Collect all course data (all 3 grade attempts) per course
             professorInputs.forEach(function (profInput) {
@@ -1858,9 +1961,20 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                 let finalGrade  = gradeInput  ? gradeInput.value  : '';
                 let finalGrade2 = gradeInput2 ? gradeInput2.value : '';
                 let finalGrade3 = gradeInput3 ? gradeInput3.value : '';
+                let courseLabel = getCourseDisplayLabel(courseCode);
 
                 let remarksCell = document.getElementById(`remarks_${courseCode}`);
                 let currentRemarks = remarksCell ? remarksCell.textContent.trim() : '';
+
+                if (isPendingUnsettledGradeValue(finalGrade)) {
+                    unsettledItems.push({ course: courseLabel, attempt: '1st Attempt', grade: finalGrade });
+                }
+                if (isPendingUnsettledGradeValue(finalGrade2)) {
+                    unsettledItems.push({ course: courseLabel, attempt: '2nd Attempt', grade: finalGrade2 });
+                }
+                if (isPendingUnsettledGradeValue(finalGrade3)) {
+                    unsettledItems.push({ course: courseLabel, attempt: '3rd Attempt', grade: finalGrade3 });
+                }
 
                 let evaluatorRemark = (
                     hasSubmittedGradeValue(finalGrade) ||
@@ -1875,6 +1989,14 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                 formData.append('professor_instructors[]', professorValue);
                 formData.append('evaluator_remarks[]', evaluatorRemark);
             }); // end professorInputs.forEach
+
+            if (unsettledItems.length > 0) {
+                const confirmed = await showPendingUnsettledConfirm(unsettledItems);
+                if (!confirmed) {
+                    showNotification('error', 'Submission Cancelled', 'The unsettled grade was not saved.');
+                    return;
+                }
+            }
 
             formData.append('student_id', '<?= $student_id ?>');
 
@@ -1992,8 +2114,28 @@ function bindChecklistFieldListeners(root = document) {
         }
 
         gradeSelect.dataset.liveBound = '1';
-        gradeSelect.addEventListener('change', function() {
+        const rememberPreviousValue = function() {
+            gradeSelect.dataset.previousValue = gradeSelect.value;
+        };
+
+        gradeSelect.addEventListener('focus', rememberPreviousValue);
+        gradeSelect.addEventListener('mousedown', rememberPreviousValue);
+        gradeSelect.addEventListener('touchstart', rememberPreviousValue, { passive: true });
+        gradeSelect.addEventListener('change', async function() {
             let courseCode = this.name.match(/\[(.*?)\]/)[1];
+            if (isPendingUnsettledGradeValue(this.value)) {
+                const confirmed = await showPendingUnsettledConfirm([{
+                    course: getCourseDisplayLabel(courseCode),
+                    attempt: getAttemptLabelFromSelectName(this.name),
+                    grade: this.value
+                }]);
+
+                if (!confirmed) {
+                    this.value = this.dataset.previousValue || '';
+                    return;
+                }
+            }
+
             autoSaveGrade(courseCode);
         });
     });
