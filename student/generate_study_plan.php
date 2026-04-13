@@ -2389,12 +2389,8 @@ class StudyPlanGenerator {
         return true;
     }
 
-    /**
-     * Determine student's current term based on semester completion progression.
-     * Returns the first semester that is not yet completed.
-     */
-    private function determineCurrentTerm() {
-        $terms = [
+    private function getOrderedCurriculumTerms() {
+        return [
             ['year' => '1st Yr', 'semester' => '1st Sem'],
             ['year' => '1st Yr', 'semester' => '2nd Sem'],
             ['year' => '1st Yr', 'semester' => 'Mid Year'],
@@ -2408,6 +2404,40 @@ class StudyPlanGenerator {
             ['year' => '4th Yr', 'semester' => '2nd Sem'],
             ['year' => '4th Yr', 'semester' => 'Mid Year'],
         ];
+    }
+
+    /**
+     * Determine the anchor term for future planning.
+     *
+     * For irregular students with actual checklist history, the plan should
+     * continue from the next chronological term after the latest attempted
+     * semester, then re-insert lower-year back subjects into future eligible
+     * terms. This avoids displaying failed subjects as if they remain in an
+     * already elapsed historical semester.
+     *
+     * If no history exists yet, fall back to the first incomplete curriculum
+     * term so brand-new cases still start correctly.
+     */
+    private function determineCurrentTerm() {
+        $terms = $this->getOrderedCurriculumTerms();
+        $termIndexMap = [];
+        foreach ($terms as $index => $term) {
+            $termIndexMap[$term['year'] . '|' . $term['semester']] = $index;
+        }
+
+        $latestHistoryIndex = -1;
+        foreach ($this->semester_grade_history as $termKey => $termData) {
+            if (!isset($termIndexMap[$termKey])) {
+                continue;
+            }
+
+            $latestHistoryIndex = max($latestHistoryIndex, $termIndexMap[$termKey]);
+        }
+
+        if ($latestHistoryIndex >= 0) {
+            $nextIndex = min($latestHistoryIndex + 1, count($terms) - 1);
+            return $terms[$nextIndex];
+        }
 
         foreach ($terms as $term) {
             if (!$this->isSemesterCompleted($term['year'], $term['semester'])) {
@@ -2415,7 +2445,6 @@ class StudyPlanGenerator {
             }
         }
 
-        // All terms are completed.
         return ['year' => '4th Yr', 'semester' => 'Mid Year'];
     }
     
