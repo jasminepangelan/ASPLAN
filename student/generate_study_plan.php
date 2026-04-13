@@ -1467,6 +1467,21 @@ class StudyPlanGenerator {
         return $year_order[$year_label] ?? 0;
     }
 
+    private function semesterLabelToOrder($semester_label) {
+        $sem_order = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3];
+        return $sem_order[$semester_label] ?? 0;
+    }
+
+    private function getCurriculumTermOrder($year_label, $semester_label) {
+        $year_order = $this->yearLabelToOrder($year_label);
+        $semester_order = $this->semesterLabelToOrder($semester_label);
+        if ($year_order <= 0 || $semester_order <= 0) {
+            return 999;
+        }
+
+        return (($year_order - 1) * 3) + $semester_order;
+    }
+
     private function isNonCreditCourse(array $course) {
         $code = strtoupper(trim((string)($course['code'] ?? '')));
         $title = strtoupper(trim((string)($course['title'] ?? '')));
@@ -1566,22 +1581,33 @@ class StudyPlanGenerator {
      */
     private function prioritizeCourses($courses, $target_year = null, $simulated_completed = []) {
         $priority_scores = [];
+        $target_year_order = $target_year !== null ? $this->yearLabelToOrder($target_year) : 0;
         
         foreach ($courses as $course_code => $course) {
             $score = 0;
+            $course_year_order = $this->yearLabelToOrder($course['year'] ?? '');
+            $term_order = $this->getCurriculumTermOrder($course['year'] ?? '', $course['semester'] ?? '');
             
             // HIGHEST PRIORITY: Back and failed courses that need retake
             if (!empty($course['needs_retake'])) {
-                $score += 200; // Enormous bonus for retake courses
+                $score += 260; // Enormous bonus for retake courses
                 
                 // Within retakes, prioritize lower year levels first
                 $year_retake_priority = [
-                    '1st Yr' => 80,
-                    '2nd Yr' => 60,
-                    '3rd Yr' => 40,
-                    '4th Yr' => 20
+                    '1st Yr' => 120,
+                    '2nd Yr' => 90,
+                    '3rd Yr' => 60,
+                    '4th Yr' => 30
                 ];
                 $score += $year_retake_priority[$course['year']] ?? 0;
+            }
+
+            // Earlier curriculum terms should be cleared first to minimize cascading delay.
+            $score += max(0, 120 - ($term_order * 8));
+
+            // When planning a later year, keep unresolved lower-year courses ahead of same-year progression.
+            if ($target_year_order > 0 && $course_year_order > 0 && $course_year_order < $target_year_order) {
+                $score += !empty($course['needs_retake']) ? 80 : 45;
             }
             
             // HIGH PRIORITY: Courses that have prerequisites (they're harder to schedule)
@@ -1604,9 +1630,9 @@ class StudyPlanGenerator {
             
             // Factor: Year level progression (complete lower years first)
             $year_priority = [
-                '1st Yr' => 40,
-                '2nd Yr' => 30,
-                '3rd Yr' => 20,
+                '1st Yr' => 70,
+                '2nd Yr' => 50,
+                '3rd Yr' => 30,
                 '4th Yr' => 10
             ];
             $score += $year_priority[$course['year']] ?? 0;
@@ -1616,19 +1642,32 @@ class StudyPlanGenerator {
                 $score += 5;
             }
             
-            // Small penalty for cross-registered courses (prefer own program courses)
+            // Valid cross-registration should help shorten completion time, especially for retakes.
             if (!empty($course['cross_registered'])) {
-                $score -= 10;
+                $score += !empty($course['needs_retake']) ? 35 : 10;
             }
             
-            $priority_scores[$course_code] = $score;
+            $priority_scores[$course_code] = [
+                'score' => $score,
+                'term_order' => $term_order,
+                'course_code' => $course_code,
+            ];
         }
         
-        // Sort by priority score (descending)
-        arsort($priority_scores);
+        uasort($priority_scores, static function ($a, $b) {
+            if (($a['score'] ?? 0) !== ($b['score'] ?? 0)) {
+                return ($b['score'] ?? 0) <=> ($a['score'] ?? 0);
+            }
+
+            if (($a['term_order'] ?? 999) !== ($b['term_order'] ?? 999)) {
+                return ($a['term_order'] ?? 999) <=> ($b['term_order'] ?? 999);
+            }
+
+            return strcmp((string)($a['course_code'] ?? ''), (string)($b['course_code'] ?? ''));
+        });
         
         $prioritized = [];
-        foreach ($priority_scores as $course_code => $score) {
+        foreach ($priority_scores as $course_code => $meta) {
             $prioritized[$course_code] = $courses[$course_code];
         }
         
