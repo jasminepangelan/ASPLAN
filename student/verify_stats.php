@@ -18,8 +18,11 @@ $summary_stmt = $conn->prepare("
         COUNT(*) AS checklist_rows,
         COUNT(
             CASE
-                WHEN final_grade REGEXP '^[0-9]+(\\.[0-9]+)?$'
-                 AND CAST(final_grade AS DECIMAL(3,1)) BETWEEN 1.0 AND 3.0
+                WHEN (
+                        (final_grade REGEXP '^[0-9]+(\\.[0-9]+)?$'
+                         AND CAST(final_grade AS DECIMAL(3,1)) BETWEEN 1.0 AND 3.0)
+                        OR UPPER(TRIM(final_grade)) IN ('S', 'PASSED')
+                     )
                  AND grade_submitted_at IS NOT NULL
                  AND (grade_approved = 1 OR grade_approved IS NULL)
                 THEN 1

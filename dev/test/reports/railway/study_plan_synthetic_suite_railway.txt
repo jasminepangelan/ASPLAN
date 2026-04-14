@@ -1,0 +1,29 @@
+﻿Study Plan Synthetic Scenario Suite
+Generated: 2026-04-14 00:49:16
+Seed student: 220100020
+
+[PASS] exact_curriculum_path - Exact curriculum path preserves original term order.
+[PASS] retake_tag - Retake-tagged course appears in generated plan.
+[PASS] cross_registration - Cross-registered course is injected when offering exists.
+[PASS] cross_registration_equivalency_fallback - Cross-registration fallback through equivalent course signature works.
+[PASS] prerequisite_enforced_no_same_term_chain - Prerequisite chaining is not allowed within the same term by default.
+[PASS] prerequisite_case_insensitive_match - Prerequisite checks are case-insensitive.
+[PASS] standing_constraint_enforced - Standing constraints block earlier years and allow required year onward.
+[PASS] incoming_constraint_midyear_rule - Incoming-year standing rule allows prior midyear only.
+[PASS] non_credit_excluded_from_unit_cap - Non-credit course does not consume counted unit cap.
+[PASS] no_overloading_enforced - Overloading is prevented by max unit constraint.
+[PASS] retention_escalates_two_warnings - Two consecutive Warning semesters escalate to Probation.
+[PASS] retention_escalates_two_probations - Two consecutive Probation semesters escalate to Disqualification.
+[PASS] determine_current_term_advances_past_retake_only_term - Planner anchor advances beyond a retake-only incomplete term when history already progressed.
+[PASS] prerequisite_parser_expands_compound_tokens - Prerequisite parser expands compact and compound prerequisite tokens.
+[PASS] standing_constraint_parser_detects_incoming - Standing parser detects incoming year constraints from free text.
+[PASS] retention_probation_unit_cap - Probation enforces 15-unit limit.
+[PASS] disqualification_skip - Disqualification creates skipped first term.
+[PASS] thrice_failed_stop - 3+ failures stop generation.
+[PASS] policy_gate_pause - Policy gate pause stops plan generation.
+[PASS] policy_gate_flexible_fill - Flexible irregular fill can pull off-semester eligible courses.
+[PASS] forced_add_near_graduation - Near-graduation force-add path executed.
+[PASS] extended_beyond_fourth_year - Extra terms beyond 4th year are generated when needed.
+
+Summary: 22/22 scenarios passed.
+Done.

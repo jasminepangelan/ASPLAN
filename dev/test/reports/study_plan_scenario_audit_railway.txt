@@ -1,0 +1,51 @@
+﻿Study Plan Scenario Audit
+Generated: 2026-04-14 00:19:45
+Students processed: 2
+Errors: 0
+
+[COVERED]     Plan generated with future terms                     hits=   2 sample=220100020, 220100021
+[NOT COVERED] Regular exact-curriculum path candidate              hits=   0 sample=-
+[COVERED]     Irregular optimization path candidate                hits=   2 sample=220100020, 220100021
+[NOT COVERED] No completed history / likely new student            hits=   0 sample=-
+[NOT COVERED] Fully completed curriculum                           hits=   0 sample=-
+[COVERED]     Historical term has both completed/uncompleted courses hits=   2 sample=220100020, 220100021
+[COVERED]     Retake-tagged course appears in plan                 hits=   1 sample=220100020
+[COVERED]     Cross-registration appears in plan                   hits=   2 sample=220100020, 220100021
+[COVERED]     Cross-registration has source program label          hits=   2 sample=220100020, 220100021
+[NOT COVERED] Near-graduation forced-add used                      hits=   0 sample=-
+[COVERED]     Plan extends beyond 4th year                         hits=   1 sample=220100020
+[NOT COVERED] Skipped term generated (retention disqualification)  hits=   0 sample=-
+[COVERED]     Retention history includes Warning                   hits=   1 sample=220100020
+[NOT COVERED] Retention history includes Probation                 hits=   0 sample=-
+[NOT COVERED] Retention history includes Disqualification          hits=   0 sample=-
+[COVERED]     Current retention status is Warning                  hits=   1 sample=220100020
+[NOT COVERED] Current retention status is Probation                hits=   0 sample=-
+[NOT COVERED] Current retention status is Disqualification         hits=   0 sample=-
+[NOT COVERED] Plan stopped due to 3+ failed attempts               hits=   0 sample=-
+[NOT COVERED] Plan paused by transferee/shift policy gate          hits=   0 sample=-
+[COVERED]     Policy gate applies but student is eligible          hits=   1 sample=220100021
+[NOT COVERED] Academic hold active (read-only policy)              hits=   0 sample=-
+[NOT COVERED] No future plan but completed terms exist             hits=   0 sample=-
+[NOT COVERED] Only 1 to 3 remaining courses                        hits=   0 sample=-
+
+Uncovered scenarios in current DB data:
+ - Regular exact-curriculum path candidate
+ - No completed history / likely new student
+ - Fully completed curriculum
+ - Near-graduation forced-add used
+ - Skipped term generated (retention disqualification)
+ - Retention history includes Probation
+ - Retention history includes Disqualification
+ - Current retention status is Probation
+ - Current retention status is Disqualification
+ - Plan stopped due to 3+ failed attempts
+ - Plan paused by transferee/shift policy gate
+ - Academic hold active (read-only policy)
+ - No future plan but completed terms exist
+ - Only 1 to 3 remaining courses
+
+Student snapshots:
+ - 220100020 | 14/57 | remaining 43 | retention Warning | policy none | thrice_failed 0 | has_plan yes
+ - 220100021 | 12/57 | remaining 45 | retention None | policy eligible | thrice_failed 0 | has_plan yes
+
+Done.

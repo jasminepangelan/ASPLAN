@@ -510,6 +510,69 @@ class StudyPlanGenerator {
 
         return null;
     }
+
+    private function extractChecklistAttempts(array $row) {
+        $columns = $this->getStudentChecklistColumns();
+        $attempts = [
+            1 => [
+                'slot' => 1,
+                'grade' => trim((string)($row['final_grade'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks'] ?? '')),
+            ],
+        ];
+
+        if (isset($columns['final_grade_2']) && isset($columns['evaluator_remarks_2'])) {
+            $attempts[2] = [
+                'slot' => 2,
+                'grade' => trim((string)($row['final_grade_2'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks_2'] ?? '')),
+            ];
+        }
+
+        if (isset($columns['final_grade_3']) && isset($columns['evaluator_remarks_3'])) {
+            $attempts[3] = [
+                'slot' => 3,
+                'grade' => trim((string)($row['final_grade_3'] ?? '')),
+                'remark' => trim((string)($row['evaluator_remarks_3'] ?? '')),
+            ];
+        }
+
+        return $attempts;
+    }
+
+    private function checklistAttemptIsApproved(array $attempt, $requiresApproval, array $row) {
+        if (!$requiresApproval) {
+            return true;
+        }
+
+        if ($this->isApprovedChecklistRemark($attempt['remark'] ?? '')) {
+            return true;
+        }
+
+        if ((int)($attempt['slot'] ?? 0) === 1 && (int)($row['grade_approved'] ?? 0) === 1) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function checklistAttemptCountsAsFailure($grade) {
+        $normalized = strtoupper(trim((string)$grade));
+        if ($normalized === '' || $normalized === 'NO GRADE' || $normalized === 'S' || $normalized === 'PASSED') {
+            return false;
+        }
+
+        if (in_array($normalized, ['FAILED', 'INC', 'DRP', 'W', 'US'], true)) {
+            return true;
+        }
+
+        if (is_numeric($grade)) {
+            $numeric = (float)$grade;
+            return $numeric === 0.0 || $numeric > 3.0;
+        }
+
+        return false;
+    }
     
     /**
      * Load student's completed AND failed courses from database
@@ -703,6 +766,23 @@ class StudyPlanGenerator {
             if (isset($processed_grade_codes[$course_code])) continue;
             $processed_grade_codes[$course_code] = true;
 
+            // Count every approved failed attempt slot (final_grade, final_grade_2, final_grade_3)
+            // so courses failed multiple times can trigger policy stop conditions.
+            foreach ($this->extractChecklistAttempts($row) as $attempt) {
+                $grade = $attempt['grade'] ?? '';
+                if ($grade === '' || strtoupper((string)$grade) === 'NO GRADE') {
+                    continue;
+                }
+
+                if (!$this->checklistAttemptIsApproved($attempt, $has_approval_column, $row)) {
+                    continue;
+                }
+
+                if ($this->checklistAttemptCountsAsFailure($grade)) {
+                    $this->course_failure_counts[$course_code] = ($this->course_failure_counts[$course_code] ?? 0) + 1;
+                }
+            }
+
             $effectiveAttempt = $this->resolveEffectiveChecklistAttempt($row, $has_approval_column);
             if ($effectiveAttempt === null) {
                 continue;
@@ -743,8 +823,6 @@ class StudyPlanGenerator {
             $this->semester_grade_history[$term_key]['total_subjects']++;
             if ($is_failed) {
                 $this->semester_grade_history[$term_key]['failed_subjects']++;
-                // Track per-course failure count for triple-failure detection
-                $this->course_failure_counts[$course_code] = ($this->course_failure_counts[$course_code] ?? 0) + 1;
             }
             $this->semester_grade_history[$term_key]['courses'][] = [
                 'code' => $course_code,
@@ -1864,15 +1942,29 @@ class StudyPlanGenerator {
     }
 
     private function applyNearGraduationForceAdd(&$study_plan, &$simulated_completed, &$simulated_all_courses, $current_term) {
-        if (($current_term['year'] ?? '') !== '4th Yr' || ($current_term['semester'] ?? '') !== '2nd Sem') {
-            return;
-        }
-
         $remaining = array_filter($simulated_all_courses, function($course) {
             return !$course['completed'];
         });
 
         if (empty($remaining) || count($remaining) > 3) {
+            return;
+        }
+
+        // Enable force-add when the student is already in late-stage planning,
+        // either by current anchor term or by remaining courses being 4th-year terms.
+        $current_term_order = $this->getCurriculumTermOrder($current_term['year'] ?? '', $current_term['semester'] ?? '');
+        $late_anchor = $current_term_order >= 10 && $current_term_order < 999;
+
+        $min_remaining_order = 999;
+        foreach ($remaining as $course) {
+            $order = $this->getCurriculumTermOrder($course['year'] ?? '', $course['semester'] ?? '');
+            if ($order > 0 && $order < $min_remaining_order) {
+                $min_remaining_order = $order;
+            }
+        }
+        $late_remaining = $min_remaining_order >= 10 && $min_remaining_order < 999;
+
+        if (!$late_anchor && !$late_remaining) {
             return;
         }
 

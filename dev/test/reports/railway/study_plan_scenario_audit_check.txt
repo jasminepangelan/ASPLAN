@@ -1,0 +1,46 @@
+﻿Study Plan Scenario Audit
+Generated: 2026-04-14 01:20:53
+Students processed: 9
+Errors: 0
+
+[COVERED]     Plan generated with future terms                     hits=   7 sample=91010001, 91010003, 91010004, 91010006, 91010007, 220100020, 220100021
+[COVERED]     Regular exact-curriculum path candidate              hits=   2 sample=91010001, 91010007
+[COVERED]     Irregular optimization path candidate                hits=   6 sample=91010003, 91010004, 91010005, 91010006, 220100020, 220100021
+[COVERED]     No completed history / likely new student            hits=   2 sample=91010001, 91010006
+[COVERED]     Fully completed curriculum                           hits=   1 sample=91010002
+[COVERED]     Historical term has both completed/uncompleted courses hits=   5 sample=91010003, 91010004, 91010007, 220100020, 220100021
+[COVERED]     Retake-tagged course appears in plan                 hits=   4 sample=91010003, 91010004, 91010006, 220100020
+[COVERED]     Cross-registration appears in plan                   hits=   5 sample=91010003, 91010004, 91010006, 220100020, 220100021
+[COVERED]     Cross-registration has source program label          hits=   5 sample=91010003, 91010004, 91010006, 220100020, 220100021
+[NOT COVERED] Near-graduation forced-add used                      hits=   0 sample=-
+[COVERED]     Plan extends beyond 4th year                         hits=   4 sample=91010003, 91010004, 91010006, 220100020
+[COVERED]     Skipped term generated (retention disqualification)  hits=   2 sample=91010004, 91010006
+[COVERED]     Retention history includes Warning                   hits=   1 sample=220100020
+[COVERED]     Retention history includes Probation                 hits=   1 sample=91010003
+[COVERED]     Retention history includes Disqualification          hits=   3 sample=91010004, 91010005, 91010006
+[COVERED]     Current retention status is Warning                  hits=   1 sample=220100020
+[COVERED]     Current retention status is Probation                hits=   1 sample=91010003
+[COVERED]     Current retention status is Disqualification         hits=   3 sample=91010004, 91010005, 91010006
+[NOT COVERED] Plan stopped due to 3+ failed attempts               hits=   0 sample=-
+[COVERED]     Plan paused by transferee/shift policy gate          hits=   1 sample=91010005
+[COVERED]     Policy gate applies but student is eligible          hits=   1 sample=220100021
+[COVERED]     Academic hold active (read-only policy)              hits=   1 sample=91010006
+[COVERED]     No future plan but completed terms exist             hits=   2 sample=91010002, 91010005
+[COVERED]     Only 1 to 3 remaining courses                        hits=   1 sample=91010007
+
+Uncovered scenarios in current DB data:
+ - Near-graduation forced-add used
+ - Plan stopped due to 3+ failed attempts
+
+Student snapshots:
+ - 91010001 | 0/57 | remaining 57 | retention None | policy none | thrice_failed 0 | has_plan yes
+ - 91010002 | 57/57 | remaining 0 | retention None | policy none | thrice_failed 0 | has_plan no
+ - 91010003 | 3/57 | remaining 54 | retention Probation | policy none | thrice_failed 0 | has_plan yes
+ - 91010004 | 1/57 | remaining 56 | retention Disqualification | policy none | thrice_failed 0 | has_plan yes
+ - 91010005 | 9/57 | remaining 48 | retention Disqualification | policy paused | thrice_failed 0 | has_plan no
+ - 91010006 | 0/57 | remaining 57 | retention Disqualification | policy none | thrice_failed 0 | has_plan yes
+ - 91010007 | 55/57 | remaining 2 | retention None | policy none | thrice_failed 0 | has_plan yes
+ - 220100020 | 14/57 | remaining 43 | retention Warning | policy none | thrice_failed 0 | has_plan yes
+ - 220100021 | 12/57 | remaining 45 | retention None | policy eligible | thrice_failed 0 | has_plan yes
+
+Done.
