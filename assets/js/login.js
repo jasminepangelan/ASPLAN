@@ -15,14 +15,28 @@ function setErrorModalTitle(title) {
     }
 }
 
-// Initialize on page load
-window.onload = function() {
+let loginPageInitialized = false;
+
+function initializeLoginPage() {
+    if (loginPageInitialized) {
+        return;
+    }
+
+    loginPageInitialized = true;
     initializeEventListeners();
     initializePasswordStrength(); // Initialize password strength indicator
-    fetchCSRFToken(); // Fetch CSRF token on page load
+    fetchCSRFToken(); // Fetch CSRF token as early as possible
     showSessionLimitNotificationFromUrl();
     showAdminSessionReplacementNoticeFromUrl();
-};
+}
+
+// Initialize as soon as DOM is ready so form handlers are attached
+// before users can submit in slower/incognito page loads.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeLoginPage);
+} else {
+    initializeLoginPage();
+}
 
 /**
  * Show a timeout notice when redirected after reaching server session limit.
