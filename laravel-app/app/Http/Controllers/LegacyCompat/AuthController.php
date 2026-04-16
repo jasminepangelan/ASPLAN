@@ -374,9 +374,21 @@ class AuthController extends Controller
 
         $this->ensureMasterlistTable();
 
-        return DB::table('student_masterlist')
+        $hasMasterlistEntry = DB::table('student_masterlist')
             ->where('student_number', $studentId)
             ->exists();
+
+        if ($hasMasterlistEntry) {
+            return true;
+        }
+
+        // Backward compatibility: keep previously approved student accounts
+        // accessible even when masterlist entries are temporarily out of sync.
+        $status = DB::table('student_info')
+            ->where('student_number', $studentId)
+            ->value('status');
+
+        return strtolower(trim((string) $status)) === 'approved';
     }
 
     private function ensureMasterlistTable(): void
