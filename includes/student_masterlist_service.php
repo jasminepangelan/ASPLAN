@@ -679,7 +679,7 @@ if (!function_exists('smlValidateStudentRegistrationAgainstMasterlist')) {
         if ($recordMiddleInitial !== '' && $inputMiddleInitial !== $recordMiddleInitial) {
             return [
                 'valid' => false,
-                'message' => 'Your middle initial does not match the official masterlist for the provided student number.',
+                'message' => 'Your middle name or initial does not match the official masterlist for the provided student number.',
             ];
         }
 

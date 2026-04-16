@@ -155,8 +155,9 @@
             <input type="text" id="first-name" name="first_name" placeholder="ex. Juan" required disabled>
         </div>
         <div class="form-group">
-            <label for="middle-name">Middle Name <span style="color: #666; font-size: 12px;">(Optional)</span></label>
-            <input type="text" id="middle-name" name="middle_name" placeholder="ex. Reyes (Leave blank if no middle name)" disabled>
+            <label for="middle-name">Middle Name / Initial <span style="color: #666; font-size: 12px;">(Optional)</span></label>
+            <input type="text" id="middle-name" name="middle_name" placeholder="ex. Reyes or R. (Leave blank if no middle name)" disabled>
+            <div style="color: #5d715e; font-size: 12px; margin-top: 5px;">You may enter your full middle name or just your middle initial. The system matches it against the official masterlist by initial.</div>
         </div>
         <div class="button-group">
             <button type="button" id="next-button" class="btn-primary" onclick="saveAndNext()" disabled>Next</button>
