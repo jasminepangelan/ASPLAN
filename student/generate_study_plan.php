@@ -2037,6 +2037,10 @@ class StudyPlanGenerator {
      * optimization engine.
      */
     private function shouldUseExactCurriculumPlan() {
+        if (!$this->hasValidatedAcademicHistory()) {
+            return true;
+        }
+
         $active_failed = array_values(array_filter(array_diff($this->failed_courses, $this->completed_courses)));
         $active_inc = array_values(array_filter(array_diff($this->inc_courses, $this->completed_courses)));
         $active_dropped = array_values(array_filter(array_diff($this->dropped_courses, $this->completed_courses)));
@@ -2061,12 +2065,34 @@ class StudyPlanGenerator {
     }
 
     /**
+     * Cross-registration and other irregular-plan optimizations should only
+     * activate after the student has at least one validated checklist attempt.
+     * Brand-new students, or records with no approved/credited attempts yet,
+     * should continue to mirror the curriculum exactly.
+     */
+    private function hasValidatedAcademicHistory() {
+        if (!empty($this->semester_grade_history)) {
+            return true;
+        }
+
+        if (!empty($this->completed_courses)) {
+            return true;
+        }
+
+        if (!empty($this->failed_courses) || !empty($this->inc_courses) || !empty($this->dropped_courses)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Transferees and shifting students should be able to fill an irregular
      * term up to the target curriculum cap using any truly eligible remaining
      * courses, not only courses from the currently labeled semester bucket.
      */
     private function shouldUseFlexibleIrregularFill() {
-        return !empty($this->policy_gate_status['applies']);
+        return $this->hasValidatedAcademicHistory() && !empty($this->policy_gate_status['applies']);
     }
 
     /**
