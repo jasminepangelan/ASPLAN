@@ -205,7 +205,7 @@ $csrfToken = getCSRFToken();
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
       padding: 0;
-      background-color: #eef2f5;
+      background: linear-gradient(180deg, #eef3ee 0%, #f7faf7 52%, #edf2f6 100%);
       min-height: 100vh;
       overflow: hidden;
     }
@@ -376,14 +376,14 @@ $csrfToken = getCSRFToken();
     }
 
     .container {
-      max-width: 980px;
+      max-width: 1150px;
       margin: 0 auto;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 248, 0.96));
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(249, 252, 248, 0.97));
       backdrop-filter: blur(8px);
-      border-radius: 28px;
-      box-shadow: 0 22px 48px rgba(33, 61, 34, 0.16);
+      border-radius: 30px;
+      box-shadow: 0 26px 58px rgba(33, 61, 34, 0.14), 0 8px 18px rgba(33, 61, 34, 0.07);
       overflow: hidden;
-      border: 1px solid rgba(32, 96, 24, 0.08);
+      border: 1px solid rgba(32, 96, 24, 0.07);
     }
 
     .title {
@@ -407,7 +407,7 @@ $csrfToken = getCSRFToken();
     }
 
     .content-wrapper {
-      padding: 26px 30px 32px;
+      padding: 30px 30px 34px;
     }
 
     .profile-summary {
@@ -437,7 +437,7 @@ $csrfToken = getCSRFToken();
 
     .profile {
       display: flex;
-      gap: 26px;
+      gap: 24px;
       align-items: flex-start;
       justify-content: stretch;
       flex-wrap: nowrap;
@@ -450,11 +450,11 @@ $csrfToken = getCSRFToken();
       gap: 16px;
       min-width: 280px;
       width: 300px;
-      padding: 26px 22px;
+      padding: 28px 24px 26px;
       border-radius: 24px;
-      background: linear-gradient(180deg, #f6fbf5 0%, #edf6eb 100%);
-      border: 1px solid #d8e7d6;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 10px 28px rgba(38, 79, 32, 0.08);
+      background: linear-gradient(180deg, #fbfdfb 0%, #eff7ed 100%);
+      border: 1px solid #dce9d8;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 14px 30px rgba(38, 79, 32, 0.08);
     }
 
     .profile .photo .photo-container {
@@ -640,14 +640,14 @@ $csrfToken = getCSRFToken();
     .profile .details {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      gap: 18px;
       width: 100%;
       min-width: 280px;
-      padding: 20px;
-      border-radius: 24px;
-      background: #ffffff;
-      border: 1px solid #e2ece0;
-      box-shadow: 0 14px 32px rgba(38, 79, 32, 0.08);
+      padding: 22px;
+      border-radius: 26px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
+      border: 1px solid #e4eee1;
+      box-shadow: 0 16px 34px rgba(38, 79, 32, 0.08);
       align-content: start;
     }
 
@@ -691,10 +691,18 @@ $csrfToken = getCSRFToken();
       display: flex;
       flex-direction: column;
       position: relative;
-      padding: 12px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, #fbfdfb 0%, #f6faf5 100%);
-      border: 1px solid #ebf2e8;
+      padding: 14px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fcfefc 0%, #f6faf5 100%);
+      border: 1px solid #e8f0e5;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .profile .details .field:hover {
+      transform: translateY(-1px);
+      border-color: #d8e6d4;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.88), 0 8px 18px rgba(38, 79, 32, 0.06);
     }
 
     .profile .details .field label {
@@ -707,21 +715,28 @@ $csrfToken = getCSRFToken();
     }
 
     .field-note {
-      margin-top: 5px;
+      margin-top: 8px;
       font-size: 11px;
       color: #7b8d78;
-      line-height: 1.35;
+      line-height: 1.45;
+    }
+
+    .field-input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .profile .details .field input {
       width: 100%;
-      padding: 12px 15px;
+      padding: 13px 15px;
       border: 2px solid #e1e5e9;
-      border-radius: 12px;
+      border-radius: 14px;
       font-size: 14px;
       background: #ffffff;
       transition: all 0.3s ease;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+      min-width: 0;
     }
 
     .profile .details .field input:focus {
@@ -737,23 +752,31 @@ $csrfToken = getCSRFToken();
       cursor: not-allowed;
     }
 
-    .profile .details .field i.fas.fa-edit {
-      position: absolute;
-      right: 15px;
-      top: 50%;
+    .edit-trigger {
+      flex: 0 0 40px;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #d7e7d3;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #ffffff 0%, #eef6ec 100%);
       color: #206018;
       cursor: pointer;
-      font-size: 16px;
-      opacity: 0.7;
-      transition: all 0.3s ease;
-      background: white;
-      padding: 5px;
-      border-radius: 50%;
+      box-shadow: 0 6px 14px rgba(32, 96, 24, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     }
-    .profile .details .field i.fas.fa-edit:hover {
-      opacity: 1;
-      transform: scale(1.2);
+
+    .edit-trigger:hover {
+      transform: translateY(-1px);
       color: #2d8f22;
+      border-color: #bfd7ba;
+      box-shadow: 0 10px 20px rgba(32, 96, 24, 0.14);
+    }
+
+    .edit-trigger i {
+      font-size: 14px;
     }
 
     .profile .details .field button[type="button"] {
@@ -794,6 +817,33 @@ $csrfToken = getCSRFToken();
       flex-wrap: wrap;
       padding-top: 8px;
       border-top: 1px solid #eef3ed;
+    }
+
+    #student-profile-actions {
+      flex: 0 0 168px;
+      align-self: flex-start;
+      position: sticky;
+      top: 18px;
+      margin-top: 10px;
+      padding: 0;
+      border-top: none;
+      gap: 14px;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    #student-profile-actions button {
+      width: 100%;
+      min-width: 0;
+      padding: 18px 20px;
+      border-radius: 14px;
+      font-size: 15px;
+      line-height: 1.1;
+      box-shadow: 0 10px 22px rgba(32, 96, 24, 0.18);
+    }
+
+    #student-profile-actions button:hover {
+      transform: translateY(-2px);
     }
 
     .buttons button {
@@ -917,6 +967,12 @@ $csrfToken = getCSRFToken();
         align-items: stretch;
         gap: 10px;
         justify-content: stretch;
+      }
+
+      #student-profile-actions {
+        position: static;
+        width: 100%;
+        margin-top: 0;
       }
 
       .buttons button {
@@ -1190,22 +1246,34 @@ $csrfToken = getCSRFToken();
           </div>
           <div class="details-badge">Profile Center</div>
         </div>
-        <div class="field">
+        <div class="field editable-field">
           <label for="last_name">Last Name</label>
-          <input id="last_name" type="text" value="<?= $last_name ?>" disabled>
-          <i class="fas fa-edit" onclick="toggleEdit('last_name')"></i>
+          <div class="field-input-row">
+            <input id="last_name" type="text" value="<?= $last_name ?>" disabled>
+            <button type="button" class="edit-trigger" onclick="toggleEdit('last_name')" aria-label="Edit last name">
+              <i class="fas fa-edit" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="field-note">Use your official surname as it appears in school records.</div>
         </div>
-        <div class="field">
+        <div class="field editable-field">
           <label for="first_name">First Name</label>
-          <input id="first_name" type="text" value="<?= $first_name ?>" disabled>
-          <i class="fas fa-edit" onclick="toggleEdit('first_name')"></i>
+          <div class="field-input-row">
+            <input id="first_name" type="text" value="<?= $first_name ?>" disabled>
+            <button type="button" class="edit-trigger" onclick="toggleEdit('first_name')" aria-label="Edit first name">
+              <i class="fas fa-edit" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="field-note">This name is shown across your student dashboard and documents.</div>
         </div>
-        <div class="field">
+        <div class="field editable-field">
           <label for="middle_name">Middle Name</label>
-          <input id="middle_name" type="text" value="<?= $middle_name ?>" disabled>
-          <i class="fas fa-edit" onclick="toggleEdit('middle_name')"></i>
+          <div class="field-input-row">
+            <input id="middle_name" type="text" value="<?= $middle_name ?>" disabled>
+            <button type="button" class="edit-trigger" onclick="toggleEdit('middle_name')" aria-label="Edit middle name">
+              <i class="fas fa-edit" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="field-note">Leave as is if you do not use a middle name in your records.</div>
         </div>
         <div class="field">
@@ -1213,10 +1281,14 @@ $csrfToken = getCSRFToken();
           <input id="username" type="text" value="<?= $student_id ?>" disabled>
           <div class="field-note">This is your permanent student identifier and cannot be edited here.</div>
         </div>
-        <div class="field">
+        <div class="field editable-field">
           <label for="email">Email Address</label>
-          <input id="email" type="email" value="<?= $email ?>" disabled>
-          <i class="fas fa-edit" onclick="toggleEdit('email')"></i>
+          <div class="field-input-row">
+            <input id="email" type="email" value="<?= $email ?>" disabled>
+            <button type="button" class="edit-trigger" onclick="toggleEdit('email')" aria-label="Edit email address">
+              <i class="fas fa-edit" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="field-note">Student accounts must use an official @cvsu.edu.ph email address for notices and recovery.</div>
         </div>
         <div class="field">
@@ -1286,10 +1358,14 @@ $csrfToken = getCSRFToken();
             </script>
 
         </div>
-        <div class="field">
+        <div class="field editable-field">
           <label for="contact_no">Contact Number</label>
-          <input id="contact_no" type="text" value="<?= $contact_no ?>" disabled>
-          <i class="fas fa-edit" onclick="toggleEdit('contact_no')"></i>
+          <div class="field-input-row">
+            <input id="contact_no" type="text" value="<?= $contact_no ?>" disabled>
+            <button type="button" class="edit-trigger" onclick="toggleEdit('contact_no')" aria-label="Edit contact number">
+              <i class="fas fa-edit" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="field-note">Enter a reachable number in case the school needs to contact you.</div>
         </div>
         <div class="field">
@@ -1297,10 +1373,14 @@ $csrfToken = getCSRFToken();
           <input id="admission_date" type="text" value="<?= $admission_date ?>" disabled>
           <div class="field-note">This comes from your student record and is shown for reference only.</div>
         </div>
-        <div class="field">
+        <div class="field editable-field">
           <label for="address">Address</label>
-          <input id="address" type="text" value="<?= $address ?>" disabled>
-          <i class="fas fa-edit" onclick="toggleEdit('address')"></i>
+          <div class="field-input-row">
+            <input id="address" type="text" value="<?= $address ?>" disabled>
+            <button type="button" class="edit-trigger" onclick="toggleEdit('address')" aria-label="Edit address">
+              <i class="fas fa-edit" aria-hidden="true"></i>
+            </button>
+          </div>
           <div class="field-note">Keep your current residence updated for student communications.</div>
         </div>
       </div>
