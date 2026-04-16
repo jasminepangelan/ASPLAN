@@ -699,6 +699,35 @@ if (!function_exists('smlValidateStudentRegistrationAgainstMasterlist')) {
 if (!function_exists('smlStudentHasSystemAccess')) {
     function smlStudentHasSystemAccess($conn, string $studentNumber): bool
     {
-        return smlFindMasterlistRecord($conn, $studentNumber) !== null;
+        if ($studentNumber === '') {
+            return false;
+        }
+
+        if (smlFindMasterlistRecord($conn, $studentNumber) !== null) {
+            return true;
+        }
+
+        // Backward compatibility: keep previously approved student accounts
+        // accessible even when masterlist entries are temporarily out of sync.
+        if ($conn instanceof PDO) {
+            $stmt = $conn->prepare('SELECT status FROM student_info WHERE student_number = ? LIMIT 1');
+            $stmt->execute([$studentNumber]);
+            $status = $stmt->fetchColumn();
+            return strtolower(trim((string) $status)) === 'approved';
+        }
+
+        if (is_object($conn) && method_exists($conn, 'prepare')) {
+            $stmt = $conn->prepare('SELECT status FROM student_info WHERE student_number = ? LIMIT 1');
+            if ($stmt) {
+                $stmt->bind_param('s', $studentNumber);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $row = $result ? $result->fetch_assoc() : null;
+                $stmt->close();
+                return strtolower(trim((string) ($row['status'] ?? ''))) === 'approved';
+            }
+        }
+
+        return false;
     }
 }
