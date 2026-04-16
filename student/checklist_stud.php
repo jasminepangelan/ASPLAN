@@ -529,10 +529,12 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
       flex-direction: row;
       gap: 14px;
       align-items: flex-start;
-      justify-content: flex-start;
+      justify-content: center;
       width: 100%;
       max-width: min(1480px, calc(100vw - 238px));
-      margin: 0;
+      margin: 0 auto;
+      padding-right: 156px;
+      box-sizing: border-box;
     }
 
     .main-content.expanded .content-wrapper {
@@ -564,6 +566,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         width: 100%;
         margin-top: 10px;
         margin-bottom: 40px;
+        margin-left: auto;
+        margin-right: auto;
         max-width: min(1180px, calc(100vw - 390px));
         padding: 42px 46px;
         background-color: #fff;
@@ -780,6 +784,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
           width: 100%;
           gap: 5px;
           align-items: flex-start;
+          justify-content: flex-start;
+          padding-right: 0;
         }
 
         .action-buttons {
@@ -1171,6 +1177,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
       .content-wrapper {
         gap: 4px;
         width: 100%;
+        justify-content: flex-start;
+        padding-right: 0;
       }
 
       .action-buttons {
