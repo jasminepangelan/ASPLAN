@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
         $studentId = trim((string)($_POST['student_id'] ?? ''));
         $statusAction = trim((string)($_POST['status_action'] ?? ''));
         $statusMap = [
-            'archive' => ['status' => 'rejected', 'message' => 'Account archived successfully.'],
+            'archive' => ['status' => 'archived', 'message' => 'Account archived successfully.'],
             'pending' => ['status' => 'pending', 'message' => 'Account moved to pending successfully.'],
             'approve' => ['status' => 'approved', 'message' => 'Account approved successfully.'],
         ];
@@ -548,6 +548,11 @@ if (!$bridgeLoaded) {
             background: #fef2f2;
             color: #991b1b;
             border: 1px solid #fca5a5;
+        }
+        .status-pill.archived {
+            background: #f4f4f5;
+            color: #3f3f46;
+            border: 1px solid #d4d4d8;
         }
 
         .action-form {

@@ -259,7 +259,7 @@ try {
                 sendJsonResponse($bridgeData);
             }
 
-            if (in_array($bridgeData['status'], ['pending', 'rejected', 'rate_limited', 'session_expired'], true)) {
+            if (in_array($bridgeData['status'], ['pending', 'rejected', 'archived', 'rate_limited', 'session_expired'], true)) {
                 sendJsonResponse($bridgeData);
             }
         }
@@ -345,6 +345,9 @@ try {
 
             if (($userData['status'] ?? '') === 'rejected') {
                 sendJsonResponse(['status' => 'rejected', 'message' => 'Your account was rejected. Please contact admin for more information.']);
+            }
+            if (($userData['status'] ?? '') === 'archived') {
+                sendJsonResponse(['status' => 'archived', 'message' => 'Your account has been archived. Please contact admin for assistance.']);
             }
 
             resetRateLimitDB($conn, 'login');

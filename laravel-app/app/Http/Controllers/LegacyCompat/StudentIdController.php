@@ -55,6 +55,14 @@ class StudentIdController extends Controller
         }
 
         $status = strtolower(trim((string) ($student->status ?? '')));
+        if ($status === 'archived') {
+            return [
+                'allowed' => false,
+                'reapply' => false,
+                'message' => 'This account has been archived. Please contact the administrator if access needs to be restored.',
+            ];
+        }
+
         if ($status !== 'rejected') {
             return [
                 'allowed' => false,

@@ -86,6 +86,9 @@ class AuthController extends Controller
                 if ($status === 'rejected') {
                     return response()->json(['status' => 'rejected', 'message' => 'Your account was rejected. Please contact admin for more information.']);
                 }
+                if ($status === 'archived') {
+                    return response()->json(['status' => 'archived', 'message' => 'Your account has been archived. Please contact admin for assistance.']);
+                }
             }
 
             $this->resetRateLimit($request, 'login');
