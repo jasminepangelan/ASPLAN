@@ -47,6 +47,23 @@ if (!function_exists('avDeleteAdviserBatchLinks')) {
     }
 }
 
+if (!function_exists('avProgramOptions')) {
+    function avProgramOptions(): array
+    {
+        return [
+            'Bachelor of Science in Computer Science',
+            'Bachelor of Science in Information Technology',
+            'Bachelor of Science in Computer Engineering',
+            'Bachelor of Science in Industrial Technology',
+            'Bachelor of Science in Hospitality Management',
+            'Bachelor of Science in Business Administration - Major in Marketing Management',
+            'Bachelor of Science in Business Administration - Major in Human Resource Management',
+        ];
+    }
+}
+
+$programOptions = avProgramOptions();
+
 $type = isset($_GET['type']) ? strtolower(trim($_GET['type'])) : 'students';
 $allowedTypes = ['students', 'advisers', 'program_coordinators', 'admins'];
 if (!in_array($type, $allowedTypes, true)) {
@@ -207,6 +224,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
         if ($lastName === '' || $firstName === '' || $username === '' || $program === '' || $sex === '') {
             closeDBConnection($actionConn);
             header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('All adviser fields except middle name are required.'));
+            exit();
+        }
+
+        if (!in_array($program, $programOptions, true)) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Select a valid program for the adviser.'));
             exit();
         }
 
@@ -977,7 +1000,12 @@ if (!$bridgeLoaded) {
                             </div>
                             <div class="modal-field full">
                                 <label for="modal_program">Program</label>
-                                <input type="text" id="modal_program" name="program" required>
+                                <select id="modal_program" name="program" required>
+                                    <option value="">Select program</option>
+                                    <?php foreach ($programOptions as $programOption): ?>
+                                        <option value="<?= htmlspecialchars($programOption) ?>"><?= htmlspecialchars($programOption) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             <div class="modal-field">
                                 <label for="modal_sex">Sex</label>
