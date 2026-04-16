@@ -712,6 +712,64 @@ if (!$bridgeLoaded) {
             background: linear-gradient(135deg, #206018 0%, #2d8f22 100%);
             color: #fff;
         }
+        .modal-btn.danger {
+            background: linear-gradient(135deg, #8f1d1d 0%, #c43b3b 100%);
+            color: #fff;
+        }
+        .confirm-shell {
+            display: grid;
+            gap: 16px;
+        }
+        .confirm-icon {
+            width: 62px;
+            height: 62px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, rgba(196, 59, 59, 0.14) 0%, rgba(255, 221, 221, 0.9) 100%);
+            color: #9f2525;
+            font-size: 28px;
+            font-weight: 800;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+        }
+        .confirm-copy {
+            display: grid;
+            gap: 8px;
+        }
+        .confirm-kicker {
+            display: inline-flex;
+            width: fit-content;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: rgba(196, 59, 59, 0.1);
+            color: #8f1d1d;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .confirm-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1f2f1f;
+            line-height: 1.15;
+        }
+        .confirm-message {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #576757;
+        }
+        .confirm-detail {
+            padding: 13px 14px;
+            border-radius: 14px;
+            border: 1px solid #f0c3c3;
+            background: linear-gradient(180deg, #fff7f7 0%, #fff0f0 100%);
+            color: #7a2b2b;
+            font-size: 13px;
+            line-height: 1.6;
+            font-weight: 600;
+        }
 
         .pagination {
             display: flex;
@@ -936,7 +994,7 @@ if (!$bridgeLoaded) {
                                             >
                                                 Edit
                                             </button>
-                                            <form method="POST" class="action-form" onsubmit="return confirm('Delete this adviser account? This will also remove adviser batch assignments linked to the account.');">
+                                            <form method="POST" class="action-form adviser-delete-form">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                                                 <input type="hidden" name="account_action" value="1">
                                                 <input type="hidden" name="adviser_action" value="delete">
@@ -945,6 +1003,7 @@ if (!$bridgeLoaded) {
                                                 <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
                                                 <input type="hidden" name="adviser_id" value="<?= htmlspecialchars((string)($r[0] ?? '')) ?>">
                                                 <input type="hidden" name="original_username" value="<?= htmlspecialchars((string)($r[4] ?? '')) ?>">
+                                                <input type="hidden" name="adviser_display_name" value="<?= htmlspecialchars(trim((string)($r[2] ?? '') . ' ' . (string)($r[1] ?? ''))) ?>">
                                                 <button type="submit" class="btn-action delete">Delete</button>
                                             </form>
                                         </div>
@@ -1022,6 +1081,28 @@ if (!$bridgeLoaded) {
                             <button type="submit" class="modal-btn save">Save Changes</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <div class="modal-overlay" id="adviserDeleteModal" aria-hidden="true">
+                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adviserDeleteTitle">
+                    <div class="confirm-shell">
+                        <div class="confirm-icon">!</div>
+                        <div class="confirm-copy">
+                            <div class="confirm-kicker">Delete Adviser</div>
+                            <div class="confirm-title" id="adviserDeleteTitle">Delete this adviser account?</div>
+                            <div class="confirm-message" id="adviserDeleteMessage">
+                                This action will permanently remove the adviser account from the system.
+                            </div>
+                            <div class="confirm-detail">
+                                Adviser batch assignments linked to this account will also be removed.
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" class="modal-btn cancel" id="cancelAdviserDelete">Cancel</button>
+                            <button type="button" class="modal-btn danger" id="confirmAdviserDelete">Delete Adviser</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         <?php endif; ?>
@@ -1109,6 +1190,12 @@ if (!$bridgeLoaded) {
         const adviserEditButtons = document.querySelectorAll('[data-edit-adviser]');
         const closeAdviserEditModalBtn = document.getElementById('closeAdviserEditModal');
         const cancelAdviserEditBtn = document.getElementById('cancelAdviserEdit');
+        const adviserDeleteModal = document.getElementById('adviserDeleteModal');
+        const adviserDeleteForms = document.querySelectorAll('.adviser-delete-form');
+        const adviserDeleteMessage = document.getElementById('adviserDeleteMessage');
+        const cancelAdviserDeleteBtn = document.getElementById('cancelAdviserDelete');
+        const confirmAdviserDeleteBtn = document.getElementById('confirmAdviserDelete');
+        let pendingAdviserDeleteForm = null;
 
         function setAdviserEditModalOpen(isOpen) {
             if (!adviserEditModal) {
@@ -1118,6 +1205,20 @@ if (!$bridgeLoaded) {
             adviserEditModal.classList.toggle('open', !!isOpen);
             adviserEditModal.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
             document.body.style.overflow = isOpen ? 'hidden' : '';
+        }
+
+        function setAdviserDeleteModalOpen(isOpen) {
+            if (!adviserDeleteModal) {
+                return;
+            }
+
+            adviserDeleteModal.classList.toggle('open', !!isOpen);
+            adviserDeleteModal.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            document.body.style.overflow = isOpen ? 'hidden' : '';
+
+            if (!isOpen) {
+                pendingAdviserDeleteForm = null;
+            }
         }
 
         adviserEditButtons.forEach(function(button) {
@@ -1172,9 +1273,47 @@ if (!$bridgeLoaded) {
             });
         }
 
+        adviserDeleteForms.forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                pendingAdviserDeleteForm = form;
+
+                const adviserNameInput = form.querySelector('input[name="adviser_display_name"]');
+                const adviserName = adviserNameInput ? adviserNameInput.value.trim() : 'this adviser';
+                if (adviserDeleteMessage) {
+                    adviserDeleteMessage.textContent = `Delete ${adviserName} from adviser accounts? This action cannot be undone from this screen.`;
+                }
+
+                setAdviserDeleteModalOpen(true);
+            });
+        });
+
+        if (cancelAdviserDeleteBtn) {
+            cancelAdviserDeleteBtn.addEventListener('click', function() {
+                setAdviserDeleteModalOpen(false);
+            });
+        }
+
+        if (confirmAdviserDeleteBtn) {
+            confirmAdviserDeleteBtn.addEventListener('click', function() {
+                if (pendingAdviserDeleteForm) {
+                    pendingAdviserDeleteForm.submit();
+                }
+            });
+        }
+
+        if (adviserDeleteModal) {
+            adviserDeleteModal.addEventListener('click', function(event) {
+                if (event.target === adviserDeleteModal) {
+                    setAdviserDeleteModalOpen(false);
+                }
+            });
+        }
+
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 setAdviserEditModalOpen(false);
+                setAdviserDeleteModalOpen(false);
             }
         });
     </script>
