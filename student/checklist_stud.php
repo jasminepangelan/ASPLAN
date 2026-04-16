@@ -516,7 +516,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
       height: calc(100vh - 51px);
       overflow-y: auto;
       transition: margin-left 0.3s ease;
-      padding: 20px;
+      padding: 16px 18px 20px 10px;
       box-sizing: border-box;
     }
 
@@ -527,12 +527,16 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     .content-wrapper {
       display: flex;
       flex-direction: row;
-      gap: 20px;
+      gap: 14px;
       align-items: flex-start;
-      justify-content: center;
+      justify-content: flex-start;
       width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
+      max-width: min(1480px, calc(100vw - 238px));
+      margin: 0;
+    }
+
+    .main-content.expanded .content-wrapper {
+      max-width: min(1580px, calc(100vw - 40px));
     }
 
     .menu-toggle {
@@ -560,8 +564,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         width: 100%;
         margin-top: 10px;
         margin-bottom: 40px;
-        max-width: 794px;
-        padding: 40px;
+        max-width: min(1180px, calc(100vw - 390px));
+        padding: 42px 46px;
         background-color: #fff;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
         border-radius: 5px;
@@ -572,14 +576,14 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     }
     
     .main-content.expanded .container {
-        max-width: 1000px;
+        max-width: min(1320px, calc(100vw - 80px));
     }
     
     .table-wrapper {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        margin: 0 -20px;
-        padding: 0 20px;
+        margin: 0 -24px;
+        padding: 0 24px;
     }
     .header {
         text-align: center;
@@ -589,12 +593,12 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
     .action-buttons {
         position: fixed;
-        right: 50px;
+        right: 24px;
         top: 76px;
         display: flex;
         flex-direction: column;
         gap: 12px;
-        width: 140px;
+        width: 136px;
         z-index: 998;
     }
 
@@ -683,15 +687,15 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     }
     .header h1 {
         margin-top: 5px;
-        font-size: 9px;
+        font-size: 10px;
     }
     .header h2 {
         margin-bottom: 1px 0;
-        font-size: 9px;
+        font-size: 10px;
     }
     .header h3 {
         margin-top: 30px;
-        font-size: 9px;
+        font-size: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -706,7 +710,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     .info {
         display: flex;
         justify-content: space-between;
-        font-size: 11px;
+        font-size: 12px;
         margin-top: 20px;
         margin-bottom: 20px;
         gap: 20px;
@@ -726,7 +730,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         max-width: 100%;
         border-collapse: collapse;
         margin: 0 auto 20px auto;
-        font-size: 10px;
+        font-size: 11px;
         page-break-inside: auto !important;
         break-inside: auto !important;
         table-layout: auto;
@@ -738,9 +742,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     }
     th, td {
         border: 1px solid #000;
-        padding: 2px 4px;
+        padding: 3px 5px;
         text-align: center;
-        font-size: 9px;
+        font-size: 10px;
     }
     th {
         background-color: #f2f2f2;
@@ -1285,16 +1289,16 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     }
 
     .checklist-grade-select {
-        width: 88px;
+        width: 96px;
         max-width: 100%;
-        min-height: 28px;
+        min-height: 30px;
         padding: 4px 28px 4px 8px;
         border: 1px solid #b7c8b7;
         border-radius: 8px;
         background-color: #ffffff;
         background-image: linear-gradient(180deg, #ffffff 0%, #f3f8f2 100%);
         color: #173d19;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         line-height: 1.2;
         appearance: none;
@@ -1549,9 +1553,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 <th>Lab</th>
                                 <th>Lec</th>
                                 <th>Lab</th>
-                                <th style="font-size:8px;">1st</th>
-                                <th style="font-size:8px;">2nd<br>Attempt</th>
-                                <th style="font-size:8px;">3rd<br>Attempt</th>
+                                <th style="font-size:9px;">1st</th>
+                                <th style="font-size:9px;">2nd<br>Attempt</th>
+                                <th style="font-size:9px;">3rd<br>Attempt</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1595,10 +1599,10 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 <td>{$row['contact_hrs_lab']}</td>
                                 <td>{$row['pre_requisite']}</td>
                                 <td>{$row['semester']} {$row['year']}</td>
-                                <td><input type='text' name='professor_instructor[{$row['course_code']}]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars($row['professor_instructor']) : "") . "' style='border: none; font-size: 8px; border-bottom: 1px solid #000000; width: 80px; max-width: 100%;' " . ($isCredited ? "readonly" : "") . "></td>
+                                <td><input type='text' name='professor_instructor[{$row['course_code']}]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars($row['professor_instructor']) : "") . "' style='border: none; font-size: 9px; border-bottom: 1px solid #000000; width: 90px; max-width: 100%;' " . ($isCredited ? "readonly" : "") . "></td>
                                 <td id='grade1_{$row['course_code']}'>"; // 1st attempt
                                 if ($remarks1 === 'Approved' || $isCredited) {
-                                    echo "<span style='font-size: 10px; color: #000; font-weight: bold;'>{$grade1_val}</span>";
+                                    echo "<span style='font-size: 11px; color: #000; font-weight: bold;'>{$grade1_val}</span>";
                                 } else {
                                     $ps1 = ($remarks1 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
                                     $grade1Class = "checklist-grade-select" . (($remarks1 === 'Pending') ? " is-pending" : "");
@@ -1613,10 +1617,10 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 // 2nd attempt
                                 echo "</td><td id='grade2_{$row['course_code']}'>";
                                 if ($isCredited) {
-                                  echo ($grade2_val !== '' ? "<span style='font-size:10px;color:#000;font-weight:bold;'>{$grade2_val}</span>" : "<span style='color:#ccc;font-size:10px;'>&#8212;</span>");
+                                  echo ($grade2_val !== '' ? "<span style='font-size:11px;color:#000;font-weight:bold;'>{$grade2_val}</span>" : "<span style='color:#ccc;font-size:11px;'>&#8212;</span>");
                                 } elseif ($show_2nd) {
                                     if ($remarks2 === 'Approved') {
-                                        echo "<span style='font-size:10px;color:#000;font-weight:bold;'>{$grade2_val}</span>";
+                                        echo "<span style='font-size:11px;color:#000;font-weight:bold;'>{$grade2_val}</span>";
                                     } else {
                                         $ps2 = ($remarks2 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
                                         $grade2Class = "checklist-grade-select" . (($remarks2 === 'Pending') ? " is-pending" : "");
@@ -1629,15 +1633,15 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                         echo "</select>";
                                     }
                                 } else {
-                                    echo "<span style='color:#ccc;font-size:10px;'>&#8212;</span>";
+                                    echo "<span style='color:#ccc;font-size:11px;'>&#8212;</span>";
                                 }
                                 // 3rd attempt
                                 echo "</td><td id='grade3_{$row['course_code']}'>";
                                 if ($isCredited) {
-                                  echo ($grade3_val !== '' ? "<span style='font-size:10px;color:#000;font-weight:bold;'>{$grade3_val}</span>" : "<span style='color:#ccc;font-size:10px;'>&#8212;</span>");
+                                  echo ($grade3_val !== '' ? "<span style='font-size:11px;color:#000;font-weight:bold;'>{$grade3_val}</span>" : "<span style='color:#ccc;font-size:11px;'>&#8212;</span>");
                                 } elseif ($show_3rd) {
                                     if ($remarks3 === 'Approved') {
-                                        echo "<span style='font-size:10px;color:#000;font-weight:bold;'>{$grade3_val}</span>";
+                                        echo "<span style='font-size:11px;color:#000;font-weight:bold;'>{$grade3_val}</span>";
                                     } else {
                                         $ps3 = ($remarks3 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
                                         $grade3Class = "checklist-grade-select" . (($remarks3 === 'Pending') ? " is-pending" : "");
@@ -1650,12 +1654,12 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                         echo "</select>";
                                     }
                                 } else {
-                                    echo "<span style='color:#ccc;font-size:10px;'>&#8212;</span>";
+                                    echo "<span style='color:#ccc;font-size:11px;'>&#8212;</span>";
                                 }
                                 $anyPendingRemark = ($remarks1 === 'Pending' || $remarks2 === 'Pending' || $remarks3 === 'Pending');
                                 echo "</td><td id='remarks_{$row['course_code']}'>";
                                 if ($anyPendingRemark) {
-                                    echo "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Pending</span>";
+                                    echo "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;'>Pending</span>";
                                 } elseif ($remarks1) {
                                     echo htmlspecialchars($remarks1);
                                 }
@@ -1687,9 +1691,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 <th>Lab</th>
                                 <th>Lec</th>
                                 <th>Lab</th>
-                                <th style="font-size:8px;">1st</th>
-                                <th style="font-size:8px;">2nd<br>Attempt</th>
-                                <th style="font-size:8px;">3rd<br>Attempt</th>
+                                <th style="font-size:9px;">1st</th>
+                                <th style="font-size:9px;">2nd<br>Attempt</th>
+                                <th style="font-size:9px;">3rd<br>Attempt</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1988,12 +1992,12 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         if (!remarksCell) return;
 
         if (status === 'Pending') {
-            remarksCell.innerHTML = "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Pending</span>";
+            remarksCell.innerHTML = "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;'>Pending</span>";
             return;
         }
 
         if (status === 'Approved') {
-            remarksCell.innerHTML = "<span style='background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Approved</span>";
+            remarksCell.innerHTML = "<span style='background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;'>Approved</span>";
             return;
         }
 
@@ -2358,7 +2362,7 @@ function stopChecklistLiveRefresh() {
         if (gradeSelect) {
         if (course.evaluator_remarks === 'Approved' || isCredited) {
                 const td = gradeSelect.parentElement;
-                td.innerHTML = `<span style='font-size: 10px; color: #000; font-weight: bold;'>${course.final_grade || ''}</span>`;
+                td.innerHTML = `<span style='font-size: 11px; color: #000; font-weight: bold;'>${course.final_grade || ''}</span>`;
             } else {
                 gradeSelect.value = course.final_grade || '';
                 gradeSelect.disabled = !!academicHold.active;
@@ -2369,7 +2373,7 @@ function stopChecklistLiveRefresh() {
         const grade2Cell = document.getElementById(`grade2_${course.course_code}`);
         if (grade2Cell) {
           if (course.evaluator_remarks_2 === 'Approved' || isCredited) {
-                grade2Cell.innerHTML = `<span style='font-size:10px;color:#000;font-weight:bold;'>${course.final_grade_2 || ''}</span>`;
+                grade2Cell.innerHTML = `<span style='font-size:11px;color:#000;font-weight:bold;'>${course.final_grade_2 || ''}</span>`;
             } else {
                 const sel2 = grade2Cell.querySelector('select');
                 if (sel2 && course.final_grade_2) sel2.value = course.final_grade_2;
@@ -2383,7 +2387,7 @@ function stopChecklistLiveRefresh() {
         const grade3Cell = document.getElementById(`grade3_${course.course_code}`);
         if (grade3Cell) {
           if (course.evaluator_remarks_3 === 'Approved' || isCredited) {
-                grade3Cell.innerHTML = `<span style='font-size:10px;color:#000;font-weight:bold;'>${course.final_grade_3 || ''}</span>`;
+                grade3Cell.innerHTML = `<span style='font-size:11px;color:#000;font-weight:bold;'>${course.final_grade_3 || ''}</span>`;
             } else {
                 const sel3 = grade3Cell.querySelector('select');
                 if (sel3 && course.final_grade_3) sel3.value = course.final_grade_3;
@@ -2403,9 +2407,9 @@ function stopChecklistLiveRefresh() {
           if (isCredited) {
             remarksElement.textContent = r1 || 'Credited (Shift Equivalency)';
           } else if (anyPending) {
-                remarksElement.innerHTML = "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Pending</span>";
+                remarksElement.innerHTML = "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;'>Pending</span>";
             } else if (r1 === 'Approved') {
-                remarksElement.innerHTML = "<span style='background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 9px; font-weight: bold;'>Approved</span>";
+                remarksElement.innerHTML = "<span style='background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;'>Approved</span>";
             } else {
                 remarksElement.textContent = r1;
             }
