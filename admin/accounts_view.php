@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/accounts_view_service.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/student_registration_service.php';
+require_once __DIR__ . '/../includes/handlers_service.php';
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
@@ -11,6 +12,40 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 $csrfToken = getCSRFToken();
+
+if (!function_exists('avDeleteAdviserBatchLinks')) {
+    function avDeleteAdviserBatchLinks(mysqli $conn, int $adviserId): void
+    {
+        $columnChecks = [];
+        $columnResult = $conn->query("SHOW COLUMNS FROM adviser_batch");
+        if ($columnResult) {
+            while ($columnRow = $columnResult->fetch_assoc()) {
+                $field = trim((string)($columnRow['Field'] ?? ''));
+                if ($field !== '') {
+                    $columnChecks[$field] = true;
+                }
+            }
+        }
+
+        if (isset($columnChecks['adviser_id'])) {
+            $stmt = $conn->prepare('DELETE FROM adviser_batch WHERE adviser_id = ?');
+            if ($stmt) {
+                $stmt->bind_param('i', $adviserId);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+
+        if (isset($columnChecks['id'])) {
+            $stmt = $conn->prepare('DELETE FROM adviser_batch WHERE id = ?');
+            if ($stmt) {
+                $stmt->bind_param('i', $adviserId);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+    }
+}
 
 $type = isset($_GET['type']) ? strtolower(trim($_GET['type'])) : 'students';
 $allowedTypes = ['students', 'advisers', 'program_coordinators', 'admins'];
@@ -46,81 +81,186 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
         exit();
     }
 
-    if ($postedType !== 'students') {
-        header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Actions are only available for student accounts.'));
-        exit();
-    }
+    if ($postedType === 'students') {
+        $studentId = trim((string)($_POST['student_id'] ?? ''));
+        $statusAction = trim((string)($_POST['status_action'] ?? ''));
+        $statusMap = [
+            'archive' => ['status' => 'rejected', 'message' => 'Account archived successfully.'],
+            'pending' => ['status' => 'pending', 'message' => 'Account moved to pending successfully.'],
+            'approve' => ['status' => 'approved', 'message' => 'Account approved successfully.'],
+        ];
 
-    $studentId = trim((string)($_POST['student_id'] ?? ''));
-    $statusAction = trim((string)($_POST['status_action'] ?? ''));
-    $statusMap = [
-        'archive' => ['status' => 'rejected', 'message' => 'Account archived successfully.'],
-        'pending' => ['status' => 'pending', 'message' => 'Account moved to pending successfully.'],
-        'approve' => ['status' => 'approved', 'message' => 'Account approved successfully.'],
-    ];
-
-    if ($studentId === '' || !isset($statusMap[$statusAction])) {
-        header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Invalid account action request.'));
-        exit();
-    }
-
-    if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $studentId)) {
-        header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Invalid student ID format.'));
-        exit();
-    }
-
-    $actionConn = getDBConnection();
-    $freezeApprovalsEnabled = false;
-    $freezeResult = $actionConn->query("SELECT setting_value FROM system_settings WHERE setting_name = 'freeze_approvals' ORDER BY id DESC LIMIT 1");
-    if ($freezeResult && $freezeRow = $freezeResult->fetch_assoc()) {
-        $freezeApprovalsEnabled = ((int)($freezeRow['setting_value'] ?? 0) === 1);
-    }
-
-    if ($freezeApprovalsEnabled) {
-        closeDBConnection($actionConn);
-        header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Approval actions are currently frozen by admin settings.'));
-        exit();
-    }
-
-    $targetStatus = $statusMap[$statusAction]['status'];
-    $approvedBy = trim((string)($_SESSION['admin_id'] ?? $_SESSION['admin_username'] ?? ''));
-
-    if ($targetStatus === 'pending') {
-        $stmt = $actionConn->prepare("UPDATE student_info SET status = ?, approved_by = NULL WHERE student_number = ?");
-        if (!$stmt) {
-            closeDBConnection($actionConn);
-            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to prepare the account update.'));
+        if ($studentId === '' || !isset($statusMap[$statusAction])) {
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Invalid account action request.'));
             exit();
         }
 
-        $stmt->bind_param('ss', $targetStatus, $studentId);
-    } else {
-        $stmt = $actionConn->prepare("UPDATE student_info SET status = ?, approved_by = ? WHERE student_number = ?");
-        if (!$stmt) {
-            closeDBConnection($actionConn);
-            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to prepare the account update.'));
+        if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $studentId)) {
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Invalid student ID format.'));
             exit();
         }
 
-        $stmt->bind_param('sss', $targetStatus, $approvedBy, $studentId);
-    }
+        $actionConn = getDBConnection();
+        $freezeApprovalsEnabled = false;
+        $freezeResult = $actionConn->query("SELECT setting_value FROM system_settings WHERE setting_name = 'freeze_approvals' ORDER BY id DESC LIMIT 1");
+        if ($freezeResult && $freezeRow = $freezeResult->fetch_assoc()) {
+            $freezeApprovalsEnabled = ((int)($freezeRow['setting_value'] ?? 0) === 1);
+        }
 
-    $executed = $stmt->execute();
-    $updated = $executed && $stmt->affected_rows > 0;
-    $stmt->close();
+        if ($freezeApprovalsEnabled) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Approval actions are currently frozen by admin settings.'));
+            exit();
+        }
 
-    if ($updated) {
-        if ($targetStatus === 'rejected') {
-            srsRecordStudentRejection($actionConn, $studentId, $approvedBy);
+        $targetStatus = $statusMap[$statusAction]['status'];
+        $approvedBy = trim((string)($_SESSION['admin_id'] ?? $_SESSION['admin_username'] ?? ''));
+
+        if ($targetStatus === 'pending') {
+            $stmt = $actionConn->prepare("UPDATE student_info SET status = ?, approved_by = NULL WHERE student_number = ?");
+            if (!$stmt) {
+                closeDBConnection($actionConn);
+                header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to prepare the account update.'));
+                exit();
+            }
+
+            $stmt->bind_param('ss', $targetStatus, $studentId);
         } else {
-            srsClearStudentRejectionLog($actionConn, $studentId);
+            $stmt = $actionConn->prepare("UPDATE student_info SET status = ?, approved_by = ? WHERE student_number = ?");
+            if (!$stmt) {
+                closeDBConnection($actionConn);
+                header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to prepare the account update.'));
+                exit();
+            }
+
+            $stmt->bind_param('sss', $targetStatus, $approvedBy, $studentId);
         }
-        closeDBConnection($actionConn);
-        header('Location: accounts_view.php?' . $redirectParams . '&message=' . urlencode($statusMap[$statusAction]['message']));
-    } else {
-        closeDBConnection($actionConn);
-        header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('No account was updated. Please verify the selected student.'));
+
+        $executed = $stmt->execute();
+        $updated = $executed && $stmt->affected_rows > 0;
+        $stmt->close();
+
+        if ($updated) {
+            if ($targetStatus === 'rejected') {
+                srsRecordStudentRejection($actionConn, $studentId, $approvedBy);
+            } else {
+                srsClearStudentRejectionLog($actionConn, $studentId);
+            }
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&message=' . urlencode($statusMap[$statusAction]['message']));
+        } else {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('No account was updated. Please verify the selected student.'));
+        }
+        exit();
     }
+
+    if ($postedType === 'advisers') {
+        $adviserAction = trim((string)($_POST['adviser_action'] ?? ''));
+        $adviserId = isset($_POST['adviser_id']) && is_numeric($_POST['adviser_id']) ? (int)$_POST['adviser_id'] : 0;
+        $originalUsername = trim((string)($_POST['original_username'] ?? ''));
+
+        if ($adviserId <= 0 || $originalUsername === '' || !in_array($adviserAction, ['edit', 'delete'], true)) {
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Invalid adviser action request.'));
+            exit();
+        }
+
+        $actionConn = getDBConnection();
+
+        if ($adviserAction === 'delete') {
+            $actionConn->begin_transaction();
+            try {
+                avDeleteAdviserBatchLinks($actionConn, $adviserId);
+
+                $stmt = $actionConn->prepare('DELETE FROM adviser WHERE username = ? AND id = ?');
+                if (!$stmt) {
+                    throw new RuntimeException('Failed to prepare adviser deletion.');
+                }
+                $stmt->bind_param('si', $originalUsername, $adviserId);
+                $stmt->execute();
+                $deleted = $stmt->affected_rows > 0;
+                $stmt->close();
+
+                if (!$deleted) {
+                    throw new RuntimeException('No adviser account matched the selected record.');
+                }
+
+                $actionConn->commit();
+                closeDBConnection($actionConn);
+                header('Location: accounts_view.php?' . $redirectParams . '&message=' . urlencode('Adviser account deleted successfully.'));
+                exit();
+            } catch (Throwable $e) {
+                $actionConn->rollback();
+                closeDBConnection($actionConn);
+                header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode($e->getMessage()));
+                exit();
+            }
+        }
+
+        $lastName = trim((string)($_POST['last_name'] ?? ''));
+        $firstName = trim((string)($_POST['first_name'] ?? ''));
+        $middleName = trim((string)($_POST['middle_name'] ?? ''));
+        $username = trim((string)($_POST['username'] ?? ''));
+        $program = trim((string)($_POST['program'] ?? ''));
+        $sex = trim((string)($_POST['sex'] ?? ''));
+
+        if ($lastName === '' || $firstName === '' || $username === '' || $program === '' || $sex === '') {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('All adviser fields except middle name are required.'));
+            exit();
+        }
+
+        if (!in_array($sex, ['Male', 'Female'], true)) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Select a valid sex value for the adviser.'));
+            exit();
+        }
+
+        if (!preg_match('/^[A-Za-z0-9._-]{3,50}$/', $username)) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Username must be 3-50 characters and may only use letters, numbers, period, underscore, or hyphen.'));
+            exit();
+        }
+
+        $dupStmt = $actionConn->prepare('SELECT username FROM adviser WHERE username = ? AND id <> ? LIMIT 1');
+        if (!$dupStmt) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to validate adviser username.'));
+            exit();
+        }
+        $dupStmt->bind_param('si', $username, $adviserId);
+        $dupStmt->execute();
+        $dupResult = $dupStmt->get_result();
+        $duplicateExists = $dupResult && $dupResult->num_rows > 0;
+        $dupStmt->close();
+
+        if ($duplicateExists) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('That adviser username is already in use.'));
+            exit();
+        }
+
+        $stmt = $actionConn->prepare('UPDATE adviser SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ? WHERE username = ? AND id = ?');
+        if (!$stmt) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to prepare adviser update.'));
+            exit();
+        }
+        $stmt->bind_param('sssssssi', $lastName, $firstName, $middleName, $username, $program, $sex, $originalUsername, $adviserId);
+        $stmt->execute();
+        $updated = $stmt->affected_rows >= 0;
+        $stmt->close();
+        closeDBConnection($actionConn);
+
+        if ($updated) {
+            header('Location: accounts_view.php?' . $redirectParams . '&message=' . urlencode('Adviser account updated successfully.'));
+        } else {
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('No adviser account was updated.'));
+        }
+        exit();
+    }
+
+    header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Actions are not available for this account type.'));
     exit();
 }
 
@@ -422,6 +562,16 @@ if (!$bridgeLoaded) {
             border-color: #bccdb7;
             color: #355332;
         }
+        .btn-action.edit {
+            background: linear-gradient(135deg, #1f4f95 0%, #2e73c5 100%);
+            border-color: #1f4f95;
+            color: #fff;
+        }
+        .btn-action.delete {
+            background: linear-gradient(135deg, #8f1d1d 0%, #c43b3b 100%);
+            border-color: #8f1d1d;
+            color: #fff;
+        }
         .btn-action:disabled {
             opacity: 0.55;
             cursor: not-allowed;
@@ -433,6 +583,112 @@ if (!$bridgeLoaded) {
         }
 
         .empty-state { text-align: center; padding: 30px; color: #667085; }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(8, 24, 9, 0.48);
+            backdrop-filter: blur(4px);
+            z-index: 1200;
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+        .modal-card {
+            width: min(640px, 100%);
+            background: linear-gradient(180deg, #ffffff 0%, #f7fbf6 100%);
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(8, 24, 9, 0.28);
+            border: 1px solid rgba(32, 96, 24, 0.12);
+            padding: 24px;
+        }
+        .modal-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+        .modal-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #183d18;
+            margin-bottom: 4px;
+        }
+        .modal-subtitle {
+            font-size: 14px;
+            color: #5d6c5f;
+            line-height: 1.5;
+        }
+        .modal-close {
+            border: none;
+            background: #eef5ec;
+            color: #264b22;
+            width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .modal-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+        .modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .modal-field.full {
+            grid-column: 1 / -1;
+        }
+        .modal-field label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #355332;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .modal-field input,
+        .modal-field select {
+            width: 100%;
+            min-height: 42px;
+            padding: 10px 12px;
+            border: 1px solid #cfdacb;
+            border-radius: 10px;
+            font-size: 14px;
+            background: #fff;
+            color: #213623;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .modal-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .modal-btn.cancel {
+            background: #edf2ec;
+            color: #2c4d2a;
+        }
+        .modal-btn.save {
+            background: linear-gradient(135deg, #206018 0%, #2d8f22 100%);
+            color: #fff;
+        }
 
         .pagination {
             display: flex;
@@ -492,6 +748,7 @@ if (!$bridgeLoaded) {
             .container.expanded { width: auto; margin: 15px; }
             .search-input { min-width: 200px; width: 100%; }
             .toolbar form { width: 100%; }
+            .modal-grid { grid-template-columns: 1fr; }
         }
     
         /* Sidebar normalization: consistent spacing and interaction across admin pages */
@@ -605,7 +862,7 @@ if (!$bridgeLoaded) {
                         <?php foreach ($columns as $col): ?>
                             <th><?= htmlspecialchars($col) ?></th>
                         <?php endforeach; ?>
-                        <?php if ($type === 'students'): ?>
+                        <?php if ($type === 'students' || $type === 'advisers'): ?>
                             <th class="actions-col">Action</th>
                         <?php endif; ?>
                     </tr>
@@ -639,17 +896,107 @@ if (!$bridgeLoaded) {
                                             <button type="submit" name="status_action" value="approve" class="btn-action approve" <?= $freezeApprovalsEnabled ? 'disabled' : '' ?>>Approve</button>
                                         </form>
                                     </td>
+                                <?php elseif ($type === 'advisers'): ?>
+                                    <td class="actions-cell">
+                                        <div class="action-form">
+                                            <button
+                                                type="button"
+                                                class="btn-action edit"
+                                                data-edit-adviser
+                                                data-adviser-id="<?= htmlspecialchars((string)($r[0] ?? '')) ?>"
+                                                data-last-name="<?= htmlspecialchars((string)($r[1] ?? ''), ENT_QUOTES) ?>"
+                                                data-first-name="<?= htmlspecialchars((string)($r[2] ?? ''), ENT_QUOTES) ?>"
+                                                data-middle-name="<?= htmlspecialchars((string)($r[3] ?? ''), ENT_QUOTES) ?>"
+                                                data-username="<?= htmlspecialchars((string)($r[4] ?? ''), ENT_QUOTES) ?>"
+                                                data-program="<?= htmlspecialchars((string)($r[5] ?? ''), ENT_QUOTES) ?>"
+                                                data-sex="<?= htmlspecialchars((string)($r[6] ?? ''), ENT_QUOTES) ?>"
+                                            >
+                                                Edit
+                                            </button>
+                                            <form method="POST" class="action-form" onsubmit="return confirm('Delete this adviser account? This will also remove adviser batch assignments linked to the account.');">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                                                <input type="hidden" name="account_action" value="1">
+                                                <input type="hidden" name="adviser_action" value="delete">
+                                                <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                                                <input type="hidden" name="page" value="<?= (int)$current_page ?>">
+                                                <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                                                <input type="hidden" name="adviser_id" value="<?= htmlspecialchars((string)($r[0] ?? '')) ?>">
+                                                <input type="hidden" name="original_username" value="<?= htmlspecialchars((string)($r[4] ?? '')) ?>">
+                                                <button type="submit" class="btn-action delete">Delete</button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="<?= max(1, count($columns) + ($type === 'students' ? 1 : 0)) ?>" class="empty-state">No records found.</td>
+                            <td colspan="<?= max(1, count($columns) + (($type === 'students' || $type === 'advisers') ? 1 : 0)) ?>" class="empty-state">No records found.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
+
+        <?php if ($type === 'advisers'): ?>
+            <div class="modal-overlay" id="adviserEditModal" aria-hidden="true">
+                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adviserEditTitle">
+                    <div class="modal-head">
+                        <div>
+                            <div class="modal-title" id="adviserEditTitle">Edit Adviser Account</div>
+                            <div class="modal-subtitle">Update the adviser profile directly from the account list.</div>
+                        </div>
+                        <button type="button" class="modal-close" id="closeAdviserEditModal" aria-label="Close">&times;</button>
+                    </div>
+                    <form method="POST" id="adviserEditForm">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                        <input type="hidden" name="account_action" value="1">
+                        <input type="hidden" name="adviser_action" value="edit">
+                        <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                        <input type="hidden" name="page" value="<?= (int)$current_page ?>">
+                        <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                        <input type="hidden" name="adviser_id" id="modal_adviser_id" value="">
+                        <input type="hidden" name="original_username" id="modal_original_username" value="">
+
+                        <div class="modal-grid">
+                            <div class="modal-field">
+                                <label for="modal_last_name">Last Name</label>
+                                <input type="text" id="modal_last_name" name="last_name" required>
+                            </div>
+                            <div class="modal-field">
+                                <label for="modal_first_name">First Name</label>
+                                <input type="text" id="modal_first_name" name="first_name" required>
+                            </div>
+                            <div class="modal-field">
+                                <label for="modal_middle_name">Middle Name</label>
+                                <input type="text" id="modal_middle_name" name="middle_name">
+                            </div>
+                            <div class="modal-field">
+                                <label for="modal_username">Username</label>
+                                <input type="text" id="modal_username" name="username" required>
+                            </div>
+                            <div class="modal-field full">
+                                <label for="modal_program">Program</label>
+                                <input type="text" id="modal_program" name="program" required>
+                            </div>
+                            <div class="modal-field">
+                                <label for="modal_sex">Sex</label>
+                                <select id="modal_sex" name="sex" required>
+                                    <option value="">Select sex</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="modal-btn cancel" id="cancelAdviserEdit">Cancel</button>
+                            <button type="submit" class="modal-btn save">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <?php if ($total_pages > 1): ?>
             <div class="pagination">
@@ -727,6 +1074,79 @@ if (!$bridgeLoaded) {
             } else {
                 sidebar.classList.add('collapsed');
                 mainContent.classList.add('expanded');
+            }
+        });
+
+        const adviserEditModal = document.getElementById('adviserEditModal');
+        const adviserEditButtons = document.querySelectorAll('[data-edit-adviser]');
+        const closeAdviserEditModalBtn = document.getElementById('closeAdviserEditModal');
+        const cancelAdviserEditBtn = document.getElementById('cancelAdviserEdit');
+
+        function setAdviserEditModalOpen(isOpen) {
+            if (!adviserEditModal) {
+                return;
+            }
+
+            adviserEditModal.classList.toggle('open', !!isOpen);
+            adviserEditModal.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            document.body.style.overflow = isOpen ? 'hidden' : '';
+        }
+
+        adviserEditButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                const adviserId = button.getAttribute('data-adviser-id') || '';
+                const lastName = button.getAttribute('data-last-name') || '';
+                const firstName = button.getAttribute('data-first-name') || '';
+                const middleName = button.getAttribute('data-middle-name') || '';
+                const username = button.getAttribute('data-username') || '';
+                const program = button.getAttribute('data-program') || '';
+                const sex = button.getAttribute('data-sex') || '';
+
+                const modalAdviserId = document.getElementById('modal_adviser_id');
+                const modalOriginalUsername = document.getElementById('modal_original_username');
+                const modalLastName = document.getElementById('modal_last_name');
+                const modalFirstName = document.getElementById('modal_first_name');
+                const modalMiddleName = document.getElementById('modal_middle_name');
+                const modalUsername = document.getElementById('modal_username');
+                const modalProgram = document.getElementById('modal_program');
+                const modalSex = document.getElementById('modal_sex');
+
+                if (modalAdviserId) modalAdviserId.value = adviserId;
+                if (modalOriginalUsername) modalOriginalUsername.value = username;
+                if (modalLastName) modalLastName.value = lastName;
+                if (modalFirstName) modalFirstName.value = firstName;
+                if (modalMiddleName) modalMiddleName.value = middleName;
+                if (modalUsername) modalUsername.value = username;
+                if (modalProgram) modalProgram.value = program;
+                if (modalSex) modalSex.value = sex;
+
+                setAdviserEditModalOpen(true);
+            });
+        });
+
+        if (closeAdviserEditModalBtn) {
+            closeAdviserEditModalBtn.addEventListener('click', function() {
+                setAdviserEditModalOpen(false);
+            });
+        }
+
+        if (cancelAdviserEditBtn) {
+            cancelAdviserEditBtn.addEventListener('click', function() {
+                setAdviserEditModalOpen(false);
+            });
+        }
+
+        if (adviserEditModal) {
+            adviserEditModal.addEventListener('click', function(event) {
+                if (event.target === adviserEditModal) {
+                    setAdviserEditModalOpen(false);
+                }
+            });
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                setAdviserEditModalOpen(false);
             }
         });
     </script>
