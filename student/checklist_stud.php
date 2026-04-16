@@ -1276,7 +1276,65 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
     select[name^="final_grade"],
     select[name^="evaluator_remarks"] {
-        transition: background-color 0.3s ease;
+        transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+    }
+
+    .table-wrapper td {
+        overflow: visible;
+        vertical-align: middle;
+    }
+
+    .checklist-grade-select {
+        width: 88px;
+        max-width: 100%;
+        min-height: 28px;
+        padding: 4px 28px 4px 8px;
+        border: 1px solid #b7c8b7;
+        border-radius: 8px;
+        background-color: #ffffff;
+        background-image: linear-gradient(180deg, #ffffff 0%, #f3f8f2 100%);
+        color: #173d19;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.2;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        box-shadow: 0 1px 2px rgba(23, 61, 25, 0.08);
+        cursor: pointer;
+        position: relative;
+        z-index: 1;
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 10px 6px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23206018' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"), linear-gradient(180deg, #ffffff 0%, #f3f8f2 100%);
+    }
+
+    .checklist-grade-select:hover {
+        border-color: #2f8a2b;
+        box-shadow: 0 4px 12px rgba(32, 96, 24, 0.16);
+        transform: translateY(-1px);
+    }
+
+    .checklist-grade-select:focus {
+        outline: none;
+        border-color: #206018;
+        box-shadow: 0 0 0 3px rgba(32, 96, 24, 0.18), 0 6px 16px rgba(32, 96, 24, 0.14);
+        z-index: 2;
+    }
+
+    .checklist-grade-select.is-pending {
+        border-color: #ff9800;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a4b00' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"), linear-gradient(180deg, #fff7e8 0%, #ffe8bf 100%);
+        color: #7a4600;
+        font-weight: 700;
+    }
+
+    .checklist-grade-select.is-readonly {
+        background-image: linear-gradient(180deg, #f8fbf7 0%, #edf3ec 100%);
+        color: #206018;
+        border-color: #206018;
+        box-shadow: none;
     }
 
     /* Pagination Controls */
@@ -1543,7 +1601,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                     echo "<span style='font-size: 10px; color: #000; font-weight: bold;'>{$grade1_val}</span>";
                                 } else {
                                     $ps1 = ($remarks1 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
-                                    echo "<select name='final_grade[{$row['course_code']}]' style='border:none;font-size:8px;width:70px;max-width:100%;{$ps1}'>";
+                                    $grade1Class = "checklist-grade-select" . (($remarks1 === 'Pending') ? " is-pending" : "");
+                                    echo "<select name='final_grade[{$row['course_code']}]' class='{$grade1Class}'>";
                                     foreach ($grades as $g) {
                                         $sel = ($g === $grade1_val) ? 'selected' : '';
                                         $dt  = ($g === '') ? '-- Select --' : $g;
@@ -1560,7 +1619,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                         echo "<span style='font-size:10px;color:#000;font-weight:bold;'>{$grade2_val}</span>";
                                     } else {
                                         $ps2 = ($remarks2 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
-                                        echo "<select name='final_grade_2[{$row['course_code']}]' style='border:none;font-size:8px;width:70px;max-width:100%;{$ps2}'>";
+                                        $grade2Class = "checklist-grade-select" . (($remarks2 === 'Pending') ? " is-pending" : "");
+                                        echo "<select name='final_grade_2[{$row['course_code']}]' class='{$grade2Class}'>";
                                         foreach ($grades as $g) {
                                             $sel = ($g === $grade2_val) ? 'selected' : '';
                                             $dt  = ($g === '') ? '-- Select --' : $g;
@@ -1580,7 +1640,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                         echo "<span style='font-size:10px;color:#000;font-weight:bold;'>{$grade3_val}</span>";
                                     } else {
                                         $ps3 = ($remarks3 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
-                                        echo "<select name='final_grade_3[{$row['course_code']}]' style='border:none;font-size:8px;width:70px;max-width:100%;{$ps3}'>";
+                                        $grade3Class = "checklist-grade-select" . (($remarks3 === 'Pending') ? " is-pending" : "");
+                                        echo "<select name='final_grade_3[{$row['course_code']}]' class='{$grade3Class}'>";
                                         foreach ($grades as $g) {
                                             $sel = ($g === $grade3_val) ? 'selected' : '';
                                             $dt  = ($g === '') ? '-- Select --' : $g;
@@ -1805,6 +1866,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
             select.title = academicHold.short_message || academicHold.message || 'Read-only mode';
             select.style.backgroundColor = '#f4f4f4';
             select.style.cursor = 'not-allowed';
+            syncGradeSelectVisualState(select, select.classList.contains('is-pending'));
         });
 
         document.querySelectorAll('input[name^="professor_instructor"]').forEach(input => {
@@ -2106,6 +2168,38 @@ function showSuccessModal(message) {
 // Function to fetch and update checklist data
 let isChecklistRefreshRunning = false;
 let checklistLiveRefreshTimer = null;
+let checklistInteractionDepth = 0;
+
+function setChecklistInteractionState(isInteracting) {
+    if (isInteracting) {
+        checklistInteractionDepth += 1;
+        return;
+    }
+
+    checklistInteractionDepth = Math.max(0, checklistInteractionDepth - 1);
+}
+
+function hasActiveChecklistInteraction() {
+    if (checklistInteractionDepth > 0) {
+        return true;
+    }
+
+    const activeElement = document.activeElement;
+    if (!activeElement) {
+        return false;
+    }
+
+    return !!activeElement.closest('.table-wrapper select, .table-wrapper input');
+}
+
+function syncGradeSelectVisualState(select, isPending) {
+    if (!select) {
+        return;
+    }
+
+    select.classList.toggle('is-pending', !!isPending);
+    select.classList.toggle('is-readonly', !!select.disabled);
+}
 
 function bindChecklistFieldListeners(root = document) {
     root.querySelectorAll('select[name^="final_grade"]').forEach(function(gradeSelect) {
@@ -2114,13 +2208,26 @@ function bindChecklistFieldListeners(root = document) {
         }
 
         gradeSelect.dataset.liveBound = '1';
+        syncGradeSelectVisualState(gradeSelect, gradeSelect.classList.contains('is-pending'));
         const rememberPreviousValue = function() {
             gradeSelect.dataset.previousValue = gradeSelect.value;
         };
 
+        gradeSelect.addEventListener('focus', function() {
+            setChecklistInteractionState(true);
+            rememberPreviousValue();
+        });
         gradeSelect.addEventListener('focus', rememberPreviousValue);
         gradeSelect.addEventListener('mousedown', rememberPreviousValue);
         gradeSelect.addEventListener('touchstart', rememberPreviousValue, { passive: true });
+        gradeSelect.addEventListener('pointerdown', function() {
+            setChecklistInteractionState(true);
+        });
+        gradeSelect.addEventListener('blur', function() {
+            window.setTimeout(function() {
+                setChecklistInteractionState(false);
+            }, 150);
+        });
         gradeSelect.addEventListener('change', async function() {
             let courseCode = this.name.match(/\[(.*?)\]/)[1];
             if (isPendingUnsettledGradeValue(this.value)) {
@@ -2132,17 +2239,39 @@ function bindChecklistFieldListeners(root = document) {
 
                 if (!confirmed) {
                     this.value = this.dataset.previousValue || '';
+                    syncGradeSelectVisualState(this, false);
                     return;
                 }
             }
 
+            syncGradeSelectVisualState(this, isPendingUnsettledGradeValue(this.value));
             autoSaveGrade(courseCode);
+        });
+    });
+
+    root.querySelectorAll('input[name^="professor_instructor"]').forEach(function(textInput) {
+        if (textInput.dataset.liveBound === '1') {
+            return;
+        }
+
+        textInput.dataset.liveBound = '1';
+        textInput.addEventListener('focus', function() {
+            setChecklistInteractionState(true);
+        });
+        textInput.addEventListener('blur', function() {
+            window.setTimeout(function() {
+                setChecklistInteractionState(false);
+            }, 150);
         });
     });
 }
 
 function fetchAndUpdateChecklist() {
     if (isChecklistRefreshRunning) {
+        return;
+    }
+
+    if (hasActiveChecklistInteraction() || isSaving) {
         return;
     }
 
@@ -2188,12 +2317,12 @@ function startChecklistLiveRefresh() {
     }
 
     checklistLiveRefreshTimer = window.setInterval(() => {
-        if (document.hidden || academicHold.active) {
+        if (document.hidden || academicHold.active || hasActiveChecklistInteraction() || isSaving) {
             return;
         }
 
         fetchAndUpdateChecklist();
-    }, 8000);
+    }, 15000);
 }
 
 function stopChecklistLiveRefresh() {
@@ -2233,6 +2362,7 @@ function stopChecklistLiveRefresh() {
             } else {
                 gradeSelect.value = course.final_grade || '';
                 gradeSelect.disabled = !!academicHold.active;
+                syncGradeSelectVisualState(gradeSelect, course.evaluator_remarks === 'Pending' || isPendingUnsettledGradeValue(course.final_grade));
             }
         }
         // Update 2nd attempt grade cell
@@ -2244,8 +2374,8 @@ function stopChecklistLiveRefresh() {
                 const sel2 = grade2Cell.querySelector('select');
                 if (sel2 && course.final_grade_2) sel2.value = course.final_grade_2;
                 if (sel2) sel2.disabled = !!academicHold.active;
-                if (sel2 && course.evaluator_remarks_2 === 'Pending') {
-                    sel2.style.fontWeight = 'bold'; sel2.style.color = '#000';
+                if (sel2) {
+                    syncGradeSelectVisualState(sel2, course.evaluator_remarks_2 === 'Pending' || isPendingUnsettledGradeValue(course.final_grade_2));
                 }
             }
         }
@@ -2258,8 +2388,8 @@ function stopChecklistLiveRefresh() {
                 const sel3 = grade3Cell.querySelector('select');
                 if (sel3 && course.final_grade_3) sel3.value = course.final_grade_3;
                 if (sel3) sel3.disabled = !!academicHold.active;
-                if (sel3 && course.evaluator_remarks_3 === 'Pending') {
-                    sel3.style.fontWeight = 'bold'; sel3.style.color = '#000';
+                if (sel3) {
+                    syncGradeSelectVisualState(sel3, course.evaluator_remarks_3 === 'Pending' || isPendingUnsettledGradeValue(course.final_grade_3));
                 }
             }
         }
@@ -2431,13 +2561,17 @@ document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         stopChecklistLiveRefresh();
     } else {
-        fetchAndUpdateChecklist();
+        if (!hasActiveChecklistInteraction() && !isSaving) {
+            fetchAndUpdateChecklist();
+        }
         startChecklistLiveRefresh();
     }
 });
 
 window.addEventListener('focus', function() {
-    fetchAndUpdateChecklist();
+    if (!hasActiveChecklistInteraction() && !isSaving) {
+        fetchAndUpdateChecklist();
+    }
 });
 
 </script>
