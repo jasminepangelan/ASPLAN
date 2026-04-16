@@ -2095,18 +2095,12 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
     </div>
 
     <script>
-        // AGGRESSIVE ANTI-CACHE: Prevent ANY cached data from being displayed
+        // Keep a cache-busting token in the URL without forcing a page reload.
         (function() {
-            // Add timestamp to force fresh data
-            const pageLoadTime = new Date().getTime();
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlTimestamp = urlParams.get('_t');
-            
-            // If no timestamp in URL or timestamp is old (>5 seconds), reload with new timestamp
-            if (!urlTimestamp || (pageLoadTime - parseInt(urlTimestamp)) > 5000) {
-                console.log('🔄 Forcing fresh page load with timestamp...');
-                window.location.href = window.location.pathname + '?_t=' + pageLoadTime;
-                return;
+            const url = new URL(window.location.href);
+            if (!url.searchParams.get('_t')) {
+                url.searchParams.set('_t', String(Date.now()));
+                window.history.replaceState({}, '', url.toString());
             }
         })();
         
@@ -2121,6 +2115,28 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             
             const displayedCompletion = document.getElementById('completion-rate')?.textContent.replace('%', '').trim();
             const displayedCourses = document.getElementById('courses-completed')?.textContent.split('/')[0].trim();
+
+            const normalizeNumber = function(value) {
+                const n = Number(value);
+                return Number.isFinite(n) ? n : null;
+            };
+
+            const phpCompletionNum = normalizeNumber(phpCompletion);
+            const displayedCompletionNum = normalizeNumber(displayedCompletion);
+            const phpCompletedNum = normalizeNumber(phpCompleted);
+            const displayedCoursesNum = normalizeNumber(displayedCourses);
+
+            const hasMismatch = (
+                phpCompletionNum !== null &&
+                displayedCompletionNum !== null &&
+                phpCompletedNum !== null &&
+                displayedCoursesNum !== null
+            )
+                ? (Math.abs(phpCompletionNum - displayedCompletionNum) > 0.01 || phpCompletedNum !== displayedCoursesNum)
+                : (
+                    String(phpCompletion).trim() !== String(displayedCompletion).trim() ||
+                    String(phpCompleted).trim() !== String(displayedCourses).trim()
+                );
             
             console.log('=== Study Plan Cache Verification ===');
             console.log('Student ID:', phpStudent);
@@ -2130,7 +2146,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             console.log('Display shows:', displayedCompletion + '% completion,', displayedCourses, 'courses');
             
             // Check for mismatch
-            if (phpCompletion !== displayedCompletion || phpCompleted !== displayedCourses) {
+            if (hasMismatch) {
                 console.error('❌ CACHE MISMATCH DETECTED!');
                 console.error('Expected from server:', phpCompletion + '%', phpCompleted, 'courses');
                 console.error('Displayed on page:', displayedCompletion + '%', displayedCourses, 'courses');
@@ -2147,11 +2163,6 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                 warningBanner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #f44336; color: white; padding: 15px; text-align: center; z-index: 10000; font-weight: bold; font-size: 16px;';
                 warningBanner.innerHTML = '⚠️ DISPLAYING CACHED DATA! Real completion: ' + phpCompletion + '% (' + phpCompleted + ' courses). Press Ctrl+Shift+R to see correct data!';
                 document.body.insertBefore(warningBanner, document.body.firstChild);
-                
-                // Try automatic reload with cache bypass
-                setTimeout(function() {
-                    window.location.href = window.location.pathname + '?nocache=' + phpGenId + '&t=' + new Date().getTime();
-                }, 3000);
             } else {
                 console.log('✅ Data is fresh and matches server values!');
                 // Hide warning if it exists
