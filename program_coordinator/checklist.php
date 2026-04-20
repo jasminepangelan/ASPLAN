@@ -355,6 +355,64 @@ if (empty($checklistRows)) {
         transition: background-color 0.3s ease;
     }
 
+    .table-wrapper td {
+        overflow: visible;
+        vertical-align: middle;
+    }
+
+    .checklist-grade-select {
+        width: 96px;
+        max-width: 100%;
+        min-height: 30px;
+        padding: 4px 28px 4px 8px;
+        border: 1px solid #b7c8b7;
+        border-radius: 8px;
+        background-color: #ffffff;
+        background-image: linear-gradient(180deg, #ffffff 0%, #f3f8f2 100%);
+        color: #173d19;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.2;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        box-shadow: 0 1px 2px rgba(23, 61, 25, 0.08);
+        cursor: pointer;
+        position: relative;
+        z-index: 1;
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 10px 6px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23206018' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"), linear-gradient(180deg, #ffffff 0%, #f3f8f2 100%);
+    }
+
+    .checklist-grade-select:hover {
+        border-color: #2f8a2b;
+        box-shadow: 0 4px 12px rgba(32, 96, 24, 0.16);
+        transform: translateY(-1px);
+    }
+
+    .checklist-grade-select:focus {
+        outline: none;
+        border-color: #206018;
+        box-shadow: 0 0 0 3px rgba(32, 96, 24, 0.18), 0 6px 16px rgba(32, 96, 24, 0.14);
+        z-index: 2;
+    }
+
+    .checklist-grade-select.is-pending {
+        border-color: #ff9800;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a4b00' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"), linear-gradient(180deg, #fff7e8 0%, #ffe8bf 100%);
+        color: #7a4600;
+        font-weight: 700;
+    }
+
+    .checklist-grade-select.is-readonly {
+        background-image: linear-gradient(180deg, #f8fbf7 0%, #edf3ec 100%);
+        color: #206018;
+        border-color: #206018;
+        box-shadow: none;
+    }
+
     select[name^="final_grade"]:disabled,
     select[name^="evaluator_remarks"]:disabled {
         background-color: #f5f5f5;
@@ -1165,7 +1223,8 @@ if (empty($checklistRows)) {
                     <td>{$row['semester']} {$row['year']}</td>
                     <td><input type='text' name='professor_instructor[{$row['course_code']}]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars($row['professor_instructor']) : "") . "' style='border: none; font-size: 8px; border-bottom: 1px solid #000; width: 100px;'></td>";
             // 1st attempt grade
-            echo "<td id='grade1_{$row['course_code']}'><select name='final_grade[{$row['course_code']}]' style='border:none;font-size:8px;width:80px;'>";
+            $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
+            echo "<td id='grade1_{$row['course_code']}'><select name='final_grade[{$row['course_code']}]' class='{$grade1Class}'>";
             foreach ($grade_opts as $g) {
                 echo "<option value='{$g}'" . ($g === $grade1_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
             }
@@ -1173,7 +1232,8 @@ if (empty($checklistRows)) {
             // 2nd attempt grade
             echo "<td id='grade2_{$row['course_code']}'>";
             if ($show_2nd) {
-                echo "<select name='final_grade_2[{$row['course_code']}]' style='border:none;font-size:8px;width:70px;'>";
+                $grade2Class = 'checklist-grade-select' . (($remark2_val === 'Pending' || in_array(strtoupper(trim((string)$grade2_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
+                echo "<select name='final_grade_2[{$row['course_code']}]' class='{$grade2Class}'>";
                 foreach ($grade_opts as $g) {
                     echo "<option value='{$g}'" . ($g === $grade2_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
                 }
@@ -1185,7 +1245,8 @@ if (empty($checklistRows)) {
             // 3rd attempt grade
             echo "<td id='grade3_{$row['course_code']}'>";
             if ($show_3rd) {
-                echo "<select name='final_grade_3[{$row['course_code']}]' style='border:none;font-size:8px;width:70px;'>";
+                $grade3Class = 'checklist-grade-select' . (($remark3_val === 'Pending' || in_array(strtoupper(trim((string)$grade3_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
+                echo "<select name='final_grade_3[{$row['course_code']}]' class='{$grade3Class}'>";
                 foreach ($grade_opts as $g) {
                     echo "<option value='{$g}'" . ($g === $grade3_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
                 }
@@ -1425,11 +1486,30 @@ document.addEventListener('change', function(e) {
 let isChecklistRefreshRunning = false;
 let checklistLiveRefreshTimer = null;
 
+function isPendingUnsettledGradeValue(value) {
+    const normalized = String(value || '').trim().toUpperCase();
+    return normalized === 'INC' || normalized === '4.00';
+}
+
+function syncGradeSelectVisualState(select, isPending) {
+    if (!select) {
+        return;
+    }
+
+    select.classList.toggle('is-pending', !!isPending);
+    select.classList.toggle('is-readonly', !!select.disabled);
+}
+
 function bindChecklistFieldListeners(root = document) {
     root.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
         if (gradeSelect.dataset.liveBound === '1') return;
         gradeSelect.dataset.liveBound = '1';
+        syncGradeSelectVisualState(
+            gradeSelect,
+            gradeSelect.classList.contains('is-pending') || isPendingUnsettledGradeValue(gradeSelect.value)
+        );
         gradeSelect.addEventListener('change', function() {
+            syncGradeSelectVisualState(this, isPendingUnsettledGradeValue(this.value));
             let courseCode = this.name.match(/\[(.*?)\]/)[1];
             autoSaveGrade(courseCode);
         });
@@ -1440,6 +1520,12 @@ function bindChecklistFieldListeners(root = document) {
         remarksSelect.dataset.liveBound = '1';
         remarksSelect.addEventListener('change', function() {
             let courseCode = this.name.match(/\[(.*?)\]/)[1];
+            const isPending = this.value === 'Pending';
+            document.querySelectorAll(
+                `[name="final_grade[${courseCode}]"], [name="final_grade_2[${courseCode}]"], [name="final_grade_3[${courseCode}]"]`
+            ).forEach(function(gradeSelect) {
+                syncGradeSelectVisualState(gradeSelect, isPending || isPendingUnsettledGradeValue(gradeSelect.value));
+            });
             autoSaveGrade(courseCode);
         });
     });
