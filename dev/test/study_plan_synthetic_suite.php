@@ -400,6 +400,77 @@ $scenarios['no_overloading_enforced'] = function () use ($seedStudent, $seedProg
     return assertScenario($ok, 'Overloading is prevented by max unit constraint.');
 };
 
+$scenarios['greedy_prioritizes_lower_year_retake'] = function () use ($seedStudent, $seedProgram) {
+    $generator = makeGenerator($seedStudent, $seedProgram);
+    $courses = [
+        'GR101' => makeCourse('GR101', '1st Yr', '1st Sem', ['needs_retake' => true, 'is_failed' => true]),
+        'GR201' => makeCourse('GR201', '2nd Yr', '1st Sem'),
+        'GR202' => makeCourse('GR202', '2nd Yr', '1st Sem'),
+    ];
+    seedGenerator($generator, array_values($courses), [
+        'failed_courses' => ['GR101'],
+    ]);
+
+    $prioritized = (array) invokeGeneratorMethod($generator, 'prioritizeCourses', [$courses, '2nd Yr', [], '1st Sem']);
+    $order = array_keys($prioritized);
+    $ok = (($order[0] ?? '') === 'GR101');
+
+    return assertScenario($ok, 'Greedy scoring keeps lower-year retake backlog ahead of regular progression.');
+};
+
+$scenarios['greedy_prefers_current_semester_under_flexible_fill'] = function () use ($seedStudent, $seedProgram) {
+    $generator = makeGenerator($seedStudent, $seedProgram);
+    $termMax = buildTermMaxUnits(21);
+    $termMax['2nd Yr|1st Sem'] = 3;
+
+    seedGenerator($generator, [
+        makeCourse('GF101', '1st Yr', '1st Sem', ['completed' => true]),
+        makeCourse('GF102', '1st Yr', '2nd Sem', ['completed' => true]),
+        makeCourse('GF201', '2nd Yr', '1st Sem', ['units' => 3]),
+        makeCourse('GF202', '2nd Yr', '2nd Sem', ['units' => 3]),
+    ], [
+        'completed_courses' => ['GF101', 'GF102'],
+        'semester_grade_history' => [
+            '1st Yr|1st Sem' => [
+                'year' => '1st Yr',
+                'semester' => '1st Sem',
+                'total_subjects' => 1,
+                'failed_subjects' => 0,
+                'courses' => [
+                    ['code' => 'GF101', 'grade' => '1.50', 'failed' => false],
+                ],
+            ],
+            '1st Yr|2nd Sem' => [
+                'year' => '1st Yr',
+                'semester' => '2nd Sem',
+                'total_subjects' => 1,
+                'failed_subjects' => 0,
+                'courses' => [
+                    ['code' => 'GF102', 'grade' => '1.75', 'failed' => false],
+                ],
+            ],
+        ],
+        'policy_gate_status' => [
+            'applies' => true,
+            'eligible' => true,
+            'reasons' => [],
+            'average_grade' => 1.60,
+            'failed_course_count' => 0,
+            'classification' => 'Transferee',
+            'has_active_shift_request' => false,
+            'legacy_transferee_inferred' => false,
+        ],
+        'term_max_units' => $termMax,
+    ]);
+
+    $plan = $generator->generateOptimizedPlan();
+    $first = findFirstTerm($plan);
+    $firstCodes = array_keys((array)($first['courses'] ?? []));
+    $ok = in_array('GF201', $firstCodes, true) && !in_array('GF202', $firstCodes, true);
+
+    return assertScenario($ok, 'Greedy scoring prefers current-semester courses before future-term fill when flexible irregular planning is active.');
+};
+
 $scenarios['retention_escalates_two_warnings'] = function () use ($seedStudent, $seedProgram) {
     $generator = makeGenerator($seedStudent, $seedProgram);
     seedGenerator($generator, [], [

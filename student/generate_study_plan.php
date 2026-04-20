@@ -1753,9 +1753,13 @@ class StudyPlanGenerator {
      * 6. Higher unit courses (maximize progress)
      * 7. Year level progression (lower years first)
      */
-    private function prioritizeCourses($courses, $target_year = null, $simulated_completed = []) {
+    private function prioritizeCourses($courses, $target_year = null, $simulated_completed = [], $target_semester = null) {
         $priority_scores = [];
         $target_year_order = $target_year !== null ? $this->yearLabelToOrder($target_year) : 0;
+        $target_term_order = ($target_year !== null && $target_semester !== null)
+            ? $this->getCurriculumTermOrder($target_year, $target_semester)
+            : 0;
+        $dependent_cache = [];
         
         foreach ($courses as $course_code => $course) {
             $score = 0;
@@ -1777,26 +1781,49 @@ class StudyPlanGenerator {
             }
 
             // Earlier curriculum terms should be cleared first to minimize cascading delay.
-            $score += max(0, 120 - ($term_order * 8));
+            $score += max(0, 135 - ($term_order * 8));
 
-            // When planning a later year, keep unresolved lower-year courses ahead of same-year progression.
-            if ($target_year_order > 0 && $course_year_order > 0 && $course_year_order < $target_year_order) {
+            // Prefer courses that belong to the current target term, but still
+            // keep unresolved earlier-term backlog ahead of future-term fill.
+            if ($target_term_order > 0 && $term_order < 999) {
+                if ($term_order === $target_term_order) {
+                    $score += 75;
+                } elseif ($term_order < $target_term_order) {
+                    $gap = $target_term_order - $term_order;
+                    $score += !empty($course['needs_retake'])
+                        ? max(28, 68 - ($gap * 6))
+                        : max(12, 38 - ($gap * 5));
+                } else {
+                    $gap = $term_order - $target_term_order;
+                    $score -= min(35, $gap * 10);
+                }
+            } elseif ($target_year_order > 0 && $course_year_order > 0 && $course_year_order < $target_year_order) {
                 $score += !empty($course['needs_retake']) ? 80 : 45;
             }
             
             // HIGH PRIORITY: Courses that have prerequisites (they're harder to schedule)
             $prereqs = $this->prerequisite_map[$course_code] ?? [];
             if (!empty($prereqs)) {
-                $score += 25; // Bonus for courses with prerequisites
+                $score += 18; // Bonus for prerequisite-gated courses
+                $score += min(18, count($prereqs) * 4);
             }
             
             // Factor: Count dependent chain (recursive - counts all downstream courses)
-            $dependent_count = $this->countDependentChain($course_code, $simulated_completed);
+            if (!isset($dependent_cache[$course_code])) {
+                $dependent_cache[$course_code] = $this->countDependentChain($course_code, $simulated_completed);
+            }
+            $dependent_count = $dependent_cache[$course_code];
             $score += $dependent_count * 15;
             
             // Factor: Bonus for matching current term's year
             if ($target_year !== null && $course['year'] === $target_year) {
-                $score += 50;
+                $score += 24;
+            }
+
+            // Flexible irregular fill can expose future-semester courses.
+            // Favor the semester currently being planned before reaching ahead.
+            if ($target_semester !== null && ($course['semester'] ?? '') === $target_semester) {
+                $score += 12;
             }
             
             // Factor: Unit weight (more units = higher priority)
@@ -1818,7 +1845,7 @@ class StudyPlanGenerator {
             
             // Valid cross-registration should help shorten completion time, especially for retakes.
             if (!empty($course['cross_registered'])) {
-                $score += !empty($course['needs_retake']) ? 35 : 10;
+                $score += !empty($course['needs_retake']) ? 28 : 6;
             }
             
             $priority_scores[$course_code] = [
@@ -2019,7 +2046,7 @@ class StudyPlanGenerator {
             $target_index = count($study_plan) - 1;
         }
 
-        $forced_courses = $this->prioritizeCourses($remaining, '4th Yr', $simulated_completed);
+        $forced_courses = $this->prioritizeCourses($remaining, '4th Yr', $simulated_completed, '2nd Sem');
         $added_count = 0;
 
         foreach ($forced_courses as $course_code => $course) {
@@ -2349,7 +2376,8 @@ class StudyPlanGenerator {
                 $max_units,
                 $term['year'],
                 $simulated_completed,
-                false
+                false,
+                $term['semester']
             );
             
             if (!empty($term_courses)) {
@@ -2477,7 +2505,8 @@ class StudyPlanGenerator {
                 $extra_max_units,
                 $year_label,
                 $simulated_completed,
-                false
+                false,
+                $semester
             );
             if (empty($term_courses)) {
                 $consecutive_empty++;
@@ -2585,10 +2614,10 @@ class StudyPlanGenerator {
      * Uses prioritizeCourses with target_year for better scheduling
      * Enforces NO OVERLOADING constraint (respects max_units strictly)
      */
-    private function buildTermPlanFromAvailable($available, $max_units, $target_year = null, $simulated_completed = [], $allowConcurrentPrereqChaining = false) {
+    private function buildTermPlanFromAvailable($available, $max_units, $target_year = null, $simulated_completed = [], $allowConcurrentPrereqChaining = false, $target_semester = null) {
         // Use the greedy prioritization algorithm
         if (!$allowConcurrentPrereqChaining) {
-            $prioritized = $this->prioritizeCourses($available, $target_year, $simulated_completed);
+            $prioritized = $this->prioritizeCourses($available, $target_year, $simulated_completed, $target_semester);
 
             $selected = [];
             $total_units = 0;
@@ -2613,7 +2642,7 @@ class StudyPlanGenerator {
         while ($progress && !empty($remaining)) {
             $progress = false;
             $effectiveCompleted = array_values(array_unique(array_merge($simulated_completed, array_keys($selected))));
-            $prioritized = $this->prioritizeCourses($remaining, $target_year, $effectiveCompleted);
+            $prioritized = $this->prioritizeCourses($remaining, $target_year, $effectiveCompleted, $target_semester);
 
             foreach ($prioritized as $code => $course) {
                 $course_units = $this->getCountedCourseUnits($course);
