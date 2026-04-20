@@ -465,6 +465,7 @@ $scenarios['determine_current_term_advances_past_retake_only_term'] = function (
     seedGenerator($generator, [
         makeCourse('DT101', '1st Yr', '1st Sem', ['is_failed' => true, 'needs_retake' => true]),
         makeCourse('DT201', '1st Yr', '2nd Sem', ['completed' => true]),
+        makeCourse('DT301', '2nd Yr', '1st Sem'),
     ], [
         'failed_courses' => ['DT101'],
         'completed_courses' => ['DT201'],
@@ -482,9 +483,83 @@ $scenarios['determine_current_term_advances_past_retake_only_term'] = function (
     ]);
 
     $term = (array) invokeGeneratorMethod($generator, 'determineCurrentTerm');
-    $ok = (($term['year'] ?? '') === '1st Yr') && (($term['semester'] ?? '') === 'Mid Year');
+    $ok = (($term['year'] ?? '') === '2nd Yr') && (($term['semester'] ?? '') === '1st Sem');
 
     return assertScenario($ok, 'Planner anchor advances beyond a retake-only incomplete term when history already progressed.');
+};
+
+$scenarios['ordered_terms_follow_actual_curriculum_midyear_pattern'] = function () use ($seedStudent, $seedProgram) {
+    $generator = makeGenerator($seedStudent, $seedProgram);
+    seedGenerator($generator, [
+        makeCourse('CS101', '1st Yr', '1st Sem'),
+        makeCourse('CS102', '1st Yr', '2nd Sem'),
+        makeCourse('CS201', '2nd Yr', '1st Sem'),
+        makeCourse('CS202', '2nd Yr', '2nd Sem'),
+        makeCourse('CS301', '3rd Yr', '1st Sem'),
+        makeCourse('CS302', '3rd Yr', '2nd Sem'),
+        makeCourse('CS399', '3rd Yr', 'Mid Year'),
+        makeCourse('CS401', '4th Yr', '1st Sem'),
+        makeCourse('CS402', '4th Yr', '2nd Sem'),
+    ]);
+
+    $terms = (array) invokeGeneratorMethod($generator, 'getOrderedCurriculumTerms');
+    $labels = array_map(function ($term) {
+        return ($term['year'] ?? '') . '|' . ($term['semester'] ?? '');
+    }, $terms);
+
+    $ok = !in_array('1st Yr|Mid Year', $labels, true)
+        && !in_array('2nd Yr|Mid Year', $labels, true)
+        && in_array('3rd Yr|Mid Year', $labels, true)
+        && !in_array('4th Yr|Mid Year', $labels, true);
+
+    return assertScenario($ok, 'Curriculum term order only includes midyear where the actual curriculum defines it.');
+};
+
+$scenarios['extra_term_midyear_uses_curriculum_midyear_cap'] = function () use ($seedStudent, $seedProgram) {
+    $generator = makeGenerator($seedStudent, $seedProgram);
+    $termMax = buildTermMaxUnits(21);
+    $termMax['3rd Yr|Mid Year'] = 3;
+
+    seedGenerator($generator, [
+        makeCourse('MY101', '1st Yr', '1st Sem', ['completed' => true]),
+        makeCourse('MY102', '1st Yr', '2nd Sem', ['completed' => true]),
+        makeCourse('MY201', '2nd Yr', '1st Sem', ['completed' => true]),
+        makeCourse('MY202', '2nd Yr', '2nd Sem', ['completed' => true]),
+        makeCourse('MY301', '3rd Yr', '1st Sem', ['completed' => true]),
+        makeCourse('MY302', '3rd Yr', '2nd Sem', ['completed' => true]),
+        makeCourse('MY399', '3rd Yr', 'Mid Year', ['completed' => true]),
+        makeCourse('MY401', '4th Yr', '1st Sem', ['completed' => true]),
+        makeCourse('MY402', '4th Yr', '2nd Sem', ['completed' => true]),
+        makeCourse('MY501', '4th Yr', 'Mid Year', ['units' => 3, 'is_failed' => true, 'needs_retake' => true]),
+        makeCourse('MY502', '4th Yr', 'Mid Year', ['units' => 3, 'is_failed' => true, 'needs_retake' => true]),
+    ], [
+        'completed_courses' => ['MY101', 'MY102', 'MY201', 'MY202', 'MY301', 'MY302', 'MY399', 'MY401', 'MY402'],
+        'failed_courses' => ['MY501', 'MY502'],
+        'term_max_units' => $termMax,
+        'semester_grade_history' => [
+            '4th Yr|2nd Sem' => [
+                'year' => '4th Yr',
+                'semester' => '2nd Sem',
+                'total_subjects' => 1,
+                'failed_subjects' => 0,
+                'courses' => [
+                    ['code' => 'MY402', 'grade' => '1.50', 'failed' => false],
+                ],
+            ],
+        ],
+    ]);
+
+    $plan = $generator->generateOptimizedPlan();
+    $midYearTerms = array_values(array_filter($plan, function ($term) {
+        return ($term['semester'] ?? '') === 'Mid Year';
+    }));
+    $firstMidYear = $midYearTerms[0] ?? null;
+
+    $ok = $firstMidYear !== null
+        && (int)($firstMidYear['max_units'] ?? 0) === 3
+        && (float)($firstMidYear['total_units'] ?? 0.0) <= 3.0;
+
+    return assertScenario($ok, 'Extra midyear terms inherit the actual curriculum midyear unit cap.');
 };
 
 $scenarios['prerequisite_parser_expands_compound_tokens'] = function () use ($seedStudent, $seedProgram) {

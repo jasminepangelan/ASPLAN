@@ -1907,6 +1907,33 @@ class StudyPlanGenerator {
         
         return min($curriculum_max, $retention_limit);
     }
+
+    /**
+     * For extra terms beyond the defined curriculum years, inherit the unit cap
+     * from the latest curriculum term that uses the same semester label.
+     * This keeps Mid Year terms constrained to the actual midyear load.
+     */
+    private function getReferenceTermForSemester($semester) {
+        $terms = array_reverse($this->getOrderedCurriculumTerms());
+        foreach ($terms as $term) {
+            if (($term['semester'] ?? '') !== $semester) {
+                continue;
+            }
+
+            $key = ($term['year'] ?? '') . '|' . ($term['semester'] ?? '');
+            if (!isset($this->term_max_units[$key])) {
+                continue;
+            }
+
+            return [
+                'year' => $term['year'],
+                'semester' => $term['semester'],
+                'max_units' => $this->term_max_units[$key],
+            ];
+        }
+
+        return null;
+    }
     
     /**
      * Check if a term should be skipped due to Disqualification
@@ -2100,20 +2127,7 @@ class StudyPlanGenerator {
      * exactly, preserving the original year and semester of each course.
      */
     private function buildExactCurriculumPlan() {
-        $terms = [
-            ['year' => '1st Yr', 'semester' => '1st Sem'],
-            ['year' => '1st Yr', 'semester' => '2nd Sem'],
-            ['year' => '1st Yr', 'semester' => 'Mid Year'],
-            ['year' => '2nd Yr', 'semester' => '1st Sem'],
-            ['year' => '2nd Yr', 'semester' => '2nd Sem'],
-            ['year' => '2nd Yr', 'semester' => 'Mid Year'],
-            ['year' => '3rd Yr', 'semester' => '1st Sem'],
-            ['year' => '3rd Yr', 'semester' => '2nd Sem'],
-            ['year' => '3rd Yr', 'semester' => 'Mid Year'],
-            ['year' => '4th Yr', 'semester' => '1st Sem'],
-            ['year' => '4th Yr', 'semester' => '2nd Sem'],
-            ['year' => '4th Yr', 'semester' => 'Mid Year'],
-        ];
+        $terms = $this->getOrderedCurriculumTerms();
 
         $study_plan = [];
         foreach ($terms as $term) {
@@ -2175,21 +2189,11 @@ class StudyPlanGenerator {
         
         // Determine starting year/semester based on completed courses
         $current_term = $this->determineCurrentTerm();
-        
-        $terms = [
-            ['year' => '1st Yr', 'semester' => '1st Sem'],
-            ['year' => '1st Yr', 'semester' => '2nd Sem'],
-            ['year' => '1st Yr', 'semester' => 'Mid Year'],
-            ['year' => '2nd Yr', 'semester' => '1st Sem'],
-            ['year' => '2nd Yr', 'semester' => '2nd Sem'],
-            ['year' => '2nd Yr', 'semester' => 'Mid Year'],
-            ['year' => '3rd Yr', 'semester' => '1st Sem'],
-            ['year' => '3rd Yr', 'semester' => '2nd Sem'],
-            ['year' => '3rd Yr', 'semester' => 'Mid Year'],
-            ['year' => '4th Yr', 'semester' => '1st Sem'],
-            ['year' => '4th Yr', 'semester' => '2nd Sem'],
-            ['year' => '4th Yr', 'semester' => 'Mid Year'],
-        ];
+
+        $terms = $this->getOrderedCurriculumTerms();
+        if (empty($terms)) {
+            return [];
+        }
         
         // Start from current term
         $start_index = 0;
@@ -2406,10 +2410,16 @@ class StudyPlanGenerator {
         
         $extra_term_count = 0;
         $consecutive_empty = 0;
-        $sem_cycle = ['1st Sem', '2nd Sem', 'Mid Year'];
-        $extra_max_units = !empty($this->term_max_units) ? max($this->term_max_units) : 21;
-        while (!empty($remaining) && $extra_term_count < 9 && $consecutive_empty < 3) {
-            $semester = $sem_cycle[$extra_term_count % 3];
+        $sem_cycle = $this->getExtraTermSemesterCycle();
+        $sem_cycle_count = count($sem_cycle);
+        while (!empty($remaining) && $extra_term_count < 9 && $consecutive_empty < 3 && $sem_cycle_count > 0) {
+            $semester = $sem_cycle[$extra_term_count % $sem_cycle_count];
+            $extra_year_num = 5 + intval($extra_term_count / $sem_cycle_count);
+            $year_label = $extra_year_num . 'th Yr';
+            $reference_term = $this->getReferenceTermForSemester($semester);
+            $extra_max_units = $reference_term !== null
+                ? $this->getMaxUnitsForTerm('None', $reference_term['year'], $reference_term['semester'])
+                : (!empty($this->term_max_units) ? max($this->term_max_units) : 21);
             
             $available = $this->applyConstraintsForSimulation($semester, $simulated_completed, $simulated_all_courses);
             
@@ -2448,7 +2458,7 @@ class StudyPlanGenerator {
             }
 
             foreach (array_keys($available) as $code) {
-                if (!$this->standingConstraintSatisfied($code, $year_label ?? '4th Yr', $semester)) {
+                if (!$this->standingConstraintSatisfied($code, $year_label, $semester)) {
                     unset($available[$code]);
                 }
                 if (isset($available[$code]) && !$this->prerequisitesSatisfiedForCompletedSet($code, $simulated_completed)) {
@@ -2465,7 +2475,7 @@ class StudyPlanGenerator {
             $term_courses = $this->buildTermPlanFromAvailable(
                 $available,
                 $extra_max_units,
-                '4th Yr',
+                $year_label,
                 $simulated_completed,
                 false
             );
@@ -2483,10 +2493,6 @@ class StudyPlanGenerator {
                 if (!empty($tc['needs_retake'])) $retake_count++;
                 if (!empty($tc['cross_registered'])) $cross_reg_count++;
             }
-            
-            // Proper year label: 5th Yr for first trio, 6th Yr for second trio, etc.
-            $extra_year_num = 5 + intval($extra_term_count / 3);
-            $year_label = $extra_year_num . 'th Yr';
             
             $study_plan[] = [
                 'year' => $year_label,
@@ -2667,20 +2673,113 @@ class StudyPlanGenerator {
     }
 
     private function getOrderedCurriculumTerms() {
-        return [
-            ['year' => '1st Yr', 'semester' => '1st Sem'],
-            ['year' => '1st Yr', 'semester' => '2nd Sem'],
-            ['year' => '1st Yr', 'semester' => 'Mid Year'],
-            ['year' => '2nd Yr', 'semester' => '1st Sem'],
-            ['year' => '2nd Yr', 'semester' => '2nd Sem'],
-            ['year' => '2nd Yr', 'semester' => 'Mid Year'],
-            ['year' => '3rd Yr', 'semester' => '1st Sem'],
-            ['year' => '3rd Yr', 'semester' => '2nd Sem'],
-            ['year' => '3rd Yr', 'semester' => 'Mid Year'],
-            ['year' => '4th Yr', 'semester' => '1st Sem'],
-            ['year' => '4th Yr', 'semester' => '2nd Sem'],
-            ['year' => '4th Yr', 'semester' => 'Mid Year'],
-        ];
+        $terms = [];
+        $seen = [];
+
+        foreach ($this->all_courses as $course) {
+            $year = trim((string)($course['year'] ?? ''));
+            $semester = trim((string)($course['semester'] ?? ''));
+            if ($year === '' || $semester === '') {
+                continue;
+            }
+
+            $key = $year . '|' . $semester;
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $terms[] = ['year' => $year, 'semester' => $semester];
+        }
+
+        if (empty($terms)) {
+            foreach (array_keys($this->term_max_units) as $termKey) {
+                $parts = explode('|', (string)$termKey, 2);
+                if (count($parts) !== 2) {
+                    continue;
+                }
+
+                $year = trim((string)$parts[0]);
+                $semester = trim((string)$parts[1]);
+                if ($year === '' || $semester === '') {
+                    continue;
+                }
+
+                $key = $year . '|' . $semester;
+                if (isset($seen[$key])) {
+                    continue;
+                }
+
+                $seen[$key] = true;
+                $terms[] = ['year' => $year, 'semester' => $semester];
+            }
+        }
+
+        if (empty($terms)) {
+            return [
+                ['year' => '1st Yr', 'semester' => '1st Sem'],
+                ['year' => '1st Yr', 'semester' => '2nd Sem'],
+                ['year' => '1st Yr', 'semester' => 'Mid Year'],
+                ['year' => '2nd Yr', 'semester' => '1st Sem'],
+                ['year' => '2nd Yr', 'semester' => '2nd Sem'],
+                ['year' => '2nd Yr', 'semester' => 'Mid Year'],
+                ['year' => '3rd Yr', 'semester' => '1st Sem'],
+                ['year' => '3rd Yr', 'semester' => '2nd Sem'],
+                ['year' => '3rd Yr', 'semester' => 'Mid Year'],
+                ['year' => '4th Yr', 'semester' => '1st Sem'],
+                ['year' => '4th Yr', 'semester' => '2nd Sem'],
+                ['year' => '4th Yr', 'semester' => 'Mid Year'],
+            ];
+        }
+
+        usort($terms, function ($a, $b) {
+            $yearCompare = $this->yearLabelToOrder($a['year']) <=> $this->yearLabelToOrder($b['year']);
+            if ($yearCompare !== 0) {
+                return $yearCompare;
+            }
+
+            return $this->semesterLabelToOrder($a['semester']) <=> $this->semesterLabelToOrder($b['semester']);
+        });
+
+        return $terms;
+    }
+
+    private function getExtraTermSemesterCycle() {
+        $terms = $this->getOrderedCurriculumTerms();
+        if (empty($terms)) {
+            return ['1st Sem', '2nd Sem', 'Mid Year'];
+        }
+
+        $lastYear = (string)($terms[count($terms) - 1]['year'] ?? '');
+        $cycle = [];
+
+        foreach ($terms as $term) {
+            if ((string)($term['year'] ?? '') !== $lastYear) {
+                continue;
+            }
+
+            $semester = trim((string)($term['semester'] ?? ''));
+            if ($semester === '' || in_array($semester, $cycle, true)) {
+                continue;
+            }
+
+            $cycle[] = $semester;
+        }
+
+        if (!empty($cycle)) {
+            return $cycle;
+        }
+
+        foreach ($terms as $term) {
+            $semester = trim((string)($term['semester'] ?? ''));
+            if ($semester === '' || in_array($semester, $cycle, true)) {
+                continue;
+            }
+
+            $cycle[] = $semester;
+        }
+
+        return !empty($cycle) ? $cycle : ['1st Sem', '2nd Sem', 'Mid Year'];
     }
 
     private function termHasActiveNonRetakeIncompleteCourses($year, $semester) {
@@ -2729,7 +2828,7 @@ class StudyPlanGenerator {
         }
 
         if ($firstIncompleteIndex < 0) {
-            return ['year' => '4th Yr', 'semester' => 'Mid Year'];
+            return $terms[count($terms) - 1];
         }
 
         $latestHistoryIndex = -1;
