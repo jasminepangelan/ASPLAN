@@ -338,13 +338,13 @@ if (empty($all_courses)) {
         top: -10px;
         border-collapse: collapse;
         margin-bottom: 20px;
-        font-size: 12px;
+        font-size: 13px;
     }
     th, td {
         border: 1px solid #000;
-        padding: 5px;
+        padding: 6px;
         text-align: center;
-        font-size: 9px;
+        font-size: 10px;
     }
     th {
         background-color: #f2f2f2;
@@ -372,14 +372,14 @@ if (empty($all_courses)) {
     .checklist-grade-select {
         width: 96px;
         max-width: 100%;
-        min-height: 30px;
-        padding: 4px 28px 4px 8px;
+        min-height: 32px;
+        padding: 5px 28px 5px 8px;
         border: 1px solid #b7c8b7;
         border-radius: 8px;
         background-color: #ffffff;
         background-image: linear-gradient(180deg, #ffffff 0%, #f3f8f2 100%);
         color: #173d19;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
         line-height: 1.2;
         appearance: none;
@@ -1175,9 +1175,9 @@ if (empty($all_courses)) {
                         <th>Lab</th>
                         <th>Lec</th>
                         <th>Lab</th>
-                        <th style="font-size:9px;">1st</th>
-                        <th style="font-size:9px;">2nd<br>Attempt</th>
-                        <th style="font-size:9px;">3rd<br>Attempt</th>
+                        <th style="font-size:10px;">1st</th>
+                        <th style="font-size:10px;">2nd<br>Attempt</th>
+                        <th style="font-size:10px;">3rd<br>Attempt</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1196,7 +1196,7 @@ if (empty($all_courses)) {
                         <td style='text-align:center; vertical-align:middle; padding:0;'>
                             <div class='semester-selectall-row' style='display:none;'>
                                 <input type='checkbox' class='semester-approve-checkbox' data-semester='" . htmlspecialchars($semesterKey) . "' style='width:16px; height:16px; vertical-align:middle;' title='Select all'>
-                                <label style='font-size:11px; margin-left:2px;'>Select all</label>
+                                <label style='font-size:12px; margin-left:2px;'>Select all</label>
                             </div>
                         </td>
                     </tr>";
@@ -1227,7 +1227,7 @@ if (empty($all_courses)) {
                     <td>" . htmlspecialchars((string)($row['contact_hrs_lab'] ?? '')) . "</td>
                     <td>" . htmlspecialchars((string)($row['pre_requisite'] ?? '')) . "</td>
                     <td>" . htmlspecialchars((string)($row['semester'] ?? '')) . " " . htmlspecialchars((string)($row['year'] ?? '')) . "</td>
-                    <td><input type='text' name='professor_instructor[" . htmlspecialchars($courseCode) . "]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars((string)$row['professor_instructor']) : "") . "' style='border: none; font-size: 10px; border-bottom: 1px solid #000; width: 108px;'></td>";
+                    <td><input type='text' name='professor_instructor[" . htmlspecialchars($courseCode) . "]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars((string)$row['professor_instructor']) : "") . "' style='border: none; font-size: 11px; border-bottom: 1px solid #000; width: 108px;'></td>";
             $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
             echo "<td id='grade1_" . htmlspecialchars($courseCode) . "'><select name='final_grade[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade1Class) . "'>";
             foreach ($grade_opts as $g) {
@@ -1258,7 +1258,7 @@ if (empty($all_courses)) {
                 echo "<span style='color:#ccc;font-size:11px;'>&#8212;</span>";
             }
             echo "</td>";
-            echo "<td><select name='evaluator_remarks[" . htmlspecialchars($courseCode) . "]' style='border:none;font-size:9px;width:108px;'>";
+            echo "<td><select name='evaluator_remarks[" . htmlspecialchars($courseCode) . "]' style='border:none;font-size:10px;width:108px;'>";
             foreach ($remark_opts as $ro) {
                 echo "<option value='" . htmlspecialchars((string)$ro) . "'" . ($ro === $effectiveRemark ? ' selected' : '') . ">" . htmlspecialchars((string)$ro) . "</option>";
             }

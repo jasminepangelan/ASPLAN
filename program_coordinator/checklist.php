@@ -329,13 +329,13 @@ if (empty($checklistRows)) {
         top: -10px;
         border-collapse: collapse;
         margin-bottom: 20px;
-        font-size: 11px;
+        font-size: 13px;
     }
     th, td {
         border: 1px solid #000;
-        padding: 4.50px;
+        padding: 6px;
         text-align: center;
-        font-size: 8px;
+        font-size: 10px;
     }
     th {
         background-color: #f2f2f2;
@@ -363,14 +363,14 @@ if (empty($checklistRows)) {
     .checklist-grade-select {
         width: 96px;
         max-width: 100%;
-        min-height: 30px;
-        padding: 4px 28px 4px 8px;
+        min-height: 32px;
+        padding: 5px 28px 5px 8px;
         border: 1px solid #b7c8b7;
         border-radius: 8px;
         background-color: #ffffff;
         background-image: linear-gradient(180deg, #ffffff 0%, #f3f8f2 100%);
         color: #173d19;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
         line-height: 1.2;
         appearance: none;
@@ -1165,9 +1165,9 @@ if (empty($checklistRows)) {
                         <th>Lab</th>
                         <th>Lec</th>
                         <th>Lab</th>
-                        <th style="font-size:8px;">1st</th>
-                        <th style="font-size:8px;">2nd<br>Attempt</th>
-                        <th style="font-size:8px;">3rd<br>Attempt</th>
+                        <th style="font-size:10px;">1st</th>
+                        <th style="font-size:10px;">2nd<br>Attempt</th>
+                        <th style="font-size:10px;">3rd<br>Attempt</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1190,7 +1190,7 @@ if (empty($checklistRows)) {
                         <td style='text-align:center; vertical-align:middle; padding:0;'>
                             <div class='semester-selectall-row' style='display:none;'>
                                 <input type='checkbox' class='semester-approve-checkbox' data-semester='{$semesterKey}' style='width:16px; height:16px; vertical-align:middle;' title='Select all'>
-                                <label style='font-size:10px; margin-left:2px;'>Select all</label>
+                                <label style='font-size:12px; margin-left:2px;'>Select all</label>
                             </div>
                         </td>
                     </tr>";
@@ -1221,7 +1221,7 @@ if (empty($checklistRows)) {
                     <td>{$row['contact_hrs_lab']}</td>
                     <td>{$row['pre_requisite']}</td>
                     <td>{$row['semester']} {$row['year']}</td>
-                    <td><input type='text' name='professor_instructor[{$row['course_code']}]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars($row['professor_instructor']) : "") . "' style='border: none; font-size: 8px; border-bottom: 1px solid #000; width: 100px;'></td>";
+                    <td><input type='text' name='professor_instructor[{$row['course_code']}]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars($row['professor_instructor']) : "") . "' style='border: none; font-size: 11px; border-bottom: 1px solid #000; width: 100px;'></td>";
             // 1st attempt grade
             $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
             echo "<td id='grade1_{$row['course_code']}'><select name='final_grade[{$row['course_code']}]' class='{$grade1Class}'>";
@@ -1256,7 +1256,7 @@ if (empty($checklistRows)) {
             }
             echo "</td>";
             // Evaluator remarks
-            echo "<td><select name='evaluator_remarks[{$row['course_code']}]' style='border:none;font-size:8px;width:100px;'>";
+            echo "<td><select name='evaluator_remarks[{$row['course_code']}]' style='border:none;font-size:10px;width:100px;'>";
             foreach ($remark_opts as $ro) {
                 echo "<option value='{$ro}'" . ($ro === $effectiveRemark ? ' selected' : '') . ">{$ro}</option>";
             }
