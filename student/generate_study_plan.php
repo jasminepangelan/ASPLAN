@@ -1909,10 +1909,24 @@ class StudyPlanGenerator {
     private function getMaxUnitsForTerm($retention_status, $year = null, $semester = null) {
         // Get curriculum-based max units for this term
         $curriculum_max = 21; // fallback for extra terms beyond curriculum
+        $reference_term = null;
         if ($year !== null && $semester !== null) {
             $key = $year . '|' . $semester;
+            $reference_term = $this->getReferenceTermForSemester($semester);
             if (isset($this->term_max_units[$key])) {
                 $curriculum_max = $this->term_max_units[$key];
+            } else {
+                if ($reference_term !== null && isset($reference_term['max_units'])) {
+                    $curriculum_max = (int)$reference_term['max_units'];
+                }
+            }
+
+            if (
+                $reference_term !== null
+                && isset($reference_term['max_units'])
+                && $this->termHasOnlyRetakeCourses($year, $semester)
+            ) {
+                $curriculum_max = min($curriculum_max, (int)$reference_term['max_units']);
             }
         }
         
@@ -1935,6 +1949,23 @@ class StudyPlanGenerator {
         return min($curriculum_max, $retention_limit);
     }
 
+    private function termHasOnlyRetakeCourses($year, $semester) {
+        $found = false;
+
+        foreach ($this->all_courses as $course) {
+            if (($course['year'] ?? '') !== $year || ($course['semester'] ?? '') !== $semester) {
+                continue;
+            }
+
+            $found = true;
+            if (empty($course['needs_retake'])) {
+                return false;
+            }
+        }
+
+        return $found;
+    }
+
     /**
      * For extra terms beyond the defined curriculum years, inherit the unit cap
      * from the latest curriculum term that uses the same semester label.
@@ -1944,6 +1975,10 @@ class StudyPlanGenerator {
         $terms = array_reverse($this->getOrderedCurriculumTerms());
         foreach ($terms as $term) {
             if (($term['semester'] ?? '') !== $semester) {
+                continue;
+            }
+
+            if ($this->termHasOnlyRetakeCourses((string)($term['year'] ?? ''), (string)($term['semester'] ?? ''))) {
                 continue;
             }
 
@@ -2091,18 +2126,6 @@ class StudyPlanGenerator {
      * optimization engine.
      */
     private function shouldUseExactCurriculumPlan() {
-        if (!$this->hasValidatedAcademicHistory()) {
-            return true;
-        }
-
-        $active_failed = array_values(array_filter(array_diff($this->failed_courses, $this->completed_courses)));
-        $active_inc = array_values(array_filter(array_diff($this->inc_courses, $this->completed_courses)));
-        $active_dropped = array_values(array_filter(array_diff($this->dropped_courses, $this->completed_courses)));
-
-        if (!empty($active_failed) || !empty($active_inc) || !empty($active_dropped)) {
-            return false;
-        }
-
         if (!empty($this->policy_gate_status['applies'])) {
             return false;
         }
@@ -2112,6 +2135,18 @@ class StudyPlanGenerator {
         }
 
         if ($this->retention_status !== 'None' && $this->retention_status !== '') {
+            return false;
+        }
+
+        if (!$this->hasValidatedAcademicHistory()) {
+            return true;
+        }
+
+        $active_failed = array_values(array_filter(array_diff($this->failed_courses, $this->completed_courses)));
+        $active_inc = array_values(array_filter(array_diff($this->inc_courses, $this->completed_courses)));
+        $active_dropped = array_values(array_filter(array_diff($this->dropped_courses, $this->completed_courses)));
+
+        if (!empty($active_failed) || !empty($active_inc) || !empty($active_dropped)) {
             return false;
         }
 
@@ -2146,7 +2181,7 @@ class StudyPlanGenerator {
      * courses, not only courses from the currently labeled semester bucket.
      */
     private function shouldUseFlexibleIrregularFill() {
-        return $this->hasValidatedAcademicHistory() && !empty($this->policy_gate_status['applies']);
+        return !empty($this->policy_gate_status['applies']) && !empty($this->policy_gate_status['eligible']);
     }
 
     /**
@@ -2223,17 +2258,29 @@ class StudyPlanGenerator {
         }
         
         // Start from current term
-        $start_index = 0;
+        $start_index = count($terms);
+        $found_start_term = false;
         foreach ($terms as $index => $term) {
             if ($term['year'] === $current_term['year'] && $term['semester'] === $current_term['semester']) {
                 $start_index = $index;
+                $found_start_term = true;
                 break;
             }
         }
+        if (!$found_start_term && empty($study_plan)) {
+            $start_index = count($terms);
+        }
         
+        $initial_year = $terms[$start_index]['year'] ?? ($current_term['year'] ?? '1st Yr');
+        $initial_semester = $terms[$start_index]['semester'] ?? ($current_term['semester'] ?? '1st Sem');
+
         // Retention policy: Determine initial retention status
-        $initial_max = $this->getMaxUnitsForTerm($this->retention_status, $terms[$start_index]['year'] ?? '1st Yr', $terms[$start_index]['semester'] ?? '1st Sem');
-        $retention_limited = ($this->retention_status !== 'None' && $this->retention_status !== '' && $initial_max < ($this->term_max_units[($terms[$start_index]['year'] ?? '1st Yr') . '|' . ($terms[$start_index]['semester'] ?? '1st Sem')] ?? 21));
+        $initial_max = $this->getMaxUnitsForTerm($this->retention_status, $initial_year, $initial_semester);
+        $retention_limited = (
+            $this->retention_status !== 'None'
+            && $this->retention_status !== ''
+            && $initial_max < ($this->term_max_units[$initial_year . '|' . $initial_semester] ?? 21)
+        );
         $retention_terms_remaining = $retention_limited ? 2 : 0;
         $skip_tracker = [];
         $is_first_term = true;
@@ -2879,11 +2926,48 @@ class StudyPlanGenerator {
         }
 
         if ($latestHistoryIndex >= 0 && $firstIncompleteIndex <= $latestHistoryIndex) {
-            $nextIndex = min($latestHistoryIndex + 1, count($terms) - 1);
-            return $terms[$nextIndex];
+            if ($latestHistoryIndex < count($terms) - 1) {
+                return $terms[$latestHistoryIndex + 1];
+            }
+
+            return $this->buildProjectedNextTermAfter($terms[$latestHistoryIndex] ?? $firstIncompleteTerm);
         }
 
         return $firstIncompleteTerm;
+    }
+
+    private function buildProjectedNextTermAfter(array $lastTerm) {
+        $cycle = $this->getExtraTermSemesterCycle();
+        if (empty($cycle)) {
+            $cycle = ['1st Sem', '2nd Sem', 'Mid Year'];
+        }
+
+        $lastSemester = trim((string)($lastTerm['semester'] ?? ''));
+        $lastYearOrder = $this->yearLabelToOrder((string)($lastTerm['year'] ?? ''));
+        if ($lastYearOrder <= 0) {
+            $lastYearOrder = 4;
+        }
+
+        $semesterIndex = array_search($lastSemester, $cycle, true);
+        if ($semesterIndex === false) {
+            return [
+                'year' => ($lastYearOrder + 1) . 'th Yr',
+                'semester' => $cycle[0],
+            ];
+        }
+
+        $nextSemesterIndex = $semesterIndex + 1;
+        if ($nextSemesterIndex < count($cycle)) {
+            return [
+                'year' => $lastTerm['year'] ?? ($lastYearOrder . 'th Yr'),
+                'semester' => $cycle[$nextSemesterIndex],
+            ];
+        }
+
+        return [
+            'year' => ($lastYearOrder + 1) . 'th Yr',
+            'semester' => $cycle[0],
+        ];
     }
     
     /**
