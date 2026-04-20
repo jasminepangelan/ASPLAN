@@ -125,6 +125,30 @@ function deleteScopedBatchAssignments(PDO $conn, $batch, array $adviserIds) {
     $stmt->execute($params);
 }
 
+function loadProgramBatches(PDO $conn, $selectedProgram) {
+    $selectedProgram = trim((string)$selectedProgram);
+    if ($selectedProgram === '') {
+        return [];
+    }
+
+    $stmt = $conn->prepare("SELECT DISTINCT LEFT(student_number, 4) AS batch, TRIM(program) AS program FROM student_info WHERE student_number IS NOT NULL AND student_number != ''");
+    $stmt->execute();
+
+    $batches = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $batch = trim((string)($row['batch'] ?? ''));
+        if ($batch === '') {
+            continue;
+        }
+
+        if (normalizeProgramKey((string)($row['program'] ?? '')) === $selectedProgram) {
+            $batches[$batch] = true;
+        }
+    }
+
+    return array_keys($batches);
+}
+
 function resolveRedirectTarget($value) {
     $allowed = [
         'admin/adviser_management.php',
@@ -228,6 +252,20 @@ try {
             exit();
         }
         $programQuery = '&program=' . urlencode($selectedProgram);
+
+        $allowedBatches = array_flip(loadProgramBatches($conn, $selectedProgram));
+        $assignments = array_filter(
+            $assignments,
+            function ($batch) use ($allowedBatches) {
+                return isset($allowedBatches[trim((string)$batch)]);
+            },
+            ARRAY_FILTER_USE_KEY
+        );
+
+        if (empty($assignments)) {
+            header('Location: ' . $redirectTarget . '?error=' . urlencode('No valid student batches were provided for your program.') . $programQuery);
+            exit();
+        }
     }
 
     $conn->beginTransaction();

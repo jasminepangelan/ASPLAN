@@ -51,11 +51,6 @@ class AdviserManagementController extends Controller
             }
 
             $batches = $this->loadBatches($selectedProgram);
-            $usedBatchFallback = false;
-            if ($selectedProgram !== '' && empty($batches)) {
-                $batches = $this->loadAllBatches();
-                $usedBatchFallback = !empty($batches);
-            }
 
             $advisers = $this->loadAdvisers($selectedProgram);
             $batchAssignments = $this->loadBatchAssignments($selectedProgram);
@@ -67,7 +62,6 @@ class AdviserManagementController extends Controller
                 'batches' => $batches,
                 'advisers' => $advisers,
                 'batch_assignments' => $batchAssignments,
-                'used_batch_fallback' => $usedBatchFallback,
             ]);
         } catch (Throwable $e) {
             return $this->bridgeResponse(false, 'Failed to load adviser management overview.', 500);
@@ -99,6 +93,14 @@ class AdviserManagementController extends Controller
                 if ($selectedProgram === '') {
                     return $this->bridgeResponse(false, 'Program is not configured for your coordinator account.');
                 }
+            }
+
+            if (
+                $request->boolean('direct_submit')
+                && $userType === 'program_coordinator'
+                && !$this->batchExistsForProgram($batch, $selectedProgram)
+            ) {
+                return $this->bridgeResponse(false, "Batch {$batch} does not belong to your program or has no existing students.");
             }
 
             $scopedAdvisers = $this->loadProgramScopedAdvisers($selectedProgram);
@@ -200,6 +202,19 @@ class AdviserManagementController extends Controller
             $scopedAdviserIds = $scopedAdvisers['ids'];
             $scopedByUsername = $scopedAdvisers['by_username'];
             $programQuery = $selectedProgram !== '' ? '&program=' . urlencode($selectedProgram) : '';
+
+            if ($userType === 'program_coordinator') {
+                $allowedBatches = array_flip($this->loadBatches($selectedProgram));
+                $assignments = array_filter(
+                    $assignments,
+                    static fn ($batch): bool => isset($allowedBatches[trim((string) $batch)]),
+                    ARRAY_FILTER_USE_KEY
+                );
+
+                if (empty($assignments)) {
+                    return $this->bridgeResponse(false, 'No valid student batches were provided for your program.');
+                }
+            }
 
             $updatedBatches = 0;
             $totalAssignments = 0;
@@ -337,29 +352,6 @@ class AdviserManagementController extends Controller
         return $batches;
     }
 
-    private function loadAllBatches(): array
-    {
-        $batches = [];
-        $rows = DB::table('student_info')
-            ->select(DB::raw('DISTINCT LEFT(student_number, 4) as batch'))
-            ->whereNotNull('student_number')
-            ->where('student_number', '!=', '')
-            ->orderByDesc('batch')
-            ->get();
-
-        foreach ($rows as $row) {
-            $batch = trim((string) ($row->batch ?? ''));
-            if ($batch !== '') {
-                $batches[] = $batch;
-            }
-        }
-
-        $batches = array_values(array_unique($batches, SORT_STRING));
-        rsort($batches, SORT_STRING);
-
-        return $batches;
-    }
-
     private function loadAdvisers(string $selectedProgram): array
     {
         $scopedKeys = $this->expandProgramScopeKeys($selectedProgram !== '' ? [$selectedProgram] : []);
@@ -434,6 +426,16 @@ class AdviserManagementController extends Controller
         }
 
         return $batchAssignments;
+    }
+
+    private function batchExistsForProgram(string $batch, string $selectedProgram): bool
+    {
+        $batch = trim($batch);
+        if ($batch === '' || $selectedProgram === '') {
+            return false;
+        }
+
+        return in_array($batch, $this->loadBatches($selectedProgram), true);
     }
 
     private function getProgramLabelFromKey(string $programKey): string

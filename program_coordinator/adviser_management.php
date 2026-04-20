@@ -1193,7 +1193,6 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
     $batches = [];
     $advisers = [];
     $batchAssignments = [];
-    $usedBatchFallback = false;
     $dbError = '';
 
     // DEBUG MODE
@@ -1423,7 +1422,6 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
             $batchAssignments = isset($bridgeData['batch_assignments']) && is_array($bridgeData['batch_assignments'])
                 ? $bridgeData['batch_assignments']
                 : [];
-            $usedBatchFallback = !empty($bridgeData['used_batch_fallback']);
             $bridgeLoaded = true;
         } elseif (is_array($bridgeData) && array_key_exists('success', $bridgeData)) {
             $dbError = htmlspecialchars((string) ($bridgeData['message'] ?? 'Failed to load adviser management overview.'));
@@ -1462,25 +1460,6 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
                 rsort($batches, SORT_STRING);
             }
 
-            // Fallback: if no student batches match the selected program,
-            // show all batches so advisers can still be assigned.
-            if (empty($batches)) {
-                $fallbackBatchQuery = "SELECT DISTINCT LEFT(student_number, 4) as batch
-                                       FROM student_info
-                                       WHERE student_number IS NOT NULL
-                                         AND student_number != ''
-                                       ORDER BY batch DESC";
-                $fallbackBatchStmt = $conn->prepare($fallbackBatchQuery);
-                $fallbackBatchStmt->execute();
-                while ($fallbackRow = $fallbackBatchStmt->fetch(PDO::FETCH_ASSOC)) {
-                    $batches[] = $fallbackRow['batch'];
-                }
-                if (!empty($batches)) {
-                    $batches = array_values(array_unique($batches, SORT_STRING));
-                    rsort($batches, SORT_STRING);
-                }
-                $usedBatchFallback = !empty($batches);
-            }
         }
 
         // Filter advisers by selected program using PHP normalization
@@ -1533,9 +1512,6 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
         <div class="program-filter-note">
             <?php if ($selectedProgram !== ''): ?>
                 Managing adviser assignments for your program: <strong><?php echo htmlspecialchars(getProgramLabelFromKey($selectedProgram)); ?></strong>.
-                <?php if ($usedBatchFallback): ?>
-                    No matching student batches were found for this program, so all available batches are shown.
-                <?php endif; ?>
             <?php else: ?>
                 Program is not configured for your coordinator account. Contact admin to set your program.
             <?php endif; ?>

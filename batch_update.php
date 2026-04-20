@@ -126,6 +126,24 @@ function deleteScopedBatchAssignments(PDO $conn, $batch, array $adviserIds) {
     $stmt->execute($params);
 }
 
+function batchExistsForProgram(PDO $conn, $batch, $selectedProgram) {
+    $batch = trim((string)$batch);
+    $selectedProgram = trim((string)$selectedProgram);
+    if ($batch === '' || $selectedProgram === '') {
+        return false;
+    }
+
+    $stmt = $conn->prepare("SELECT DISTINCT TRIM(program) AS program FROM student_info WHERE LEFT(student_number, 4) = ?");
+    $stmt->execute([$batch]);
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        if (normalizeProgramKey((string)($row['program'] ?? '')) === $selectedProgram) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function resolveRedirectTarget($value) {
     $allowed = [
         'admin/adviser_management.php',
@@ -239,6 +257,15 @@ try {
     }
 
     if (isset($_POST['direct_submit'])) {
+        if (
+            isset($_SESSION['user_type'])
+            && $_SESSION['user_type'] === 'program_coordinator'
+            && !batchExistsForProgram($conn, $batch, $selectedProgram)
+        ) {
+            header("Location: {$redirectTarget}?error=" . urlencode("Batch $batch does not belong to your program or has no existing students.") . $programQuery);
+            exit();
+        }
+
         // Remove current assignments scoped to the selected program.
         if ($selectedProgram === '') {
             $del = $conn->prepare("DELETE FROM adviser_batch WHERE batch = ?");
