@@ -41,6 +41,7 @@ fix_*.php
 
 # Database Files
 *.sql
+!dev/osas_db_041626.sql
 *.sqlite
 *.db
 
