@@ -12,3 +12,4 @@ uploads
 adviser/uploads
 dev/*.sql
 *.sql
+!dev/osas_db_041626.sql
