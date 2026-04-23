@@ -765,6 +765,15 @@ try {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
     ");
+
+    // Normalize legacy schemas where setting_value was created as an integer.
+    // Advanced settings such as allowed_email_domains require text storage.
+    $columnTypeStmt = $conn->prepare("SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_settings' AND COLUMN_NAME = 'setting_value' LIMIT 1");
+    $columnTypeStmt->execute();
+    $settingValueDataType = strtolower((string) ($columnTypeStmt->fetchColumn() ?: ''));
+    if ($settingValueDataType !== '' && !in_array($settingValueDataType, ['text', 'varchar', 'char', 'mediumtext', 'longtext'], true)) {
+        $conn->exec("ALTER TABLE system_settings MODIFY COLUMN setting_value TEXT NOT NULL");
+    }
 } catch (PDOException $e) {
     // Table might already exist, that's ok
 }
