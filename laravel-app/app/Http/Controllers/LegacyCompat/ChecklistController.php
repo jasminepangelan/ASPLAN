@@ -603,10 +603,24 @@ class ChecklistController extends Controller
     private function resolveChecklistProgramLabels(string $programLabel, string $programKey = ''): array
     {
         $candidates = [];
+        $shortLabelMap = [
+            'BSBA-MM' => 'BSBA - Marketing Management',
+            'BSBA-HRM' => 'BSBA - Human Resource Management',
+            'BSCPE' => 'BS Computer Engineering',
+            'BSCS' => 'BS Computer Science',
+            'BSHM' => 'BS Hospitality Management',
+            'BSINDT' => 'BS Industrial Technology',
+            'BSIT' => 'BS Information Technology',
+            'BSED-ENGLISH' => 'BSEd Major in English',
+            'BSED-MATH' => 'BSEd Major in Math',
+            'BSED-SCIENCE' => 'BSEd Major in Science',
+        ];
+        $normalizedProgramKey = strtoupper(trim($programKey !== '' ? $programKey : $this->resolveProgramAbbreviation($programLabel)));
         $values = [
             trim($programLabel),
             $this->canonicalProgramLabel($programKey),
             $this->canonicalProgramLabel($this->resolveProgramAbbreviation($programLabel)),
+            $shortLabelMap[$normalizedProgramKey] ?? '',
         ];
 
         foreach ($values as $value) {
@@ -620,12 +634,26 @@ class ChecklistController extends Controller
             $normalized = $this->normalizeProgramLabel($value);
             if ($normalized === 'BACHELOR OF SCIENCE IN BUSINESS ADMINISTRATION MAJOR IN MARKETING MANAGEMENT') {
                 $candidates['Bachelor of Science in Business Administration - Major in Marketing Management'] = true;
+                $candidates['BSBA - Marketing Management'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN BUSINESS ADMINISTRATION MAJOR IN HUMAN RESOURCE MANAGEMENT') {
                 $candidates['Bachelor of Science in Business Administration - Major in Human Resource Management'] = true;
+                $candidates['BSBA - Human Resource Management'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATH') {
                 $candidates['Bachelor of Secondary Education Major in Mathematics'] = true;
+                $candidates['BSEd Major in Math'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS') {
                 $candidates['Bachelor of Secondary Education major Math'] = true;
+                $candidates['BSEd Major in Math'] = true;
+            } elseif ($normalized === 'BACHELOR OF SCIENCE IN COMPUTER SCIENCE') {
+                $candidates['BS Computer Science'] = true;
+            } elseif ($normalized === 'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY') {
+                $candidates['BS Information Technology'] = true;
+            } elseif ($normalized === 'BACHELOR OF SCIENCE IN COMPUTER ENGINEERING') {
+                $candidates['BS Computer Engineering'] = true;
+            } elseif ($normalized === 'BACHELOR OF SCIENCE IN INDUSTRIAL TECHNOLOGY') {
+                $candidates['BS Industrial Technology'] = true;
+            } elseif ($normalized === 'BACHELOR OF SCIENCE IN HOSPITALITY MANAGEMENT') {
+                $candidates['BS Hospitality Management'] = true;
             }
         }
 
