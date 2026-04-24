@@ -327,6 +327,7 @@ if (!$bridgeLoaded) {
     $offset = ($currentPage - 1) * $recordsPerPage;
     $displayRows = array_slice($filteredRows, $offset, $recordsPerPage);
     closeDBConnection($conn);
+    $conn = null;
 } else {
     $queryParams = [];
     if ($search !== '') {
@@ -883,8 +884,3 @@ if (!$bridgeLoaded) {
     </script>
 </body>
 </html>
-<?php
-if (isset($conn) && $conn instanceof mysqli) {
-    $conn->close();
-}
-?>
