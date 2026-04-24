@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/program_catalog.php';
+require_once __DIR__ . '/../includes/program_shift_service.php';
 
 $isAdmin = isset($_SESSION['admin_username']) || isset($_SESSION['admin_id']);
 $isProgramCoordinator = isset($_SESSION['username']) && (!isset($_SESSION['user_type']) || $_SESSION['user_type'] === 'program_coordinator');
@@ -227,6 +228,29 @@ function countCurriculumCatalogCoursesForYear(array $catalog, string $curriculum
   return $count;
 }
 
+function resolveCurriculumProgramLabels(string $programCode, string $programLabel): array {
+  $labels = [];
+
+  if (function_exists('psResolveChecklistProgramLabels')) {
+    foreach (psResolveChecklistProgramLabels($programLabel, $programCode) as $candidate) {
+      $candidate = trim((string)$candidate);
+      if ($candidate !== '') {
+        $labels[$candidate] = true;
+      }
+    }
+  }
+
+  $directValues = [$programCode, $programLabel];
+  foreach ($directValues as $value) {
+    $value = trim((string)$value);
+    if ($value !== '') {
+      $labels[$value] = true;
+    }
+  }
+
+  return array_keys($labels);
+}
+
 function loadCurriculumYearsByProgram(string $filePath): array {
   $result = [];
   if (!is_file($filePath)) {
@@ -451,20 +475,30 @@ try {
 
     if (tableExists($conn, 'curriculum_courses')) {
       $canonicalProgramLabel = trim((string)($programs[$coordinatorProgramCode] ?? $coordinatorProgramRaw));
-      $canonicalProgramLabelUpper = strtoupper($canonicalProgramLabel);
+      $candidateProgramLabels = resolveCurriculumProgramLabels($coordinatorProgramCode, $canonicalProgramLabel);
 
-      if ($canonicalProgramLabelUpper !== '') {
+      if (!empty($candidateProgramLabels)) {
         $syncedCurriculumCatalog = [];
+        $conditions = [];
+        $params = [];
+        $types = '';
+
+        foreach ($candidateProgramLabels as $candidateProgramLabel) {
+          $conditions[] = 'UPPER(TRIM(program)) = ?';
+          $params[] = strtoupper(trim((string)$candidateProgramLabel));
+          $types .= 's';
+        }
+
         $syncedStmt = $conn->prepare(
           "SELECT curriculum_year, year_level, semester, course_code, course_title,
                   credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite
            FROM curriculum_courses
-           WHERE UPPER(TRIM(program)) = ?
+           WHERE " . implode(' OR ', $conditions) . "
            ORDER BY curriculum_year, year_level, semester, course_code"
         );
 
         if ($syncedStmt) {
-          $syncedStmt->bind_param('s', $canonicalProgramLabelUpper);
+          $syncedStmt->bind_param($types, ...$params);
           $syncedStmt->execute();
           $syncedRows = $syncedStmt->get_result();
 

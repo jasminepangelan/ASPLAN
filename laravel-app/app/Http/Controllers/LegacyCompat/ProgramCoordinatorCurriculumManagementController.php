@@ -131,13 +131,16 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
 
         if ($programCode !== '' && Schema::hasTable('curriculum_courses')) {
             $programLabel = trim((string) ($this->programNames()[$programCode] ?? ''));
-            if ($programLabel !== '') {
-                $rows = DB::table('curriculum_courses')
-                    ->select(['curriculum_year'])
-                    ->whereRaw('UPPER(TRIM(program)) = ?', [strtoupper($programLabel)])
-                    ->distinct()
-                    ->orderBy('curriculum_year')
-                    ->get();
+            $candidateLabels = $this->resolveChecklistProgramLabels($programCode, $programLabel);
+            if (!empty($candidateLabels)) {
+                $query = DB::table('curriculum_courses')->select(['curriculum_year'])->distinct()->orderBy('curriculum_year');
+                $query->where(function ($builder) use ($candidateLabels) {
+                    foreach ($candidateLabels as $candidateLabel) {
+                        $builder->orWhereRaw('UPPER(TRIM(program)) = ?', [strtoupper(trim((string) $candidateLabel))]);
+                    }
+                });
+
+                $rows = $query->get();
 
                 foreach ($rows as $row) {
                     $year = $this->normalizeCurriculumYear((string) ($row->curriculum_year ?? ''));
@@ -220,9 +223,10 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
 
         if (Schema::hasTable('curriculum_courses')) {
             $programLabel = trim((string) ($this->programNames()[$programCode] ?? ''));
-            if ($programLabel !== '') {
+            $candidateLabels = $this->resolveChecklistProgramLabels($programCode, $programLabel);
+            if (!empty($candidateLabels)) {
                 $syncedCatalog = [];
-                $rows = DB::table('curriculum_courses')
+                $query = DB::table('curriculum_courses')
                     ->select([
                         'curriculum_year',
                         'year_level',
@@ -235,12 +239,18 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
                         'lect_hrs_lab',
                         'pre_requisite',
                     ])
-                    ->whereRaw('UPPER(TRIM(program)) = ?', [strtoupper($programLabel)])
                     ->orderBy('curriculum_year')
                     ->orderBy('year_level')
                     ->orderBy('semester')
-                    ->orderBy('course_code')
-                    ->get();
+                    ->orderBy('course_code');
+
+                $query->where(function ($builder) use ($candidateLabels) {
+                    foreach ($candidateLabels as $candidateLabel) {
+                        $builder->orWhereRaw('UPPER(TRIM(program)) = ?', [strtoupper(trim((string) $candidateLabel))]);
+                    }
+                });
+
+                $rows = $query->get();
 
                 foreach ($rows as $row) {
                     $normalizedYear = $this->normalizeCurriculumYear((string) ($row->curriculum_year ?? ''));
@@ -421,6 +431,38 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
         }
 
         return false;
+    }
+
+    private function resolveChecklistProgramLabels(string $programCode, string $programLabel): array
+    {
+        $candidates = [];
+
+        foreach ([trim($programLabel), $this->canonicalProgramLabel($programCode), $this->canonicalProgramLabel($this->normalizeProgramCode($programLabel))] as $value) {
+            $value = trim((string) $value);
+            if ($value !== '') {
+                $candidates[$value] = true;
+            }
+        }
+
+        return array_keys($candidates);
+    }
+
+    private function canonicalProgramLabel(string $programCode): string
+    {
+        $catalog = [
+            'BSIndT' => 'Bachelor of Science in Industrial Technology',
+            'BSCpE' => 'Bachelor of Science in Computer Engineering',
+            'BSIT' => 'Bachelor of Science in Information Technology',
+            'BSCS' => 'Bachelor of Science in Computer Science',
+            'BSHM' => 'Bachelor of Science in Hospitality Management',
+            'BSBA-HRM' => 'Bachelor of Science in Business Administration Major in Human Resource Management',
+            'BSBA-MM' => 'Bachelor of Science in Business Administration Major in Marketing Management',
+            'BSEd-English' => 'Bachelor of Secondary Education Major in English',
+            'BSEd-Science' => 'Bachelor of Secondary Education Major in Science',
+            'BSEd-Math' => 'Bachelor of Secondary Education Major in Mathematics',
+        ];
+
+        return $catalog[trim($programCode)] ?? '';
     }
 
     private function appendCurriculumCatalogCourse(array &$catalog, string $curriculumYear, string $yearLevel, string $semester, array $course): void
