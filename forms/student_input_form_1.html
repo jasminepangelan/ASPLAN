@@ -202,6 +202,36 @@
     let emailPolicyRequestId = 0;
     let studentIdValidationMessage = 'Please enter a valid student number that does not exist in the system';
 
+    function checkStudentIdAvailability(studentId) {
+        const endpoints = [
+            '../auth/check_student_id.php?student_id=' + encodeURIComponent(studentId),
+            '../api/check_student_id.php?student_id=' + encodeURIComponent(studentId)
+        ];
+
+        let endpointIndex = 0;
+
+        const attempt = () => {
+            if (endpointIndex >= endpoints.length) {
+                return Promise.resolve({
+                    precheck_unavailable: true,
+                    message: 'Student number pre-check is temporarily unavailable. You can continue and validation will run during final submit.'
+                });
+            }
+
+            const endpoint = endpoints[endpointIndex++];
+            return fetch(endpoint)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    return response.json();
+                })
+                .catch(() => attempt());
+        };
+
+        return attempt();
+    }
+
     function updateProfileFieldGate() {
         const hasValidAllowedEmail = isEmailPolicyAllowed;
         gatedInputs.forEach((input) => {
@@ -291,9 +321,9 @@
             // Show checking message while fetching
             messageDiv.textContent = 'Checking student number...';
             messageDiv.style.display = 'block';
+            messageDiv.style.color = 'red';
             
-            fetch('../auth/check_student_id.php?student_id=' + encodeURIComponent(studentId))
-                .then(response => response.json())
+            checkStudentIdAvailability(studentId)
                 .then(data => {
                     if (data.exists) {
                         messageDiv.textContent = 'Student number already exist';
@@ -316,15 +346,25 @@
                         firstNameInput.value = '';
                         middleNameInput.value = '';
                         validateEmailAgainstPolicy('');
+                    } else if (data.precheck_unavailable) {
+                        messageDiv.textContent = data.message || 'Student number pre-check is temporarily unavailable. You can continue and validation will run during final submit.';
+                        messageDiv.style.display = 'block';
+                        messageDiv.style.color = '#b26a00';
+                        isStudentIdValid = true;
+                        studentIdValidationMessage = messageDiv.textContent;
                     } else {
+                        messageDiv.style.color = 'red';
                         messageDiv.style.display = 'none';
                         isStudentIdValid = true;
                     }
                 })
                 .catch(error => {
                     console.error('Error checking student ID:', error);
-                    messageDiv.textContent = 'Error checking student number';
+                    messageDiv.textContent = 'Student number pre-check is temporarily unavailable. You can continue and validation will run during final submit.';
                     messageDiv.style.display = 'block';
+                    messageDiv.style.color = '#b26a00';
+                    isStudentIdValid = true;
+                    studentIdValidationMessage = messageDiv.textContent;
                 });
         }, 350);
     });
@@ -435,16 +475,34 @@
         }
         
         // Check student number uniqueness via AJAX
-        fetch('../auth/check_student_id.php?student_id=' + encodeURIComponent(studentId))
-            .then(response => response.json())
+        checkStudentIdAvailability(studentId)
             .then(data => {
                 if (data.exists) {
+                    messageDiv.style.color = 'red';
                     messageDiv.textContent = 'Student number already exist';
                     messageDiv.style.display = 'block';
                 } else if (data.allowed === false) {
+                    messageDiv.style.color = 'red';
                     messageDiv.textContent = data.message || 'This student number is not included in the official masterlist.';
                     messageDiv.style.display = 'block';
+                } else if (data.precheck_unavailable) {
+                    messageDiv.style.color = '#b26a00';
+                    messageDiv.textContent = data.message || 'Student number pre-check is temporarily unavailable. Validation will continue during final submit.';
+                    messageDiv.style.display = 'block';
+
+                    // Allow forward progress because final server-side submit still enforces rules.
+                    const middleName = form.middle_name.value.trim();
+                    const saveData = {
+                        student_id: studentId,
+                        last_name: lastName,
+                        first_name: firstName,
+                        middle_name: middleName || '',
+                        email: email
+                    };
+                    localStorage.setItem('studentFormPage1', JSON.stringify(saveData));
+                    window.location.href = 'student_input_form_2.html';
                 } else {
+                    messageDiv.style.color = 'red';
                     // Prepare data with proper formatting
                     const middleName = form.middle_name.value.trim();
                     const saveData = {
@@ -459,7 +517,20 @@
                 }
             })
             .catch(() => {
-                alert('Error checking Student I.D. Please try again.');
+                messageDiv.style.color = '#b26a00';
+                messageDiv.textContent = 'Student number pre-check is temporarily unavailable. Validation will continue during final submit.';
+                messageDiv.style.display = 'block';
+
+                const middleName = form.middle_name.value.trim();
+                const saveData = {
+                    student_id: studentId,
+                    last_name: lastName,
+                    first_name: firstName,
+                    middle_name: middleName || '',
+                    email: email
+                };
+                localStorage.setItem('studentFormPage1', JSON.stringify(saveData));
+                window.location.href = 'student_input_form_2.html';
             });
     }
 </script>
