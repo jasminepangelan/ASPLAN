@@ -40,6 +40,12 @@ function tableHasColumn($conn, string $table, string $column): bool {
   return $result && $result->num_rows > 0;
 }
 
+function tableExists($conn, string $table): bool {
+  $tableSafe = $conn->real_escape_string($table);
+  $result = $conn->query("SHOW TABLES LIKE '$tableSafe'");
+  return $result && $result->num_rows > 0;
+}
+
 function normalizeProgramCode(string $program): string {
   $catalogCode = pcNormalizeProgramCode($program);
   if ($catalogCode !== '') {
@@ -174,6 +180,51 @@ function appendCurriculumYear(array &$existing, string $program, string $year): 
   if (!in_array($year, $existing[$programCode], true)) {
     $existing[$programCode][] = $year;
   }
+}
+
+function appendCurriculumCatalogCourse(array &$catalog, string $curriculumYear, string $yearLevel, string $semester, array $course): void {
+  if ($curriculumYear === '' || $yearLevel === '' || $semester === '') {
+    return;
+  }
+
+  if (!isset($catalog[$curriculumYear])) {
+    $catalog[$curriculumYear] = [];
+  }
+  if (!isset($catalog[$curriculumYear][$yearLevel])) {
+    $catalog[$curriculumYear][$yearLevel] = [];
+  }
+  if (!isset($catalog[$curriculumYear][$yearLevel][$semester])) {
+    $catalog[$curriculumYear][$yearLevel][$semester] = [];
+  }
+
+  foreach ($catalog[$curriculumYear][$yearLevel][$semester] as $existingCourse) {
+    if (($existingCourse['course_code'] ?? '') === ($course['course_code'] ?? '')) {
+      return;
+    }
+  }
+
+  $catalog[$curriculumYear][$yearLevel][$semester][] = $course;
+}
+
+function countCurriculumCatalogCoursesForYear(array $catalog, string $curriculumYear): int {
+  if (!isset($catalog[$curriculumYear]) || !is_array($catalog[$curriculumYear])) {
+    return 0;
+  }
+
+  $count = 0;
+  foreach ($catalog[$curriculumYear] as $yearBuckets) {
+    if (!is_array($yearBuckets)) {
+      continue;
+    }
+
+    foreach ($yearBuckets as $semesterBuckets) {
+      if (is_array($semesterBuckets)) {
+        $count += count($semesterBuckets);
+      }
+    }
+  }
+
+  return $count;
 }
 
 function loadCurriculumYearsByProgram(string $filePath): array {
@@ -362,6 +413,8 @@ try {
       $stmt->execute();
       $rows = $stmt->get_result();
 
+      $legacyCurriculumCatalog = [];
+
       while ($rows && ($row = $rows->fetch_assoc())) {
         if (!rowIncludesProgram((string)($row['programs'] ?? ''), $coordinatorProgramCode)) {
           continue;
@@ -379,23 +432,7 @@ try {
         $yearLevel = (string)($row['year_level'] ?? '');
         $semester = (string)($row['semester'] ?? '');
 
-        if (!isset($curriculumCatalog[$normalizedYear])) {
-          $curriculumCatalog[$normalizedYear] = [];
-        }
-        if (!isset($curriculumCatalog[$normalizedYear][$yearLevel])) {
-          $curriculumCatalog[$normalizedYear][$yearLevel] = [];
-        }
-        if (!isset($curriculumCatalog[$normalizedYear][$yearLevel][$semester])) {
-          $curriculumCatalog[$normalizedYear][$yearLevel][$semester] = [];
-        }
-
-        foreach ($curriculumCatalog[$normalizedYear][$yearLevel][$semester] as $existingCourse) {
-          if (($existingCourse['course_code'] ?? '') === $courseCode) {
-            continue 2;
-          }
-        }
-
-        $curriculumCatalog[$normalizedYear][$yearLevel][$semester][] = [
+        appendCurriculumCatalogCourse($legacyCurriculumCatalog, $normalizedYear, $yearLevel, $semester, [
           'curriculum_key' => $key,
           'course_code' => $courseCode,
           'course_title' => (string)($row['course_title'] ?? ''),
@@ -404,10 +441,66 @@ try {
           'lect_hrs_lec' => (int)($row['lect_hrs_lec'] ?? 0),
           'lect_hrs_lab' => (int)($row['lect_hrs_lab'] ?? 0),
           'pre_requisite' => (string)($row['pre_requisite'] ?? 'NONE'),
-        ];
+        ]);
       }
 
       $stmt->close();
+
+      $curriculumCatalog = $legacyCurriculumCatalog;
+    }
+
+    if (tableExists($conn, 'curriculum_courses')) {
+      $canonicalProgramLabel = trim((string)($programs[$coordinatorProgramCode] ?? $coordinatorProgramRaw));
+      $canonicalProgramLabelUpper = strtoupper($canonicalProgramLabel);
+
+      if ($canonicalProgramLabelUpper !== '') {
+        $syncedCurriculumCatalog = [];
+        $syncedStmt = $conn->prepare(
+          "SELECT curriculum_year, year_level, semester, course_code, course_title,
+                  credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite
+           FROM curriculum_courses
+           WHERE UPPER(TRIM(program)) = ?
+           ORDER BY curriculum_year, year_level, semester, course_code"
+        );
+
+        if ($syncedStmt) {
+          $syncedStmt->bind_param('s', $canonicalProgramLabelUpper);
+          $syncedStmt->execute();
+          $syncedRows = $syncedStmt->get_result();
+
+          while ($syncedRows && ($row = $syncedRows->fetch_assoc())) {
+            $normalizedYear = normalizeCurriculumYear((string)($row['curriculum_year'] ?? ''));
+            if ($normalizedYear === '') {
+              continue;
+            }
+
+            appendCurriculumYear($existing, $coordinatorProgramCode, $normalizedYear);
+
+            $yearLevel = trim((string)($row['year_level'] ?? ''));
+            $semester = trim((string)($row['semester'] ?? ''));
+            $courseCode = normalizeDisplayCourseCode((string)($row['course_code'] ?? ''));
+
+            appendCurriculumCatalogCourse($syncedCurriculumCatalog, $normalizedYear, $yearLevel, $semester, [
+              'curriculum_key' => $normalizedYear . '_' . $courseCode,
+              'course_code' => $courseCode,
+              'course_title' => (string)($row['course_title'] ?? ''),
+              'credit_units_lec' => (int)($row['credit_units_lec'] ?? 0),
+              'credit_units_lab' => (int)($row['credit_units_lab'] ?? 0),
+              'lect_hrs_lec' => (int)($row['lect_hrs_lec'] ?? 0),
+              'lect_hrs_lab' => (int)($row['lect_hrs_lab'] ?? 0),
+              'pre_requisite' => (string)($row['pre_requisite'] ?? 'NONE'),
+            ]);
+          }
+
+          $syncedStmt->close();
+        }
+
+        foreach (array_keys($syncedCurriculumCatalog) as $catalogYear) {
+          if (countCurriculumCatalogCoursesForYear($syncedCurriculumCatalog, $catalogYear) > countCurriculumCatalogCoursesForYear($curriculumCatalog, $catalogYear)) {
+            $curriculumCatalog[$catalogYear] = $syncedCurriculumCatalog[$catalogYear];
+          }
+        }
+      }
     }
   }
 

@@ -129,6 +129,25 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
             }
         }
 
+        if ($programCode !== '' && Schema::hasTable('curriculum_courses')) {
+            $programLabel = trim((string) ($this->programNames()[$programCode] ?? ''));
+            if ($programLabel !== '') {
+                $rows = DB::table('curriculum_courses')
+                    ->select(['curriculum_year'])
+                    ->whereRaw('UPPER(TRIM(program)) = ?', [strtoupper($programLabel)])
+                    ->distinct()
+                    ->orderBy('curriculum_year')
+                    ->get();
+
+                foreach ($rows as $row) {
+                    $year = $this->normalizeCurriculumYear((string) ($row->curriculum_year ?? ''));
+                    if ($year !== '') {
+                        $this->appendCurriculumYear($existing, $programCode, $year);
+                    }
+                }
+            }
+        }
+
         foreach ($existing as $program => $years) {
             $years = array_values(array_unique($years));
             sort($years, SORT_NUMERIC);
@@ -153,60 +172,101 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
 
     private function loadCurriculumCatalog(string $programCode): array
     {
-        $curriculumCatalog = [];
-        $rows = DB::table('cvsucarmona_courses')
-            ->select([
-                'curriculumyear_coursecode',
-                'programs',
-                'course_title',
-                'year_level',
-                'semester',
-                'credit_units_lec',
-                'credit_units_lab',
-                'lect_hrs_lec',
-                'lect_hrs_lab',
-                'pre_requisite',
-            ])
-            ->orderBy('curriculumyear_coursecode')
-            ->get();
+        $legacyCatalog = [];
+        if (Schema::hasTable('cvsucarmona_courses')) {
+            $rows = DB::table('cvsucarmona_courses')
+                ->select([
+                    'curriculumyear_coursecode',
+                    'programs',
+                    'course_title',
+                    'year_level',
+                    'semester',
+                    'credit_units_lec',
+                    'credit_units_lab',
+                    'lect_hrs_lec',
+                    'lect_hrs_lab',
+                    'pre_requisite',
+                ])
+                ->orderBy('curriculumyear_coursecode')
+                ->get();
 
-        foreach ($rows as $row) {
-            if (!$this->rowContainsProgram((string) ($row->programs ?? ''), $programCode)) {
-                continue;
+            foreach ($rows as $row) {
+                if (!$this->rowContainsProgram((string) ($row->programs ?? ''), $programCode)) {
+                    continue;
+                }
+
+                $key = (string) ($row->curriculumyear_coursecode ?? '');
+                $parts = explode('_', $key, 2);
+                $yearToken = $parts[0] ?? '';
+                $normalizedYear = $this->normalizeCurriculumYear($yearToken);
+                if ($normalizedYear === '') {
+                    continue;
+                }
+
+                $this->appendCurriculumCatalogCourse($legacyCatalog, $normalizedYear, (string) ($row->year_level ?? ''), (string) ($row->semester ?? ''), [
+                    'curriculum_key' => $key,
+                    'course_code' => $this->normalizeCourseCode((string) ($parts[1] ?? $key)),
+                    'course_title' => (string) ($row->course_title ?? ''),
+                    'credit_units_lec' => (int) ($row->credit_units_lec ?? 0),
+                    'credit_units_lab' => (int) ($row->credit_units_lab ?? 0),
+                    'lect_hrs_lec' => (int) ($row->lect_hrs_lec ?? 0),
+                    'lect_hrs_lab' => (int) ($row->lect_hrs_lab ?? 0),
+                    'pre_requisite' => (string) ($row->pre_requisite ?? 'NONE'),
+                ]);
             }
+        }
 
-            $key = (string) ($row->curriculumyear_coursecode ?? '');
-            $parts = explode('_', $key, 2);
-            $yearToken = $parts[0] ?? '';
-            $normalizedYear = $this->normalizeCurriculumYear($yearToken);
-            if ($normalizedYear === '') {
-                continue;
-            }
+        $curriculumCatalog = $legacyCatalog;
 
-            $courseCode = $this->normalizeCourseCode((string) ($parts[1] ?? $key));
-            $yearLevel = (string) ($row->year_level ?? '');
-            $semester = (string) ($row->semester ?? '');
+        if (Schema::hasTable('curriculum_courses')) {
+            $programLabel = trim((string) ($this->programNames()[$programCode] ?? ''));
+            if ($programLabel !== '') {
+                $syncedCatalog = [];
+                $rows = DB::table('curriculum_courses')
+                    ->select([
+                        'curriculum_year',
+                        'year_level',
+                        'semester',
+                        'course_code',
+                        'course_title',
+                        'credit_units_lec',
+                        'credit_units_lab',
+                        'lect_hrs_lec',
+                        'lect_hrs_lab',
+                        'pre_requisite',
+                    ])
+                    ->whereRaw('UPPER(TRIM(program)) = ?', [strtoupper($programLabel)])
+                    ->orderBy('curriculum_year')
+                    ->orderBy('year_level')
+                    ->orderBy('semester')
+                    ->orderBy('course_code')
+                    ->get();
 
-            $curriculumCatalog[$normalizedYear] ??= [];
-            $curriculumCatalog[$normalizedYear][$yearLevel] ??= [];
-            $curriculumCatalog[$normalizedYear][$yearLevel][$semester] ??= [];
+                foreach ($rows as $row) {
+                    $normalizedYear = $this->normalizeCurriculumYear((string) ($row->curriculum_year ?? ''));
+                    if ($normalizedYear === '') {
+                        continue;
+                    }
 
-            foreach ($curriculumCatalog[$normalizedYear][$yearLevel][$semester] as $existingCourse) {
-                if (($existingCourse['course_code'] ?? '') === $courseCode) {
-                    continue 2;
+                    $courseCode = $this->normalizeCourseCode((string) ($row->course_code ?? ''));
+                    $this->appendCurriculumCatalogCourse($syncedCatalog, $normalizedYear, trim((string) ($row->year_level ?? '')), trim((string) ($row->semester ?? '')), [
+                        'curriculum_key' => $normalizedYear . '_' . $courseCode,
+                        'course_code' => $courseCode,
+                        'course_title' => (string) ($row->course_title ?? ''),
+                        'credit_units_lec' => (int) ($row->credit_units_lec ?? 0),
+                        'credit_units_lab' => (int) ($row->credit_units_lab ?? 0),
+                        'lect_hrs_lec' => (int) ($row->lect_hrs_lec ?? 0),
+                        'lect_hrs_lab' => (int) ($row->lect_hrs_lab ?? 0),
+                        'pre_requisite' => (string) ($row->pre_requisite ?? 'NONE'),
+                    ]);
+                }
+
+                foreach (array_keys($syncedCatalog) as $year) {
+                    if ($this->countCurriculumCatalogCoursesForYear($syncedCatalog, (string) $year) > $this->countCurriculumCatalogCoursesForYear($curriculumCatalog, (string) $year)) {
+                        $curriculumCatalog[$year] = $syncedCatalog[$year];
+                    }
                 }
             }
-
-            $curriculumCatalog[$normalizedYear][$yearLevel][$semester][] = [
-                'curriculum_key' => $key,
-                'course_code' => $courseCode,
-                'course_title' => (string) ($row->course_title ?? ''),
-                'credit_units_lec' => (int) ($row->credit_units_lec ?? 0),
-                'credit_units_lab' => (int) ($row->credit_units_lab ?? 0),
-                'lect_hrs_lec' => (int) ($row->lect_hrs_lec ?? 0),
-                'lect_hrs_lab' => (int) ($row->lect_hrs_lab ?? 0),
-                'pre_requisite' => (string) ($row->pre_requisite ?? 'NONE'),
-            ];
         }
 
         return $curriculumCatalog;
@@ -361,6 +421,47 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
         }
 
         return false;
+    }
+
+    private function appendCurriculumCatalogCourse(array &$catalog, string $curriculumYear, string $yearLevel, string $semester, array $course): void
+    {
+        if ($curriculumYear === '' || $yearLevel === '' || $semester === '') {
+            return;
+        }
+
+        $catalog[$curriculumYear] ??= [];
+        $catalog[$curriculumYear][$yearLevel] ??= [];
+        $catalog[$curriculumYear][$yearLevel][$semester] ??= [];
+
+        foreach ($catalog[$curriculumYear][$yearLevel][$semester] as $existingCourse) {
+            if (($existingCourse['course_code'] ?? '') === ($course['course_code'] ?? '')) {
+                return;
+            }
+        }
+
+        $catalog[$curriculumYear][$yearLevel][$semester][] = $course;
+    }
+
+    private function countCurriculumCatalogCoursesForYear(array $catalog, string $curriculumYear): int
+    {
+        if (!isset($catalog[$curriculumYear]) || !is_array($catalog[$curriculumYear])) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach ($catalog[$curriculumYear] as $yearBuckets) {
+            if (!is_array($yearBuckets)) {
+                continue;
+            }
+
+            foreach ($yearBuckets as $semesterBuckets) {
+                if (is_array($semesterBuckets)) {
+                    $count += count($semesterBuckets);
+                }
+            }
+        }
+
+        return $count;
     }
 
     private function programNames(): array
