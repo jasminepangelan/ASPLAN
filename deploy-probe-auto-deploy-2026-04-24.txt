@@ -1,0 +1,5 @@
+ASPLAN deployment probe
+Created at: 2026-04-24 12:02:06 +08:00
+Purpose: Verify Railway auto-deploy from main branch.
+If deployed successfully, this file should be reachable at:
+https://asplan.site/deploy-probe-auto-deploy-2026-04-24.txt
