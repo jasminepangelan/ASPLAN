@@ -137,6 +137,30 @@ function normalizeDisplayCourseCode(string $value): string {
   return $code;
 }
 
+function splitProgramTokens(string $value): array {
+  if (trim($value) === '') {
+    return [];
+  }
+
+  $tokens = array_map('trim', explode(',', $value));
+  return array_values(array_filter($tokens, static fn($token) => $token !== ''));
+}
+
+function rowIncludesProgram(string $programsCsv, string $targetProgramCode): bool {
+  $targetProgramCode = normalizeProgramCode($targetProgramCode);
+  if ($targetProgramCode === '') {
+    return false;
+  }
+
+  foreach (splitProgramTokens($programsCsv) as $token) {
+    if (normalizeProgramCode($token) === $targetProgramCode) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function appendCurriculumYear(array &$existing, string $program, string $year): void {
   $programCode = normalizeProgramCode($program);
   if ($programCode === '' || $year === '') {
@@ -276,17 +300,19 @@ try {
 
   if ($coordinatorProgramCode !== '') {
     $yearsStmt = $conn->prepare(
-      "SELECT DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) AS cy
+      "SELECT SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) AS cy, programs
        FROM cvsucarmona_courses
-       WHERE FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
        ORDER BY cy DESC"
     );
     if ($yearsStmt) {
-      $yearsStmt->bind_param('s', $coordinatorProgramCode);
       $yearsStmt->execute();
       $yearsRes = $yearsStmt->get_result();
       if ($yearsRes) {
         while ($row = $yearsRes->fetch_assoc()) {
+          if (!rowIncludesProgram((string)($row['programs'] ?? ''), $coordinatorProgramCode)) {
+            continue;
+          }
+
           $normalizedYear = normalizeCurriculumYear((string)($row['cy'] ?? ''));
           if ($normalizedYear === '') {
             continue;
@@ -327,18 +353,20 @@ try {
 
   if ($coordinatorProgramCode !== '') {
     $stmt = $conn->prepare(
-      "SELECT curriculumyear_coursecode, course_title, year_level, semester,
+      "SELECT curriculumyear_coursecode, programs, course_title, year_level, semester,
           credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite
        FROM cvsucarmona_courses
-       WHERE FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
        ORDER BY curriculumyear_coursecode"
     );
     if ($stmt) {
-      $stmt->bind_param('s', $coordinatorProgramCode);
       $stmt->execute();
       $rows = $stmt->get_result();
 
       while ($rows && ($row = $rows->fetch_assoc())) {
+        if (!rowIncludesProgram((string)($row['programs'] ?? ''), $coordinatorProgramCode)) {
+          continue;
+        }
+
         $key = (string)($row['curriculumyear_coursecode'] ?? '');
         $parts = explode('_', $key, 2);
         $yearToken = $parts[0] ?? '';

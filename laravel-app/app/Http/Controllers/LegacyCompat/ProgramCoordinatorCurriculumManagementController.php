@@ -90,13 +90,13 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
                 ->select(DB::raw('DISTINCT SUBSTRING_INDEX(curriculumyear_coursecode, "_", 1) AS cy'), 'programs')
                 ->orderByDesc(DB::raw('cy'));
 
-            if ($programCode !== '') {
-                $query->whereRaw("FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0", [$programCode]);
-            }
-
             $rows = $query->get();
 
             foreach ($rows as $row) {
+                if ($programCode !== '' && !$this->rowContainsProgram((string) ($row->programs ?? ''), $programCode)) {
+                    continue;
+                }
+
                 $normalizedYear = $this->normalizeCurriculumYear((string) ($row->cy ?? ''));
                 if ($normalizedYear === '') {
                     continue;
@@ -157,6 +157,7 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
         $rows = DB::table('cvsucarmona_courses')
             ->select([
                 'curriculumyear_coursecode',
+                'programs',
                 'course_title',
                 'year_level',
                 'semester',
@@ -166,11 +167,14 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
                 'lect_hrs_lab',
                 'pre_requisite',
             ])
-            ->whereRaw("FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0", [$programCode])
             ->orderBy('curriculumyear_coursecode')
             ->get();
 
         foreach ($rows as $row) {
+            if (!$this->rowContainsProgram((string) ($row->programs ?? ''), $programCode)) {
+                continue;
+            }
+
             $key = (string) ($row->curriculumyear_coursecode ?? '');
             $parts = explode('_', $key, 2);
             $yearToken = $parts[0] ?? '';
@@ -331,6 +335,32 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
         }
 
         return '';
+    }
+
+    private function splitProgramTokens(string $value): array
+    {
+        if (trim($value) === '') {
+            return [];
+        }
+
+        $tokens = array_map('trim', explode(',', $value));
+        return array_values(array_filter($tokens, static fn ($token) => $token !== ''));
+    }
+
+    private function rowContainsProgram(string $programsCsv, string $programCode): bool
+    {
+        $targetCode = $this->normalizeProgramCode($programCode);
+        if ($targetCode === '') {
+            return false;
+        }
+
+        foreach ($this->splitProgramTokens($programsCsv) as $token) {
+            if ($this->normalizeProgramCode($token) === $targetCode) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function programNames(): array
