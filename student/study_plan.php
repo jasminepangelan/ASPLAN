@@ -16,6 +16,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/generate_study_plan.php';
 require_once __DIR__ . '/../includes/academic_hold_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/study_plan_override_service.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
 
 // Check if the user is logged in
@@ -117,51 +118,9 @@ $stats = $generator->getCompletionStats();
 $policy_gate = $generator->getPolicyGateStatus();
 
 // Load coordinator overrides so student view reflects customized plan placements.
-$conn->query(
-    "CREATE TABLE IF NOT EXISTS student_study_plan_overrides (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id VARCHAR(32) NOT NULL,
-        course_code VARCHAR(64) NOT NULL,
-        target_year VARCHAR(20) NOT NULL,
-        target_semester VARCHAR(20) NOT NULL,
-        updated_by VARCHAR(120) DEFAULT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_student_course (student_id, course_code),
-        KEY idx_student (student_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-);
-
-$valid_override_years = ['1st Yr', '2nd Yr', '3rd Yr', '4th Yr'];
-$valid_override_semesters = ['1st Sem', '2nd Sem', 'Mid Year'];
-$study_plan_overrides = [];
-
-$override_stmt = $conn->prepare(
-    "SELECT course_code, target_year, target_semester
-     FROM student_study_plan_overrides
-     WHERE student_id = ?"
-);
-if ($override_stmt) {
-    $override_stmt->bind_param('s', $student_id);
-    $override_stmt->execute();
-    $override_res = $override_stmt->get_result();
-    while ($override_res && $row = $override_res->fetch_assoc()) {
-        $course_code = trim((string)($row['course_code'] ?? ''));
-        $target_year = trim((string)($row['target_year'] ?? ''));
-        $target_semester = trim((string)($row['target_semester'] ?? ''));
-
-        if (
-            $course_code !== '' &&
-            in_array($target_year, $valid_override_years, true) &&
-            in_array($target_semester, $valid_override_semesters, true)
-        ) {
-            $study_plan_overrides[$course_code] = [
-                'year' => $target_year,
-                'semester' => $target_semester,
-            ];
-        }
-    }
-    $override_stmt->close();
-}
+$valid_override_years = spoValidOverrideYears();
+$valid_override_semesters = spoValidOverrideSemesters();
+$study_plan_overrides = spoLoadStudyPlanOverrides($conn, (string) $student_id);
 
 // Get completed (past) terms for display
 $completed_terms = $generator->getCompletedTerms();

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/study_plan_override_service.php';
 
 header('Content-Type: application/json');
 
@@ -55,8 +56,8 @@ if ($studentId === '' || $courseCode === '' || $targetYear === '' || $targetSeme
     exit();
 }
 
-$validYears = ['1st Yr', '2nd Yr', '3rd Yr', '4th Yr'];
-$validSemesters = ['1st Sem', '2nd Sem', 'Mid Year'];
+$validYears = spoValidOverrideYears();
+$validSemesters = spoValidOverrideSemesters();
 if (!in_array($targetYear, $validYears, true) || !in_array($targetSemester, $validSemesters, true)) {
     echo json_encode(['success' => false, 'message' => 'Invalid target term']);
     exit();
@@ -78,55 +79,12 @@ if (!$student) {
     exit();
 }
 
-$conn->query(
-    "CREATE TABLE IF NOT EXISTS student_study_plan_overrides (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id VARCHAR(32) NOT NULL,
-        course_code VARCHAR(64) NOT NULL,
-        target_year VARCHAR(20) NOT NULL,
-        target_semester VARCHAR(20) NOT NULL,
-        updated_by VARCHAR(120) DEFAULT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_student_course (student_id, course_code),
-        KEY idx_student (student_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-);
-
-$overrideColumns = [];
-$overrideColumnsResult = $conn->query("SHOW COLUMNS FROM student_study_plan_overrides");
-if ($overrideColumnsResult) {
-    while ($columnRow = $overrideColumnsResult->fetch_assoc()) {
-        $field = trim((string)($columnRow['Field'] ?? ''));
-        if ($field !== '') {
-            $overrideColumns[$field] = true;
-        }
-    }
-}
-
-if (!isset($overrideColumns['updated_by'])) {
-    $conn->query("ALTER TABLE student_study_plan_overrides ADD COLUMN updated_by VARCHAR(120) DEFAULT NULL");
-}
-if (!isset($overrideColumns['updated_at'])) {
-    $conn->query("ALTER TABLE student_study_plan_overrides ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-}
-
-$stmt = $conn->prepare(
-    "INSERT INTO student_study_plan_overrides
-        (student_id, course_code, target_year, target_semester, updated_by)
-     VALUES (?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE
-        target_year = VALUES(target_year),
-        target_semester = VALUES(target_semester),
-        updated_by = VALUES(updated_by),
-        updated_at = CURRENT_TIMESTAMP"
-);
 $updatedBy = $isAdmin
     ? (string)($_SESSION['admin_username'] ?? 'admin')
     : (string)($_SESSION['username'] ?? '');
-$stmt->bind_param('sssss', $studentId, $courseCode, $targetYear, $targetSemester, $updatedBy);
-$ok = $stmt->execute();
-$dbError = $stmt->error;
-$stmt->close();
+$saveResult = spoSaveStudyPlanOverride($conn, $studentId, $courseCode, $targetYear, $targetSemester, $updatedBy);
+$ok = !empty($saveResult['success']);
+$dbError = (string)($saveResult['message'] ?? '');
 
 if (!$ok) {
     error_log('Failed to save study plan override for student ' . $studentId . ' course ' . $courseCode . ': ' . $dbError);

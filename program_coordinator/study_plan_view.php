@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../student/generate_study_plan.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/study_plan_override_service.php';
 
 $isAdmin = isset($_SESSION['admin_id']) || isset($_SESSION['admin_username']);
 $isProgramCoordinator = isset($_SESSION['username']) && (!isset($_SESSION['user_type']) || $_SESSION['user_type'] === 'program_coordinator');
@@ -112,49 +113,9 @@ if ($admissionYear === null) {
     $admissionYear = (int)date('Y') - 4;
 }
 
-$conn->query(
-    "CREATE TABLE IF NOT EXISTS student_study_plan_overrides (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        student_id VARCHAR(32) NOT NULL,
-        course_code VARCHAR(64) NOT NULL,
-        target_year VARCHAR(20) NOT NULL,
-        target_semester VARCHAR(20) NOT NULL,
-        updated_by VARCHAR(120) DEFAULT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_student_course (student_id, course_code),
-        KEY idx_student (student_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-);
-
-$validYears = ['1st Yr', '2nd Yr', '3rd Yr', '4th Yr'];
-$validSemesters = ['1st Sem', '2nd Sem', 'Mid Year'];
-
-$overrideMap = [];
-$overrideStmt = $conn->prepare(
-    "SELECT course_code, target_year, target_semester
-     FROM student_study_plan_overrides
-     WHERE student_id = ?"
-);
-$overrideStmt->bind_param('s', $studentId);
-$overrideStmt->execute();
-$overrideRes = $overrideStmt->get_result();
-while ($overrideRes && $row = $overrideRes->fetch_assoc()) {
-    $courseCode = trim((string)($row['course_code'] ?? ''));
-    $targetYear = trim((string)($row['target_year'] ?? ''));
-    $targetSemester = trim((string)($row['target_semester'] ?? ''));
-
-    if (
-        $courseCode !== '' &&
-        in_array($targetYear, $validYears, true) &&
-        in_array($targetSemester, $validSemesters, true)
-    ) {
-        $overrideMap[$courseCode] = [
-            'year' => $targetYear,
-            'semester' => $targetSemester,
-        ];
-    }
-}
-$overrideStmt->close();
+$validYears = spoValidOverrideYears();
+$validSemesters = spoValidOverrideSemesters();
+$overrideMap = spoLoadStudyPlanOverrides($conn, $studentId);
 
 $displayTerms = [];
 
