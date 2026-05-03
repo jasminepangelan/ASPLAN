@@ -1183,10 +1183,11 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
         echo "<div style='text-align: center; color: red; font-weight: bold; margin: 10px 0;'>" . htmlspecialchars($_GET['error']) . "</div>";
     }
 
-    $host = 'localhost';
-    $db = 'osas_db';
-    $user = 'root';
-    $pass = '';
+    $host = defined('DB_HOST') ? (string) DB_HOST : 'localhost';
+    $db = defined('DB_NAME') ? (string) DB_NAME : 'osas_db';
+    $user = defined('DB_USER') ? (string) DB_USER : 'root';
+    $pass = defined('DB_PASS') ? (string) DB_PASS : '';
+    $port = defined('DB_PORT') ? (int) DB_PORT : 3306;
 
     $selectedProgram = '';
     $availablePrograms = [];
@@ -1430,7 +1431,8 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
 
     if (!$bridgeLoaded) {
         try {
-        $conn = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
+        $pdoHost = strtolower($host) === 'localhost' ? '127.0.0.1' : $host;
+        $conn = new PDO("mysql:host={$pdoHost};port={$port};dbname={$db};charset=utf8mb4", $user, $pass);
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
         $coordinatorPrograms = resolveCoordinatorProgramKeys($conn, (string)$_SESSION['username']);
