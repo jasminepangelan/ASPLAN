@@ -25,7 +25,14 @@ $reason = trim((string)($_POST['reason'] ?? ''));
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 
 $conn = getDBConnection();
-psEnsureProgramShiftTables($conn);
+try {
+    psAssertProgramShiftSchemaReady($conn);
+} catch (RuntimeException $e) {
+    error_log('Student program shift submission blocked: ' . $e->getMessage());
+    closeDBConnection($conn);
+    header('Location: program_shift_request.php?error=' . urlencode('Program shift feature is temporarily unavailable. Please contact the administrator.'));
+    exit();
+}
 $result = null;
 
 if ($useLaravelBridge) {

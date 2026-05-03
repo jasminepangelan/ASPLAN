@@ -46,7 +46,6 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
 
 if (!$bridgeLoaded) {
     $conn = getDBConnection();
-    psEnsureProgramShiftTables($conn);
 
     $query = $conn->prepare("SELECT last_name, first_name, middle_name, picture FROM student_info WHERE student_number = ?");
     $query->bind_param("s", $student_id);

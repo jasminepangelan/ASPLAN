@@ -10,17 +10,26 @@ if (!isset($_SESSION['username']) || (isset($_SESSION['user_type']) && $_SESSION
 }
 
 $conn = getDBConnection();
-psEnsureProgramShiftTables($conn);
 $username = (string)($_SESSION['username'] ?? '');
 $fullName = (string)($_SESSION['full_name'] ?? $username);
 $coordinatorName = htmlspecialchars($fullName !== '' ? $fullName : $username);
-$programKeys = psResolveCoordinatorProgramKeys($conn, $username);
+$programKeys = [];
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 
 $message = '';
 $error = '';
+$programShiftSchemaReady = true;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+try {
+    psAssertProgramShiftSchemaReady($conn);
+    $programKeys = psResolveCoordinatorProgramKeys($conn, $username);
+} catch (RuntimeException $e) {
+    $programShiftSchemaReady = false;
+    $error = 'Program shift feature is temporarily unavailable. Please contact the administrator.';
+    error_log('Coordinator program shift queue blocked: ' . $e->getMessage());
+}
+
+if ($programShiftSchemaReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!validateCSRFToken($token)) {
         $error = 'Invalid security token. Please refresh the page and try again.';
@@ -69,9 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$queue = psFetchCoordinatorQueue($conn, $programKeys);
+$queue = [];
 $bridgeData = null;
-if ($useLaravelBridge) {
+if ($programShiftSchemaReady) {
+    $queue = psFetchCoordinatorQueue($conn, $programKeys);
+}
+if ($programShiftSchemaReady && $useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
         '/api/program-shift/coordinator/queue',
         [

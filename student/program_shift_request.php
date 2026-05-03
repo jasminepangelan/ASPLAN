@@ -11,7 +11,14 @@ if (!isset($_SESSION['student_id'])) {
 }
 
 $conn = getDBConnection();
-psEnsureProgramShiftTables($conn);
+try {
+    psAssertProgramShiftSchemaReady($conn);
+} catch (RuntimeException $e) {
+    error_log('Student program shift page blocked: ' . $e->getMessage());
+    closeDBConnection($conn);
+    header('Location: home_page_student.php?message=' . urlencode('Program shift feature is temporarily unavailable. Please contact the administrator.'));
+    exit();
+}
 $studentNumber = (string)$_SESSION['student_id'];
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 $studentRow = null;

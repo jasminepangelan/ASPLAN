@@ -37,9 +37,13 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
 
 if (!$bridgeLoaded) {
     $conn = getDBConnection();
-    psEnsureProgramShiftTables($conn);
-    $adviserProgramKeys = psResolveAdviserProgramKeys($conn, $_SESSION['id'] ?? null, $_SESSION['username'] ?? '');
-    $adviserShiftSummary = psGetAdviserShiftSummary($conn, $adviserProgramKeys);
+    $programShiftSchemaIssues = psProgramShiftSchemaIssues($conn);
+    if (empty($programShiftSchemaIssues)) {
+        $adviserProgramKeys = psResolveAdviserProgramKeys($conn, $_SESSION['id'] ?? null, $_SESSION['username'] ?? '');
+        $adviserShiftSummary = psGetAdviserShiftSummary($conn, $adviserProgramKeys);
+    } else {
+        error_log('Adviser dashboard loaded without program shift summary: ' . implode(' ', $programShiftSchemaIssues));
+    }
     closeDBConnection($conn);
 }
 ?>

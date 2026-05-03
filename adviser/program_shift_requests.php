@@ -10,19 +10,29 @@ if (!isset($_SESSION['id'])) {
 }
 
 $conn = getDBConnection();
-psEnsureProgramShiftTables($conn);
 $adviserId = $_SESSION['id'] ?? null;
 $adviserUsername = (string)($_SESSION['username'] ?? '');
 $adviserName = (string)($_SESSION['full_name'] ?? $adviserUsername);
 $adviserDisplayName = htmlspecialchars($adviserName !== '' ? $adviserName : $adviserUsername);
-$programKeys = psResolveAdviserProgramKeys($conn, $adviserId, $adviserUsername);
-$adviserBatches = psResolveAdviserBatches($conn, $adviserId, $adviserUsername);
+$programKeys = [];
+$adviserBatches = [];
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 
 $message = '';
 $error = '';
+$programShiftSchemaReady = true;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+try {
+    psAssertProgramShiftSchemaReady($conn);
+    $programKeys = psResolveAdviserProgramKeys($conn, $adviserId, $adviserUsername);
+    $adviserBatches = psResolveAdviserBatches($conn, $adviserId, $adviserUsername);
+} catch (RuntimeException $e) {
+    $programShiftSchemaReady = false;
+    $error = 'Program shift feature is temporarily unavailable. Please contact the administrator.';
+    error_log('Adviser program shift queue blocked: ' . $e->getMessage());
+}
+
+if ($programShiftSchemaReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? '';
     if (!validateCSRFToken($token)) {
         $error = 'Invalid security token. Please refresh the page and try again.';
@@ -71,10 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$queue = psFetchAdviserQueue($conn, $programKeys, $adviserBatches);
-$recentLogs = psFetchAdviserActionLog($conn, $adviserUsername, $programKeys, $adviserBatches, 10);
+$queue = [];
+$recentLogs = [];
 $bridgeData = null;
-if ($useLaravelBridge) {
+if ($programShiftSchemaReady) {
+    $queue = psFetchAdviserQueue($conn, $programKeys, $adviserBatches);
+    $recentLogs = psFetchAdviserActionLog($conn, $adviserUsername, $programKeys, $adviserBatches, 10);
+}
+if ($programShiftSchemaReady && $useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
         '/api/program-shift/adviser/queue',
         [

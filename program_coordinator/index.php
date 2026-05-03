@@ -35,9 +35,13 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
 
 if (!$bridgeLoaded) {
     $conn = getDBConnection();
-    psEnsureProgramShiftTables($conn);
-    $coordinatorProgramKeys = psResolveCoordinatorProgramKeys($conn, $_SESSION['username'] ?? '');
-    $coordinatorShiftSummary = psGetCoordinatorShiftSummary($conn, $coordinatorProgramKeys);
+    $programShiftSchemaIssues = psProgramShiftSchemaIssues($conn);
+    if (empty($programShiftSchemaIssues)) {
+        $coordinatorProgramKeys = psResolveCoordinatorProgramKeys($conn, $_SESSION['username'] ?? '');
+        $coordinatorShiftSummary = psGetCoordinatorShiftSummary($conn, $coordinatorProgramKeys);
+    } else {
+        error_log('Coordinator dashboard loaded without program shift summary: ' . implode(' ', $programShiftSchemaIssues));
+    }
     closeDBConnection($conn);
 }
 ?>
