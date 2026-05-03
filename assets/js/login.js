@@ -397,8 +397,8 @@ function openForgotPasswordModal() {
     fetchCSRFToken();
     
     // Reset form
-    localStorage.removeItem('resetPasswordStudentId');
-    localStorage.removeItem('resetPasswordCode');
+    sessionStorage.removeItem('resetPasswordStudentId');
+    sessionStorage.removeItem('resetPasswordCode');
     
     // Clear all messages and hide them
     const forgotMsg = document.getElementById('forgotPasswordMessage');
@@ -454,8 +454,8 @@ function closeForgotModal() {
     document.body.classList.remove('modal-open');
     
     // Clear stored data
-    localStorage.removeItem('resetPasswordStudentId');
-    localStorage.removeItem('resetPasswordCode');
+    sessionStorage.removeItem('resetPasswordStudentId');
+    sessionStorage.removeItem('resetPasswordCode');
     
     // Reset form fields
     document.getElementById('forgot-student-id').value = '';
@@ -541,7 +541,7 @@ function handleForgotPasswordSubmit(e) {
             messageDiv.textContent = 'A 4-digit code has been sent to your registered email.';
             messageDiv.style.color = '#206018';
             // Store student ID for next step
-            localStorage.setItem('resetPasswordStudentId', studentId);
+            sessionStorage.setItem('resetPasswordStudentId', studentId);
             // Transition to step 2
             setTimeout(() => {
                 document.getElementById('forgot-step-1').style.display = 'none';
@@ -572,7 +572,7 @@ function verifyForgotCode(event) {
     if (event) event.preventDefault();
     
     const code = document.getElementById('forgot-code').value.trim();
-    const studentId = localStorage.getItem('resetPasswordStudentId');
+    const studentId = sessionStorage.getItem('resetPasswordStudentId');
     const messageDiv = document.getElementById('verifyCodeMessage');
     const button = document.getElementById('verifyCodeBtn');
     
@@ -625,7 +625,7 @@ function verifyForgotCode(event) {
             messageDiv.textContent = 'Code verified successfully!';
             messageDiv.style.color = '#206018';
             // Store verification data
-            localStorage.setItem('resetPasswordCode', code);
+            sessionStorage.setItem('resetPasswordCode', code);
             // Transition to step 3
             setTimeout(() => {
                 document.getElementById('forgot-step-2').style.display = 'none';
@@ -655,8 +655,8 @@ function verifyForgotCode(event) {
 function submitForgotPassword(event) {
     if (event) event.preventDefault();
     
-    const studentId = localStorage.getItem('resetPasswordStudentId');
-    const code = localStorage.getItem('resetPasswordCode');
+    const studentId = sessionStorage.getItem('resetPasswordStudentId');
+    const code = sessionStorage.getItem('resetPasswordCode');
     const newPassword = document.getElementById('forgot-new-password').value;
     const confirmPassword = document.getElementById('forgot-confirm-password').value;
     const messageDiv = document.getElementById('resetPasswordMessage');
@@ -719,8 +719,8 @@ function submitForgotPassword(event) {
             messageDiv.textContent = 'Password reset successful!';
             messageDiv.style.color = '#206018';
             // Clear sensitive data
-            localStorage.removeItem('resetPasswordStudentId');
-            localStorage.removeItem('resetPasswordCode');
+            sessionStorage.removeItem('resetPasswordStudentId');
+            sessionStorage.removeItem('resetPasswordCode');
             // Show success message
             setTimeout(() => {
                 const successMessage = document.createElement('div');

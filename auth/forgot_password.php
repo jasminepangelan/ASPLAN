@@ -1,10 +1,7 @@
 
 <?php
 // forgot_password.php: Step 1 - Accept student ID, verify, and send code to associated email
-header('Content-Type: application/json');
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: DENY');
-header('X-XSS-Protection: 1; mode=block');
+header('Content-Type: application/json; charset=UTF-8');
 
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/rate_limit.php';

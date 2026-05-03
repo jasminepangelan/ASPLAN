@@ -18,10 +18,7 @@ if (session_status() === PHP_SESSION_NONE) {
 function sendJsonResponse($data)
 {
     if (!headers_sent()) {
-        header('Content-Type: application/json');
-        header('X-Content-Type-Options: nosniff');
-        header('X-Frame-Options: DENY');
-        header('X-XSS-Protection: 1; mode=block');
+        header('Content-Type: application/json; charset=UTF-8');
     }
 
     echo json_encode($data);

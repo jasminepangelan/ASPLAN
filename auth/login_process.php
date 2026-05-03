@@ -46,7 +46,6 @@ function sendJsonResponse($data) {
         header('Content-Type: application/json');
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');
-        header('X-XSS-Protection: 1; mode=block');
     }
     echo json_encode($data);
     exit();
