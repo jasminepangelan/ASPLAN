@@ -45,7 +45,14 @@
     // Ensure app is loaded through Apache/PHP, not directly via file://
     (function () {
       if (window.location.protocol === 'file:') {
-        window.location.href = 'http://localhost/ASPLAN_v10/index.html';
+        var preferredAppUrl = 'https://asplan.site/index.html';
+        var shouldRedirect = window.confirm(
+          'ASPLAN must be opened through a web server, not directly from a local file. Click OK to open the live site, or Cancel to stay on this page.'
+        );
+
+        if (shouldRedirect) {
+          window.location.href = preferredAppUrl;
+        }
         return;
       }
 
