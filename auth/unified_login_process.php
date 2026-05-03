@@ -180,7 +180,8 @@ try {
     }
 
     $username = trim($_POST['username'] ?? $_POST['student_id'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    // Preserve the exact password bytes entered by the user.
+    $password = (string) ($_POST['password'] ?? '');
     $rememberMe = isset($_POST['remember_me']) && $_POST['remember_me'] === '1';
     $useLaravelAuthBridge = (getenv('USE_LARAVEL_AUTH_BRIDGE') ?: '') === '1';
 
