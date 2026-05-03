@@ -153,7 +153,6 @@ function fetchCSRFToken() {
             const csrfInput = document.getElementById('csrf_token');
             if (csrfInput) {
                 csrfInput.value = data.token;
-                console.log('CSRF token loaded successfully');
                 return true;
             }
         } else {
@@ -530,7 +529,7 @@ function handleForgotPasswordSubmit(e) {
     messageDiv.textContent = 'Sending verification code...';
     messageDiv.style.color = '#206018';
     
-    fetch('auth/forgot_password.php', {
+    fetch(resolveAppUrl('auth/forgot_password.php'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'student_id=' + encodeURIComponent(studentId),
@@ -610,7 +609,7 @@ function verifyForgotCode(event) {
     formData.append('student_id', studentId);
     formData.append('code', code);
     
-    fetch('auth/verify_code.php', {
+    fetch(resolveAppUrl('auth/verify_code.php'), {
         method: 'POST',
         body: formData,
         credentials: 'same-origin'
@@ -704,7 +703,7 @@ function submitForgotPassword(event) {
     formData.append('code', code);
     formData.append('password', newPassword);
     
-    fetch('auth/reset_password.php', {
+    fetch(resolveAppUrl('auth/reset_password.php'), {
         method: 'POST',
         body: formData,
         credentials: 'same-origin'
