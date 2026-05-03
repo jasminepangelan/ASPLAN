@@ -1,4 +1,12 @@
 <?php
+$sessionDir = __DIR__ . '/../tmp/sessions';
+if (!is_dir($sessionDir)) {
+    @mkdir($sessionDir, 0777, true);
+}
+if (is_dir($sessionDir)) {
+    @ini_set('session.save_path', $sessionDir);
+}
+
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../student/generate_study_plan.php';
 
