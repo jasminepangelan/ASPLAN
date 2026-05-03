@@ -17,7 +17,7 @@ if ($is_admin && $view_student_id) {
   $row = null;
   if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-      'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/view',
+      '/api/student-profile/view',
       [
         'bridge_authorized' => true,
         'profile_context' => 'admin',
@@ -72,7 +72,7 @@ if ($is_admin && $view_student_id) {
   $row = null;
   if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-      'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/view',
+      '/api/student-profile/view',
       [
         'bridge_authorized' => true,
         'profile_context' => 'student',
@@ -1556,3 +1556,4 @@ function closeModal(modalId) {
   </script>
 </body>
 </html>
+

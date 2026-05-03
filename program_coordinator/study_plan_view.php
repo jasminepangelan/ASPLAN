@@ -58,7 +58,7 @@ $bridgeLoaded = false;
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/study-plan/student/bootstrap',
+        '/api/study-plan/student/bootstrap',
         [
             'bridge_authorized' => true,
             'student_id' => $studentId,
@@ -1483,3 +1483,4 @@ if ($lastPlannedTerm) {
 </body>
 </html>
 <?php $conn->close(); ?>
+

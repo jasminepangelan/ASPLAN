@@ -20,7 +20,7 @@ try {
         $bridgePayload = $_POST;
         $bridgePayload['bridge_authorized'] = true;
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/admin/create-account',
+            '/api/admin/create-account',
             $bridgePayload
         );
 
@@ -70,4 +70,5 @@ try {
     hsExitJson();
 }
 ?>
+
 

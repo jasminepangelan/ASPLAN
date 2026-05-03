@@ -43,7 +43,7 @@ if ($useLaravelBridge) {
     $bridgePayload = $data;
     $bridgePayload['student_id'] = $student_id;
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/pre-enrollment/save',
+        '/api/pre-enrollment/save',
         $bridgePayload
     );
 
@@ -232,3 +232,4 @@ catch (Exception $e)
 // Close database connection
 closeDBConnection($conn);
 ?>
+

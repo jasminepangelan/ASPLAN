@@ -103,7 +103,7 @@ $bridgeLoaded = false;
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser/checklist-eval/overview',
+        '/api/adviser/checklist-eval/overview',
         [
             'bridge_authorized' => true,
             'adviser_id' => $adviser_id,
@@ -297,7 +297,7 @@ if (empty($batches)) {
         modal.style.display = "flex";
         modal.innerHTML = `
             <div class="modal-container active">
-                <div class="modal-icon"><i>🛡️</i></div>
+                <div class="modal-icon"><i>ðŸ›¡ï¸</i></div>
                 <div class="modal-title">Access Restricted</div>
                 <div class="modal-subtitle">Authentication Failed: No Batch Assignment</div>
                 <div class="modal-desc">
@@ -1209,3 +1209,4 @@ if (!$bridgeLoaded && !empty($batches)) {
 </script>
 </body>
 </html>
+

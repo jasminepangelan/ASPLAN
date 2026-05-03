@@ -23,7 +23,7 @@ if ($studentId === '') {
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/checklist/view',
+        '/api/checklist/view',
         [
             'student_id' => $studentId,
             'program_view' => $programView,
@@ -142,3 +142,4 @@ try {
         closeDBConnection($conn);
     }
 }
+

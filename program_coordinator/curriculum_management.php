@@ -301,7 +301,7 @@ require_once __DIR__ . '/../includes/laravel_bridge.php';
 try {
   if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-      'http://localhost/ASPLAN_v10/laravel-app/public/api/program-coordinator/curriculum-management/bootstrap',
+      '/api/program-coordinator/curriculum-management/bootstrap',
       [
         'bridge_authorized' => true,
         'is_admin' => $isAdmin,
@@ -2312,6 +2312,7 @@ function toggleSidebar() {
 </script>
 </body>
 </html>
+
 
 
 

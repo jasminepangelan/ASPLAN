@@ -183,7 +183,7 @@ try {
 
     if ($useLaravelBridge) {
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/save-checklist',
+            '/api/save-checklist',
             [
                 'save_context' => 'student',
                 'student_id' => $student_id,
@@ -307,3 +307,4 @@ try {
     ]);
 }
 ?>
+

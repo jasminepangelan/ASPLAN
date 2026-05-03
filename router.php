@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/config/app.php';
+emitAppSecurityHeaders();
 
 $requestUri = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
 $requestPath = rawurldecode($requestUri);
@@ -86,6 +87,12 @@ if (is_dir($targetPath)) {
 }
 
 if (is_file($targetPath)) {
+    if (strtolower((string) pathinfo($targetPath, PATHINFO_EXTENSION)) === 'html') {
+        header('Content-Type: text/html; charset=UTF-8');
+        readfile($targetPath);
+        return;
+    }
+
     if (strtolower((string) pathinfo($targetPath, PATHINFO_EXTENSION)) === 'php') {
         $previousCwd = getcwd();
         $_SERVER['SCRIPT_FILENAME'] = $targetPath;

@@ -23,7 +23,7 @@ $courses = $input['courses'];
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/curriculum/save',
+        '/api/curriculum/save',
         $input
     );
     if (is_array($bridgeData)) {
@@ -120,7 +120,7 @@ try {
         $result = $check->get_result();
 
         if ($result->num_rows > 0) {
-            // Row exists — add this program to the programs list if not already there
+            // Row exists â€” add this program to the programs list if not already there
             $existing_progs = $result->fetch_assoc()['programs'];
             $prog_list = array_map('trim', explode(',', $existing_progs));
             if (!in_array($program, $prog_list)) {
@@ -154,4 +154,5 @@ try {
 }
 
 $conn->close();
+
 

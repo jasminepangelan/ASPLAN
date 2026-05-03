@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if (getenv('USE_LARAVEL_BRIDGE') === '1') {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/admin/reset-password',
+                '/api/admin/reset-password',
                 [
                     'bridge_authorized' => true,
                     'new_password' => $new_password,
@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <div class="container">
-        <h1>🔐 Admin Password Reset</h1>
+        <h1>ðŸ” Admin Password Reset</h1>
         
         <div class="warning">
             <strong>Warning:</strong> This will reset the password for the 'admin' user account. 
@@ -194,3 +194,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </body>
 </html>
+

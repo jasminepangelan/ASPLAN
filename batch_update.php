@@ -206,7 +206,7 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgePayload['username'] = $_SESSION['username'] ?? '';
 
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser-management/batch-update',
+        '/api/adviser-management/batch-update',
         $bridgePayload
     );
 
@@ -324,3 +324,4 @@ try {
     exit();
 }
 ?>
+

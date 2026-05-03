@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 $payloadFields['coordinator_id'] = (string) ($_SESSION['username'] ?? '');
 
                 $bridgeData = postLaravelJsonBridge(
-                    'http://localhost/ASPLAN_v10/laravel-app/public/api/student-profile/update',
+                    '/api/student-profile/update',
                     $payloadFields
                 );
 
@@ -750,7 +750,7 @@ closeDBConnection($conn);
                                 <div class="details-heading">
                                     <div>
                                         <h3>Account Details</h3>
-                                        <p>Edit the student’s personal and contact information below. Changes are saved directly to the student profile record.</p>
+                                        <p>Edit the studentâ€™s personal and contact information below. Changes are saved directly to the student profile record.</p>
                                     </div>
                                     <div class="details-badge">Program Coordinator Access</div>
                                 </div>
@@ -759,7 +759,7 @@ closeDBConnection($conn);
                                     <div class="field">
                                         <label for="last_name">Last Name</label>
                                         <input type="text" id="last_name" name="last_name" value="<?= $lastName ?>" required>
-                                        <div class="field-note">Use the student’s official surname from school records.</div>
+                                        <div class="field-note">Use the studentâ€™s official surname from school records.</div>
                                     </div>
                                     <div class="field">
                                         <label for="first_name">First Name</label>
@@ -784,7 +784,7 @@ closeDBConnection($conn);
                                     <div class="field">
                                         <label for="admission_date">Admission Date</label>
                                         <input type="date" id="admission_date" name="admission_date" value="<?= $admissionDate ?>" required>
-                                        <div class="field-note">Keep this aligned with the student’s official admission record.</div>
+                                        <div class="field-note">Keep this aligned with the studentâ€™s official admission record.</div>
                                     </div>
                                     <div class="field">
                                         <label for="program">Program</label>
@@ -881,3 +881,4 @@ closeDBConnection($conn);
     </script>
 </body>
 </html>
+

@@ -650,7 +650,7 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
         }
         
         .back-btn::before {
-            content: '←';
+            content: 'â†';
             font-size: 18px;
             font-weight: bold;
         }
@@ -1198,19 +1198,19 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
     // DEBUG MODE
     if (isset($_GET['debug'])) {
         echo '<div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; margin: 20px; border-radius: 8px; font-family: monospace; font-size: 12px;">';
-        echo '<h3>🛠 DEBUG INFO</h3>';
+        echo '<h3>ðŸ›  DEBUG INFO</h3>';
         
         echo '<strong>Selected Program:</strong> ' . htmlspecialchars($selectedProgram) . '<br>';
         echo '<strong>Available Programs:</strong><br>';
         foreach ($availablePrograms as $k => $v) {
-            echo '&nbsp;&nbsp;' . htmlspecialchars($k) . ' → ' . htmlspecialchars($v) . '<br>';
+            echo '&nbsp;&nbsp;' . htmlspecialchars($k) . ' â†’ ' . htmlspecialchars($v) . '<br>';
         }
         
         echo '<strong>Raw Adviser Programs:</strong><br>';
         $debugStmt = $conn->query("SELECT DISTINCT TRIM(program) as prog FROM adviser WHERE program IS NOT NULL ORDER BY prog");
         while ($row = $debugStmt->fetch_assoc()) {
             $norm = normalizeProgramKey($row['prog']);
-            echo '&nbsp;&nbsp;' . htmlspecialchars($row['prog']) . ' → normalized: ' . htmlspecialchars($norm) . '<br>';
+            echo '&nbsp;&nbsp;' . htmlspecialchars($row['prog']) . ' â†’ normalized: ' . htmlspecialchars($norm) . '<br>';
         }
         
         echo '<strong>Adviser Count:</strong> ' . count($advisers) . '<br>';
@@ -1396,7 +1396,7 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
     $coordinatorPrograms = [];
     if (getenv('USE_LARAVEL_BRIDGE') === '1') {
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser-management/overview',
+            '/api/adviser-management/overview',
             [
                 'bridge_authorized' => true,
                 'user_type' => $_SESSION['user_type'] ?? '',
@@ -1939,6 +1939,7 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
 </script>
 </body>
 </html>
+
 
 
 

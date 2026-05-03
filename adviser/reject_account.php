@@ -22,7 +22,7 @@ if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $student_id)) {
 
 if ((getenv('USE_LARAVEL_BRIDGE') === '1')) {
 	$bridgeData = postLaravelJsonBridge(
-		'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser/pending-accounts/reject',
+		'/api/adviser/pending-accounts/reject',
 		[
 			'bridge_authorized' => true,
 			'student_id' => $student_id,
@@ -95,3 +95,4 @@ closeDBConnection($conn);
 header("Location: pending_accounts.php?message=Student account not found.");
 exit;
 ?>
+

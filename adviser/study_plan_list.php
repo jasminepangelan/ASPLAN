@@ -97,7 +97,7 @@ $bridgeLoaded = false;
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser/study-plan/list/overview',
+        '/api/adviser/study-plan/list/overview',
         [
             'bridge_authorized' => true,
             'adviser_id' => $adviser_id,
@@ -300,7 +300,7 @@ if (empty($batches) || empty($adviser_program)) {
         modal.style.display = "flex";
         modal.innerHTML = `
             <div class="modal-container active">
-                <div class="modal-icon"><i>⚠️</i></div>
+                <div class="modal-icon"><i>âš ï¸</i></div>
                 <div class="modal-title">Access Restricted</div>
                 <div class="modal-subtitle">No Assignment Found</div>
                 <div class="modal-desc">
@@ -685,3 +685,4 @@ $displayRows = [];
     </script>
 </body>
 </html>
+

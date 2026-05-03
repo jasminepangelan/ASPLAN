@@ -77,6 +77,55 @@ if (!function_exists('resolveLegacyAppUrl')) {
     }
 }
 
+if (!function_exists('appContentSecurityPolicyValue')) {
+    function appContentSecurityPolicyValue(): string {
+        // Keep the baseline intentionally broad enough for legacy inline
+        // scripts/styles and third-party assets already used by the app.
+        return implode('; ', [
+            "default-src 'self' https: data: blob:",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'self'",
+            "object-src 'none'",
+            "img-src 'self' https: data: blob:",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+            "style-src 'self' 'unsafe-inline' https:",
+            "font-src 'self' https: data:",
+            "connect-src 'self' https: http://localhost:* http://127.0.0.1:*",
+            "frame-src 'self' https:",
+            "upgrade-insecure-requests",
+        ]);
+    }
+}
+
+if (!function_exists('emitAppSecurityHeaders')) {
+    function emitAppSecurityHeaders(): void {
+        if (headers_sent()) {
+            return;
+        }
+
+        // Avoid advertising PHP implementation details.
+        @ini_set('expose_php', '0');
+        if (function_exists('header_remove')) {
+            @header_remove('X-Powered-By');
+        }
+
+        header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: SAMEORIGIN');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('Permissions-Policy: accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
+        header('Content-Security-Policy: ' . appContentSecurityPolicyValue());
+
+        if (
+            (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') ||
+            (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string) $_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ||
+            ((int) ($_SERVER['SERVER_PORT'] ?? 0) === 443)
+        ) {
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+        }
+    }
+}
+
 if (!function_exists('resolveUploadStorageDir')) {
     function resolveUploadStorageDir() {
         $configuredDir = normalizeConfiguredPathValue(getenv('APP_UPLOAD_STORAGE_DIR') ?: '');

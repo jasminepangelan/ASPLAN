@@ -17,7 +17,7 @@ $bridgeLoaded = false;
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/dashboard/overview',
+        '/api/dashboard/overview',
         [
             'bridge_authorized' => true,
             'role' => 'adviser',
@@ -655,3 +655,4 @@ if (!$bridgeLoaded) {
   </script>
 </body>
 </html>
+

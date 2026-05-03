@@ -152,7 +152,7 @@ $all_courses = [];
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/checklist/view',
+        '/api/checklist/view',
         [
             'student_id' => $student_id,
             'program_view' => $program_abbr,
@@ -1668,22 +1668,22 @@ function autoSaveGrade(courseCode) {
                 const data = JSON.parse(text);
                 isSaving = false;
                 if (data.status === 'success') {
-                    console.log('✓ Auto-saved successfully for ' + courseCode);
+                    console.log('âœ“ Auto-saved successfully for ' + courseCode);
                     showNotification('success', 'Auto-saved', 'Final grade saved successfully');
                 } else {
-                    console.error('✗ Auto-save failed:', data.message);
+                    console.error('âœ— Auto-save failed:', data.message);
                     showNotification('error', 'Auto-save Failed', data.message || 'Unable to save grade');
                 }
             } catch (e) {
                 isSaving = false;
-                console.error('✗ Auto-save JSON parse error:', e);
+                console.error('âœ— Auto-save JSON parse error:', e);
                 console.error('Response text:', text);
                 showNotification('error', 'Auto-save Error', 'Server response error');
             }
         })
         .catch(error => {
             isSaving = false;
-            console.error('✗ Auto-save fetch error:', error);
+            console.error('âœ— Auto-save fetch error:', error);
         });
     }, 1000);
 }
@@ -1775,3 +1775,4 @@ window.addEventListener('afterprint', function() {
 </script>
 </body>
 </html>
+

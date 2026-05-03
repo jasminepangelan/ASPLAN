@@ -74,6 +74,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Load all configuration files
 require_once __DIR__ . '/app.php';
+emitAppSecurityHeaders();
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/email.php';

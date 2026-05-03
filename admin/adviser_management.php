@@ -600,7 +600,7 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
         }
         
         .back-btn::before {
-            content: '←';
+            content: 'â†';
             font-size: 18px;
             font-weight: bold;
         }
@@ -1105,7 +1105,7 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
     $bridgeLoaded = false;
     if (getenv('USE_LARAVEL_BRIDGE') === '1') {
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser-management/overview',
+            '/api/adviser-management/overview',
             [
                 'bridge_authorized' => true,
                 'user_type' => 'admin',
@@ -1586,6 +1586,7 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
 </script>
 </body>
 </html>
+
 
 
 

@@ -27,7 +27,7 @@ if ($useLaravelBridge) {
     $bridgePayload['bridge_authorized'] = true;
 
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/curriculum/delete-year',
+        '/api/curriculum/delete-year',
         $bridgePayload
     );
     if (is_array($bridgeData)) {
@@ -154,3 +154,4 @@ try {
 
 closeDBConnection($conn);
 ?>
+

@@ -30,7 +30,7 @@ $admin_id = isset($_SESSION['admin_id']) ? $_SESSION['admin_id'] : $_SESSION['ad
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/admin/pending-accounts/approve',
+        '/api/admin/pending-accounts/approve',
         [
             'bridge_authorized' => true,
             'student_id' => $student_id,
@@ -85,3 +85,4 @@ if ($stmt->execute()) {
     exit;
 }
 ?>
+

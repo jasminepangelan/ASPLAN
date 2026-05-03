@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = (string)($_POST['action'] ?? '');
         $comment = trim((string)($_POST['comment'] ?? ''));
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/program-shift/adviser/decision',
+            '/api/program-shift/adviser/decision',
             [
                 'bridge_authorized' => true,
                 'request_id' => $requestId,
@@ -76,7 +76,7 @@ $recentLogs = psFetchAdviserActionLog($conn, $adviserUsername, $programKeys, $ad
 $bridgeData = null;
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/program-shift/adviser/queue',
+        '/api/program-shift/adviser/queue',
         [
             'bridge_authorized' => true,
             'adviser_id' => (int) $adviserId,
@@ -883,3 +883,4 @@ closeDBConnection($conn);
     </script>
 </body>
 </html>
+

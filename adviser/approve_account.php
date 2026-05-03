@@ -21,7 +21,7 @@ if ($student_id !== null && $student_id !== '') {
 
     if ($useLaravelBridge) {
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser/pending-accounts/approve',
+            '/api/adviser/pending-accounts/approve',
             [
                 'bridge_authorized' => true,
                 'student_id' => $student_id,
@@ -100,3 +100,4 @@ if ($student_id !== null && $student_id !== '') {
     exit;
 }
 ?>
+

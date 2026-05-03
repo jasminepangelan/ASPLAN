@@ -29,7 +29,7 @@ $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 $preEnrollmentBridgeData = null;
 if ($useLaravelBridge) {
     $preEnrollmentBridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/pre-enrollment/bootstrap',
+        '/api/pre-enrollment/bootstrap',
         [
             'student_id' => $student_id,
             'year' => isset($_GET['year']) ? $_GET['year'] : '1st Yr',
@@ -2159,3 +2159,4 @@ $adviserPreenrollWorkspacePayload = htmlspecialchars(json_encode([
     </style>
 </body>
 </html>
+

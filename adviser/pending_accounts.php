@@ -1103,7 +1103,7 @@ $adviserShellPayload = htmlspecialchars(json_encode([
 
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/adviser/pending-accounts/list',
+                '/api/adviser/pending-accounts/list',
                 [
                     'bridge_authorized' => true,
                     'adviser_id' => (int) $_SESSION['id'],
@@ -1231,11 +1231,11 @@ $adviserShellPayload = htmlspecialchars(json_encode([
             // Show empty state outside of table
             echo '
                 <div class="empty-state">
-                    <div class="empty-state-icon">✅</div>
+                    <div class="empty-state-icon">âœ…</div>
                     <h3>All Clear!</h3>
                     <p>No pending account approvals for your assigned batches.</p>
                     <div class="help-text">
-                        <strong>💡 Note:</strong> New student registrations for your batches will appear here automatically.
+                        <strong>ðŸ’¡ Note:</strong> New student registrations for your batches will appear here automatically.
                     </div>
                 </div>
             ';
@@ -1495,3 +1495,4 @@ $adviserShellPayload = htmlspecialchars(json_encode([
     </script>
 </body>
 </html>
+

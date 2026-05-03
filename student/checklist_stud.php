@@ -234,7 +234,7 @@ $all_courses = [];
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
   $bridgeData = postLaravelJsonBridge(
-    'http://localhost/ASPLAN_v10/laravel-app/public/api/checklist/view',
+    '/api/checklist/view',
     [
       'student_id' => $student_id,
       'program_view' => $selected_program_view,
@@ -1943,7 +1943,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
             const itemsMarkup = (Array.isArray(contextItems) ? contextItems : []).map(function(item) {
                 return `<div style="padding:8px 10px;border-radius:10px;background:#f3f8f2;border:1px solid #dbe8d8;font-size:13px;color:#264228;">
-                    <strong>${item.course}</strong> • ${item.attempt} • ${item.grade}
+                    <strong>${item.course}</strong> â€¢ ${item.attempt} â€¢ ${item.grade}
                 </div>`;
             }).join('');
 
@@ -2405,7 +2405,7 @@ function stopChecklistLiveRefresh() {
                 }
             }
         }
-        // Update evaluator remarks — show Pending if any attempt is pending
+        // Update evaluator remarks â€” show Pending if any attempt is pending
         const remarksElement = document.getElementById(`remarks_${course.course_code}`);
         if (remarksElement) {
             const r1 = course.evaluator_remarks   || '';
@@ -2646,3 +2646,4 @@ window.addEventListener('focus', function() {
     </script>
 </body>
 </html>
+

@@ -138,7 +138,7 @@ $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/account-management/student-profile',
+        '/api/account-management/student-profile',
         ['student_id' => $student_id]
     );
 
@@ -980,3 +980,4 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
 </script>
 </body>
 </html>
+

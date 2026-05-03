@@ -31,7 +31,7 @@ if ($useLaravelBridge) {
     $bridgePayload['bridge_authorized'] = true;
 
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/curriculum/save',
+        '/api/curriculum/save',
         $bridgePayload
     );
     if (is_array($bridgeData)) {
@@ -524,3 +524,4 @@ try {
 
 closeDBConnection($conn);
 ?>
+

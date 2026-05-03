@@ -25,7 +25,7 @@ $strandRestrictionMessage = '';
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/program-shift/student/overview',
+        '/api/program-shift/student/overview',
         [
             'bridge_authorized' => true,
             'student_id' => $studentNumber,
@@ -1062,3 +1062,4 @@ closeDBConnection($conn);
     </script>
 </body>
 </html>
+

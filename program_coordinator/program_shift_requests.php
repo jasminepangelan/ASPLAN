@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = (string)($_POST['action'] ?? '');
         $comment = trim((string)($_POST['comment'] ?? ''));
         $bridgeData = postLaravelJsonBridge(
-            'http://localhost/ASPLAN_v10/laravel-app/public/api/program-shift/coordinator/decision',
+            '/api/program-shift/coordinator/decision',
             [
                 'bridge_authorized' => true,
                 'request_id' => $requestId,
@@ -73,7 +73,7 @@ $queue = psFetchCoordinatorQueue($conn, $programKeys);
 $bridgeData = null;
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/program-shift/coordinator/queue',
+        '/api/program-shift/coordinator/queue',
         [
             'bridge_authorized' => true,
             'username' => $username,
@@ -666,3 +666,4 @@ closeDBConnection($conn);
     </script>
 </body>
 </html>
+

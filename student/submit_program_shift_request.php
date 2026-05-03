@@ -30,7 +30,7 @@ $result = null;
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/program-shift/student/submit',
+        '/api/program-shift/student/submit',
         [
             'bridge_authorized' => true,
             'student_id' => (string) $_SESSION['student_id'],
@@ -61,3 +61,4 @@ if (!empty($result['ok'])) {
 
 header('Location: program_shift_request.php?error=' . urlencode((string)($result['message'] ?? 'Unable to submit request.')));
 exit();
+

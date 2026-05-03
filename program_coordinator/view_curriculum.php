@@ -157,7 +157,7 @@ $bridgeLoaded = false;
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/program-coordinator/view-curriculum/overview',
+        '/api/program-coordinator/view-curriculum/overview',
         [
             'bridge_authorized' => true,
             'username' => $_SESSION['username'] ?? '',
@@ -726,3 +726,4 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
   <?php endif; ?>
 </body>
 </html>
+

@@ -29,7 +29,7 @@ $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 
 if ($useLaravelBridge) {
 	$bridgeData = postLaravelJsonBridge(
-		'http://localhost/ASPLAN_v10/laravel-app/public/api/admin/pending-accounts/reject',
+		'/api/admin/pending-accounts/reject',
 		[
 			'bridge_authorized' => true,
 			'student_id' => $student_id,
@@ -74,3 +74,4 @@ closeDBConnection($conn);
 header("Location: pending_accounts.php?error=Student account not found");
 exit();
 ?>
+

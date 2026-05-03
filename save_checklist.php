@@ -98,7 +98,7 @@ try {
     if ($useLaravelBridge) {
         if ($isBulkApprove) {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/save-checklist',
+                '/api/save-checklist',
                 [
                     'bulk_approve' => true,
                     'save_context' => 'staff',
@@ -110,7 +110,7 @@ try {
             );
         } else {
             $bridgeData = postLaravelJsonBridge(
-                'http://localhost/ASPLAN_v10/laravel-app/public/api/save-checklist',
+                '/api/save-checklist',
                 [
                     'save_context' => 'staff',
                     'student_id' => (string) ($_POST['student_id'] ?? $student_id),
@@ -307,3 +307,4 @@ try {
     ]);
 }
 ?>
+

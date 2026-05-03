@@ -19,7 +19,7 @@ if (!$student_id) {
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/pre-enrollment/transaction-history',
+        '/api/pre-enrollment/transaction-history',
         ['student_id' => $student_id]
     );
 
@@ -71,3 +71,4 @@ echo json_encode(['success' => true, 'transactions' => $transactions]);
 $stmt->close();
 $conn->close();
 ?>
+

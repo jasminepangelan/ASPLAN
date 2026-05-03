@@ -13,7 +13,7 @@ if (!$enrollment_id) {
 
 if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
-        'http://localhost/ASPLAN_v10/laravel-app/public/api/pre-enrollment/enrollment-details',
+        '/api/pre-enrollment/enrollment-details',
         ['enrollment_id' => $enrollment_id]
     );
 
@@ -68,3 +68,4 @@ if ($enrollment) {
 
 $conn->close();
 ?>
+
