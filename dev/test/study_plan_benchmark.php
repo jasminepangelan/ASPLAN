@@ -132,30 +132,6 @@ function benchmarkResetQueryCache(): void
     unset($_SESSION['_qopt_cache'], $_SESSION['_qopt_cache_times']);
 }
 
-function benchmarkCloseGeneratorConnection($generator): void
-{
-    static $reflection = null;
-
-    if (!is_object($generator)) {
-        return;
-    }
-
-    if ($reflection === null) {
-        $reflection = new ReflectionClass($generator);
-    }
-
-    if (!$reflection->hasProperty('conn')) {
-        return;
-    }
-
-    $property = $reflection->getProperty('conn');
-    $property->setAccessible(true);
-    $conn = $property->getValue($generator);
-    if ($conn) {
-        closeDBConnection($conn);
-    }
-}
-
 function benchmarkFormatMs(float $value): string
 {
     return number_format($value, 2) . ' ms';
@@ -262,7 +238,6 @@ foreach ($students as $student) {
             $remainingCourses = (int) ($stats['remaining_courses'] ?? 0);
             $planTerms = count($plan);
 
-            benchmarkCloseGeneratorConnection($generator);
             unset($generator, $plan, $stats);
         } catch (Throwable $e) {
             $errorCount++;
