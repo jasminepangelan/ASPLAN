@@ -118,9 +118,11 @@ $validSemesters = spoValidOverrideSemesters();
 $overrideMap = spoLoadStudyPlanOverrides($conn, $studentId);
 
 $displayTerms = [];
+$completedTermKeys = [];
 
 // Show completed/past terms first (same behavior as student study plan page).
 foreach ($completedTerms as $term) {
+    $completedTermKeys[((string)($term['year'] ?? '')) . '|' . ((string)($term['semester'] ?? ''))] = true;
     $displayTerms[] = [
         'year' => (string)($term['year'] ?? ''),
         'semester' => (string)($term['semester'] ?? ''),
@@ -128,6 +130,71 @@ foreach ($completedTerms as $term) {
         'max_units' => null,
         'courses' => $term['courses'] ?? [],
         'completed_term' => true,
+        'skipped' => false,
+    ];
+}
+
+$futureTermKeys = [];
+foreach ($studyPlan as $term) {
+    $futureTermKeys[((string)($term['year'] ?? '')) . '|' . ((string)($term['semester'] ?? ''))] = true;
+}
+
+$partialTerms = [];
+foreach ($ayCoursesByTerm as $termKey => $termData) {
+    if (
+        isset($completedTermKeys[$termKey]) ||
+        isset($futureTermKeys[$termKey]) ||
+        empty($termData['completed']) ||
+        empty($termData['uncomplete'])
+    ) {
+        continue;
+    }
+
+    $courses = [];
+    foreach (($termData['completed'] ?? []) as $course) {
+        $courses[] = [
+            'code' => $course['code'] ?? '',
+            'title' => $course['title'] ?? '',
+            'units' => $course['units'] ?? 0,
+            'prerequisite' => $course['prerequisite'] ?? 'None',
+            'status' => 'Passed',
+            'status_variant' => 'passed',
+            'grade' => $course['grade'] ?? '',
+        ];
+    }
+
+    foreach (($termData['uncomplete'] ?? []) as $course) {
+        $reason = trim((string)($course['reason'] ?? 'Not Yet Taken'));
+        $courses[] = [
+            'code' => $course['code'] ?? '',
+            'title' => $course['title'] ?? '',
+            'units' => $course['units'] ?? 0,
+            'prerequisite' => $course['prerequisite'] ?? 'None',
+            'status' => $reason,
+            'status_variant' => strtolower(str_replace(' ', '-', $reason)),
+            'grade' => $course['grade'] ?? '',
+        ];
+    }
+
+    $partialTerms[] = [
+        'year' => (string)($termData['year'] ?? ''),
+        'semester' => (string)($termData['semester'] ?? ''),
+        'total_units' => (int) array_reduce($courses, static function ($carry, $course) {
+            $courseCode = strtoupper(trim((string)($course['code'] ?? '')));
+            $courseTitle = strtoupper(trim((string)($course['title'] ?? '')));
+            $isNonCredit = $courseCode === 'CVSU 101'
+                || strpos($courseTitle, 'NON-CREDIT') !== false
+                || strpos($courseTitle, 'NON CREDIT') !== false;
+            if ($isNonCredit) {
+                return $carry;
+            }
+
+            return $carry + (float)($course['units'] ?? 0);
+        }, 0),
+        'max_units' => null,
+        'courses' => $courses,
+        'completed_term' => false,
+        'partial_term' => true,
         'skipped' => false,
     ];
 }
@@ -216,10 +283,45 @@ foreach ($futureTermBuckets as $term) {
         'max_units' => isset($term['max_units']) ? (int)$term['max_units'] : null,
         'courses' => $term['courses'] ?? [],
         'completed_term' => false,
+        'partial_term' => false,
         'skipped' => !empty($term['skipped']),
         'skip_reason' => (string)($term['skip_reason'] ?? ''),
     ];
 }
+
+if (!empty($partialTerms)) {
+    usort($partialTerms, function ($a, $b) use ($yearOrder, $semesterOrder) {
+        $ya = $yearOrder[$a['year']] ?? 99;
+        $yb = $yearOrder[$b['year']] ?? 99;
+        if ($ya !== $yb) {
+            return $ya <=> $yb;
+        }
+
+        $sa = $semesterOrder[$a['semester']] ?? 99;
+        $sb = $semesterOrder[$b['semester']] ?? 99;
+        return $sa <=> $sb;
+    });
+
+    $displayTerms = array_merge($displayTerms, $partialTerms);
+}
+
+usort($displayTerms, function ($a, $b) use ($yearOrder, $semesterOrder) {
+    $ya = $yearOrder[$a['year']] ?? 99;
+    $yb = $yearOrder[$b['year']] ?? 99;
+    if ($ya !== $yb) {
+        return $ya <=> $yb;
+    }
+
+    $sa = $semesterOrder[$a['semester']] ?? 99;
+    $sb = $semesterOrder[$b['semester']] ?? 99;
+    if ($sa !== $sb) {
+        return $sa <=> $sb;
+    }
+
+    $aWeight = !empty($a['completed_term']) ? 0 : (!empty($a['partial_term']) ? 1 : 2);
+    $bWeight = !empty($b['completed_term']) ? 0 : (!empty($b['partial_term']) ? 1 : 2);
+    return $aWeight <=> $bWeight;
+});
 
 $fullName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($student['first_name'] ?? '') . ' ' . (string)($student['middle_name'] ?? ''));
 $lastPlannedTerm = null;
@@ -1143,7 +1245,13 @@ if ($lastPlannedTerm) {
                 $futureDividerShown = false;
                 foreach ($displayTerms as $term):
                     $isCompletedTerm = !empty($term['completed_term']);
-                    if (!$isCompletedTerm && !$futureDividerShown && !empty($completedTerms)) {
+                    $isPartialTerm = !empty($term['partial_term']);
+                    $yearLabel = (string)($term['year'] ?? '');
+                    $yearNum = (int)preg_replace('/[^0-9]/', '', $yearLabel);
+                    $syStart = $admissionYear + ($yearNum > 0 ? $yearNum - 1 : 0);
+                    $syEnd = $syStart + 1;
+                    $schoolYear = "A.Y. $syStart-$syEnd";
+                    if (!$isCompletedTerm && !$isPartialTerm && !$futureDividerShown && !empty($completedTerms)) {
                         $futureDividerShown = true;
                 ?>
                     <div class="completed-divider">
@@ -1152,9 +1260,9 @@ if ($lastPlannedTerm) {
                 <?php } $termUnits = (int)($term['total_units'] ?? 0); ?>
                     <?php if (!empty($term['skipped'])): ?>
                         <div class="semester-section" style="border: 2px dashed #f44336; opacity: 0.78;">
-                            <div style="background: linear-gradient(135deg, #ffebee, #ffcdd2); padding: 25px; text-align: center; border-radius: 8px;">
+                                <div style="background: linear-gradient(135deg, #ffebee, #ffcdd2); padding: 25px; text-align: center; border-radius: 8px;">
                                 <div class="semester-header" style="color: #c62828;">
-                                    <?= htmlspecialchars((string)$term['year']); ?> - <?= htmlspecialchars((string)$term['semester']); ?>
+                                    <?= htmlspecialchars((string)$term['year']); ?> - <?= htmlspecialchars((string)$term['semester']); ?>, <?= htmlspecialchars($schoolYear); ?>
                                 </div>
                                 <div style="font-size: 36px; margin: 10px 0;">&#128683;</div>
                                 <p style="font-size: 14px; color: #c62828; font-weight: 600; margin: 0;">
@@ -1166,12 +1274,17 @@ if ($lastPlannedTerm) {
                         <div class="semester-section <?= $isCompletedTerm ? 'completed-term' : '' ?>" style="<?= $isCompletedTerm ? 'border: 1px solid #c8e6c9;' : '' ?>">
                             <?php if ($isCompletedTerm): ?>
                                 <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2e7d32;">
-                                    <?= htmlspecialchars((string)$term['year']); ?> - <?= htmlspecialchars((string)$term['semester']); ?>
+                                    <?= htmlspecialchars((string)$term['year']); ?> - <?= htmlspecialchars((string)$term['semester']); ?>, <?= htmlspecialchars($schoolYear); ?>
                                     <span class="completed-badge">COMPLETED</span>
+                                </div>
+                            <?php elseif ($isPartialTerm): ?>
+                                <div style="background: linear-gradient(135deg, #edf7ee, #dbeadf); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2f5d34;">
+                                    <?= htmlspecialchars((string)$term['year']); ?> - <?= htmlspecialchars((string)$term['semester']); ?>, <?= htmlspecialchars($schoolYear); ?>
+                                    <span style="font-size: 10px; background: #fff8e1; color: #8d6e00; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;">IN PROGRESS</span>
                                 </div>
                             <?php else: ?>
                                 <div class="semester-header">
-                                    <?= htmlspecialchars((string)$term['year']); ?> - <?= htmlspecialchars((string)$term['semester']); ?>
+                                    <?= htmlspecialchars((string)$term['year']); ?> - <?= htmlspecialchars((string)$term['semester']); ?>, <?= htmlspecialchars($schoolYear); ?>
                                     <?php if (!empty($term['max_units'])): ?>
                                         <span style="font-size: 11px; background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600;">
                                             Max <?= (int)$term['max_units']; ?> units
@@ -1216,13 +1329,31 @@ if ($lastPlannedTerm) {
                                                 $crossRegTooltip = $crossRegSourceProgram !== '' ? 'Cross-registered from: ' . $crossRegSourceProgram : 'Cross-registered course';
                                             ?>
                                             <?php if ($isCompletedTerm): ?><span class="plan-tag plan-tag-completed">Completed</span><?php endif; ?>
+                                            <?php if ($isPartialTerm): ?><span class="plan-tag plan-tag-cross">In Progress</span><?php endif; ?>
+                                            <?php
+                                                $status = trim((string)($course['status'] ?? ''));
+                                                $statusVariant = trim((string)($course['status_variant'] ?? ''));
+                                            ?>
+                                            <?php if ($isPartialTerm && $status !== ''): ?>
+                                                <?php
+                                                    $partialBadgeClass = 'plan-tag-to-add';
+                                                    if ($statusVariant === 'passed' || $statusVariant === 'credited') {
+                                                        $partialBadgeClass = 'plan-tag-completed';
+                                                    } elseif ($statusVariant === 'failed') {
+                                                        $partialBadgeClass = 'plan-tag-retake';
+                                                    } elseif ($statusVariant === 'inc' || $statusVariant === 'dropped') {
+                                                        $partialBadgeClass = 'plan-tag-cross';
+                                                    }
+                                                ?>
+                                                <span class="plan-tag <?= htmlspecialchars($partialBadgeClass); ?>"><?= htmlspecialchars(strtoupper($status)); ?></span>
+                                            <?php endif; ?>
                                             <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
                                             <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($crossRegTooltip) ?>" aria-label="<?= htmlspecialchars($crossRegTooltip) ?>">Cross-Reg</span><?php endif; ?>
                                             <?php if (!empty($course['needs_retake']) || !empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-to-add">To be added</span><?php endif; ?>
                                             <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if (!$isCompletedTerm && !$isAdmin): ?>
+                                            <?php if (!$isCompletedTerm && !$isPartialTerm && !$isAdmin): ?>
                                                 <?php
                                                     $courseCode = (string)($course['code'] ?? '');
                                                     $currentPlacement = ((string)($term['year'] ?? '')) . '|' . ((string)($term['semester'] ?? ''));
