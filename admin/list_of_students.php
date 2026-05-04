@@ -198,6 +198,7 @@ $masterlistAuthorizedTotal = 0;
 foreach ($masterlistSummary as $summaryRow) {
     $masterlistAuthorizedTotal += (int) ($summaryRow['total_students'] ?? 0);
 }
+$firstMasterlistProgram = array_key_first($masterlistBatchGroups);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -456,6 +457,16 @@ foreach ($masterlistSummary as $summaryRow) {
             background: linear-gradient(135deg, #0a4f5d 0%, #197f92 100%);
             box-shadow: 0 4px 12px rgba(15, 95, 111, 0.38);
         }
+
+        .template-btn {
+            background: linear-gradient(135deg, #5b7f1d 0%, #7ea92f 100%);
+            box-shadow: 0 2px 8px rgba(91, 127, 29, 0.24);
+        }
+
+        .template-btn:hover {
+            background: linear-gradient(135deg, #4d6f17 0%, #6f9728 100%);
+            box-shadow: 0 4px 12px rgba(91, 127, 29, 0.34);
+        }
         
         .search-input {
             width: 300px;
@@ -522,6 +533,14 @@ foreach ($masterlistSummary as $summaryRow) {
             font-size: 12px;
         }
 
+        .masterlist-action-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 0 0 16px;
+        }
+
         .masterlist-modal[hidden] {
             display: none;
         }
@@ -532,20 +551,22 @@ foreach ($masterlistSummary as $summaryRow) {
             z-index: 2000;
             background: rgba(17, 36, 18, 0.6);
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 20px;
+            overflow-y: auto;
+            padding: 78px 20px 20px;
         }
 
         .masterlist-modal-dialog {
             width: min(1100px, 100%);
-            max-height: min(88vh, 900px);
+            max-height: calc(100vh - 110px);
             overflow: hidden;
             background: #ffffff;
             border-radius: 18px;
             box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
             display: flex;
             flex-direction: column;
+            margin: 0 auto;
         }
 
         .masterlist-modal-header {
@@ -581,6 +602,7 @@ foreach ($masterlistSummary as $summaryRow) {
             line-height: 1;
             cursor: pointer;
             transition: all 0.2s ease;
+            flex: 0 0 auto;
         }
 
         .masterlist-modal-close:hover {
@@ -1127,6 +1149,11 @@ foreach ($masterlistSummary as $summaryRow) {
                 min-width: 0;
                 width: 100%;
             }
+
+            .masterlist-action-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
             
             .export-btn {
                 width: 100%;
@@ -1302,7 +1329,7 @@ foreach ($masterlistSummary as $summaryRow) {
             }
 
             .masterlist-modal {
-                padding: 12px;
+                padding: 76px 12px 12px;
             }
 
             .masterlist-modal-header,
@@ -1433,9 +1460,6 @@ foreach ($masterlistSummary as $summaryRow) {
                     </svg>
                     Export CSV
                 </a>
-                <button type="button" class="export-btn masterlist-btn" id="openMasterlistModal" title="View official student masterlist">
-                    Official Masterlist
-                </button>
                 <form method="GET" action="" id="searchForm">
                     <input type="hidden" name="program" value="<?php echo htmlspecialchars($selectedProgram); ?>">
                     <input type="hidden" name="batch" value="<?php echo htmlspecialchars($selectedBatch); ?>">
@@ -1473,6 +1497,15 @@ foreach ($masterlistSummary as $summaryRow) {
             <div class="filter-note">
                 Select program first, then choose a batch to narrow the table.
             </div>
+        </div>
+
+        <div class="masterlist-action-row">
+            <a href="download_student_masterlist_template.php" class="export-btn template-btn" title="Download the official student masterlist CSV template">
+                Download CSV Template
+            </a>
+            <button type="button" class="export-btn masterlist-btn" id="openMasterlistModal" title="View official student masterlist">
+                Official Masterlist
+            </button>
         </div>
         
         <div class="stats-card">
@@ -1541,7 +1574,7 @@ foreach ($masterlistSummary as $summaryRow) {
                         <div class="masterlist-modal-card">
                             <h3>Batch Breakdown</h3>
                             <?php foreach ($masterlistBatchGroups as $programName => $batchRows): ?>
-                                <details class="masterlist-program-group" <?php echo $selectedProgram !== '' && $selectedProgram === $programName ? 'open' : ''; ?>>
+                                <details class="masterlist-program-group" <?php echo (($selectedProgram !== '' && $selectedProgram === $programName) || ($selectedProgram === '' && $firstMasterlistProgram === $programName)) ? 'open' : ''; ?>>
                                     <summary>
                                         <span><?php echo htmlspecialchars($programName); ?></span>
                                         <span class="masterlist-program-meta"><?php echo count($batchRows); ?> batch<?php echo count($batchRows) === 1 ? '' : 'es'; ?></span>
