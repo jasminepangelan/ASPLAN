@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/list_of_students_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/student_masterlist_service.php';
 
 // Only allow admin
 if (!isset($_SESSION['admin_id'])) {
@@ -97,6 +98,10 @@ $students = [];
 $total_records = 0;
 $total_pages = 1;
 $pageError = '';
+$masterlistSummary = [];
+$masterlistBatchSummary = [];
+$masterlistBatchGroups = [];
+$masterlistError = '';
 
 try {
     $bridgeLoaded = false;
@@ -156,6 +161,42 @@ try {
     $students = [];
     $total_records = 0;
     $total_pages = 1;
+}
+
+try {
+    $pdoHost = DB_HOST === 'localhost' ? '127.0.0.1' : DB_HOST;
+    $dsn = 'mysql:host=' . $pdoHost . ';port=' . (int) DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+    $masterlistConn = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => true,
+    ]);
+
+    $masterlistSummary = smlLoadMasterlistSummary($masterlistConn);
+    $masterlistBatchSummary = smlLoadMasterlistBatchSummary($masterlistConn);
+
+    foreach ($masterlistBatchSummary as $batchRow) {
+        $programName = trim((string) ($batchRow['program'] ?? ''));
+        if ($programName === '') {
+            continue;
+        }
+
+        if (!isset($masterlistBatchGroups[$programName])) {
+            $masterlistBatchGroups[$programName] = [];
+        }
+
+        $masterlistBatchGroups[$programName][] = $batchRow;
+    }
+} catch (Throwable $e) {
+    error_log('Admin masterlist modal failed: ' . $e->getMessage());
+    $masterlistError = 'The official masterlist preview is unavailable right now.';
+}
+
+$masterlistProgramCount = count($masterlistSummary);
+$masterlistBatchCount = count($masterlistBatchSummary);
+$masterlistAuthorizedTotal = 0;
+foreach ($masterlistSummary as $summaryRow) {
+    $masterlistAuthorizedTotal += (int) ($summaryRow['total_students'] ?? 0);
 }
 ?>
 <!DOCTYPE html>
@@ -405,6 +446,16 @@ try {
         .export-btn svg {
             flex-shrink: 0;
         }
+
+        .masterlist-btn {
+            background: linear-gradient(135deg, #0f5f6f 0%, #1f8ea1 100%);
+            box-shadow: 0 2px 8px rgba(15, 95, 111, 0.25);
+        }
+
+        .masterlist-btn:hover {
+            background: linear-gradient(135deg, #0a4f5d 0%, #197f92 100%);
+            box-shadow: 0 4px 12px rgba(15, 95, 111, 0.38);
+        }
         
         .search-input {
             width: 300px;
@@ -469,6 +520,231 @@ try {
         .filter-note {
             color: #627364;
             font-size: 12px;
+        }
+
+        .masterlist-modal[hidden] {
+            display: none;
+        }
+
+        .masterlist-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(17, 36, 18, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .masterlist-modal-dialog {
+            width: min(1100px, 100%);
+            max-height: min(88vh, 900px);
+            overflow: hidden;
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .masterlist-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 22px 24px 18px;
+            border-bottom: 1px solid #e3ebe0;
+            background: linear-gradient(135deg, #f7fbf6 0%, #eef7ec 100%);
+        }
+
+        .masterlist-modal-header h2 {
+            margin: 0 0 6px;
+            color: #206018;
+            font-size: 1.45rem;
+        }
+
+        .masterlist-modal-header p {
+            margin: 0;
+            color: #607063;
+            font-size: 0.95rem;
+        }
+
+        .masterlist-modal-close {
+            width: 40px;
+            height: 40px;
+            border: 0;
+            border-radius: 999px;
+            background: #e6efe3;
+            color: #206018;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .masterlist-modal-close:hover {
+            background: #d5e6d1;
+        }
+
+        .masterlist-modal-body {
+            padding: 22px 24px 24px;
+            overflow: auto;
+            background: #fbfdfb;
+        }
+
+        .masterlist-modal-summary {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .masterlist-metric {
+            background: #ffffff;
+            border: 1px solid #dde8da;
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 6px 18px rgba(32, 96, 24, 0.05);
+        }
+
+        .masterlist-metric-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #637264;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+
+        .masterlist-metric-value {
+            color: #206018;
+            font-size: 1.9rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .masterlist-modal-card {
+            background: #ffffff;
+            border: 1px solid #dde8da;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+
+        .masterlist-modal-card h3 {
+            margin: 0;
+            padding: 16px 18px;
+            color: #206018;
+            font-size: 1rem;
+            border-bottom: 1px solid #edf3eb;
+            background: #f9fcf8;
+        }
+
+        .masterlist-modal-table {
+            width: 100%;
+            min-width: 0;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .masterlist-modal-table th,
+        .masterlist-modal-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #eef3ed;
+            text-align: left;
+        }
+
+        .masterlist-modal-table th {
+            background: #206018;
+            color: #ffffff;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .masterlist-modal-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .masterlist-program-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e8f2e5;
+            color: #206018;
+            font-weight: 700;
+        }
+
+        .masterlist-program-group {
+            border-top: 1px solid #edf3eb;
+        }
+
+        .masterlist-program-group:first-of-type {
+            border-top: 0;
+        }
+
+        .masterlist-program-group summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-weight: 700;
+            color: #234d28;
+            background: #ffffff;
+        }
+
+        .masterlist-program-group summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .masterlist-program-group summary:hover {
+            background: #f7fbf6;
+        }
+
+        .masterlist-program-meta {
+            color: #6b786b;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .masterlist-modal-footer {
+            margin-top: 8px;
+            color: #627364;
+            font-size: 13px;
+        }
+
+        .masterlist-modal-footer a,
+        .masterlist-empty a {
+            color: #206018;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .masterlist-empty,
+        .masterlist-error {
+            padding: 18px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .masterlist-empty {
+            background: #f6faf5;
+            border: 1px dashed #cddccc;
+            color: #516151;
+        }
+
+        .masterlist-error {
+            background: #fff4f4;
+            border: 1px solid #efc5c5;
+            color: #912929;
         }
         
         .table-container {
@@ -869,6 +1145,14 @@ try {
                 padding: 15px;
                 margin-bottom: 20px;
             }
+
+            .masterlist-modal-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .masterlist-modal-dialog {
+                max-height: 92vh;
+            }
             
             .stats-number {
                 font-size: 2rem;
@@ -1016,6 +1300,16 @@ try {
                 width: 100%;
                 text-align: center;
             }
+
+            .masterlist-modal {
+                padding: 12px;
+            }
+
+            .masterlist-modal-header,
+            .masterlist-modal-body {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
         }
     
         .menu-toggle {
@@ -1139,6 +1433,9 @@ try {
                     </svg>
                     Export CSV
                 </a>
+                <button type="button" class="export-btn masterlist-btn" id="openMasterlistModal" title="View official student masterlist">
+                    Official Masterlist
+                </button>
                 <form method="GET" action="" id="searchForm">
                     <input type="hidden" name="program" value="<?php echo htmlspecialchars($selectedProgram); ?>">
                     <input type="hidden" name="batch" value="<?php echo htmlspecialchars($selectedBatch); ?>">
@@ -1181,6 +1478,104 @@ try {
         <div class="stats-card">
             <div class="stats-number"><?php echo $total_records; ?></div>
             <div class="stats-label"><?php echo !empty($search) ? 'Students Found' : 'Total Students'; ?></div>
+        </div>
+
+        <div class="masterlist-modal" id="masterlistModal" hidden aria-hidden="true">
+            <div class="masterlist-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="masterlistModalTitle">
+                <div class="masterlist-modal-header">
+                    <div>
+                        <h2 id="masterlistModalTitle">Official Student Masterlist</h2>
+                        <p>Review the uploaded masterlist coverage by program and batch without leaving the student directory.</p>
+                    </div>
+                    <button type="button" class="masterlist-modal-close" id="closeMasterlistModal" aria-label="Close official masterlist preview">&times;</button>
+                </div>
+                <div class="masterlist-modal-body">
+                    <?php if ($masterlistError !== ''): ?>
+                        <div class="masterlist-error"><?php echo htmlspecialchars($masterlistError); ?></div>
+                    <?php elseif (empty($masterlistSummary)): ?>
+                        <div class="masterlist-empty">
+                            No official student masterlist has been uploaded yet. Upload the first program masterlist in <a href="account_approval_settings.php">Account Approval Settings</a>.
+                        </div>
+                    <?php else: ?>
+                        <div class="masterlist-modal-summary">
+                            <div class="masterlist-metric">
+                                <span class="masterlist-metric-label">Programs Covered</span>
+                                <span class="masterlist-metric-value"><?php echo (int) $masterlistProgramCount; ?></span>
+                            </div>
+                            <div class="masterlist-metric">
+                                <span class="masterlist-metric-label">Authorized Students</span>
+                                <span class="masterlist-metric-value"><?php echo (int) $masterlistAuthorizedTotal; ?></span>
+                            </div>
+                            <div class="masterlist-metric">
+                                <span class="masterlist-metric-label">Batch Entries</span>
+                                <span class="masterlist-metric-value"><?php echo (int) $masterlistBatchCount; ?></span>
+                            </div>
+                        </div>
+
+                        <div class="masterlist-modal-card">
+                            <h3>Program Summary</h3>
+                            <div style="overflow:auto;">
+                                <table class="masterlist-modal-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Program</th>
+                                            <th>Authorized Students</th>
+                                            <th>Latest Upload</th>
+                                            <th>Updated By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($masterlistSummary as $summaryRow): ?>
+                                            <tr>
+                                                <td><span class="masterlist-program-pill"><?php echo htmlspecialchars((string) ($summaryRow['program'] ?? '')); ?></span></td>
+                                                <td><?php echo (int) ($summaryRow['total_students'] ?? 0); ?></td>
+                                                <td><?php echo htmlspecialchars((string) ($summaryRow['last_uploaded_at'] ?? '')); ?></td>
+                                                <td><?php echo htmlspecialchars((string) ($summaryRow['uploaded_by'] ?? '')); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="masterlist-modal-card">
+                            <h3>Batch Breakdown</h3>
+                            <?php foreach ($masterlistBatchGroups as $programName => $batchRows): ?>
+                                <details class="masterlist-program-group" <?php echo $selectedProgram !== '' && $selectedProgram === $programName ? 'open' : ''; ?>>
+                                    <summary>
+                                        <span><?php echo htmlspecialchars($programName); ?></span>
+                                        <span class="masterlist-program-meta"><?php echo count($batchRows); ?> batch<?php echo count($batchRows) === 1 ? '' : 'es'; ?></span>
+                                    </summary>
+                                    <div style="overflow:auto;">
+                                        <table class="masterlist-modal-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Batch</th>
+                                                    <th>Authorized Students</th>
+                                                    <th>Latest Upload</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($batchRows as $batchRow): ?>
+                                                    <tr>
+                                                        <td><?php echo htmlspecialchars((string) ($batchRow['batch'] ?? '')); ?></td>
+                                                        <td><?php echo (int) ($batchRow['total_students'] ?? 0); ?></td>
+                                                        <td><?php echo htmlspecialchars((string) ($batchRow['last_uploaded_at'] ?? '')); ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <div class="masterlist-modal-footer">
+                            Need to upload or replace a program masterlist? Open <a href="account_approval_settings.php">Account Approval Settings</a>.
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
         
         <div class="table-container">
@@ -1335,6 +1730,45 @@ try {
         const filterForm = document.getElementById('filterForm');
         const programFilter = document.getElementById('programFilter');
         const batchFilter = document.getElementById('batchFilter');
+        const masterlistModal = document.getElementById('masterlistModal');
+        const openMasterlistModalBtn = document.getElementById('openMasterlistModal');
+        const closeMasterlistModalBtn = document.getElementById('closeMasterlistModal');
+
+        function openMasterlistModal() {
+            if (!masterlistModal) {
+                return;
+            }
+
+            masterlistModal.hidden = false;
+            masterlistModal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMasterlistModal() {
+            if (!masterlistModal) {
+                return;
+            }
+
+            masterlistModal.hidden = true;
+            masterlistModal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        if (openMasterlistModalBtn) {
+            openMasterlistModalBtn.addEventListener('click', openMasterlistModal);
+        }
+
+        if (closeMasterlistModalBtn) {
+            closeMasterlistModalBtn.addEventListener('click', closeMasterlistModal);
+        }
+
+        if (masterlistModal) {
+            masterlistModal.addEventListener('click', function(event) {
+                if (event.target === masterlistModal) {
+                    closeMasterlistModal();
+                }
+            });
+        }
 
         if (programFilter && filterForm) {
             programFilter.addEventListener('change', function() {
@@ -1351,11 +1785,19 @@ try {
             });
         }
         
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchForm.submit();
-            }, 500);
+        if (searchInput && searchForm) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchForm.submit();
+                }, 500);
+            });
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && masterlistModal && !masterlistModal.hidden) {
+                closeMasterlistModal();
+            }
         });
         
         // Add smooth scroll behavior

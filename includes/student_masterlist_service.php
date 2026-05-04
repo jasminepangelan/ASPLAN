@@ -439,6 +439,32 @@ if (!function_exists('smlLoadMasterlistSummary')) {
     }
 }
 
+if (!function_exists('smlLoadMasterlistBatchSummary')) {
+    function smlLoadMasterlistBatchSummary(PDO $conn): array
+    {
+        smlEnsureMasterlistTable($conn);
+
+        $stmt = $conn->query("
+            SELECT
+                program,
+                LEFT(student_number, 4) AS batch,
+                COUNT(*) AS total_students,
+                MAX(uploaded_at) AS last_uploaded_at
+            FROM student_masterlist
+            WHERE student_number IS NOT NULL
+              AND TRIM(student_number) <> ''
+            GROUP BY program, LEFT(student_number, 4)
+            ORDER BY program ASC, batch DESC
+        ");
+
+        if (!$stmt instanceof PDOStatement) {
+            return [];
+        }
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+}
+
 if (!function_exists('smlParseCsvUpload')) {
     function smlParseCsvUpload(string $tmpPath): array
     {
