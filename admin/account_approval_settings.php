@@ -744,10 +744,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $masterlistProgramOptions = [];
 $masterlistSummary = [];
+$masterlistRows = [];
 if ($conn instanceof PDO) {
     try {
         $masterlistProgramOptions = smlLoadProgramOptions($conn);
         $masterlistSummary = smlLoadMasterlistSummary($conn);
+        $masterlistRows = smlLoadAuthorizedMasterlistRows($conn);
     } catch (Throwable $e) {
         error_log('Failed to load student masterlist settings: ' . $e->getMessage());
     }
@@ -1637,6 +1639,28 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             border-color: #b8d3b8;
         }
 
+        .masterlist-view-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 13px;
+            border-radius: 10px;
+            border: 1px solid #d4dde8;
+            background: #f6f9fd;
+            color: #1f4967;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 6px 14px rgba(20, 58, 98, 0.08);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+            cursor: pointer;
+        }
+
+        .masterlist-view-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(20, 58, 98, 0.12);
+            border-color: #bfd1e4;
+        }
+
         .masterlist-format-note {
             padding: 10px 12px;
             border-radius: 10px;
@@ -1691,6 +1715,182 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             color: #225c1f;
             font-weight: 700;
             font-size: 11px;
+        }
+
+        .masterlist-modal[hidden] {
+            display: none;
+        }
+
+        .masterlist-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2200;
+            background: rgba(16, 34, 18, 0.62);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow-y: auto;
+            padding: 84px 20px 24px;
+        }
+
+        .masterlist-modal-dialog {
+            width: min(1180px, 100%);
+            max-height: calc(100vh - 116px);
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 28px 60px rgba(0, 0, 0, 0.22);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .masterlist-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 20px 22px 16px;
+            border-bottom: 1px solid #e7efe7;
+            background: linear-gradient(135deg, #fbfefb 0%, #f1f7f1 100%);
+        }
+
+        .masterlist-modal-header h3 {
+            margin: 0 0 4px;
+            color: var(--brand-700);
+            font-size: 1.18rem;
+        }
+
+        .masterlist-modal-header p {
+            margin: 0;
+            color: #4b6250;
+            font-size: 0.92rem;
+            line-height: 1.45;
+        }
+
+        .masterlist-modal-close {
+            flex: 0 0 auto;
+            width: 40px;
+            height: 40px;
+            border: 0;
+            border-radius: 999px;
+            background: #e7efe7;
+            color: #1d4620;
+            font-size: 24px;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.18s ease, transform 0.18s ease;
+        }
+
+        .masterlist-modal-close:hover {
+            background: #d8e7d8;
+            transform: scale(1.03);
+        }
+
+        .masterlist-modal-body {
+            padding: 18px 22px 22px;
+            overflow: auto;
+            background: #fcfdfc;
+        }
+
+        .masterlist-modal-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .masterlist-modal-stats {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .masterlist-modal-stat {
+            min-width: 150px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid #dce8dc;
+            background: #fff;
+            box-shadow: 0 6px 18px rgba(24, 71, 18, 0.04);
+        }
+
+        .masterlist-modal-stat strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #5e735f;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .masterlist-modal-stat span {
+            color: var(--brand-700);
+            font-size: 1.35rem;
+            font-weight: 800;
+        }
+
+        .masterlist-modal-search {
+            width: min(100%, 360px);
+            padding: 10px 12px;
+            border: 1px solid #ced8ce;
+            border-radius: 10px;
+            background: #fff;
+            color: #17311a;
+            font-size: 13px;
+        }
+
+        .masterlist-modal-search:focus {
+            outline: none;
+            border-color: #95bb96;
+            box-shadow: 0 0 0 3px rgba(94, 152, 92, 0.12);
+        }
+
+        .masterlist-modal-table-wrap {
+            border: 1px solid #dde7dd;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .masterlist-modal-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .masterlist-modal-table th,
+        .masterlist-modal-table td {
+            padding: 11px 12px;
+            border-bottom: 1px solid #edf2ed;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .masterlist-modal-table th {
+            position: sticky;
+            top: 0;
+            background: #f2f7f2;
+            color: var(--brand-700);
+            font-size: 11px;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            z-index: 1;
+        }
+
+        .masterlist-modal-table tbody tr:nth-child(even) {
+            background: #fbfdfb;
+        }
+
+        .masterlist-modal-empty {
+            padding: 18px;
+            color: #4c6150;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
         }
 
         .settings-actions {
@@ -2505,6 +2705,49 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                 grid-template-columns: 1fr;
             }
 
+            .masterlist-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .masterlist-actions > div:first-child {
+                width: 100%;
+                justify-content: stretch;
+            }
+
+            .masterlist-template-link,
+            .masterlist-view-btn,
+            .masterlist-actions .settings-actions,
+            .masterlist-actions .settings-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .masterlist-modal {
+                padding: 74px 12px 12px;
+            }
+
+            .masterlist-modal-dialog {
+                max-height: calc(100vh - 86px);
+            }
+
+            .masterlist-modal-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .masterlist-modal-stats {
+                width: 100%;
+            }
+
+            .masterlist-modal-stat {
+                flex: 1 1 140px;
+            }
+
+            .masterlist-modal-search {
+                width: 100%;
+            }
+
             .admin-account-summary,
             .admin-account-grid {
                 grid-template-columns: 1fr;
@@ -2812,9 +3055,14 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                             </div>
 
                             <div class="masterlist-actions">
-                                <a href="download_student_masterlist_template.php" class="masterlist-template-link">
-                                    <i class="fas fa-file-download"></i> Download CSV Template
-                                </a>
+                                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                    <a href="download_student_masterlist_template.php" class="masterlist-template-link">
+                                        <i class="fas fa-file-download"></i> Download CSV Template
+                                    </a>
+                                    <button type="button" class="masterlist-view-btn" id="openMasterlistModal">
+                                        <i class="fas fa-list-ul"></i> View Authorized List
+                                    </button>
+                                </div>
 
                                 <div class="settings-actions" style="margin-top:0;">
                                     <button type="submit" name="upload_student_masterlist" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
@@ -2850,6 +3098,86 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                     No official student masterlist has been uploaded yet. Student registration and student login will stay blocked until the first masterlist is uploaded.
                                 </div>
                             <?php endif; ?>
+                        </div>
+
+                        <div class="masterlist-modal" id="masterlistModal" hidden aria-hidden="true">
+                            <div class="masterlist-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="masterlistModalTitle">
+                                <div class="masterlist-modal-header">
+                                    <div>
+                                        <h3 id="masterlistModalTitle">Authorized Student Masterlist</h3>
+                                        <p>Review the student IDs currently authorized for account creation and login access. This list is separate from the registered students directory.</p>
+                                    </div>
+                                    <button type="button" class="masterlist-modal-close" id="closeMasterlistModal" aria-label="Close authorized masterlist view">&times;</button>
+                                </div>
+                                <div class="masterlist-modal-body">
+                                    <div class="masterlist-modal-toolbar">
+                                        <div class="masterlist-modal-stats">
+                                            <div class="masterlist-modal-stat">
+                                                <strong>Authorized Rows</strong>
+                                                <span><?php echo count($masterlistRows); ?></span>
+                                            </div>
+                                            <div class="masterlist-modal-stat">
+                                                <strong>Programs</strong>
+                                                <span><?php echo count($masterlistSummary); ?></span>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="search"
+                                            id="masterlistModalSearch"
+                                            class="masterlist-modal-search"
+                                            placeholder="Search by student number, name, or program..."
+                                        >
+                                    </div>
+
+                                    <div class="masterlist-modal-table-wrap">
+                                        <table class="masterlist-modal-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Student Number</th>
+                                                    <th>Last Name</th>
+                                                    <th>First Name</th>
+                                                    <th>MI</th>
+                                                    <th>Program</th>
+                                                    <th>Uploaded By</th>
+                                                    <th>Uploaded At</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="masterlistModalTableBody">
+                                                <?php if (!empty($masterlistRows)): ?>
+                                                    <?php foreach ($masterlistRows as $masterlistRow): ?>
+                                                        <?php
+                                                        $studentNumber = (string) ($masterlistRow['student_number'] ?? '');
+                                                        $lastName = (string) ($masterlistRow['last_name'] ?? '');
+                                                        $firstName = (string) ($masterlistRow['first_name'] ?? '');
+                                                        $middleInitial = (string) ($masterlistRow['middle_initial'] ?? '');
+                                                        $programName = (string) ($masterlistRow['program'] ?? '');
+                                                        $uploadedBy = (string) ($masterlistRow['uploaded_by'] ?? '');
+                                                        $uploadedAt = (string) ($masterlistRow['uploaded_at'] ?? '');
+                                                        $searchIndex = strtolower(trim($studentNumber . ' ' . $lastName . ' ' . $firstName . ' ' . $middleInitial . ' ' . $programName . ' ' . $uploadedBy));
+                                                        ?>
+                                                        <tr data-masterlist-row data-search="<?php echo htmlspecialchars($searchIndex, ENT_QUOTES); ?>">
+                                                            <td><?php echo htmlspecialchars($studentNumber); ?></td>
+                                                            <td><?php echo htmlspecialchars($lastName); ?></td>
+                                                            <td><?php echo htmlspecialchars($firstName); ?></td>
+                                                            <td><?php echo htmlspecialchars($middleInitial); ?></td>
+                                                            <td><span class="masterlist-program-pill"><?php echo htmlspecialchars($programName); ?></span></td>
+                                                            <td><?php echo htmlspecialchars($uploadedBy); ?></td>
+                                                            <td><?php echo htmlspecialchars($uploadedAt); ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <tr id="masterlistModalEmptyRow">
+                                                        <td colspan="7" class="masterlist-modal-empty">No authorized students have been uploaded yet.</td>
+                                                    </tr>
+                                                <?php endif; ?>
+                                                <tr id="masterlistModalNoResults" hidden>
+                                                    <td colspan="7" class="masterlist-modal-empty">No authorized student rows match your search.</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -3139,6 +3467,86 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                 }, 500);
             });
         }
+
+        const masterlistModal = document.getElementById('masterlistModal');
+        const openMasterlistModalButton = document.getElementById('openMasterlistModal');
+        const closeMasterlistModalButton = document.getElementById('closeMasterlistModal');
+        const masterlistModalSearch = document.getElementById('masterlistModalSearch');
+        const masterlistModalRows = Array.from(document.querySelectorAll('[data-masterlist-row]'));
+        const masterlistModalNoResults = document.getElementById('masterlistModalNoResults');
+        const masterlistModalEmptyRow = document.getElementById('masterlistModalEmptyRow');
+
+        function setMasterlistModalOpen(isOpen) {
+            if (!masterlistModal) {
+                return;
+            }
+
+            masterlistModal.hidden = !isOpen;
+            masterlistModal.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            document.body.style.overflow = isOpen ? 'hidden' : '';
+
+            if (isOpen && masterlistModalSearch) {
+                masterlistModalSearch.value = '';
+                masterlistModalSearch.focus();
+            }
+        }
+
+        function filterMasterlistModalRows() {
+            if (!masterlistModalSearch) {
+                return;
+            }
+
+            const query = masterlistModalSearch.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            masterlistModalRows.forEach((row) => {
+                const haystack = String(row.getAttribute('data-search') || '').toLowerCase();
+                const match = query === '' || haystack.includes(query);
+                row.hidden = !match;
+                if (match) {
+                    visibleCount += 1;
+                }
+            });
+
+            if (masterlistModalNoResults) {
+                if (masterlistModalRows.length === 0 || masterlistModalEmptyRow) {
+                    masterlistModalNoResults.hidden = true;
+                    return;
+                }
+                masterlistModalNoResults.hidden = visibleCount !== 0;
+            }
+        }
+
+        if (openMasterlistModalButton) {
+            openMasterlistModalButton.addEventListener('click', () => {
+                setMasterlistModalOpen(true);
+                filterMasterlistModalRows();
+            });
+        }
+
+        if (closeMasterlistModalButton) {
+            closeMasterlistModalButton.addEventListener('click', () => {
+                setMasterlistModalOpen(false);
+            });
+        }
+
+        if (masterlistModal) {
+            masterlistModal.addEventListener('click', (event) => {
+                if (event.target === masterlistModal) {
+                    setMasterlistModalOpen(false);
+                }
+            });
+        }
+
+        if (masterlistModalSearch) {
+            masterlistModalSearch.addEventListener('input', filterMasterlistModalRows);
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && masterlistModal && !masterlistModal.hidden) {
+                setMasterlistModalOpen(false);
+            }
+        });
 
         function toggleAll() {
             const selectAllCheckbox = document.getElementById('selectAllCheckbox');

@@ -465,6 +465,32 @@ if (!function_exists('smlLoadMasterlistBatchSummary')) {
     }
 }
 
+if (!function_exists('smlLoadAuthorizedMasterlistRows')) {
+    function smlLoadAuthorizedMasterlistRows(PDO $conn): array
+    {
+        smlEnsureMasterlistTable($conn);
+
+        $stmt = $conn->query("
+            SELECT
+                student_number,
+                last_name,
+                first_name,
+                middle_initial,
+                program,
+                uploaded_by,
+                uploaded_at
+            FROM student_masterlist
+            ORDER BY program ASC, last_name ASC, first_name ASC, student_number ASC
+        ");
+
+        if (!$stmt instanceof PDOStatement) {
+            return [];
+        }
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+}
+
 if (!function_exists('smlParseCsvUpload')) {
     function smlParseCsvUpload(string $tmpPath): array
     {
