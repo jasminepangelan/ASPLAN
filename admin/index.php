@@ -512,10 +512,10 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
           </div>
         </div>
         <div class="option" onclick="window.location.href='list_of_students.php'">
-          <div class="option-icon"><img src="../pix/generic_user.svg" alt="List of Students Icon"></div>
+          <div class="option-icon"><img src="../pix/generic_user.svg" alt="Registered Students Icon"></div>
           <div>
-            <label class="option-title">List of Students</label>
-            <p class="option-caption">Browse student records directly and move into profile, checklist, or study plan workflows with less friction.</p>
+            <label class="option-title">Registered Students</label>
+            <p class="option-caption">Browse student records already saved in the system and move into profile, checklist, or study plan workflows.</p>
           </div>
         </div>
         <div class="option" onclick="window.location.href='curriculum_management.php'">

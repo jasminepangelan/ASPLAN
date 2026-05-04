@@ -163,7 +163,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>List of Students</title>
+    <title>Registered Students Directory</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
     <style>
         * {
@@ -1128,8 +1128,8 @@ try {
         <?php endif; ?>
         <div class="page-header">
             <div class="title-section">
-                <h1>Student Directory</h1>
-                <p class="subtitle">Manage and view all registered students</p>
+                <h1>Registered Students Directory</h1>
+                <p class="subtitle">Manage and view student records that already exist inside the system.</p>
             </div>
             <div class="search-bar">
                 <a href="<?php echo htmlspecialchars($exportUrl); ?>" class="export-btn" title="Export filtered students to CSV">

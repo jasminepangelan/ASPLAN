@@ -2780,8 +2780,8 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
                 <div class="settings-card">
                     <form method="POST" enctype="multipart/form-data">
-                        <h2><i class="fas fa-file-upload"></i> Official Student Masterlist</h2>
-                        <p class="card-note">Upload the official CSV masterlist per program. Only students present in this masterlist will be allowed to create a student account and access the system.</p>
+                        <h2><i class="fas fa-file-upload"></i> Authorized Student Masterlist</h2>
+                        <p class="card-note">Upload the official CSV authorization list per program. This masterlist controls which students are allowed to create a student account and access the system. It is different from the registered students directory.</p>
 
                         <div class="masterlist-shell">
                             <div class="masterlist-upload-panel">
@@ -2796,7 +2796,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <div class="masterlist-help">Uploading a new CSV replaces the currently authorized student list for the selected program.</div>
+                                        <div class="masterlist-help">Uploading a new CSV replaces the current authorization list for the selected program.</div>
                                     </div>
 
                                     <div class="masterlist-input-group">
@@ -2807,7 +2807,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                 </div>
 
                                 <div class="masterlist-format-note">
-                                    <strong>Security rule:</strong> student registration and student login now rely on this official program masterlist. Keep each upload current so only authorized students can create and use student accounts.
+                                    <strong>Security rule:</strong> student registration and student login rely on this authorization masterlist. Keep each upload current so only approved student IDs can create and use student accounts.
                                 </div>
                             </div>
 
@@ -2818,7 +2818,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
                                 <div class="settings-actions" style="margin-top:0;">
                                     <button type="submit" name="upload_student_masterlist" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
-                                        <i class="fas fa-upload"></i> Upload Official Masterlist
+                                        <i class="fas fa-upload"></i> Upload Authorization Masterlist
                                     </button>
                                 </div>
                             </div>

@@ -954,7 +954,7 @@ $pendingCount = count($pendingAccounts);
                                         <p>No pending accounts to review.</p>
                                         <p>Auto-approval is enabled - new registrations are automatically approved.</p>
                                         <div class='help-text'>
-                                            <strong>Tip:</strong> You can view all students in the <a href='list_of_students.php' style='color: #206018; font-weight: 600;'>Student Directory</a>.
+                                            <strong>Tip:</strong> You can view all registered student records in the <a href='list_of_students.php' style='color: #206018; font-weight: 600;'>Registered Students Directory</a>.
                                         </div>
                                     </div>
                                 </td>
