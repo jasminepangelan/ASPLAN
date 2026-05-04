@@ -1727,15 +1727,15 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             z-index: 2200;
             background: rgba(16, 34, 18, 0.62);
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: center;
             overflow-y: auto;
-            padding: 84px 20px 24px;
+            padding: 72px 24px 24px;
         }
 
         .masterlist-modal-dialog {
-            width: min(1180px, 100%);
-            max-height: calc(100vh - 116px);
+            width: min(1180px, calc(100vw - 48px));
+            max-height: calc(100vh - 108px);
             background: #fff;
             border-radius: 18px;
             box-shadow: 0 28px 60px rgba(0, 0, 0, 0.22);
@@ -2724,11 +2724,13 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             }
 
             .masterlist-modal {
-                padding: 74px 12px 12px;
+                align-items: stretch;
+                padding: 58px 12px 12px;
             }
 
             .masterlist-modal-dialog {
-                max-height: calc(100vh - 86px);
+                width: min(100%, calc(100vw - 24px));
+                max-height: calc(100vh - 70px);
             }
 
             .masterlist-modal-toolbar {
@@ -3475,6 +3477,10 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         const masterlistModalRows = Array.from(document.querySelectorAll('[data-masterlist-row]'));
         const masterlistModalNoResults = document.getElementById('masterlistModalNoResults');
         const masterlistModalEmptyRow = document.getElementById('masterlistModalEmptyRow');
+
+        if (masterlistModal && masterlistModal.parentElement !== document.body) {
+            document.body.appendChild(masterlistModal);
+        }
 
         function setMasterlistModalOpen(isOpen) {
             if (!masterlistModal) {
