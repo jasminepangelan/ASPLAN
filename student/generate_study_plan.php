@@ -144,6 +144,124 @@ class StudyPlanGenerator {
 
         return $code;
     }
+
+    private function normalizeCurriculumYearLabel($value) {
+        $value = trim((string)$value);
+
+        switch ($value) {
+            case 'First Year':
+                return '1st Yr';
+            case 'Second Year':
+                return '2nd Yr';
+            case 'Third Year':
+                return '3rd Yr';
+            case 'Fourth Year':
+                return '4th Yr';
+            default:
+                return $value;
+        }
+    }
+
+    private function normalizeCurriculumSemesterLabel($value) {
+        $value = trim((string)$value);
+
+        switch ($value) {
+            case 'First Semester':
+                return '1st Sem';
+            case 'Second Semester':
+                return '2nd Sem';
+            case 'Midyear':
+            case 'Mid Year':
+            case 'Summer':
+                return 'Mid Year';
+            default:
+                return $value;
+        }
+    }
+
+    private function registerCurriculumCourseRow(array $row) {
+        $course_code = $this->normalizeCourseCode($row['course_code'] ?? $row['code'] ?? '');
+        if ($course_code === '' || isset($this->all_courses[$course_code])) {
+            return;
+        }
+
+        $title = trim((string)($row['course_title'] ?? $row['title'] ?? ''));
+        if ($title === '') {
+            return;
+        }
+
+        $year = $this->normalizeCurriculumYearLabel($row['year'] ?? $row['year_level'] ?? '');
+        $semester = $this->normalizeCurriculumSemesterLabel($row['semester'] ?? '');
+        if ($year === '' || $semester === '') {
+            return;
+        }
+
+        $credit_unit_lec = (float)($row['credit_unit_lec'] ?? $row['credit_units_lec'] ?? 0);
+        $credit_unit_lab = (float)($row['credit_unit_lab'] ?? $row['credit_units_lab'] ?? 0);
+        $units = $credit_unit_lec + $credit_unit_lab;
+
+        $course_snapshot = [
+            'code' => $course_code,
+            'title' => $title,
+            'units' => $units,
+        ];
+
+        if ($units <= 0 && !$this->isNonCreditCourse($course_snapshot)) {
+            return;
+        }
+
+        $is_failed = in_array($course_code, $this->failed_courses);
+        $is_inc = in_array($course_code, $this->inc_courses);
+        $is_dropped = in_array($course_code, $this->dropped_courses);
+        $needs_retake = $is_failed || $is_inc || $is_dropped;
+        $prerequisite = trim((string)($row['pre_requisite'] ?? $row['prerequisite'] ?? ''));
+
+        $this->all_courses[$course_code] = [
+            'code' => $course_code,
+            'title' => $title,
+            'units' => $units,
+            'credit_unit_lec' => $credit_unit_lec,
+            'credit_unit_lab' => $credit_unit_lab,
+            'lect_hrs_lec' => (int)($row['lect_hrs_lec'] ?? $row['contact_hrs_lec'] ?? 0),
+            'lect_hrs_lab' => (int)($row['lect_hrs_lab'] ?? $row['contact_hrs_lab'] ?? 0),
+            'prerequisite' => $prerequisite,
+            'year' => $year,
+            'semester' => $semester,
+            'completed' => in_array($course_code, $this->completed_courses),
+            'is_failed' => $is_failed,
+            'is_inc' => $is_inc,
+            'is_dropped' => $is_dropped,
+            'needs_retake' => $needs_retake,
+            'cross_registered' => false
+        ];
+
+        $this->prerequisite_map[$course_code] = $this->parsePrerequisites($prerequisite);
+        $this->standing_constraint_map[$course_code] = $this->extractStandingConstraint($prerequisite);
+    }
+
+    private function rebuildTermMaxUnitsFromLoadedCourses() {
+        $this->term_max_units = [];
+
+        foreach ($this->all_courses as $course) {
+            $year = trim((string)($course['year'] ?? ''));
+            $semester = trim((string)($course['semester'] ?? ''));
+            if ($year === '' || $semester === '') {
+                continue;
+            }
+
+            $counted_units = $this->getCountedCourseUnits($course);
+            if ($counted_units <= 0) {
+                continue;
+            }
+
+            $term_key = $year . '|' . $semester;
+            if (!isset($this->term_max_units[$term_key])) {
+                $this->term_max_units[$term_key] = 0.0;
+            }
+
+            $this->term_max_units[$term_key] += $counted_units;
+        }
+    }
     
     /**
      * Resolve a program name or code to the short code used in curriculum lookup
@@ -1105,152 +1223,135 @@ class StudyPlanGenerator {
      * Also marks failed/INC/dropped courses for retake scheduling
      */
     private function loadCurriculumData() {
-        $curriculumHasLecHours = $this->tableHasColumn('curriculum_courses', 'lect_hrs_lec');
-        $curriculumHasLabHours = $this->tableHasColumn('curriculum_courses', 'lect_hrs_lab');
-        $legacyHasLecHours = $this->tableHasColumn('cvsucarmona_courses', 'lect_hrs_lec');
-        $legacyHasLabHours = $this->tableHasColumn('cvsucarmona_courses', 'lect_hrs_lab');
-
-        if ($this->curriculumCoursesTableExists()) {
-            $condition = $this->buildCurriculumProgramCondition('UPPER(TRIM(program))');
-            $yearCondition = $this->buildCurriculumYearCondition('curriculum_year');
-            $sql = "
-                SELECT 
-                    TRIM(course_code) AS course_code,
-                    course_title,
-                    credit_units_lec AS credit_unit_lec,
-                    credit_units_lab AS credit_unit_lab,
-                    " . ($curriculumHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
-                    " . ($curriculumHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
-                    pre_requisite,
-                    CASE year_level
-                        WHEN 'First Year' THEN '1st Yr'
-                        WHEN 'Second Year' THEN '2nd Yr'
-                        WHEN 'Third Year' THEN '3rd Yr'
-                        WHEN 'Fourth Year' THEN '4th Yr'
-                        ELSE year_level
-                    END AS year,
-                    CASE semester
-                        WHEN 'First Semester' THEN '1st Sem'
-                        WHEN 'Second Semester' THEN '2nd Sem'
-                        WHEN 'Mid Year' THEN 'Mid Year'
-                        WHEN 'Midyear' THEN 'Mid Year'
-                        WHEN 'Summer' THEN 'Mid Year'
-                        ELSE semester
-                    END AS semester
-                FROM curriculum_courses
-                WHERE {$condition['sql']}
-                " . $yearCondition['sql'] . "
-                AND course_title IS NOT NULL
-                AND course_title != ''
-                AND (credit_units_lec > 0 OR credit_units_lab > 0)
-                ORDER BY 
-                    FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                    FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
-                    IFNULL(curriculum_year, 0),
-                    id
-            ";
-            $stmt = $this->conn->prepare($sql);
-            $params = array_merge($condition['params'], $yearCondition['params']);
-            $types = $condition['types'] . $yearCondition['types'];
-            $stmt->bind_param($types, ...$params);
-        } else {
-            $condition = $this->buildLegacyProgramCondition('programs');
-            $yearCondition = $this->buildCurriculumYearCondition('', "TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1))");
-            $sql = "
-                SELECT 
-                    TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)) AS course_code,
-                    course_title,
-                    credit_units_lec AS credit_unit_lec,
-                    credit_units_lab AS credit_unit_lab,
-                    " . ($legacyHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
-                    " . ($legacyHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
-                    pre_requisite,
-                    CASE year_level
-                        WHEN 'First Year' THEN '1st Yr'
-                        WHEN 'Second Year' THEN '2nd Yr'
-                        WHEN 'Third Year' THEN '3rd Yr'
-                        WHEN 'Fourth Year' THEN '4th Yr'
-                        ELSE year_level
-                    END AS year,
-                    CASE semester
-                        WHEN 'First Semester' THEN '1st Sem'
-                        WHEN 'Second Semester' THEN '2nd Sem'
-                        WHEN 'Mid Year' THEN 'Mid Year'
-                        WHEN 'Midyear' THEN 'Mid Year'
-                        WHEN 'Summer' THEN 'Mid Year'
-                        ELSE semester
-                    END AS semester
-                FROM cvsucarmona_courses
-                WHERE {$condition['sql']}
-                " . $yearCondition['sql'] . "
-                AND course_title IS NOT NULL
-                AND course_title != ''
-                AND (credit_units_lec > 0 OR credit_units_lab > 0)
-                ORDER BY 
-                    FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                    FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
-                    curriculumyear_coursecode
-            ";
-            $stmt = $this->conn->prepare($sql);
-            $params = array_merge($condition['params'], $yearCondition['params']);
-            $types = $condition['types'] . $yearCondition['types'];
-            $stmt->bind_param($types, ...$params);
-        }
-
-        $stmt->execute();
-        $query = $stmt->get_result();
-        
-        // Track term max units separately (includes all rows, even duplicates)
+        $this->all_courses = [];
+        $this->prerequisite_map = [];
+        $this->standing_constraint_map = [];
         $this->term_max_units = [];
-        
-        while ($row = $query->fetch_assoc()) {
-            $course_code = $this->normalizeCourseCode($row['course_code'] ?? '');
-            $units = ($row['credit_unit_lec'] ?? 0) + ($row['credit_unit_lab'] ?? 0);
-            $year = $row['year'];
-            $semester = $row['semester'];
-            
-            // Always count units toward term max (even for duplicate course codes)
-            $term_key = $year . '|' . $semester;
-            if (!isset($this->term_max_units[$term_key])) {
-                $this->term_max_units[$term_key] = 0;
+
+        $loaded_from_checklist = false;
+        if (function_exists('psFetchChecklistCourses')) {
+            $checklist_rows = psFetchChecklistCourses(
+                $this->conn,
+                $this->student_id,
+                $this->program_label,
+                $this->program_code
+            );
+
+            if (is_array($checklist_rows)) {
+                foreach ($checklist_rows as $row) {
+                    $this->registerCurriculumCourseRow((array)$row);
+                }
+
+                $loaded_from_checklist = !empty($this->all_courses);
             }
-            $this->term_max_units[$term_key] += $units;
-            
-            // For duplicate course codes within a program, keep the first (lowest year/sem) entry
-            // since ORDER BY ensures chronological order. The student takes it at the earliest offering.
-            if (isset($this->all_courses[$course_code])) {
-                continue;
-            }
-            
-            $is_failed = in_array($course_code, $this->failed_courses);
-            $is_inc = in_array($course_code, $this->inc_courses);
-            $is_dropped = in_array($course_code, $this->dropped_courses);
-            $needs_retake = $is_failed || $is_inc || $is_dropped;
-            
-            $this->all_courses[$course_code] = [
-                'code' => $course_code,
-                'title' => $row['course_title'],
-                'units' => $units,
-                'credit_unit_lec' => (int)($row['credit_unit_lec'] ?? 0),
-                'credit_unit_lab' => (int)($row['credit_unit_lab'] ?? 0),
-                'lect_hrs_lec' => (int)($row['lect_hrs_lec'] ?? 0),
-                'lect_hrs_lab' => (int)($row['lect_hrs_lab'] ?? 0),
-                'prerequisite' => $row['pre_requisite'],
-                'year' => $year,
-                'semester' => $semester,
-                'completed' => in_array($course_code, $this->completed_courses),
-                'is_failed' => $is_failed,
-                'is_inc' => $is_inc,
-                'is_dropped' => $is_dropped,
-                'needs_retake' => $needs_retake,
-                'cross_registered' => false
-            ];
-            
-            // Build prerequisite map
-            $this->prerequisite_map[$course_code] = $this->parsePrerequisites($row['pre_requisite']);
-            $this->standing_constraint_map[$course_code] = $this->extractStandingConstraint($row['pre_requisite']);
         }
-        $stmt->close();
+
+        if (!$loaded_from_checklist) {
+            $curriculumHasLecHours = $this->tableHasColumn('curriculum_courses', 'lect_hrs_lec');
+            $curriculumHasLabHours = $this->tableHasColumn('curriculum_courses', 'lect_hrs_lab');
+            $legacyHasLecHours = $this->tableHasColumn('cvsucarmona_courses', 'lect_hrs_lec');
+            $legacyHasLabHours = $this->tableHasColumn('cvsucarmona_courses', 'lect_hrs_lab');
+
+            if ($this->curriculumCoursesTableExists()) {
+                $condition = $this->buildCurriculumProgramCondition('UPPER(TRIM(program))');
+                $yearCondition = $this->buildCurriculumYearCondition('curriculum_year');
+                $sql = "
+                    SELECT 
+                        TRIM(course_code) AS course_code,
+                        course_title,
+                        credit_units_lec AS credit_unit_lec,
+                        credit_units_lab AS credit_unit_lab,
+                        " . ($curriculumHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
+                        " . ($curriculumHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
+                        pre_requisite,
+                        CASE year_level
+                            WHEN 'First Year' THEN '1st Yr'
+                            WHEN 'Second Year' THEN '2nd Yr'
+                            WHEN 'Third Year' THEN '3rd Yr'
+                            WHEN 'Fourth Year' THEN '4th Yr'
+                            ELSE year_level
+                        END AS year,
+                        CASE semester
+                            WHEN 'First Semester' THEN '1st Sem'
+                            WHEN 'Second Semester' THEN '2nd Sem'
+                            WHEN 'Mid Year' THEN 'Mid Year'
+                            WHEN 'Midyear' THEN 'Mid Year'
+                            WHEN 'Summer' THEN 'Mid Year'
+                            ELSE semester
+                        END AS semester
+                    FROM curriculum_courses
+                    WHERE {$condition['sql']}
+                    " . $yearCondition['sql'] . "
+                    AND course_title IS NOT NULL
+                    AND course_title != ''
+                    AND (credit_units_lec > 0 OR credit_units_lab > 0)
+                    ORDER BY 
+                        FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                        FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                        IFNULL(curriculum_year, 0),
+                        id
+                ";
+                $stmt = $this->conn->prepare($sql);
+                $params = array_merge($condition['params'], $yearCondition['params']);
+                $types = $condition['types'] . $yearCondition['types'];
+                $stmt->bind_param($types, ...$params);
+            } else {
+                $condition = $this->buildLegacyProgramCondition('programs');
+                $yearCondition = $this->buildCurriculumYearCondition('', "TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1))");
+                $sql = "
+                    SELECT 
+                        TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)) AS course_code,
+                        course_title,
+                        credit_units_lec AS credit_unit_lec,
+                        credit_units_lab AS credit_unit_lab,
+                        " . ($legacyHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
+                        " . ($legacyHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
+                        pre_requisite,
+                        CASE year_level
+                            WHEN 'First Year' THEN '1st Yr'
+                            WHEN 'Second Year' THEN '2nd Yr'
+                            WHEN 'Third Year' THEN '3rd Yr'
+                            WHEN 'Fourth Year' THEN '4th Yr'
+                            ELSE year_level
+                        END AS year,
+                        CASE semester
+                            WHEN 'First Semester' THEN '1st Sem'
+                            WHEN 'Second Semester' THEN '2nd Sem'
+                            WHEN 'Mid Year' THEN 'Mid Year'
+                            WHEN 'Midyear' THEN 'Mid Year'
+                            WHEN 'Summer' THEN 'Mid Year'
+                            ELSE semester
+                        END AS semester
+                    FROM cvsucarmona_courses
+                    WHERE {$condition['sql']}
+                    " . $yearCondition['sql'] . "
+                    AND course_title IS NOT NULL
+                    AND course_title != ''
+                    AND (credit_units_lec > 0 OR credit_units_lab > 0)
+                    ORDER BY 
+                        FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                        FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                        curriculumyear_coursecode
+                ";
+                $stmt = $this->conn->prepare($sql);
+                $params = array_merge($condition['params'], $yearCondition['params']);
+                $types = $condition['types'] . $yearCondition['types'];
+                $stmt->bind_param($types, ...$params);
+            }
+
+            $stmt->execute();
+            $query = $stmt->get_result();
+
+            while ($row = $query->fetch_assoc()) {
+                $this->registerCurriculumCourseRow($row);
+            }
+            $stmt->close();
+        }
+
+        // The checklist term cap should be computed from the exact normalized
+        // course set the generator will schedule, regardless of student
+        // classification, cross-reg eligibility, or late-stage optimization.
+        $this->rebuildTermMaxUnitsFromLoadedCourses();
     }
 
     private function hasCreditedMigrationEvidence() {
@@ -2114,16 +2215,25 @@ class StudyPlanGenerator {
 
         $forced_courses = $this->prioritizeCourses($remaining, '4th Yr', $simulated_completed, '2nd Sem');
         $added_count = 0;
+        $target_max_units = (float)($study_plan[$target_index]['max_units'] ?? $this->getMaxUnitsForTerm('None', '4th Yr', '2nd Sem'));
+        $current_units = $this->sumCountedCourseUnits($study_plan[$target_index]['courses'] ?? []);
+        $study_plan[$target_index]['total_units'] = $current_units;
 
         foreach ($forced_courses as $course_code => $course) {
             if (isset($study_plan[$target_index]['courses'][$course_code])) {
                 continue;
             }
 
+            $course_units = $this->getCountedCourseUnits($course);
+            if ($current_units + $course_units > $target_max_units) {
+                continue;
+            }
+
             $course['forced_added'] = true;
             $course['forced_reason'] = 'Forced Added - Near Graduation';
             $study_plan[$target_index]['courses'][$course_code] = $course;
-            $study_plan[$target_index]['total_units'] += $this->getCountedCourseUnits($course);
+            $current_units += $course_units;
+            $study_plan[$target_index]['total_units'] = $current_units;
             $study_plan[$target_index]['forced_add_count'] = ($study_plan[$target_index]['forced_add_count'] ?? 0) + 1;
 
             $simulated_completed[] = $course_code;

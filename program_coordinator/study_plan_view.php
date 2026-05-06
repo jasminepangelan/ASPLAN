@@ -202,6 +202,8 @@ foreach ($ayCoursesByTerm as $termKey => $termData) {
 // Append generated future/current terms with coordinator overrides applied.
 $futureTermMeta = [];
 $futureTermBuckets = [];
+$futureTermBaseUnits = [];
+$futureTermOverrideDeltas = [];
 $yearOrder = array_flip($validYears);
 $semesterOrder = array_flip($validSemesters);
 
@@ -211,11 +213,27 @@ foreach ($studyPlan as $term) {
     $baseKey = $baseYear . '|' . $baseSemester;
 
     if (!isset($futureTermMeta[$baseKey])) {
+        $baseTermUnits = 0.0;
+        foreach (($term['courses'] ?? []) as $baseCourse) {
+            $baseCourseCode = strtoupper(trim((string)($baseCourse['code'] ?? '')));
+            $baseCourseTitle = strtoupper(trim((string)($baseCourse['title'] ?? '')));
+            $baseIsNonCredit = $baseCourseCode === 'CVSU 101'
+                || strpos($baseCourseTitle, 'NON-CREDIT') !== false
+                || strpos($baseCourseTitle, 'NON CREDIT') !== false;
+            if ($baseIsNonCredit) {
+                continue;
+            }
+
+            $baseTermUnits += (float)($baseCourse['units'] ?? 0);
+        }
+
         $futureTermMeta[$baseKey] = [
             'max_units' => isset($term['max_units']) ? (int)$term['max_units'] : null,
             'skipped' => !empty($term['skipped']),
             'skip_reason' => (string)($term['skip_reason'] ?? ''),
         ];
+        $futureTermBaseUnits[$baseKey] = $baseTermUnits;
+        $futureTermOverrideDeltas[$baseKey] = 0.0;
     }
 
     foreach (($term['courses'] ?? []) as $course) {
@@ -223,6 +241,12 @@ foreach ($studyPlan as $term) {
         $targetYear = $baseYear;
         $targetSemester = $baseSemester;
         $isMoved = false;
+        $courseCodeUpper = strtoupper(trim((string)($course['code'] ?? '')));
+        $courseTitleUpper = strtoupper(trim((string)($course['title'] ?? '')));
+        $isNonCredit = $courseCodeUpper === 'CVSU 101'
+            || strpos($courseTitleUpper, 'NON-CREDIT') !== false
+            || strpos($courseTitleUpper, 'NON CREDIT') !== false;
+        $courseCountedUnits = $isNonCredit ? 0.0 : (float)($course['units'] ?? 0);
 
         if ($courseCode !== '' && isset($overrideMap[$courseCode])) {
             $candidateYear = $overrideMap[$courseCode]['year'];
@@ -235,9 +259,24 @@ foreach ($studyPlan as $term) {
             $candidateTermOrder = ($candidateYearOrder * 10) + $candidateSemesterOrder;
 
             if ($candidateTermOrder >= $baseTermOrder && $candidateTermOrder < 999) {
-                $targetYear = $candidateYear;
-                $targetSemester = $candidateSemester;
-                $isMoved = ($targetYear !== $baseYear || $targetSemester !== $baseSemester);
+                $candidateKey = $candidateYear . '|' . $candidateSemester;
+                $targetMaxUnits = (float)($futureTermMeta[$candidateKey]['max_units'] ?? 21);
+                $candidateTargetTotal = (float)($futureTermBaseUnits[$candidateKey] ?? 0.0)
+                    + (float)($futureTermOverrideDeltas[$candidateKey] ?? 0.0);
+
+                if (
+                    $candidateKey === $baseKey
+                    || ($candidateTargetTotal + $courseCountedUnits) <= $targetMaxUnits
+                ) {
+                    $targetYear = $candidateYear;
+                    $targetSemester = $candidateSemester;
+                    $isMoved = ($targetYear !== $baseYear || $targetSemester !== $baseSemester);
+
+                    if ($candidateKey !== $baseKey) {
+                        $futureTermOverrideDeltas[$baseKey] = (float)($futureTermOverrideDeltas[$baseKey] ?? 0.0) - $courseCountedUnits;
+                        $futureTermOverrideDeltas[$candidateKey] = (float)($futureTermOverrideDeltas[$candidateKey] ?? 0.0) + $courseCountedUnits;
+                    }
+                }
             }
         }
 

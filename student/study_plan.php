@@ -178,12 +178,27 @@ $page_generated_time = microtime(true);
 // Convert optimized plan to display format â€” preserving new metadata
 $study_plan = [];
 $study_plan_meta = []; // Store per-term metadata (retention, retake, cross-reg, skip info)
+$study_plan_term_base_units = [];
+$study_plan_term_override_deltas = [];
 foreach ($optimized_plan as $term_index => $term) {
     $year = $term['year'];
     $semester = $term['semester'];
     
     // Store metadata for this term
     $meta_key = $year . '|' . $semester;
+    $base_term_units = 0.0;
+    foreach (($term['courses'] ?? []) as $base_course) {
+        $base_course_code = strtoupper(trim((string)($base_course['code'] ?? '')));
+        $base_course_title = strtoupper(trim((string)($base_course['title'] ?? '')));
+        $base_is_non_credit = $base_course_code === 'CVSU 101'
+            || strpos($base_course_title, 'NON-CREDIT') !== false
+            || strpos($base_course_title, 'NON CREDIT') !== false;
+        if ($base_is_non_credit) {
+            continue;
+        }
+
+        $base_term_units += (float)($base_course['units'] ?? 0);
+    }
     $study_plan_meta[$meta_key] = [
         'max_units' => $term['max_units'] ?? 21,
         'retention_status' => $term['retention_status'] ?? 'None',
@@ -193,6 +208,8 @@ foreach ($optimized_plan as $term_index => $term) {
         'skipped' => $term['skipped'] ?? false,
         'skip_reason' => $term['skip_reason'] ?? ''
     ];
+    $study_plan_term_base_units[$meta_key] = $base_term_units;
+    $study_plan_term_override_deltas[$meta_key] = 0.0;
     
     if (!isset($study_plan[$year])) {
         $study_plan[$year] = [];
@@ -205,6 +222,11 @@ foreach ($optimized_plan as $term_index => $term) {
         $target_year = $year;
         $target_semester = $semester;
         $course_code = (string)($course['code'] ?? '');
+        $base_meta_key = $year . '|' . $semester;
+        $is_non_credit_course = strtoupper(trim((string)($course['code'] ?? ''))) === 'CVSU 101'
+            || stripos((string)($course['title'] ?? ''), 'non-credit') !== false
+            || stripos((string)($course['title'] ?? ''), 'non credit') !== false;
+        $course_counted_units = $is_non_credit_course ? 0.0 : (float)($course['units'] ?? 0);
 
         if ($course_code !== '' && isset($study_plan_overrides[$course_code])) {
             $candidate_year = $study_plan_overrides[$course_code]['year'];
@@ -227,8 +249,23 @@ foreach ($optimized_plan as $term_index => $term) {
             // the generator's own base placement. Those can survive in the
             // database and recreate impossible mixed early-term loads.
             if ($candidate_term_order >= $base_term_order && $candidate_term_order > 0) {
-                $target_year = $candidate_year;
-                $target_semester = $candidate_semester;
+                $candidate_meta_key = $candidate_year . '|' . $candidate_semester;
+                $target_max_units = (float)($study_plan_meta[$candidate_meta_key]['max_units'] ?? 21);
+                $candidate_target_total = (float)($study_plan_term_base_units[$candidate_meta_key] ?? 0.0)
+                    + (float)($study_plan_term_override_deltas[$candidate_meta_key] ?? 0.0);
+
+                if (
+                    $candidate_meta_key === $base_meta_key
+                    || ($candidate_target_total + $course_counted_units) <= $target_max_units
+                ) {
+                    $target_year = $candidate_year;
+                    $target_semester = $candidate_semester;
+
+                    if ($candidate_meta_key !== $base_meta_key) {
+                        $study_plan_term_override_deltas[$base_meta_key] = (float)($study_plan_term_override_deltas[$base_meta_key] ?? 0.0) - $course_counted_units;
+                        $study_plan_term_override_deltas[$candidate_meta_key] = (float)($study_plan_term_override_deltas[$candidate_meta_key] ?? 0.0) + $course_counted_units;
+                    }
+                }
             }
         }
 
@@ -238,10 +275,6 @@ foreach ($optimized_plan as $term_index => $term) {
         if (!isset($study_plan[$target_year][$target_semester])) {
             $study_plan[$target_year][$target_semester] = [];
         }
-
-        $is_non_credit_course = strtoupper(trim((string)($course['code'] ?? ''))) === 'CVSU 101'
-            || stripos((string)($course['title'] ?? ''), 'non-credit') !== false
-            || stripos((string)($course['title'] ?? ''), 'non credit') !== false;
 
         $study_plan[$target_year][$target_semester][] = [
             'course_code' => $course['code'],
