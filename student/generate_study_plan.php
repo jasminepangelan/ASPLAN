@@ -40,6 +40,8 @@ class StudyPlanGenerator {
     private $course_failure_counts = []; // Number of failures per course code
     private $thrice_failed_courses = []; // Courses failed 3+ times (triggers plan stop)
     private $student_classification = '';
+    private $student_enrollment_classification = '';
+    private $student_registration_status = '';
     private $student_gwa = null;
     private $has_active_shift_request = false;
     private $legacy_transferee_inferred = false;
@@ -50,6 +52,8 @@ class StudyPlanGenerator {
         'reasons' => [],
         'has_validated_history' => false,
         'classification' => '',
+        'registration_status' => '',
+        'record_classification' => '',
     ];
     private $policy_gate_status = [
         'applies' => false,
@@ -58,6 +62,7 @@ class StudyPlanGenerator {
         'average_grade' => null,
         'failed_course_count' => 0,
         'classification' => '',
+        'registration_status' => '',
         'has_active_shift_request' => false,
         'planning_status' => null,
     ];
@@ -771,6 +776,34 @@ class StudyPlanGenerator {
             $stmt->close();
         }
 
+        $preEnrollmentTable = $this->conn->query("SHOW TABLES LIKE 'pre_enrollments'");
+        $hasPreEnrollmentTable = $preEnrollmentTable && $preEnrollmentTable->num_rows > 0;
+        if ($preEnrollmentTable instanceof mysqli_result) {
+            $preEnrollmentTable->close();
+        }
+
+        if ($hasPreEnrollmentTable
+            && $this->tableHasColumn('pre_enrollments', 'classification')
+            && $this->tableHasColumn('pre_enrollments', 'registration_status')) {
+            $preEnrollStmt = $this->conn->prepare("
+                SELECT classification, registration_status
+                FROM pre_enrollments
+                WHERE student_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            ");
+            if ($preEnrollStmt) {
+                $preEnrollStmt->bind_param("s", $this->student_id);
+                $preEnrollStmt->execute();
+                $preEnrollResult = $preEnrollStmt->get_result();
+                if ($row = $preEnrollResult->fetch_assoc()) {
+                    $this->student_enrollment_classification = trim((string)($row['classification'] ?? ''));
+                    $this->student_registration_status = trim((string)($row['registration_status'] ?? ''));
+                }
+                $preEnrollStmt->close();
+            }
+        }
+
         $tableExists = $this->conn->query("SHOW TABLES LIKE 'program_shift_requests'");
         if ($tableExists && $tableExists->num_rows > 0) {
             $shiftStmt = $this->conn->prepare("
@@ -1435,6 +1468,36 @@ class StudyPlanGenerator {
         return $this->hasCreditedMigrationEvidence();
     }
 
+    private function getNormalizedRegistrationStatus() {
+        $status = strtolower(trim((string)$this->student_registration_status));
+        if ($status === 'regular') {
+            return 'Regular';
+        }
+        if ($status === 'irregular') {
+            return 'Irregular';
+        }
+
+        return trim((string)$this->student_registration_status);
+    }
+
+    private function getEffectiveAcademicClassification() {
+        $classification = trim((string)$this->student_enrollment_classification);
+        if ($classification !== '') {
+            return $classification;
+        }
+
+        $recordClassification = strtolower(trim((string)$this->student_classification));
+        if ($recordClassification !== '' && strpos($recordClassification, 'transferee') !== false) {
+            return 'Transferee';
+        }
+
+        if ($this->legacy_transferee_inferred) {
+            return 'Transferee (inferred)';
+        }
+
+        return '';
+    }
+
     private function getActiveAcademicIssueSets() {
         $active_failed = array_values(array_filter(array_diff($this->failed_courses, $this->completed_courses), static function ($code) {
             return trim((string)$code) !== '';
@@ -1459,34 +1522,32 @@ class StudyPlanGenerator {
             $active_issues = $this->getActiveAcademicIssueSets();
         }
 
-        $classification = strtolower(trim($this->student_classification));
-        $is_transferee = ($classification !== '' && strpos($classification, 'transferee') !== false)
+        $classification_label = $this->getEffectiveAcademicClassification();
+        $normalized_classification = strtolower(trim($classification_label));
+        $registration_status = $this->getNormalizedRegistrationStatus();
+        $explicit_irregular_status = strtolower($registration_status) === 'irregular';
+        $is_transferee = ($normalized_classification !== '' && strpos($normalized_classification, 'transferee') !== false)
             || $this->legacy_transferee_inferred;
         $has_retention_issue = $this->retention_status !== 'None' && $this->retention_status !== '';
         $has_validated_history = $this->hasValidatedAcademicHistory();
         $has_back_subjects = !empty($active_issues['count']);
         $has_terminal_failure = !empty($this->thrice_failed_courses);
 
-        $is_irregular = $is_transferee
+        $is_irregular = $explicit_irregular_status
+            || $is_transferee
             || $this->has_active_shift_request
             || $has_back_subjects
             || $has_retention_issue
             || $has_terminal_failure;
 
-        $label = 'Regular';
-        if ($is_irregular) {
-            if ($is_transferee) {
-                $label = 'Irregular (Transferee)';
-            } elseif ($this->has_active_shift_request) {
-                $label = 'Irregular (Shifting)';
-            } else {
-                $label = 'Irregular';
-            }
-        }
+        $label = $is_irregular ? 'Irregular' : 'Regular';
 
         $reasons = [];
+        if ($explicit_irregular_status) {
+            $reasons[] = 'Latest pre-enrollment record marks the student as irregular.';
+        }
         if ($is_transferee) {
-            $reasons[] = 'Transferee records can leave credited or unmatched checklist gaps.';
+            $reasons[] = 'Transferee classification can leave credited or unmatched checklist gaps.';
         }
         if ($this->has_active_shift_request) {
             $reasons[] = 'Active program shift keeps the plan in irregular mode until the destination checklist stabilizes.';
@@ -1509,14 +1570,17 @@ class StudyPlanGenerator {
             'label' => $label,
             'reasons' => $reasons,
             'has_validated_history' => $has_validated_history,
-            'classification' => $this->student_classification !== '' ? $this->student_classification : ($this->legacy_transferee_inferred ? 'Transferee (inferred)' : 'Regular'),
+            'classification' => $classification_label,
+            'registration_status' => $registration_status,
+            'record_classification' => $this->student_classification,
         ];
     }
 
     private function evaluateShiftTransfereePolicyGate() {
-        $classification = strtolower(trim($this->student_classification));
         $this->legacy_transferee_inferred = $this->inferLegacyTransfereeStatus();
-        $is_transferee = ($classification !== '' && strpos($classification, 'transferee') !== false)
+        $effective_classification = strtolower(trim($this->getEffectiveAcademicClassification()));
+        $registration_status = $this->getNormalizedRegistrationStatus();
+        $is_transferee = ($effective_classification !== '' && strpos($effective_classification, 'transferee') !== false)
             || $this->legacy_transferee_inferred;
         $applies = $is_transferee || $this->has_active_shift_request;
 
@@ -1542,7 +1606,8 @@ class StudyPlanGenerator {
             'reasons' => $reasons,
             'average_grade' => $average_grade,
             'failed_course_count' => $failed_course_count,
-            'classification' => $this->student_classification !== '' ? $this->student_classification : ($this->legacy_transferee_inferred ? 'Transferee (inferred)' : ''),
+            'classification' => $this->getEffectiveAcademicClassification(),
+            'registration_status' => $registration_status,
             'has_active_shift_request' => $this->has_active_shift_request,
             'legacy_transferee_inferred' => $this->legacy_transferee_inferred,
             'planning_status' => $this->planning_status,

@@ -121,6 +121,12 @@ $planning_status = $stats['planning_status'] ?? ($policy_gate['planning_status']
     'label' => 'Regular',
     'reasons' => [],
 ]);
+$display_classification = trim((string)($planning_status['classification'] ?? ($policy_gate['classification'] ?? '')));
+if ($display_classification === '') {
+    $display_classification = 'Not set';
+}
+$display_status = trim((string)($planning_status['label'] ?? 'Regular'));
+$saved_registration_status = trim((string)($planning_status['registration_status'] ?? ($policy_gate['registration_status'] ?? '')));
 
 // Load coordinator overrides so student view reflects customized plan placements.
 $valid_override_years = spoValidOverrideYears();
@@ -1565,16 +1571,23 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                 <div class="student-details">
                     <p><span class="label">Name</span> : <span class="value"><?= $last_name . ', ' . $first_name . (!empty($middle_name) ? ' ' . $middle_name[0] . '.' : '') ?></span></p>
                     <p><span class="label">Student No.</span> : <span class="value"><?= $student_id ?></span></p>
-                    <p><span class="label">Planning Status</span> : <span class="value"><?= htmlspecialchars((string)($planning_status['label'] ?? 'Regular')) ?></span></p>
+                    <p><span class="label">Classification</span> : <span class="value"><?= htmlspecialchars($display_classification) ?></span></p>
+                    <p><span class="label">Status</span> : <span class="value"><?= htmlspecialchars($display_status) ?></span></p>
                 </div>
             </div>
 
             <?php if (!empty($planning_status['is_irregular'])): ?>
                 <div style="margin: 0 0 18px; padding: 14px 18px; background: linear-gradient(135deg, #f6fbff, #e8f4fd); border-left: 5px solid #2196F3; border-radius: 10px; color: #1f3b57;">
-                    <strong><?= htmlspecialchars((string)($planning_status['label'] ?? 'Irregular')) ?></strong>
-                    is treated as a planning state. Your registration classification stays as
-                    <strong><?= htmlspecialchars((string)($planning_status['classification'] ?? ($policy_gate['classification'] ?? 'Regular'))) ?></strong>,
-                    but the generator uses irregular rules whenever the checklist has credited gaps, shift effects, back subjects, or retention issues.
+                    <strong><?= htmlspecialchars($display_status) ?></strong>
+                    is being used for study-plan generation.
+                    Classification stays as
+                    <strong><?= htmlspecialchars($display_classification) ?></strong>,
+                    while the generator applies irregular rules whenever the saved status is irregular or the checklist shows credited gaps, shift effects, back subjects, or retention issues.
+                    <?php if ($saved_registration_status !== ''): ?>
+                    <div style="margin-top: 8px; font-size: 13px; color: #425b76;">
+                        Latest saved registration status: <strong><?= htmlspecialchars($saved_registration_status) ?></strong>
+                    </div>
+                    <?php endif; ?>
                     <?php if (!empty($planning_status['reasons'])): ?>
                     <div style="margin-top: 8px; font-size: 13px; color: #425b76;">
                         <?= htmlspecialchars(implode(' ', (array)$planning_status['reasons'])) ?>
