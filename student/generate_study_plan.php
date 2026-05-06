@@ -44,6 +44,13 @@ class StudyPlanGenerator {
     private $has_active_shift_request = false;
     private $legacy_transferee_inferred = false;
     private $table_column_cache = [];
+    private $planning_status = [
+        'is_irregular' => false,
+        'label' => 'Regular',
+        'reasons' => [],
+        'has_validated_history' => false,
+        'classification' => '',
+    ];
     private $policy_gate_status = [
         'applies' => false,
         'eligible' => true,
@@ -52,6 +59,7 @@ class StudyPlanGenerator {
         'failed_course_count' => 0,
         'classification' => '',
         'has_active_shift_request' => false,
+        'planning_status' => null,
     ];
     
     // Map full program names to curriculum program codes
@@ -1427,6 +1435,84 @@ class StudyPlanGenerator {
         return $this->hasCreditedMigrationEvidence();
     }
 
+    private function getActiveAcademicIssueSets() {
+        $active_failed = array_values(array_filter(array_diff($this->failed_courses, $this->completed_courses), static function ($code) {
+            return trim((string)$code) !== '';
+        }));
+        $active_inc = array_values(array_filter(array_diff($this->inc_courses, $this->completed_courses), static function ($code) {
+            return trim((string)$code) !== '';
+        }));
+        $active_dropped = array_values(array_filter(array_diff($this->dropped_courses, $this->completed_courses), static function ($code) {
+            return trim((string)$code) !== '';
+        }));
+
+        return [
+            'failed' => $active_failed,
+            'inc' => $active_inc,
+            'dropped' => $active_dropped,
+            'count' => count($active_failed) + count($active_inc) + count($active_dropped),
+        ];
+    }
+
+    private function evaluatePlanningStatus(array $active_issues = null) {
+        if ($active_issues === null) {
+            $active_issues = $this->getActiveAcademicIssueSets();
+        }
+
+        $classification = strtolower(trim($this->student_classification));
+        $is_transferee = ($classification !== '' && strpos($classification, 'transferee') !== false)
+            || $this->legacy_transferee_inferred;
+        $has_retention_issue = $this->retention_status !== 'None' && $this->retention_status !== '';
+        $has_validated_history = $this->hasValidatedAcademicHistory();
+        $has_back_subjects = !empty($active_issues['count']);
+        $has_terminal_failure = !empty($this->thrice_failed_courses);
+
+        $is_irregular = $is_transferee
+            || $this->has_active_shift_request
+            || $has_back_subjects
+            || $has_retention_issue
+            || $has_terminal_failure;
+
+        $label = 'Regular';
+        if ($is_irregular) {
+            if ($is_transferee) {
+                $label = 'Irregular (Transferee)';
+            } elseif ($this->has_active_shift_request) {
+                $label = 'Irregular (Shifting)';
+            } else {
+                $label = 'Irregular';
+            }
+        }
+
+        $reasons = [];
+        if ($is_transferee) {
+            $reasons[] = 'Transferee records can leave credited or unmatched checklist gaps.';
+        }
+        if ($this->has_active_shift_request) {
+            $reasons[] = 'Active program shift keeps the plan in irregular mode until the destination checklist stabilizes.';
+        }
+        if ($has_back_subjects) {
+            $reasons[] = 'Active failed, INC, or dropped courses leave the checklist irregular.';
+        }
+        if ($has_retention_issue) {
+            $reasons[] = 'Current retention status is ' . $this->retention_status . '.';
+        }
+        if ($has_terminal_failure) {
+            $reasons[] = 'One or more courses have been failed three or more times.';
+        }
+        if (!$is_irregular && !$has_validated_history) {
+            $reasons[] = 'No validated checklist history yet; the curriculum can be followed as regular.';
+        }
+
+        $this->planning_status = [
+            'is_irregular' => $is_irregular,
+            'label' => $label,
+            'reasons' => $reasons,
+            'has_validated_history' => $has_validated_history,
+            'classification' => $this->student_classification !== '' ? $this->student_classification : ($this->legacy_transferee_inferred ? 'Transferee (inferred)' : 'Regular'),
+        ];
+    }
+
     private function evaluateShiftTransfereePolicyGate() {
         $classification = strtolower(trim($this->student_classification));
         $this->legacy_transferee_inferred = $this->inferLegacyTransfereeStatus();
@@ -1434,10 +1520,8 @@ class StudyPlanGenerator {
             || $this->legacy_transferee_inferred;
         $applies = $is_transferee || $this->has_active_shift_request;
 
-        $active_failed = array_diff($this->failed_courses, $this->completed_courses);
-        $active_inc = array_diff($this->inc_courses, $this->completed_courses);
-        $active_dropped = array_diff($this->dropped_courses, $this->completed_courses);
-        $failed_course_count = count($active_failed) + count($active_inc) + count($active_dropped);
+        $active_issues = $this->getActiveAcademicIssueSets();
+        $failed_course_count = (int)($active_issues['count'] ?? 0);
 
         $average_grade = $this->calculatePolicyAverageGrade();
         $reasons = [];
@@ -1450,6 +1534,8 @@ class StudyPlanGenerator {
             $reasons[] = 'Average grade is above 2.00.';
         }
 
+        $this->evaluatePlanningStatus($active_issues);
+
         $this->policy_gate_status = [
             'applies' => $applies,
             'eligible' => (!$applies || empty($reasons)),
@@ -1459,6 +1545,7 @@ class StudyPlanGenerator {
             'classification' => $this->student_classification !== '' ? $this->student_classification : ($this->legacy_transferee_inferred ? 'Transferee (inferred)' : ''),
             'has_active_shift_request' => $this->has_active_shift_request,
             'legacy_transferee_inferred' => $this->legacy_transferee_inferred,
+            'planning_status' => $this->planning_status,
         ];
     }
 
@@ -2224,6 +2311,28 @@ class StudyPlanGenerator {
                 continue;
             }
 
+            if (!$this->prerequisitesSatisfiedForCompletedSet($course_code, $simulated_completed)) {
+                continue;
+            }
+
+            if (!$this->standingConstraintSatisfied($course_code, '4th Yr', '2nd Sem')) {
+                continue;
+            }
+
+            $can_take_in_target_semester = (($course['semester'] ?? '') === '2nd Sem');
+            if (!$can_take_in_target_semester) {
+                $cross_course = $this->findCrossRegistrationOffering($course_code, '2nd Sem', $course);
+                if ($cross_course !== null) {
+                    $course['cross_registered'] = true;
+                    $course['cross_reg_source_program'] = $cross_course['cross_reg_source_program'] ?? ($cross_course['programs'] ?? '');
+                    $can_take_in_target_semester = true;
+                }
+            }
+
+            if (!$can_take_in_target_semester) {
+                continue;
+            }
+
             $course_units = $this->getCountedCourseUnits($course);
             if ($current_units + $course_units > $target_max_units) {
                 continue;
@@ -2317,9 +2426,10 @@ class StudyPlanGenerator {
     }
 
     /**
-     * Transferees and shifting students should be able to fill an irregular
-     * term up to the target curriculum cap using any truly eligible remaining
-     * courses, not only courses from the currently labeled semester bucket.
+     * Transferees and shifting students may fill an irregular term using other
+     * remaining courses, but they must still be legitimately offerable in the
+     * semester being planned. Status may relax curriculum-term placement, not
+     * hard constraints like prerequisites, standing, or semester offering.
      */
     private function shouldUseFlexibleIrregularFill() {
         return !empty($this->policy_gate_status['applies']) && !empty($this->policy_gate_status['eligible']);
@@ -2548,6 +2658,21 @@ class StudyPlanGenerator {
                     if (!empty($course['completed']) || isset($available[$code])) {
                         continue;
                     }
+
+                    $can_take_in_current_semester = (($course['semester'] ?? '') === $term['semester']);
+                    if (!$can_take_in_current_semester) {
+                        $cross_course = $this->findCrossRegistrationOffering($code, $term['semester'], $course);
+                        if ($cross_course !== null) {
+                            $course['cross_registered'] = true;
+                            $course['cross_reg_source_program'] = $cross_course['cross_reg_source_program'] ?? ($cross_course['programs'] ?? '');
+                            $can_take_in_current_semester = true;
+                        }
+                    }
+
+                    if (!$can_take_in_current_semester) {
+                        continue;
+                    }
+
                     if (!$this->standingConstraintSatisfied($code, $term['year'], $term['semester'])) {
                         continue;
                     }
@@ -3230,6 +3355,7 @@ class StudyPlanGenerator {
             'thrice_failed_courses' => $this->thrice_failed_courses,
             'thrice_failed_count' => count($this->thrice_failed_courses),
             'policy_gate' => $this->policy_gate_status,
+            'planning_status' => $this->planning_status,
         ];
     }
     
@@ -3249,6 +3375,10 @@ class StudyPlanGenerator {
 
     public function getPolicyGateStatus() {
         return $this->policy_gate_status;
+    }
+
+    public function getPlanningStatus() {
+        return $this->planning_status;
     }
     
     /**
