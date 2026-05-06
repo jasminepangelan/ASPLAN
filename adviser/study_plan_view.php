@@ -60,6 +60,92 @@ function aspvSortTaggedCoursesLast(array $courses): array
     return array_column($indexed, 'course');
 }
 
+function aspvDisplayTermOrder(string $year, string $semester): array
+{
+    $yearOrder = 999;
+    if (preg_match('/(\d+)/', $year, $matches)) {
+        $yearOrder = (int) ($matches[1] ?? 999);
+    }
+
+    $semesterOrderMap = [
+        '1st Sem' => 1,
+        '2nd Sem' => 2,
+        'Mid Year' => 3,
+    ];
+
+    return [$yearOrder, $semesterOrderMap[$semester] ?? 999];
+}
+
+function aspvDescribeDisplayTerm(array $courses, string $displayYear, string $displaySemester): array
+{
+    $displayKey = $displayYear . '|' . $displaySemester;
+    $sourceTerms = [];
+
+    foreach ($courses as $course) {
+        $sourceYear = trim((string) ($course['source_year'] ?? $course['year'] ?? $displayYear));
+        $sourceSemester = trim((string) ($course['source_semester'] ?? $course['semester'] ?? $displaySemester));
+
+        if ($sourceYear === '' || $sourceSemester === '') {
+            continue;
+        }
+
+        $sourceKey = $sourceYear . '|' . $sourceSemester;
+        if (!isset($sourceTerms[$sourceKey])) {
+            $sourceTerms[$sourceKey] = [
+                'year' => $sourceYear,
+                'semester' => $sourceSemester,
+            ];
+        }
+    }
+
+    uasort($sourceTerms, static function (array $left, array $right): int {
+        [$leftYear, $leftSemester] = aspvDisplayTermOrder((string) ($left['year'] ?? ''), (string) ($left['semester'] ?? ''));
+        [$rightYear, $rightSemester] = aspvDisplayTermOrder((string) ($right['year'] ?? ''), (string) ($right['semester'] ?? ''));
+
+        if ($leftYear !== $rightYear) {
+            return $leftYear <=> $rightYear;
+        }
+
+        if ($leftSemester !== $rightSemester) {
+            return $leftSemester <=> $rightSemester;
+        }
+
+        return strcmp(
+            (string) ($left['year'] ?? '') . '|' . (string) ($left['semester'] ?? ''),
+            (string) ($right['year'] ?? '') . '|' . (string) ($right['semester'] ?? '')
+        );
+    });
+
+    $sourceTerms = array_values($sourceTerms);
+    $hasMatchingDisplayTerm = false;
+    $nonDisplayTerms = [];
+
+    foreach ($sourceTerms as $sourceTerm) {
+        $sourceKey = (string) ($sourceTerm['year'] ?? '') . '|' . (string) ($sourceTerm['semester'] ?? '');
+        if ($sourceKey === $displayKey) {
+            $hasMatchingDisplayTerm = true;
+            continue;
+        }
+
+        $nonDisplayTerms[] = $sourceTerm;
+    }
+
+    $formatTerms = static function (array $terms): string {
+        return implode(', ', array_map(
+            static fn(array $term): string => trim((string) ($term['year'] ?? '')) . ' - ' . trim((string) ($term['semester'] ?? '')),
+            $terms
+        ));
+    };
+
+    return [
+        'is_mixed' => count($sourceTerms) > 1,
+        'is_relocated' => !empty($nonDisplayTerms),
+        'has_matching_display_term' => $hasMatchingDisplayTerm,
+        'source_summary' => $formatTerms($sourceTerms),
+        'non_display_summary' => $formatTerms($nonDisplayTerms),
+    ];
+}
+
 $conn = getDBConnection();
 
 if (!isset($_SESSION['id'])) {
@@ -1053,6 +1139,26 @@ if ($last_planned_term) {
                                 </div>
                             </div>
                         <?php else: ?>
+                            <?php
+                                $termSourceContext = aspvDescribeDisplayTerm((array)($term['courses'] ?? []), (string)($term['year'] ?? ''), (string)($term['semester'] ?? ''));
+                                $termHeading = (string)($term['year'] ?? '') . ' - ' . (string)($term['semester'] ?? '');
+                                if (!empty($termSourceContext['is_relocated'])) {
+                                    $termHeading = 'Recommended Load for ' . $termHeading;
+                                }
+
+                                $termSourceNote = '';
+                                if (!empty($termSourceContext['is_relocated'])) {
+                                    $sourceList = !empty($termSourceContext['has_matching_display_term'])
+                                        ? (string)($termSourceContext['non_display_summary'] ?? '')
+                                        : (string)($termSourceContext['source_summary'] ?? '');
+
+                                    if ($sourceList !== '') {
+                                        $termSourceNote = !empty($termSourceContext['has_matching_display_term'])
+                                            ? 'Also includes courses originally scheduled in: ' . $sourceList
+                                            : 'Courses originally scheduled in: ' . $sourceList;
+                                    }
+                                }
+                            ?>
                             <div class="semester-section <?= $is_completed_term ? 'completed-term' : '' ?>" style="<?= $is_completed_term ? 'border: 1px solid #c8e6c9;' : '' ?>">
                                 <?php if ($is_completed_term): ?>
                                     <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2e7d32;">
@@ -1061,13 +1167,18 @@ if ($last_planned_term) {
                                     </div>
                                 <?php else: ?>
                                     <div class="semester-header">
-                                        <?= htmlspecialchars($term['year']) ?> - <?= htmlspecialchars($term['semester']) ?>
+                                        <?= htmlspecialchars($termHeading) ?>
                                         <?php if (!empty($term['max_units'])): ?>
                                             <span style="font-size: 11px; background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600;">
                                                 Max <?= (int)$term['max_units'] ?> units
                                             </span>
                                         <?php endif; ?>
                                     </div>
+                                    <?php if ($termSourceNote !== ''): ?>
+                                        <div style="padding: 6px 12px 0; font-size: 11px; color: #546e7a; font-weight: 600;">
+                                            <?= htmlspecialchars($termSourceNote) ?>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                                 <table class="course-table">
                                     <thead>

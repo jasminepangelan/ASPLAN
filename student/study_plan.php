@@ -234,7 +234,11 @@ foreach ($optimized_plan as $term_index => $term) {
             'cross_registered' => !empty($course['cross_registered']),
             'cross_reg_source_program' => $course['cross_reg_source_program'] ?? '',
             'forced_added' => !empty($course['forced_added']),
-            'forced_reason' => $course['forced_reason'] ?? ''
+            'forced_reason' => $course['forced_reason'] ?? '',
+            'source_year' => $course['year'] ?? $year,
+            'source_semester' => $course['semester'] ?? $semester,
+            'planned_year' => $target_year,
+            'planned_semester' => $target_semester,
         ];
     }
 }
@@ -265,6 +269,93 @@ function calculateTotalUnits($courses) {
         $total += (float)($course['credit_unit_lec'] ?? 0) + (float)($course['credit_unit_lab'] ?? 0);
     }
     return $total;
+}
+
+function studyPlanDisplayTermOrder(string $year, string $semester): array {
+    $year_order = 999;
+    if (preg_match('/(\d+)/', $year, $matches)) {
+        $year_order = (int)($matches[1] ?? 999);
+    }
+
+    $semester_order_map = [
+        '1st Sem' => 1,
+        '2nd Sem' => 2,
+        'Mid Year' => 3,
+    ];
+
+    return [
+        $year_order,
+        $semester_order_map[$semester] ?? 999,
+    ];
+}
+
+function describeStudyPlanDisplayTerm(array $courses, string $displayYear, string $displaySemester): array {
+    $displayKey = $displayYear . '|' . $displaySemester;
+    $sourceTerms = [];
+
+    foreach ($courses as $course) {
+        $sourceYear = trim((string)($course['source_year'] ?? $course['year'] ?? $displayYear));
+        $sourceSemester = trim((string)($course['source_semester'] ?? $course['semester'] ?? $displaySemester));
+
+        if ($sourceYear === '' || $sourceSemester === '') {
+            continue;
+        }
+
+        $sourceKey = $sourceYear . '|' . $sourceSemester;
+        if (!isset($sourceTerms[$sourceKey])) {
+            $sourceTerms[$sourceKey] = [
+                'year' => $sourceYear,
+                'semester' => $sourceSemester,
+            ];
+        }
+    }
+
+    uasort($sourceTerms, static function (array $left, array $right): int {
+        [$leftYear, $leftSemester] = studyPlanDisplayTermOrder((string)($left['year'] ?? ''), (string)($left['semester'] ?? ''));
+        [$rightYear, $rightSemester] = studyPlanDisplayTermOrder((string)($right['year'] ?? ''), (string)($right['semester'] ?? ''));
+
+        if ($leftYear !== $rightYear) {
+            return $leftYear <=> $rightYear;
+        }
+
+        if ($leftSemester !== $rightSemester) {
+            return $leftSemester <=> $rightSemester;
+        }
+
+        return strcmp(
+            (string)($left['year'] ?? '') . '|' . (string)($left['semester'] ?? ''),
+            (string)($right['year'] ?? '') . '|' . (string)($right['semester'] ?? '')
+        );
+    });
+
+    $sourceTerms = array_values($sourceTerms);
+    $hasMatchingDisplayTerm = false;
+    $nonDisplayTerms = [];
+
+    foreach ($sourceTerms as $sourceTerm) {
+        $sourceKey = (string)($sourceTerm['year'] ?? '') . '|' . (string)($sourceTerm['semester'] ?? '');
+        if ($sourceKey === $displayKey) {
+            $hasMatchingDisplayTerm = true;
+            continue;
+        }
+
+        $nonDisplayTerms[] = $sourceTerm;
+    }
+
+    $formatTerms = static function (array $terms): string {
+        return implode(', ', array_map(
+            static fn(array $term): string => trim((string)($term['year'] ?? '')) . ' - ' . trim((string)($term['semester'] ?? '')),
+            $terms
+        ));
+    };
+
+    return [
+        'is_mixed' => count($sourceTerms) > 1,
+        'is_relocated' => !empty($nonDisplayTerms),
+        'has_matching_display_term' => $hasMatchingDisplayTerm,
+        'source_summary' => $formatTerms($sourceTerms),
+        'non_display_summary' => $formatTerms($nonDisplayTerms),
+    ];
 }
 
 function sortTaggedStudyPlanCoursesLast(array $courses): array {
@@ -1626,6 +1717,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                         $term_retake_count = $meta['retake_count'] ?? 0;
                         $term_cross_reg = $meta['cross_reg_count'] ?? 0;
                         $term_forced_add = $meta['forced_add_count'] ?? 0;
+                        $term_source_context = describeStudyPlanDisplayTerm($courses, (string)$year, (string)$semester);
                         
                         // Generate academic year string based on year level and admission year
                         $year_num = intval(preg_replace('/[^0-9]/', '', $year));
@@ -1766,7 +1858,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                     <div class="semester-section" style="<?= $is_first_future ? 'border: 3px solid #4CAF50; box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);' : ($is_skipped ? 'border: 2px dashed #f44336; opacity: 0.7;' : '') ?>">
                         <?php if ($is_first_future): ?>
                         <div style="background: linear-gradient(135deg, #4CAF50, #45a049); color: white; padding: 8px; text-align: center; font-weight: 700; font-size: 13px; border-radius: 8px 8px 0 0; margin: -3px -3px 0 -3px;">
-                            NEXT RECOMMENDED SEMESTER (CSP & Greedy Optimized)
+                            NEXT RECOMMENDED LOAD (CSP & Greedy Optimized)
                         </div>
                         <?php endif; ?>
                         
@@ -1785,14 +1877,39 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                             </p>
                         </div>
                         <?php else: ?>
+                        <?php
+                            $term_heading = $year . ' - ' . $semester . ', ' . $school_year;
+                            if (!empty($term_source_context['is_relocated'])) {
+                                $term_heading = 'Recommended Load for ' . $term_heading;
+                            }
+
+                            $source_note = '';
+                            if (!empty($term_source_context['is_relocated'])) {
+                                $source_list = !empty($term_source_context['has_matching_display_term'])
+                                    ? (string)($term_source_context['non_display_summary'] ?? '')
+                                    : (string)($term_source_context['source_summary'] ?? '');
+
+                                if ($source_list !== '') {
+                                    $source_note = !empty($term_source_context['has_matching_display_term'])
+                                        ? 'Also includes courses originally scheduled in: ' . $source_list
+                                        : 'Courses originally scheduled in: ' . $source_list;
+                                }
+                            }
+                        ?>
                         <div class="semester-header">
-                            <?= htmlspecialchars($year) ?> - <?= htmlspecialchars($semester) ?>, <?= $school_year ?>
+                            <?= htmlspecialchars($term_heading) ?>
                             <?php if ($term_max_units < 21): ?>
                             <span style="font-size: 11px; background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600;">
                                 Max <?= $term_max_units ?> units (<?= $term_retention ?>)
                             </span>
                             <?php endif; ?>
                         </div>
+
+                        <?php if ($source_note !== ''): ?>
+                        <div style="padding: 6px 12px 0; font-size: 11px; color: #546e7a; font-weight: 600;">
+                            <?= htmlspecialchars($source_note) ?>
+                        </div>
+                        <?php endif; ?>
                         
                         <?php if ($term_retake_count > 0 || $term_cross_reg > 0 || $term_forced_add > 0): ?>
                         <div style="display: flex; gap: 8px; padding: 4px 12px; font-size: 11px; flex-wrap: wrap;">
