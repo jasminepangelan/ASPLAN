@@ -834,8 +834,18 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
 
         .plan-tag-retake { background: #f44336; }
         .plan-tag-cross { background: #2196F3; }
+        .plan-tag-completed { background: #2e7d32; }
+        .plan-tag-failed { background: #c62828; }
         .plan-tag-forced { background: #ef6c00; }
         .plan-tag-to-add { background: #2e7d32; }
+        .plan-tag-warning { background: #ef6c00; }
+        .plan-tag-pending { background: #455a64; }
+        .completed-badge.plan-tag {
+            font-size: 10px;
+            background: #4CAF50;
+            padding: 2px 6px;
+            margin-left: 6px;
+        }
 
         .grade-passed {
             color: #2e7d32;
@@ -1793,7 +1803,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                     <div class="semester-section completed-term" style="border: 1px solid #c8e6c9;">
                         <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2e7d32;">
                             <?= htmlspecialchars($year) ?> - <?= htmlspecialchars($semester) ?>, <?= $school_year ?>
-                            <span class="completed-badge">COMPLETED</span>
+                            <span class="completed-badge plan-tag plan-tag-completed">COMPLETED</span>
                             <?php if ($term_retention !== 'None'): ?>
                             <span style="font-size: 10px; background: <?= $term_retention === 'Warning' ? '#fff3e0' : ($term_retention === 'Probation' ? '#fff3e0' : '#ffebee') ?>; color: <?= $term_retention === 'Warning' ? '#e65100' : ($term_retention === 'Probation' ? '#bf360c' : '#c62828') ?>; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 600;">
                                 <?= htmlspecialchars($term_retention) ?>
@@ -1825,8 +1835,9 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                     <tr>
                                         <td>
                                             <?= htmlspecialchars($course['code']) ?>
+                                            <span class="plan-tag plan-tag-completed">COMPLETED</span>
                                             <?php if ($is_failed_grade): ?>
-                                            <span style="font-size: 9px; background: #f44336; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: middle;">FAILED</span>
+                                            <span class="plan-tag plan-tag-failed">FAILED</span>
                                             <?php endif; ?>
                                         </td>
                                         <td><?= htmlspecialchars($course['title']) ?></td>
@@ -1872,20 +1883,20 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                     $prerequisite = $course['prerequisite'] ?? 'None';
                                     $status = trim((string)($course['status'] ?? ''));
                                     $status_variant = trim((string)($course['status_variant'] ?? ''));
-                                    $badge_style = 'background: #e8f5e9; color: #2e7d32;';
+                                    $status_badge_class = 'plan-tag-completed';
                                     if ($status_variant === 'failed') {
-                                        $badge_style = 'background: #ffebee; color: #c62828;';
+                                        $status_badge_class = 'plan-tag-failed';
                                     } elseif ($status_variant === 'inc' || $status_variant === 'dropped') {
-                                        $badge_style = 'background: #fff3e0; color: #ef6c00;';
+                                        $status_badge_class = 'plan-tag-warning';
                                     } elseif ($status_variant === 'not-yet-taken') {
-                                        $badge_style = 'background: #eceff1; color: #455a64;';
+                                        $status_badge_class = 'plan-tag-pending';
                                     }
                                 ?>
                                     <tr>
                                         <td>
                                             <?= htmlspecialchars($course['code']) ?>
                                             <?php if ($status !== ''): ?>
-                                            <span style="font-size: 9px; padding: 2px 5px; border-radius: 999px; margin-left: 6px; font-weight: 700; vertical-align: middle; <?= $badge_style ?>">
+                                            <span class="plan-tag <?= htmlspecialchars($status_badge_class) ?>">
                                                 <?= htmlspecialchars(strtoupper($status)) ?>
                                             </span>
                                             <?php endif; ?>
