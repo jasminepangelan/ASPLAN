@@ -2313,25 +2313,26 @@ class StudyPlanGenerator {
                 $term['semester']
             );
             
-            // CSP PHASE: Get available courses for this semester
-            $available = $this->applyConstraintsForSimulation($term['semester'], $simulated_completed, $simulated_all_courses);
+            $target_term_order = $this->getCurriculumTermOrder($term['year'], $term['semester']);
 
-            // Keep higher-year courses that already satisfy prerequisites.
-            // This is important for transferees and students with credited subjects:
-            // once lower-year blockers are cleared, the plan should fill the term with
-            // any same-semester course that is truly available instead of leaving it underloaded.
-            $course_year_order = ['1st Yr' => 1, '2nd Yr' => 2, '3rd Yr' => 3, '4th Yr' => 4];
-            $term_year_order = $course_year_order[$term['year']] ?? 4;
+            // Base the term on the exact curriculum bucket first. Earlier
+            // versions used only the semester label here ("1st Sem", "2nd Sem"),
+            // which let future-year courses leak into the current term.
+            $available = $this->applyConstraintsForExactTerm($term['year'], $term['semester'], $simulated_completed, $simulated_all_courses);
 
-            // Include backlog courses from prior years/semesters, but only if their original semester matches the current semester,
-            // or if cross-registration is possible for this semester.
+            // Include backlog courses from prior curriculum terms, but only if
+            // their original semester matches the current semester, or if
+            // cross-registration is possible for this semester.
             $backlog = $this->applyConstraintsForSimulation(null, $simulated_completed, $simulated_all_courses);
             foreach ($backlog as $code => $course) {
-                $course_year = $course_year_order[$course['year']] ?? 1;
-                // Only allow if course is from a lower year and its semester matches the current semester
-                if ($course_year < $term_year_order && $course['semester'] === $term['semester']) {
+                $course_term_order = $this->getCurriculumTermOrder($course['year'] ?? '', $course['semester'] ?? '');
+                if ($course_term_order <= 0 || $course_term_order >= $target_term_order) {
+                    continue;
+                }
+
+                if (($course['semester'] ?? '') === $term['semester']) {
                     $available[$code] = $course;
-                } else if ($course_year < $term_year_order) {
+                } else {
                     $cross_course = $this->findCrossRegistrationOffering($code, $term['semester'], $course);
                     // Only cross-register if the course is offered in the current semester by another program
                     if ($cross_course !== null) {
@@ -2363,6 +2364,16 @@ class StudyPlanGenerator {
             foreach ($remaining_course_codes as $needed_code) {
                 // If course is not already available and not yet planned
                 if (!isset($available[$needed_code])) {
+                    $needed_course = $simulated_all_courses[$needed_code] ?? null;
+                    if ($needed_course === null) {
+                        continue;
+                    }
+
+                    $needed_term_order = $this->getCurriculumTermOrder($needed_course['year'] ?? '', $needed_course['semester'] ?? '');
+                    if ($needed_term_order > 0 && $needed_term_order > $target_term_order) {
+                        continue;
+                    }
+
                     $cross_course = $this->findCrossRegistrationOffering($needed_code, $term['semester'], $simulated_all_courses[$needed_code] ?? []);
                     // Only cross-register if the course is offered in the current semester by another program
                     if ($cross_course !== null) {
@@ -2629,6 +2640,33 @@ class StudyPlanGenerator {
             }
         }
         
+        return $available;
+    }
+
+    /**
+     * Apply constraints for one exact curriculum term. This keeps the normal
+     * plan aligned to the student's real term progression before backlog or
+     * cross-registration logic is layered on top.
+     */
+    private function applyConstraintsForExactTerm($target_year, $target_semester, $simulated_completed, $simulated_all_courses) {
+        $available = [];
+
+        foreach ($simulated_all_courses as $code => $course) {
+            if (!empty($course['completed'])) {
+                continue;
+            }
+
+            if (($course['year'] ?? '') !== $target_year || ($course['semester'] ?? '') !== $target_semester) {
+                continue;
+            }
+
+            if (!$this->prerequisitesSatisfiedForCompletedSet($code, $simulated_completed)) {
+                continue;
+            }
+
+            $available[$code] = $course;
+        }
+
         return $available;
     }
 
