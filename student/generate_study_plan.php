@@ -1253,6 +1253,62 @@ class StudyPlanGenerator {
         $stmt->close();
     }
 
+    private function hasCreditedMigrationEvidence() {
+        if (function_exists('psTableExists') && psTableExists($this->conn, 'program_shift_credit_map')) {
+            $shiftMapStmt = $this->conn->prepare("
+                SELECT 1
+                FROM program_shift_credit_map
+                WHERE student_number = ?
+                LIMIT 1
+            ");
+            if ($shiftMapStmt) {
+                $shiftMapStmt->bind_param("s", $this->student_id);
+                $shiftMapStmt->execute();
+                $shiftMapResult = $shiftMapStmt->get_result();
+                $hasShiftCredits = $shiftMapResult && $shiftMapResult->fetch_assoc();
+                $shiftMapStmt->close();
+
+                if ($hasShiftCredits) {
+                    return true;
+                }
+            }
+        }
+
+        $columns = $this->getStudentChecklistColumns();
+        $remarkConditions = [];
+        foreach (['evaluator_remarks', 'evaluator_remarks_2', 'evaluator_remarks_3'] as $column) {
+            if (!isset($columns[$column])) {
+                continue;
+            }
+
+            $remarkConditions[] = "(UPPER(TRIM({$column})) LIKE '%CREDITED%')";
+        }
+
+        if (empty($remarkConditions)) {
+            return false;
+        }
+
+        $creditedStmt = $this->conn->prepare("
+            SELECT 1
+            FROM student_checklists
+            WHERE student_id = ?
+              AND (" . implode(' OR ', $remarkConditions) . ")
+            LIMIT 1
+        ");
+
+        if (!$creditedStmt) {
+            return false;
+        }
+
+        $creditedStmt->bind_param("s", $this->student_id);
+        $creditedStmt->execute();
+        $creditedResult = $creditedStmt->get_result();
+        $hasCreditedRows = $creditedResult && $creditedResult->fetch_assoc();
+        $creditedStmt->close();
+
+        return (bool) $hasCreditedRows;
+    }
+
     private function inferLegacyTransfereeStatus() {
         $classification = strtolower(trim($this->student_classification));
         if ($classification !== '') {
@@ -1263,36 +1319,11 @@ class StudyPlanGenerator {
             return false;
         }
 
-        $active_failed = array_diff($this->failed_courses, $this->completed_courses);
-        $active_inc = array_diff($this->inc_courses, $this->completed_courses);
-        $active_dropped = array_diff($this->dropped_courses, $this->completed_courses);
-        if (!empty($active_failed) || !empty($active_inc) || !empty($active_dropped)) {
-            return false;
-        }
-
-        $terms = $this->getOrderedCurriculumTerms();
-        if (empty($terms)) {
-            return false;
-        }
-
-        $firstTerm = $terms[0];
-        $firstTermKey = ($firstTerm['year'] ?? '') . '|' . ($firstTerm['semester'] ?? '');
-        $totalCourses = 0;
-        $completedCourses = 0;
-
-        foreach ($this->all_courses as $course) {
-            $termKey = ($course['year'] ?? '') . '|' . ($course['semester'] ?? '');
-            if ($termKey !== $firstTermKey) {
-                continue;
-            }
-
-            $totalCourses++;
-            if (!empty($course['completed'])) {
-                $completedCourses++;
-            }
-        }
-
-        return $totalCourses > 0 && $completedCourses > 0 && $completedCourses < $totalCourses;
+        // A partially completed first term is normal for regular students and
+        // should not automatically unlock the irregular flexible-fill planner.
+        // Only infer legacy transferee status when there is explicit credited
+        // evidence in the student's approved checklist or shift-credit map.
+        return $this->hasCreditedMigrationEvidence();
     }
 
     private function evaluateShiftTransfereePolicyGate() {

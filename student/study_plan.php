@@ -207,8 +207,29 @@ foreach ($optimized_plan as $term_index => $term) {
         $course_code = (string)($course['code'] ?? '');
 
         if ($course_code !== '' && isset($study_plan_overrides[$course_code])) {
-            $target_year = $study_plan_overrides[$course_code]['year'];
-            $target_semester = $study_plan_overrides[$course_code]['semester'];
+            $candidate_year = $study_plan_overrides[$course_code]['year'];
+            $candidate_semester = $study_plan_overrides[$course_code]['semester'];
+            $base_term_order = 0;
+            $candidate_term_order = 0;
+
+            if (preg_match('/(\d+)/', (string)$year, $baseYearMatch)) {
+                $base_term_order += ((int)($baseYearMatch[1] ?? 0)) * 10;
+            }
+            if (preg_match('/(\d+)/', (string)$candidate_year, $candidateYearMatch)) {
+                $candidate_term_order += ((int)($candidateYearMatch[1] ?? 0)) * 10;
+            }
+
+            $semester_order_map = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3];
+            $base_term_order += $semester_order_map[$semester] ?? 0;
+            $candidate_term_order += $semester_order_map[$candidate_semester] ?? 0;
+
+            // Ignore stale or invalid overrides that move a course earlier than
+            // the generator's own base placement. Those can survive in the
+            // database and recreate impossible mixed early-term loads.
+            if ($candidate_term_order >= $base_term_order && $candidate_term_order > 0) {
+                $target_year = $candidate_year;
+                $target_semester = $candidate_semester;
+            }
         }
 
         if (!isset($study_plan[$target_year])) {
