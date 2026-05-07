@@ -42,6 +42,29 @@ function pcSortTaggedCoursesLast(array $courses): array
     return array_column($indexed, 'course');
 }
 
+function pcIsNonCreditStudyPlanCourse(array $course): bool
+{
+    $courseCode = strtoupper(trim((string)($course['code'] ?? $course['course_code'] ?? '')));
+    $courseTitle = strtoupper(trim((string)($course['title'] ?? $course['course_title'] ?? '')));
+
+    return $courseCode === 'CVSU 101'
+        || strpos($courseTitle, 'NON-CREDIT') !== false
+        || strpos($courseTitle, 'NON CREDIT') !== false;
+}
+
+function pcGetCountedStudyPlanUnits(array $course): float
+{
+    if (pcIsNonCreditStudyPlanCourse($course)) {
+        return 0.0;
+    }
+
+    if (isset($course['units'])) {
+        return (float)($course['units'] ?? 0);
+    }
+
+    return (float)($course['credit_unit_lec'] ?? 0) + (float)($course['credit_unit_lab'] ?? 0);
+}
+
 $coordinatorName = $isAdmin
     ? (isset($_SESSION['admin_full_name']) ? htmlspecialchars((string)$_SESSION['admin_full_name']) : 'Admin')
     : (isset($_SESSION['full_name']) ? htmlspecialchars((string)$_SESSION['full_name']) : 'Program Coordinator');
@@ -180,16 +203,7 @@ foreach ($ayCoursesByTerm as $termKey => $termData) {
         'year' => (string)($termData['year'] ?? ''),
         'semester' => (string)($termData['semester'] ?? ''),
         'total_units' => (int) array_reduce($courses, static function ($carry, $course) {
-            $courseCode = strtoupper(trim((string)($course['code'] ?? '')));
-            $courseTitle = strtoupper(trim((string)($course['title'] ?? '')));
-            $isNonCredit = $courseCode === 'CVSU 101'
-                || strpos($courseTitle, 'NON-CREDIT') !== false
-                || strpos($courseTitle, 'NON CREDIT') !== false;
-            if ($isNonCredit) {
-                return $carry;
-            }
-
-            return $carry + (float)($course['units'] ?? 0);
+            return $carry + pcGetCountedStudyPlanUnits((array)$course);
         }, 0),
         'max_units' => null,
         'courses' => $courses,
@@ -215,16 +229,7 @@ foreach ($studyPlan as $term) {
     if (!isset($futureTermMeta[$baseKey])) {
         $baseTermUnits = 0.0;
         foreach (($term['courses'] ?? []) as $baseCourse) {
-            $baseCourseCode = strtoupper(trim((string)($baseCourse['code'] ?? '')));
-            $baseCourseTitle = strtoupper(trim((string)($baseCourse['title'] ?? '')));
-            $baseIsNonCredit = $baseCourseCode === 'CVSU 101'
-                || strpos($baseCourseTitle, 'NON-CREDIT') !== false
-                || strpos($baseCourseTitle, 'NON CREDIT') !== false;
-            if ($baseIsNonCredit) {
-                continue;
-            }
-
-            $baseTermUnits += (float)($baseCourse['units'] ?? 0);
+            $baseTermUnits += pcGetCountedStudyPlanUnits((array)$baseCourse);
         }
 
         $futureTermMeta[$baseKey] = [
@@ -241,12 +246,7 @@ foreach ($studyPlan as $term) {
         $targetYear = $baseYear;
         $targetSemester = $baseSemester;
         $isMoved = false;
-        $courseCodeUpper = strtoupper(trim((string)($course['code'] ?? '')));
-        $courseTitleUpper = strtoupper(trim((string)($course['title'] ?? '')));
-        $isNonCredit = $courseCodeUpper === 'CVSU 101'
-            || strpos($courseTitleUpper, 'NON-CREDIT') !== false
-            || strpos($courseTitleUpper, 'NON CREDIT') !== false;
-        $courseCountedUnits = $isNonCredit ? 0.0 : (float)($course['units'] ?? 0);
+        $courseCountedUnits = pcGetCountedStudyPlanUnits((array)$course);
 
         if ($courseCode !== '' && isset($overrideMap[$courseCode])) {
             $candidateYear = $overrideMap[$courseCode]['year'];
@@ -286,20 +286,19 @@ foreach ($studyPlan as $term) {
                 'year' => $targetYear,
                 'semester' => $targetSemester,
                 'courses' => [],
-                'total_units' => 0,
+                'total_units' => 0.0,
                 'max_units' => null,
                 'skipped' => false,
                 'skip_reason' => '',
             ];
         }
 
-        $courseUnits = (int)($course['units'] ?? 0);
         $course['original_year'] = $baseYear;
         $course['original_semester'] = $baseSemester;
         $course['moved_override'] = $isMoved;
 
         $futureTermBuckets[$targetKey]['courses'][] = $course;
-        $futureTermBuckets[$targetKey]['total_units'] += $courseUnits;
+        $futureTermBuckets[$targetKey]['total_units'] += $courseCountedUnits;
     }
 }
 
