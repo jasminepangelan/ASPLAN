@@ -1576,26 +1576,6 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                 </div>
             </div>
 
-            <?php if (!empty($planning_status['is_irregular'])): ?>
-                <div style="margin: 0 0 18px; padding: 14px 18px; background: linear-gradient(135deg, #f6fbff, #e8f4fd); border-left: 5px solid #2196F3; border-radius: 10px; color: #1f3b57;">
-                    <strong><?= htmlspecialchars($display_status) ?></strong>
-                    is being used for study-plan generation.
-                    Classification stays as
-                    <strong><?= htmlspecialchars($display_classification) ?></strong>,
-                    while the generator applies irregular rules whenever the saved status is irregular or the checklist shows credited gaps, shift effects, back subjects, or retention issues.
-                    <?php if ($saved_registration_status !== ''): ?>
-                    <div style="margin-top: 8px; font-size: 13px; color: #425b76;">
-                        Latest saved registration status: <strong><?= htmlspecialchars($saved_registration_status) ?></strong>
-                    </div>
-                    <?php endif; ?>
-                    <?php if (!empty($planning_status['reasons'])): ?>
-                    <div style="margin-top: 8px; font-size: 13px; color: #425b76;">
-                        <?= htmlspecialchars(implode(' ', (array)$planning_status['reasons'])) ?>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
-
             <!-- Academic Schedule by Semester -->
             <?php 
             if (!empty($policy_gate['applies']) && empty($policy_gate['eligible'])):
