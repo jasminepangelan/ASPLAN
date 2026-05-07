@@ -852,6 +852,15 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
         .plan-tag-forced { background: #ef6c00; }
         .plan-tag-to-add { background: #2e7d32; }
         .plan-tag-added { background: #1565c0; }
+        .plan-tag-button {
+            border: 0;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .plan-tag-button:disabled {
+            cursor: wait;
+            opacity: 0.8;
+        }
         .plan-tag-warning { background: #ef6c00; }
         .plan-tag-pending { background: #455a64; }
         .completed-badge.plan-tag {
@@ -2037,7 +2046,12 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                             <span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($cross_reg_tooltip) ?>" aria-label="<?= htmlspecialchars($cross_reg_tooltip) ?>">CROSS-REG</span>
                                             <?php endif; ?>
                                             <?php if ($is_action_required): ?>
-                                            <span class="plan-tag <?= $is_added_confirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?>"><?= $is_added_confirmed ? 'ADDED' : 'TO BE ADDED' ?></span>
+                                            <button
+                                                type="button"
+                                                class="plan-tag <?= $is_added_confirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
+                                                data-added="<?= $is_added_confirmed ? '1' : '0' ?>"
+                                                onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['course_code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)$year, ENT_QUOTES); ?>', '<?= htmlspecialchars((string)$semester, ENT_QUOTES); ?>')"
+                                            ><?= $is_added_confirmed ? 'ADDED' : 'TO BE ADDED' ?></button>
                                             <?php endif; ?>
                                             <?php if ($is_forced_added): ?>
                                             <span class="plan-tag plan-tag-forced">FORCED</span>
@@ -2316,6 +2330,51 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
         });
         
         // Pagination functionality
+        const studyPlanStudentId = <?= json_encode($student_id); ?>;
+
+        function applyCourseAddedButtonState(buttonEl, isAdded) {
+            buttonEl.dataset.added = isAdded ? '1' : '0';
+            buttonEl.textContent = isAdded ? 'ADDED' : 'TO BE ADDED';
+            buttonEl.classList.toggle('plan-tag-added', isAdded);
+            buttonEl.classList.toggle('plan-tag-to-add', !isAdded);
+        }
+
+        function toggleCourseAdded(buttonEl, courseCode, targetYear, targetSemester) {
+            if (!buttonEl) {
+                return;
+            }
+
+            const desiredAdded = String(buttonEl.dataset.added || '0') !== '1';
+            buttonEl.disabled = true;
+
+            fetch('save_study_plan_course_addition.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studyPlanStudentId,
+                    course_code: courseCode,
+                    target_year: targetYear,
+                    target_semester: targetSemester,
+                    added: desiredAdded
+                })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (!data.success) {
+                    alert(data.message || 'Failed to update added state.');
+                    return;
+                }
+
+                applyCourseAddedButtonState(buttonEl, !!data.added);
+            })
+            .catch(function(err) {
+                alert('Network error: ' + err.message);
+            })
+            .finally(function() {
+                buttonEl.disabled = false;
+            });
+        }
+
         let currentPage = 1;
         const totalPages = <?= isset($total_pages) ? $total_pages : 1 ?>;
 
