@@ -4,6 +4,7 @@ session_start();
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../student/generate_study_plan.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/../includes/study_plan_course_addition_service.php';
 
 function aspvLoadStudentWithinAdviserScope(mysqli $conn, string $studentId, string $adviserProgram, array $batches): ?array
 {
@@ -220,6 +221,7 @@ $study_plan = $generator->generateOptimizedPlan();
 $completed_terms = $generator->getCompletedTerms();
 $stats = $generator->getCompletionStats();
 $ay_courses_by_term = $generator->getAllCoursesGroupedByTerm();
+$course_addition_map = spcaLoadCourseAdditionMap($conn, $student_id);
 
 $admission_year = null;
 $admission_date = (string)($student['date_of_admission'] ?? '');
@@ -813,6 +815,17 @@ if ($last_planned_term) {
         .plan-tag-completed { background: #2e7d32; }
         .plan-tag-failed { background: #c62828; }
         .plan-tag-to-add { background: #2e7d32; }
+        .plan-tag-added { background: #1565c0; }
+        .plan-tag-button {
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            line-height: 1.2;
+        }
+        .plan-tag-button:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
         .completed-divider {
             text-align: center;
             margin: 30px 0;
@@ -1213,11 +1226,21 @@ if ($last_planned_term) {
                                                 <?php
                                                     $crossRegSourceProgram = trim((string)($course['cross_reg_source_program'] ?? ''));
                                                     $crossRegTooltip = $crossRegSourceProgram !== '' ? 'Cross-registered from: ' . $crossRegSourceProgram : 'Cross-registered course';
+                                                    $isActionRequired = !empty($course['needs_retake']) || !empty($course['cross_registered']);
+                                                    $courseAdditionKey = spcaBuildCourseAdditionKey((string)($course['code'] ?? ''), (string)($term['year'] ?? ''), (string)($term['semester'] ?? ''));
+                                                    $isAddedConfirmed = $isActionRequired && !empty($course_addition_map[$courseAdditionKey]);
                                                 ?>
                                                 <?php if ($is_completed_term): ?><span class="plan-tag plan-tag-completed">Completed</span><?php endif; ?>
                                                 <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
                                                 <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($crossRegTooltip) ?>" aria-label="<?= htmlspecialchars($crossRegTooltip) ?>">Cross-Reg</span><?php endif; ?>
-                                                <?php if (!empty($course['needs_retake']) || !empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-to-add">To be added</span><?php endif; ?>
+                                                <?php if ($isActionRequired): ?>
+                                                    <button
+                                                        type="button"
+                                                        class="plan-tag <?= $isAddedConfirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
+                                                        data-added="<?= $isAddedConfirmed ? '1' : '0' ?>"
+                                                        onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['year'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['semester'] ?? ''), ENT_QUOTES); ?>')"
+                                                    ><?= $isAddedConfirmed ? 'Added' : 'To be added' ?></button>
+                                                <?php endif; ?>
                                                 <?php if (!empty($course['failed'])): ?><span class="plan-tag plan-tag-failed">Failed</span><?php endif; ?>
                                             </td>
                                         </tr>
@@ -1355,6 +1378,51 @@ if ($last_planned_term) {
             }
             const isHidden = body.classList.toggle('hidden');
             headerEl.classList.toggle('collapsed', isHidden);
+        }
+
+        const studyPlanStudentId = <?= json_encode($student_id); ?>;
+
+        function applyCourseAddedButtonState(buttonEl, isAdded) {
+            buttonEl.dataset.added = isAdded ? '1' : '0';
+            buttonEl.textContent = isAdded ? 'Added' : 'To be added';
+            buttonEl.classList.toggle('plan-tag-added', isAdded);
+            buttonEl.classList.toggle('plan-tag-to-add', !isAdded);
+        }
+
+        function toggleCourseAdded(buttonEl, courseCode, targetYear, targetSemester) {
+            if (!buttonEl) {
+                return;
+            }
+
+            const desiredAdded = String(buttonEl.dataset.added || '0') !== '1';
+            buttonEl.disabled = true;
+
+            fetch('save_study_plan_course_addition.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: studyPlanStudentId,
+                    course_code: courseCode,
+                    target_year: targetYear,
+                    target_semester: targetSemester,
+                    added: desiredAdded
+                })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (!data.success) {
+                    alert(data.message || 'Failed to update added state.');
+                    return;
+                }
+
+                applyCourseAddedButtonState(buttonEl, !!data.added);
+            })
+            .catch(function(err) {
+                alert('Network error: ' + err.message);
+            })
+            .finally(function() {
+                buttonEl.disabled = false;
+            });
         }
 
         function toggleSidebar() {

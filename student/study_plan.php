@@ -17,6 +17,7 @@ require_once __DIR__ . '/generate_study_plan.php';
 require_once __DIR__ . '/../includes/academic_hold_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/study_plan_override_service.php';
+require_once __DIR__ . '/../includes/study_plan_course_addition_service.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
 
 // Check if the user is logged in
@@ -132,6 +133,7 @@ $saved_registration_status = trim((string)($planning_status['registration_status
 $valid_override_years = spoValidOverrideYears();
 $valid_override_semesters = spoValidOverrideSemesters();
 $study_plan_overrides = spoLoadStudyPlanOverrides($conn, (string) $student_id);
+$study_plan_course_additions = spcaLoadCourseAdditionMap($conn, (string)$student_id);
 
 // Get completed (past) terms for display
 $completed_terms = $generator->getCompletedTerms();
@@ -849,6 +851,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
         .plan-tag-failed { background: #c62828; }
         .plan-tag-forced { background: #ef6c00; }
         .plan-tag-to-add { background: #2e7d32; }
+        .plan-tag-added { background: #1565c0; }
         .plan-tag-warning { background: #ef6c00; }
         .plan-tag-pending { background: #455a64; }
         .completed-badge.plan-tag {
@@ -2010,9 +2013,12 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                     }
                                     $is_retake = !empty($course['needs_retake']);
                                     $is_cross_reg = !empty($course['cross_registered']);
+                                    $is_action_required = $is_retake || $is_cross_reg;
                                     $cross_reg_source_program = trim((string)($course['cross_reg_source_program'] ?? ''));
                                     $cross_reg_tooltip = $cross_reg_source_program !== '' ? 'Cross-registered from: ' . $cross_reg_source_program : 'Cross-registered course';
                                     $is_forced_added = !empty($course['forced_added']);
+                                    $course_addition_key = spcaBuildCourseAdditionKey((string)($course['course_code'] ?? ''), (string)$year, (string)$semester);
+                                    $is_added_confirmed = $is_action_required && !empty($study_plan_course_additions[$course_addition_key]);
                                     $prerequisite = trim((string)($course['prerequisite'] ?? ''));
                                     if ($prerequisite === '' || strtoupper($prerequisite) === 'NONE') {
                                         $prerequisite = 'None';
@@ -2026,11 +2032,12 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                                             <?= htmlspecialchars($course['course_code']) ?>
                                             <?php if ($is_retake): ?>
                                             <span class="plan-tag plan-tag-retake">RETAKE</span>
-                                            <span class="plan-tag plan-tag-to-add">TO BE ADDED</span>
                                             <?php endif; ?>
                                             <?php if ($is_cross_reg): ?>
                                             <span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($cross_reg_tooltip) ?>" aria-label="<?= htmlspecialchars($cross_reg_tooltip) ?>">CROSS-REG</span>
-                                            <span class="plan-tag plan-tag-to-add">TO BE ADDED</span>
+                                            <?php endif; ?>
+                                            <?php if ($is_action_required): ?>
+                                            <span class="plan-tag <?= $is_added_confirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?>"><?= $is_added_confirmed ? 'ADDED' : 'TO BE ADDED' ?></span>
                                             <?php endif; ?>
                                             <?php if ($is_forced_added): ?>
                                             <span class="plan-tag plan-tag-forced">FORCED</span>
