@@ -1960,19 +1960,6 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                             if (!empty($term_source_context['is_relocated'])) {
                                 $term_heading = 'Recommended Load for ' . $term_heading;
                             }
-
-                            $source_note = '';
-                            if (!empty($term_source_context['is_relocated'])) {
-                                $source_list = !empty($term_source_context['has_matching_display_term'])
-                                    ? (string)($term_source_context['non_display_summary'] ?? '')
-                                    : (string)($term_source_context['source_summary'] ?? '');
-
-                                if ($source_list !== '') {
-                                    $source_note = !empty($term_source_context['has_matching_display_term'])
-                                        ? 'Also includes courses originally scheduled in: ' . $source_list
-                                        : 'Courses originally scheduled in: ' . $source_list;
-                                }
-                            }
                         ?>
                         <div class="semester-header">
                             <?= htmlspecialchars($term_heading) ?>
@@ -1982,12 +1969,6 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                             </span>
                             <?php endif; ?>
                         </div>
-
-                        <?php if ($source_note !== ''): ?>
-                        <div style="padding: 6px 12px 0; font-size: 11px; color: #546e7a; font-weight: 600;">
-                            <?= htmlspecialchars($source_note) ?>
-                        </div>
-                        <?php endif; ?>
                         
                         <?php if ($term_retake_count > 0 || $term_cross_reg > 0 || $term_forced_add > 0): ?>
                         <div style="display: flex; gap: 8px; padding: 4px 12px; font-size: 11px; flex-wrap: wrap;">
