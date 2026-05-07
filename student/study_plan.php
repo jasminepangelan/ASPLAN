@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Prevent caching to always show fresh data
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
@@ -186,7 +186,7 @@ $page_generated_time = microtime(true);
 // Page generation info for cache detection
 // Generated ID: $page_generated_id at $page_generated_time
 
-// Convert optimized plan to display format â€” preserving new metadata
+// Convert optimized plan to display format - preserving new metadata
 $study_plan = [];
 $study_plan_meta = []; // Store per-term metadata (retention, retake, cross-reg, skip info)
 $study_plan_term_base_units = [];
@@ -1363,7 +1363,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
         <div data-student-shell="<?= $studentShellPayload ?>"></div>
         <div data-student-study-plan-workspace="<?= $studentStudyPlanWorkspacePayload ?>"></div>
         <div class="page-header">
-            <h1>ðŸ“š AI-Generated Study Plan</h1>
+            <h1>AI-Generated Study Plan</h1>
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>
         </div>
 
@@ -1544,14 +1544,14 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             
             <!-- VISIBLE CACHE DETECTION -->
             <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; font-size: 12px;">
-                <strong>ðŸ” Data Freshness Check:</strong>
+                <strong>Data Freshness Check:</strong>
                 <div style="margin-top: 5px;">
                     <span style="font-family: monospace; background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">
                         Generated: <?= date('Y-m-d H:i:s') ?> | ID: <?= substr($page_generated_id, -8) ?>
                     </span>
                 </div>
                 <div id="cache-warning" style="margin-top: 5px; color: #d32f2f; font-weight: bold; display: none;">
-                    âš ï¸ CACHED DATA DETECTED! Press Ctrl+Shift+R to refresh!
+                    Warning: CACHED DATA DETECTED! Press Ctrl+Shift+R to refresh!
                 </div>
             </div>
             
@@ -2301,7 +2301,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             
             // Check for mismatch
             if (hasMismatch) {
-                console.error('âŒ CACHE MISMATCH DETECTED!');
+                console.error('CACHE MISMATCH DETECTED!');
                 console.error('Expected from server:', phpCompletion + '%', phpCompleted, 'courses');
                 console.error('Displayed on page:', displayedCompletion + '%', displayedCourses, 'courses');
                 
@@ -2309,16 +2309,16 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
                 const warningDiv = document.getElementById('cache-warning');
                 if (warningDiv) {
                     warningDiv.style.display = 'block';
-                    warningDiv.innerHTML = 'âš ï¸ CACHED DATA! Server says: ' + phpCompletion + '% (' + phpCompleted + '/57). Press Ctrl+Shift+R NOW!';
+                    warningDiv.innerHTML = 'Warning: CACHED DATA! Server says: ' + phpCompletion + '% (' + phpCompleted + '/57). Press Ctrl+Shift+R NOW!';
                 }
                 
                 // Show banner at top
                 const warningBanner = document.createElement('div');
                 warningBanner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #f44336; color: white; padding: 15px; text-align: center; z-index: 10000; font-weight: bold; font-size: 16px;';
-                warningBanner.innerHTML = 'âš ï¸ DISPLAYING CACHED DATA! Real completion: ' + phpCompletion + '% (' + phpCompleted + ' courses). Press Ctrl+Shift+R to see correct data!';
+                warningBanner.innerHTML = 'Warning: DISPLAYING CACHED DATA! Real completion: ' + phpCompletion + '% (' + phpCompleted + ' courses). Press Ctrl+Shift+R to see correct data!';
                 document.body.insertBefore(warningBanner, document.body.firstChild);
             } else {
-                console.log('âœ… Data is fresh and matches server values!');
+                console.log('Data is fresh and matches server values.');
                 // Hide warning if it exists
                 const warningDiv = document.getElementById('cache-warning');
                 if (warningDiv) {
