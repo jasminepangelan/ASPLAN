@@ -2454,9 +2454,9 @@ class StudyPlanGenerator {
      * - brand-new students with no academic history yet
      * - students with only passing history and no active back subjects
      *
-     * Irregular scenarios such as active failed/INC/dropped courses,
-     * transferee/shift gating, or retention issues should continue to use the
-     * optimization engine.
+     * Irregular scenarios such as an explicit irregular status, active
+     * failed/INC/dropped courses, transferee/shift gating, or retention issues
+     * should continue to use the optimization engine.
      */
     private function shouldUseExactCurriculumPlan() {
         if (!empty($this->policy_gate_status['applies'])) {
@@ -2468,6 +2468,10 @@ class StudyPlanGenerator {
         }
 
         if ($this->retention_status !== 'None' && $this->retention_status !== '') {
+            return false;
+        }
+
+        if (!empty($this->planning_status['is_irregular'])) {
             return false;
         }
 
@@ -2509,13 +2513,22 @@ class StudyPlanGenerator {
     }
 
     /**
-     * Transferees and shifting students may fill an irregular term using other
-     * remaining courses, but they must still be legitimately offerable in the
-     * semester being planned. Status may relax curriculum-term placement, not
-     * hard constraints like prerequisites, standing, or semester offering.
+     * Irregular plans may fill a term using other remaining courses, but they
+     * must still be legitimately offerable in the semester being planned.
+     * Irregular status may relax curriculum-term placement, not hard
+     * constraints like prerequisites, standing, semester offering, or max
+     * units.
      */
     private function shouldUseFlexibleIrregularFill() {
-        return !empty($this->policy_gate_status['applies']) && !empty($this->policy_gate_status['eligible']);
+        if (!empty($this->policy_gate_status['applies'])) {
+            return !empty($this->policy_gate_status['eligible']);
+        }
+
+        if (empty($this->planning_status['is_irregular'])) {
+            return false;
+        }
+
+        return $this->hasValidatedAcademicHistory();
     }
 
     /**
