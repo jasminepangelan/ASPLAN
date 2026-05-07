@@ -169,7 +169,11 @@ $address = htmlspecialchars($row['house_number_street'] ?? '');
 $admission_date = htmlspecialchars($row['date_of_admission'] ?? '');
 $program = htmlspecialchars($row['program'] ?? '');
 $stud_classification_raw = trim((string)($row['stud_classification'] ?? ''));
-$stud_classification = $stud_classification_raw === 'Transferee' ? 'Transferee' : 'Regular';
+$stud_classification = strcasecmp($stud_classification_raw, 'Irregular') === 0
+    || strcasecmp($stud_classification_raw, 'Transferee') === 0
+    ? 'Irregular'
+    : 'Regular';
+$legacy_transferee_background = strcasecmp($stud_classification_raw, 'Transferee') === 0;
 $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_name . ' ' : '') . $last_name);
 
 ?>
@@ -867,11 +871,14 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
                     <input type="date" name="admission_date" value="<?= $admission_date ?>" required>
                   </div>
                   <div class="field">
-                    <label>Student Classification *</label>
+                    <label>Student Status *</label>
                     <select name="stud_classification" required>
                       <option value="Regular" <?= $stud_classification === 'Regular' ? 'selected' : '' ?>>Regular</option>
-                      <option value="Transferee" <?= $stud_classification === 'Transferee' ? 'selected' : '' ?>>Transferee</option>
+                      <option value="Irregular" <?= $stud_classification === 'Irregular' ? 'selected' : '' ?>>Irregular</option>
                     </select>
+                    <?php if ($legacy_transferee_background): ?>
+                    <small style="display: block; margin-top: 6px; color: #5d715e;">Legacy note: this record was previously marked as a transferee background and is now treated as irregular for planning.</small>
+                    <?php endif; ?>
                   </div>
                   <div class="field">
                     <label>Address *</label>

@@ -115,7 +115,7 @@ define('SPS_FIELD_MAP', [
 function spsValidateProfileUpdate($conn, array $formData): array {
     $validatedFields = [];
     $errors = [];
-    $allowedClassifications = ['Regular', 'Transferee'];
+    $allowedClassifications = ['Regular', 'Irregular', 'Transferee'];
 
     // Check email if provided
     if (isset($formData['email']) && !empty($formData['email'])) {
@@ -158,9 +158,9 @@ function spsValidateProfileUpdate($conn, array $formData): array {
     if (array_key_exists('stud_classification', $formData)) {
         $classification = trim((string) $formData['stud_classification']);
         if ($classification === '') {
-            $errors[] = 'Student classification is required.';
+            $errors[] = 'Student status is required.';
         } elseif (!in_array($classification, $allowedClassifications, true)) {
-            $errors[] = 'Student classification must be either Regular or Transferee.';
+            $errors[] = 'Student status must be either Regular or Irregular.';
         } else {
             $validatedFields['stud_classification'] = $classification;
         }

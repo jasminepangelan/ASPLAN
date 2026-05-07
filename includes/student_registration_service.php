@@ -176,7 +176,7 @@ function srsGetRegistrationAvailability($conn, string $studentId): array {
  */
 function srsValidateRegistration($conn, array $formData): array {
     $errors = [];
-    $allowedClassifications = ['regular', 'transferee'];
+    $allowedClassifications = ['regular', 'irregular', 'transferee'];
 
     // Check if registration is disabled
     if (isRegistrationDisabled($conn)) {
@@ -207,7 +207,7 @@ function srsValidateRegistration($conn, array $formData): array {
     }
 
     if (!in_array($classification, $allowedClassifications, true)) {
-        return ['valid' => false, 'error' => 'Student classification must be either Regular or Transferee.'];
+        return ['valid' => false, 'error' => 'Student status must be either Regular or Irregular.'];
     }
 
     $masterlistValidation = smlValidateStudentRegistrationAgainstMasterlist($conn, $formData);
@@ -239,7 +239,9 @@ function srsValidateRegistration($conn, array $formData): array {
     return [
         'valid' => true,
         'contact_normalized' => $contactValidation['normalized'],
-        'classification_normalized' => $classification === 'transferee' ? 'Transferee' : 'Regular'
+        'classification_normalized' => $classification === 'transferee'
+            ? 'Transferee'
+            : ($classification === 'irregular' ? 'Irregular' : 'Regular')
     ];
 }
 

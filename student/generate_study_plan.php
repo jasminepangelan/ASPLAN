@@ -1480,6 +1480,18 @@ class StudyPlanGenerator {
         return trim((string)$this->student_registration_status);
     }
 
+    private function getNormalizedStoredStudentStatus() {
+        $status = strtolower(trim((string)$this->student_classification));
+        if ($status === 'regular') {
+            return 'Regular';
+        }
+        if ($status === 'irregular' || $status === 'transferee') {
+            return 'Irregular';
+        }
+
+        return trim((string)$this->student_classification);
+    }
+
     private function getEffectiveAcademicClassification() {
         $classification = trim((string)$this->student_enrollment_classification);
         if ($classification !== '') {
@@ -1525,7 +1537,9 @@ class StudyPlanGenerator {
         $classification_label = $this->getEffectiveAcademicClassification();
         $normalized_classification = strtolower(trim($classification_label));
         $registration_status = $this->getNormalizedRegistrationStatus();
-        $explicit_irregular_status = strtolower($registration_status) === 'irregular';
+        $stored_student_status = $this->getNormalizedStoredStudentStatus();
+        $explicit_irregular_status = strtolower($registration_status) === 'irregular'
+            || strtolower($stored_student_status) === 'irregular';
         $is_transferee = ($normalized_classification !== '' && strpos($normalized_classification, 'transferee') !== false)
             || $this->legacy_transferee_inferred;
         $has_retention_issue = $this->retention_status !== 'None' && $this->retention_status !== '';
@@ -1544,7 +1558,11 @@ class StudyPlanGenerator {
 
         $reasons = [];
         if ($explicit_irregular_status) {
-            $reasons[] = 'Latest pre-enrollment record marks the student as irregular.';
+            if (strtolower($registration_status) === 'irregular') {
+                $reasons[] = 'Latest pre-enrollment record marks the student as irregular.';
+            } elseif (strtolower($stored_student_status) === 'irregular') {
+                $reasons[] = 'Student registration record marks the student as irregular.';
+            }
         }
         if ($is_transferee) {
             $reasons[] = 'Transferee classification can leave credited or unmatched checklist gaps.';
