@@ -346,6 +346,10 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         border-left: 4px solid #f44336;
     }
 
+    .notification.info {
+        border-left: 4px solid #1e88e5;
+    }
+
     .notification-icon {
         width: 24px;
         height: 24px;
@@ -2105,7 +2109,15 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                         }
                     });
                     fetchAndUpdateChecklist();
+                } else if (data.status === 'noop') {
+                    showNotification('info', 'No Changes Detected', data.message || 'No checklist changes were detected.');
+                } else {
+                    showNotification('error', 'Save Failed', data.message || 'Unable to save checklist.');
                 }
+            })
+            .catch(error => {
+                console.error('Checklist save failed:', error);
+                showNotification('error', 'Save Failed', 'Network error occurred while saving the checklist.');
             });
         }); // end addEventListener
     }); // end querySelectorAll.forEach
@@ -2487,6 +2499,8 @@ function autoSaveGrade(courseCode) {
                     setChecklistRemarksBadge(courseCode, '');
                 }
                 fetchAndUpdateChecklist();
+            } else if (data.status === 'noop') {
+                console.log('No checklist changes to auto-save for ' + courseCode);
             } else {
                 console.error('Auto-save failed:', data.message);
                 showNotification('error', 'Auto-save Failed', data.message || 'Unable to save grade');
@@ -2505,13 +2519,20 @@ function showNotification(type, title, message) {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     
-    const icon = type === 'success' 
-        ? `<svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2">
-             <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
-           </svg>`
-        : `<svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2">
+    let icon = `<svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="#f44336" stroke-width="2">
              <path d="M18 6L6 18M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
            </svg>`;
+
+    if (type === 'success') {
+        icon = `<svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2">
+             <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+           </svg>`;
+    } else if (type === 'info') {
+        icon = `<svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="#1e88e5" stroke-width="2">
+             <path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round"/>
+             <circle cx="12" cy="12" r="9"/>
+           </svg>`;
+    }
     
     notification.innerHTML = `
         ${icon}

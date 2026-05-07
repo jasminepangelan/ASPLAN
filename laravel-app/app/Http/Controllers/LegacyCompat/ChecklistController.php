@@ -290,10 +290,11 @@ class ChecklistController extends Controller
         }
 
         $successful = 0;
+        $unchanged = 0;
         $errors = [];
         $timestamp = now();
 
-        DB::transaction(function () use ($studentId, $courses, $grades, $grades2, $grades3, $professors, $timestamp, &$successful, &$errors): void {
+        DB::transaction(function () use ($studentId, $courses, $grades, $grades2, $grades3, $professors, $timestamp, &$successful, &$unchanged, &$errors): void {
             foreach ($courses as $index => $courseCode) {
                 $courseCode = trim((string) $courseCode);
                 if ($courseCode === '') {
@@ -304,6 +305,7 @@ class ChecklistController extends Controller
                     ->select([
                         'final_grade',
                         'evaluator_remarks',
+                        'professor_instructor',
                         'final_grade_2',
                         'evaluator_remarks_2',
                         'final_grade_3',
@@ -331,6 +333,18 @@ class ChecklistController extends Controller
 
                 $payload += $this->resolveStudentAttemptPayload($existing, $grade, $grade2, $grade3);
                 $hasAnySavedAttempt = $this->hasAnySavedAttempt($payload);
+                $existingComparable = $this->buildComparableStudentChecklistPayload($existing);
+                $proposedComparable = $this->buildComparableStudentChecklistPayload((object) $payload);
+
+                if ($existingComparable === $proposedComparable) {
+                    $unchanged++;
+                    continue;
+                }
+
+                if ($existing === null && !$hasAnySavedAttempt && !$this->hasMeaningfulStudentChecklistPayload($proposedComparable)) {
+                    $unchanged++;
+                    continue;
+                }
 
                 if ($hasIncomingSubmittedAttempt) {
                     $payload['grade_submitted_at'] = $timestamp;
@@ -350,8 +364,12 @@ class ChecklistController extends Controller
         });
 
         return response()->json([
-            'status' => 'success',
+            'status' => ($successful === 0 && $errors === []) ? 'noop' : 'success',
             'updated' => $successful,
+            'unchanged' => $unchanged,
+            'message' => ($successful === 0 && $errors === [])
+                ? 'No checklist changes were detected.'
+                : "Successfully saved {$successful} record(s).",
             'errors' => $errors,
         ]);
     }
@@ -477,6 +495,30 @@ class ChecklistController extends Controller
 
         foreach ($grades as $grade) {
             if ($grade !== '' && $grade !== 'No Grade') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function buildComparableStudentChecklistPayload(object|null $record): array
+    {
+        return [
+            'final_grade' => $this->normalizeString($record?->final_grade ?? ''),
+            'evaluator_remarks' => $this->normalizeString($record?->evaluator_remarks ?? ''),
+            'professor_instructor' => $this->normalizeString($record?->professor_instructor ?? ''),
+            'final_grade_2' => $this->normalizeString($record?->final_grade_2 ?? ''),
+            'evaluator_remarks_2' => $this->normalizeString($record?->evaluator_remarks_2 ?? ''),
+            'final_grade_3' => $this->normalizeString($record?->final_grade_3 ?? ''),
+            'evaluator_remarks_3' => $this->normalizeString($record?->evaluator_remarks_3 ?? ''),
+        ];
+    }
+
+    private function hasMeaningfulStudentChecklistPayload(array $payload): bool
+    {
+        foreach ($payload as $value) {
+            if ($this->normalizeString($value) !== '') {
                 return true;
             }
         }

@@ -132,6 +132,30 @@ function hasAnySavedAttemptLocal(array $payload): bool
     return false;
 }
 
+function buildComparableChecklistRecordLocal($record): array
+{
+    return [
+        'final_grade' => normalizeChecklistValue($record['final_grade'] ?? ''),
+        'evaluator_remarks' => normalizeChecklistValue($record['evaluator_remarks'] ?? ''),
+        'professor_instructor' => normalizeChecklistValue($record['professor_instructor'] ?? ''),
+        'final_grade_2' => normalizeChecklistValue($record['final_grade_2'] ?? ''),
+        'evaluator_remarks_2' => normalizeChecklistValue($record['evaluator_remarks_2'] ?? ''),
+        'final_grade_3' => normalizeChecklistValue($record['final_grade_3'] ?? ''),
+        'evaluator_remarks_3' => normalizeChecklistValue($record['evaluator_remarks_3'] ?? ''),
+    ];
+}
+
+function hasMeaningfulChecklistRecordLocal(array $record): bool
+{
+    foreach ($record as $value) {
+        if (normalizeChecklistValue($value) !== '') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function isCreditedLockedChecklistRecordLocal(?array $existing): bool
 {
     if (empty($existing)) {
@@ -203,6 +227,7 @@ try {
     }
 
     $successful = 0;
+    $unchanged = 0;
     $errors = [];
 
     foreach ($courses as $index => $course_code) {
@@ -217,7 +242,7 @@ try {
         $professorInstructor = normalizeChecklistValue($professor_instructors[$index] ?? '');
 
         // Fetch existing record to preserve values from previous attempts
-        $check_stmt = $conn->prepare("SELECT final_grade, evaluator_remarks, final_grade_2, evaluator_remarks_2, final_grade_3, evaluator_remarks_3, approved_by, submitted_by FROM student_checklists WHERE student_id = ? AND course_code = ?");
+        $check_stmt = $conn->prepare("SELECT final_grade, evaluator_remarks, professor_instructor, final_grade_2, evaluator_remarks_2, final_grade_3, evaluator_remarks_3, approved_by, submitted_by FROM student_checklists WHERE student_id = ? AND course_code = ?");
         if (!$check_stmt) {
             $errors[] = "Check prepare failed for $course_code: " . $conn->error;
             continue;
@@ -238,6 +263,26 @@ try {
 
         $attemptPayload = resolveStudentAttemptPayloadLocal($existing ?: null, $finalGrade, $finalGrade2, $finalGrade3);
         $hasAnySavedAttempt = hasAnySavedAttemptLocal($attemptPayload);
+        $existingComparable = buildComparableChecklistRecordLocal($existing ?: []);
+        $proposedComparable = buildComparableChecklistRecordLocal([
+            'final_grade' => $attemptPayload['final_grade'] ?? '',
+            'evaluator_remarks' => $attemptPayload['evaluator_remarks'] ?? '',
+            'professor_instructor' => $professorInstructor,
+            'final_grade_2' => $attemptPayload['final_grade_2'] ?? '',
+            'evaluator_remarks_2' => $attemptPayload['evaluator_remarks_2'] ?? '',
+            'final_grade_3' => $attemptPayload['final_grade_3'] ?? '',
+            'evaluator_remarks_3' => $attemptPayload['evaluator_remarks_3'] ?? '',
+        ]);
+
+        if ($existingComparable === $proposedComparable) {
+            $unchanged++;
+            continue;
+        }
+
+        if (!$existing && !$hasAnySavedAttempt && !hasMeaningfulChecklistRecordLocal($proposedComparable)) {
+            $unchanged++;
+            continue;
+        }
 
         $stmt = $conn->prepare("
             INSERT INTO student_checklists
@@ -295,8 +340,12 @@ try {
     $conn->close();
 
     echo json_encode([
-        'status' => 'success',
+        'status' => ($successful === 0 && count($errors) === 0) ? 'noop' : 'success',
         'updated' => $successful,
+        'unchanged' => $unchanged,
+        'message' => ($successful === 0 && count($errors) === 0)
+            ? 'No checklist changes were detected.'
+            : "Successfully saved {$successful} record(s).",
         'errors' => $errors
     ]);
 
