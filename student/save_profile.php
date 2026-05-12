@@ -96,6 +96,21 @@ try {
 
     $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
     $hasPictureUpload = isset($_FILES['picture']) && $_FILES['picture']['error'] === UPLOAD_ERR_OK;
+    $hasPictureField = isset($_FILES['picture']) && is_array($_FILES['picture']);
+
+    if ($hasPictureField) {
+        $pictureErrorCode = (int)($_FILES['picture']['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($pictureErrorCode !== UPLOAD_ERR_NO_FILE && $pictureErrorCode !== UPLOAD_ERR_OK) {
+            $pictureError = spsUploadErrorMessage($pictureErrorCode);
+            elsWarning('Profile picture upload rejected before save', [
+                'student_id' => $student_id,
+                'upload_error' => $pictureErrorCode,
+                'message' => $pictureError,
+            ], 'student_profile');
+            echo json_encode(['success' => false, 'message' => $pictureError]);
+            exit;
+        }
+    }
 
     if ($useLaravelBridge && $student_id !== '' && !$hasPictureUpload) {
         $formFields = $_POST;
