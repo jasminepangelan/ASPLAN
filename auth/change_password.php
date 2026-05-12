@@ -6,14 +6,6 @@ header('Content-Type: application/json');
 
 $useLaravelAuthBridge = getenv('USE_LARAVEL_AUTH_BRIDGE') === '1';
 
-if (!$useLaravelAuthBridge) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Authentication bridge is disabled. Set USE_LARAVEL_AUTH_BRIDGE=1.',
-    ]);
-    exit;
-}
-
 // Check if the user is logged in
 if (!isset($_SESSION['student_id'])) {
     echo json_encode(['success' => false, 'message' => 'User not logged in']);
@@ -25,57 +17,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $current_password = isset($_POST['current_password']) ? (string) $_POST['current_password'] : '';
     $new_password = isset($_POST['new_password']) ? (string) $_POST['new_password'] : '';
 
-    $bridgeUrl = laravelBridgeUrl('/api/change-password');
-    $payloadJson = json_encode([
-        'student_id' => $student_id,
-        'current_password' => $current_password,
-        'new_password' => $new_password,
-    ]);
-
-    $bridgeResponse = false;
-    if (function_exists('curl_init')) {
-        $ch = curl_init($bridgeUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $payloadJson,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 10,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    if ($useLaravelAuthBridge) {
+        $bridgeUrl = laravelBridgeUrl('/api/change-password');
+        $payloadJson = json_encode([
+            'student_id' => $student_id,
+            'current_password' => $current_password,
+            'new_password' => $new_password,
         ]);
-        $bridgeResponse = curl_exec($ch);
-        curl_close($ch);
-    } else {
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
-                'content' => $payloadJson,
-                'timeout' => 10,
-            ],
-        ]);
-        $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
-    }
 
-    if ($bridgeResponse !== false) {
-        $bridgeData = json_decode($bridgeResponse, true);
-        if (is_array($bridgeData) && isset($bridgeData['success'])) {
-            if (!empty($bridgeData['success'])) {
-                echo json_encode(['success' => true]);
-            } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => $bridgeData['message'] ?? 'Failed to update password',
-                ]);
+        $bridgeResponse = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($bridgeUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $payloadJson,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            ]);
+            $bridgeResponse = curl_exec($ch);
+            curl_close($ch);
+        } else {
+            $context = stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\n",
+                    'content' => $payloadJson,
+                    'timeout' => 10,
+                ],
+            ]);
+            $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
+        }
+
+        if ($bridgeResponse !== false) {
+            $bridgeData = json_decode($bridgeResponse, true);
+            if (is_array($bridgeData) && isset($bridgeData['success'])) {
+                if (!empty($bridgeData['success'])) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => $bridgeData['message'] ?? 'Failed to update password',
+                    ]);
+                }
+                exit;
             }
-            exit;
         }
     }
-
-    echo json_encode([
-        'success' => false,
-        'message' => 'Authentication service is temporarily unavailable. Please try again shortly.',
-    ]);
-    exit;
 
     // Get database connection
     $conn = getDBConnection();
