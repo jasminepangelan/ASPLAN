@@ -89,7 +89,8 @@ define('SPS_ALLOWED_FIELDS', [
     'contact_no',
     'address',
     'admission_date',
-    'stud_classification'
+    'stud_classification',
+    'registration_classification'
 ]);
 
 // Field mapping from POST to database columns
@@ -102,8 +103,60 @@ define('SPS_FIELD_MAP', [
     'contact_no' => 'contact_number',
     'address' => 'house_number_street',
     'admission_date' => 'date_of_admission',
-    'stud_classification' => 'stud_classification'
+    'stud_classification' => 'stud_classification',
+    'registration_classification' => 'registration_classification'
 ]);
+
+if (!function_exists('spsStudentInfoHasColumn')) {
+    function spsStudentInfoHasColumn($conn, string $column): bool
+    {
+        $column = trim($column);
+        if ($column === '' || !preg_match('/^[A-Za-z0-9_]+$/', $column)) {
+            return false;
+        }
+
+        if ($conn instanceof PDO) {
+            $stmt = $conn->prepare("SHOW COLUMNS FROM student_info LIKE ?");
+            $stmt->execute([$column]);
+            return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if (is_object($conn) && method_exists($conn, 'query')) {
+            $safeColumn = $conn->real_escape_string($column);
+            $result = $conn->query("SHOW COLUMNS FROM `student_info` LIKE '{$safeColumn}'");
+            return $result instanceof mysqli_result && $result->num_rows > 0;
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('spsEnsureRegistrationClassificationColumn')) {
+    function spsEnsureRegistrationClassificationColumn($conn): bool
+    {
+        if (spsStudentInfoHasColumn($conn, 'registration_classification')) {
+            return true;
+        }
+
+        $sql = "ALTER TABLE student_info ADD COLUMN registration_classification VARCHAR(50) DEFAULT NULL AFTER stud_classification";
+
+        try {
+            if ($conn instanceof PDO) {
+                $conn->exec($sql);
+                return spsStudentInfoHasColumn($conn, 'registration_classification');
+            }
+
+            if (is_object($conn) && method_exists($conn, 'query')) {
+                $conn->query($sql);
+                return spsStudentInfoHasColumn($conn, 'registration_classification');
+            }
+        } catch (Throwable $e) {
+            return false;
+        }
+
+        return false;
+    }
+}
 
 /**
  * Validate profile update fields
@@ -116,6 +169,7 @@ function spsValidateProfileUpdate($conn, array $formData): array {
     $validatedFields = [];
     $errors = [];
     $allowedClassifications = ['Regular', 'Irregular', 'Transferee'];
+    $allowedRegistrationClassifications = ['Old', 'New', 'Transferee'];
 
     // Check email if provided
     if (isset($formData['email']) && !empty($formData['email'])) {
@@ -160,9 +214,20 @@ function spsValidateProfileUpdate($conn, array $formData): array {
         if ($classification === '') {
             $errors[] = 'Student status is required.';
         } elseif (!in_array($classification, $allowedClassifications, true)) {
-            $errors[] = 'Student status must be either Regular or Irregular.';
+            $errors[] = 'Student status must be Regular, Irregular, or Transferee.';
         } else {
             $validatedFields['stud_classification'] = $classification;
+        }
+    }
+
+    if (array_key_exists('registration_classification', $formData)) {
+        $registrationClassification = trim((string) $formData['registration_classification']);
+        if ($registrationClassification === '') {
+            $errors[] = 'Student classification is required.';
+        } elseif (!in_array($registrationClassification, $allowedRegistrationClassifications, true)) {
+            $errors[] = 'Student classification must be Old, New, or Transferee.';
+        } else {
+            $validatedFields['registration_classification'] = $registrationClassification;
         }
     }
 
@@ -184,6 +249,10 @@ function spsValidateProfileUpdate($conn, array $formData): array {
 function spsUpdateStudentProfile($conn, string $studentId, array $fields): array {
     if (empty($fields)) {
         return ['success' => false, 'error' => 'No fields to update'];
+    }
+
+    if (array_key_exists('registration_classification', $fields) && !spsEnsureRegistrationClassificationColumn($conn)) {
+        return ['success' => false, 'error' => 'Unable to save student classification because the database column is missing.'];
     }
 
     $updateParts = [];

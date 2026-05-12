@@ -59,6 +59,10 @@ $address = amBuildAddressString(
 $admission_date = htmlspecialchars((string)($row['date_of_admission'] ?? ''));
 $stud_classification_raw = trim((string)($row['stud_classification'] ?? ''));
 $stud_classification = $stud_classification_raw === 'Transferee' ? 'Transferee' : 'Regular';
+$registration_classification_raw = trim((string)($row['registration_classification'] ?? ''));
+$registration_classification = in_array($registration_classification_raw, ['Old', 'New', 'Transferee'], true)
+    ? $registration_classification_raw
+    : ($stud_classification_raw === 'Transferee' ? 'Transferee' : '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -705,10 +709,19 @@ $stud_classification = $stud_classification_raw === 'Transferee' ? 'Transferee' 
             <input id="admission_date" name="admission_date" type="text" value="<?= $admission_date ?>">
           </div>
           <div class="field">
-            <label for="stud_classification">Student Classification</label>
+            <label for="stud_classification">Student Status</label>
             <select id="stud_classification" name="stud_classification">
               <option value="Regular" <?= $stud_classification === 'Regular' ? 'selected' : '' ?>>Regular</option>
               <option value="Transferee" <?= $stud_classification === 'Transferee' ? 'selected' : '' ?>>Transferee</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="registration_classification">Student Classification</label>
+            <select id="registration_classification" name="registration_classification">
+              <option value="">Select classification</option>
+              <option value="Old" <?= $registration_classification === 'Old' ? 'selected' : '' ?>>Old</option>
+              <option value="New" <?= $registration_classification === 'New' ? 'selected' : '' ?>>New</option>
+              <option value="Transferee" <?= $registration_classification === 'Transferee' ? 'selected' : '' ?>>Transferee</option>
             </select>
           </div>
           <div class="field">

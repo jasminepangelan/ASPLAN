@@ -41,19 +41,27 @@ class StudentProfileController extends Controller
                 ], 403);
             }
 
+            $selects = [
+                DB::raw('student_number as student_id'),
+                'last_name',
+                'first_name',
+                'middle_name',
+                'email',
+                'stud_classification',
+                DB::raw('contact_number as contact_no'),
+                DB::raw("CONCAT_WS(', ', house_number_street, brgy, town, province) as address"),
+                DB::raw('date_of_admission as admission_date'),
+                'picture',
+            ];
+
+            if ($this->studentInfoHasColumn('registration_classification')) {
+                $selects[] = 'registration_classification';
+            } else {
+                $selects[] = DB::raw('NULL as registration_classification');
+            }
+
             $student = DB::table('student_info')
-                ->select([
-                    DB::raw('student_number as student_id'),
-                    'last_name',
-                    'first_name',
-                    'middle_name',
-                    'email',
-                    'stud_classification',
-                    DB::raw('contact_number as contact_no'),
-                    DB::raw("CONCAT_WS(', ', house_number_street, brgy, town, province) as address"),
-                    DB::raw('date_of_admission as admission_date'),
-                    'picture',
-                ])
+                ->select($selects)
                 ->where('student_number', $studentId)
                 ->first();
 
@@ -135,6 +143,13 @@ class StudentProfileController extends Controller
 
             $updatedFields = $validated['fields'];
             if (!empty($updatedFields)) {
+                if (array_key_exists('registration_classification', $updatedFields) && !$this->ensureRegistrationClassificationColumn()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unable to save student classification because the database column is missing.',
+                    ], 500);
+                }
+
                 $dbFields = $this->mapFieldsToDatabase($updatedFields);
                 if (!empty($dbFields)) {
                     DB::table('student_info')
@@ -236,10 +251,21 @@ class StudentProfileController extends Controller
             $classification = trim((string) $request->input('stud_classification', ''));
             if ($classification === '') {
                 $errors[] = 'Student classification is required.';
-            } elseif (!in_array($classification, ['Regular', 'Transferee'], true)) {
-                $errors[] = 'Student classification must be either Regular or Transferee.';
+            } elseif (!in_array($classification, ['Regular', 'Irregular', 'Transferee'], true)) {
+                $errors[] = 'Student status must be Regular, Irregular, or Transferee.';
             } else {
                 $fields['stud_classification'] = $classification;
+            }
+        }
+
+        if ($request->has('registration_classification')) {
+            $registrationClassification = trim((string) $request->input('registration_classification', ''));
+            if ($registrationClassification === '') {
+                $errors[] = 'Student classification is required.';
+            } elseif (!in_array($registrationClassification, ['Old', 'New', 'Transferee'], true)) {
+                $errors[] = 'Student classification must be Old, New, or Transferee.';
+            } else {
+                $fields['registration_classification'] = $registrationClassification;
             }
         }
 
@@ -270,6 +296,7 @@ class StudentProfileController extends Controller
             'address' => 'house_number_street',
             'admission_date' => 'date_of_admission',
             'stud_classification' => 'stud_classification',
+            'registration_classification' => 'registration_classification',
         ];
 
         $dbFields = [];
@@ -281,6 +308,33 @@ class StudentProfileController extends Controller
         }
 
         return $dbFields;
+    }
+
+    private function studentInfoHasColumn(string $column): bool
+    {
+        $column = trim($column);
+        if ($column === '' || !preg_match('/^[A-Za-z0-9_]+$/', $column)) {
+            return false;
+        }
+
+        return DB::select("SHOW COLUMNS FROM student_info LIKE ?", [$column]) !== [];
+    }
+
+    private function ensureRegistrationClassificationColumn(): bool
+    {
+        if ($this->studentInfoHasColumn('registration_classification')) {
+            return true;
+        }
+
+        try {
+            DB::statement(
+                'ALTER TABLE student_info ADD COLUMN registration_classification VARCHAR(50) DEFAULT NULL AFTER stud_classification'
+            );
+        } catch (Throwable $e) {
+            return $this->studentInfoHasColumn('registration_classification');
+        }
+
+        return $this->studentInfoHasColumn('registration_classification');
     }
 
     private function storePicture(string $studentId, $file): array

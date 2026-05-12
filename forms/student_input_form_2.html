@@ -397,13 +397,15 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="stud-classification">Student Status</label>
-            <select id="stud-classification" name="stud_classification" required>
-                <option value="Regular">Regular Student</option>
-                <option value="Irregular">Irregular Student</option>
+            <label for="registration-classification">Student Classification</label>
+            <select id="registration-classification" name="registration_classification" required>
+                <option value="">Select student classification</option>
+                <option value="Old">Old Student</option>
+                <option value="New">New Student</option>
+                <option value="Transferee">Transferee</option>
             </select>
             <div style="color: #5d715e; font-size: 12px; margin-top: 5px;">
-                Use <strong>Irregular</strong> when your checklist will not follow the standard regular sequence. Transferee background is reviewed separately during evaluation and study-plan generation.
+                This helps the system identify whether the student is an old student, a new student, or a transferee during registration.
             </div>
         </div>
         <div class="form-group">
@@ -441,7 +443,7 @@
         if (data.address) document.getElementById('address').value = data.address;
         if (data.strand) document.getElementById('strand').value = data.strand;
         if (data.program) document.getElementById('program').value = data.program;
-        if (data.stud_classification) document.getElementById('stud-classification').value = data.stud_classification;
+        if (data.registration_classification) document.getElementById('registration-classification').value = data.registration_classification;
         if (data.admission_date) document.getElementById('admission_date').value = data.admission_date;
         // picture cannot be prefilled for security reasons
         updatePasswordStrengthMeter(document.getElementById('password').value);
@@ -455,7 +457,7 @@
             address: document.getElementById('address').value,
             strand: document.getElementById('strand').value,
             program: document.getElementById('program').value,
-            stud_classification: document.getElementById('stud-classification').value,
+            registration_classification: document.getElementById('registration-classification').value,
             admission_date: document.getElementById('admission_date').value
         };
         localStorage.setItem('studentFormPage2', JSON.stringify(data));

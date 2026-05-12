@@ -174,6 +174,10 @@ $stud_classification = strcasecmp($stud_classification_raw, 'Irregular') === 0
     ? 'Irregular'
     : 'Regular';
 $legacy_transferee_background = strcasecmp($stud_classification_raw, 'Transferee') === 0;
+$registration_classification_raw = trim((string)($row['registration_classification'] ?? ''));
+$registration_classification = in_array($registration_classification_raw, ['Old', 'New', 'Transferee'], true)
+    ? $registration_classification_raw
+    : ($legacy_transferee_background ? 'Transferee' : '');
 $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_name . ' ' : '') . $last_name);
 
 ?>
@@ -879,6 +883,15 @@ $student_display_name = trim($first_name . ' ' . ($middle_name !== '' ? $middle_
                     <?php if ($legacy_transferee_background): ?>
                     <small style="display: block; margin-top: 6px; color: #5d715e;">Legacy note: this record was previously marked as a transferee background and is now treated as irregular for planning.</small>
                     <?php endif; ?>
+                  </div>
+                  <div class="field">
+                    <label>Student Classification *</label>
+                    <select name="registration_classification" required>
+                      <option value="">Select classification</option>
+                      <option value="Old" <?= $registration_classification === 'Old' ? 'selected' : '' ?>>Old</option>
+                      <option value="New" <?= $registration_classification === 'New' ? 'selected' : '' ?>>New</option>
+                      <option value="Transferee" <?= $registration_classification === 'Transferee' ? 'selected' : '' ?>>Transferee</option>
+                    </select>
                   </div>
                   <div class="field">
                     <label>Address *</label>

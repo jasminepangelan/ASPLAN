@@ -42,6 +42,7 @@ try {
     $address = trim($_POST['address'] ?? '');
     $strand = trim($_POST['strand']);
     $program = trim($_POST['program']);
+    $registration_classification = (string)($validationResult['registration_classification_normalized'] ?? 'New');
     $stud_classification = (string)($validationResult['classification_normalized'] ?? 'Regular');
     $admission_date = trim($_POST['admission_date']);
 
@@ -77,6 +78,7 @@ try {
         'address' => $address,
         'strand' => $strand,
         'program' => $program,
+        'registration_classification' => $registration_classification,
         'stud_classification' => $stud_classification,
         'admission_date' => $admission_date
     ], $hashed_password, $picture_db_path);

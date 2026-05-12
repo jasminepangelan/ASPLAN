@@ -176,7 +176,7 @@ function srsGetRegistrationAvailability($conn, string $studentId): array {
  */
 function srsValidateRegistration($conn, array $formData): array {
     $errors = [];
-    $allowedClassifications = ['regular', 'irregular', 'transferee'];
+    $allowedRegistrationClassifications = ['old', 'new', 'transferee'];
 
     // Check if registration is disabled
     if (isRegistrationDisabled($conn)) {
@@ -190,7 +190,7 @@ function srsValidateRegistration($conn, array $formData): array {
     }
 
     // Validate required fields
-    $required = ['student_id', 'last_name', 'first_name', 'email', 'password', 'contact_no', 'strand', 'program', 'admission_date'];
+    $required = ['student_id', 'last_name', 'first_name', 'email', 'password', 'contact_no', 'strand', 'program', 'admission_date', 'registration_classification'];
     foreach ($required as $field) {
         if (empty($formData[$field] ?? '')) {
             $errors[] = ucfirst(str_replace('_', ' ', $field)) . ' is required.';
@@ -201,13 +201,13 @@ function srsValidateRegistration($conn, array $formData): array {
         return ['valid' => false, 'error' => implode(' ', $errors)];
     }
 
-    $classification = strtolower(trim((string)($formData['stud_classification'] ?? 'Regular')));
-    if ($classification === '') {
-        $classification = 'regular';
+    $registrationClassification = strtolower(trim((string)($formData['registration_classification'] ?? '')));
+    if ($registrationClassification === '') {
+        $registrationClassification = 'new';
     }
 
-    if (!in_array($classification, $allowedClassifications, true)) {
-        return ['valid' => false, 'error' => 'Student status must be either Regular or Irregular.'];
+    if (!in_array($registrationClassification, $allowedRegistrationClassifications, true)) {
+        return ['valid' => false, 'error' => 'Student classification must be Old, New, or Transferee.'];
     }
 
     $masterlistValidation = smlValidateStudentRegistrationAgainstMasterlist($conn, $formData);
@@ -239,9 +239,12 @@ function srsValidateRegistration($conn, array $formData): array {
     return [
         'valid' => true,
         'contact_normalized' => $contactValidation['normalized'],
-        'classification_normalized' => $classification === 'transferee'
+        'registration_classification_normalized' => $registrationClassification === 'transferee'
             ? 'Transferee'
-            : ($classification === 'irregular' ? 'Irregular' : 'Regular')
+            : ($registrationClassification === 'old' ? 'Old' : 'New'),
+        'classification_normalized' => $registrationClassification === 'transferee'
+            ? 'Transferee'
+            : 'Regular'
     ];
 }
 
@@ -368,9 +371,18 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
         $address = $formData['address'] ?? '';
         $strand = $formData['strand'];
         $program = $formData['program'];
-        $stud_classification = trim((string)($formData['stud_classification'] ?? 'Regular'));
+        $registration_classification = trim((string)($formData['registration_classification'] ?? ''));
+        if ($registration_classification === '') {
+            $registration_classification = strcasecmp((string)($formData['stud_classification'] ?? ''), 'Transferee') === 0
+                ? 'Transferee'
+                : 'New';
+        }
+
+        $stud_classification = trim((string)($formData['stud_classification'] ?? ''));
         if ($stud_classification === '') {
-            $stud_classification = 'Regular';
+            $stud_classification = strcasecmp($registration_classification, 'Transferee') === 0
+                ? 'Transferee'
+                : 'Regular';
         }
         $admission_date = $formData['admission_date'];
         $curriculum_year = function_exists('psResolveLatestCurriculumYear')
@@ -379,38 +391,91 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
         if ($curriculum_year === '') {
             $curriculum_year = null;
         }
-        
+        $hasRegistrationClassification = spsEnsureRegistrationClassificationColumn($conn);
+
         if (!empty($availability['reapply'])) {
-            $stmt = $conn->prepare(
-                "UPDATE student_info
-                SET last_name = ?, first_name = ?, middle_name = ?, email = ?, password = ?, contact_number = ?, house_number_street = ?, strand = ?, program = ?, stud_classification = ?, curriculum_year = ?, date_of_admission = ?, picture = ?, status = ?, approved_by = NULL
-                WHERE student_number = ?"
-            );
+            $sql = "UPDATE student_info
+                SET last_name = ?, first_name = ?, middle_name = ?, email = ?, password = ?, contact_number = ?, house_number_street = ?, strand = ?, program = ?, stud_classification = ?";
+            $params = [
+                $last_name,
+                $first_name,
+                $middle_name,
+                $email,
+                $hashedPassword,
+                $contact_no,
+                $address,
+                $strand,
+                $program,
+                $stud_classification,
+            ];
+
+            if ($hasRegistrationClassification) {
+                $sql .= ", registration_classification = ?";
+                $params[] = $registration_classification;
+            }
+
+            $sql .= ", curriculum_year = ?, date_of_admission = ?, picture = ?, status = ?, approved_by = NULL
+                WHERE student_number = ?";
+            $params[] = $curriculum_year;
+            $params[] = $admission_date;
+            $params[] = $picturePath;
+            $params[] = $status;
+            $params[] = $student_id;
         } else {
-            $stmt = $conn->prepare(
-                "INSERT INTO student_info 
-                (student_number, last_name, first_name, middle_name, email, password, contact_number, house_number_street, strand, program, stud_classification, curriculum_year, date_of_admission, picture, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            );
+            $columns = [
+                'student_number',
+                'last_name',
+                'first_name',
+                'middle_name',
+                'email',
+                'password',
+                'contact_number',
+                'house_number_street',
+                'strand',
+                'program',
+                'stud_classification',
+            ];
+            $params = [
+                $student_id,
+                $last_name,
+                $first_name,
+                $middle_name,
+                $email,
+                $hashedPassword,
+                $contact_no,
+                $address,
+                $strand,
+                $program,
+                $stud_classification,
+            ];
+
+            if ($hasRegistrationClassification) {
+                $columns[] = 'registration_classification';
+                $params[] = $registration_classification;
+            }
+
+            $columns = array_merge($columns, [
+                'curriculum_year',
+                'date_of_admission',
+                'picture',
+                'status',
+            ]);
+            $params[] = $curriculum_year;
+            $params[] = $admission_date;
+            $params[] = $picturePath;
+            $params[] = $status;
+
+            $placeholders = implode(', ', array_fill(0, count($columns), '?'));
+            $sql = "INSERT INTO student_info (" . implode(', ', $columns) . ") VALUES ({$placeholders})";
         }
+
+        $stmt = $conn->prepare($sql);
         
         if (!$stmt) {
             return ['success' => false, 'error' => 'Database error: ' . ($conn->error ?? 'prepare failed')];
         }
-        
-        if (!empty($availability['reapply'])) {
-            $bind_result = $stmt->bind_param(
-                "sssssssssssssss",
-                $last_name, $first_name, $middle_name, $email, $hashedPassword,
-                $contact_no, $address, $strand, $program, $stud_classification, $curriculum_year, $admission_date, $picturePath, $status, $student_id
-            );
-        } else {
-            $bind_result = $stmt->bind_param(
-                "sssssssssssssss",
-                $student_id, $last_name, $first_name, $middle_name, $email, $hashedPassword,
-                $contact_no, $address, $strand, $program, $stud_classification, $curriculum_year, $admission_date, $picturePath, $status
-            );
-        }
+
+        $bind_result = $stmt->bind_param(str_repeat('s', count($params)), ...$params);
         
         if (!$bind_result) {
             return ['success' => false, 'error' => 'Database error: ' . ($stmt->error ?? 'bind failed')];
