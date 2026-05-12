@@ -1564,6 +1564,8 @@ if ($lastPlannedTerm) {
 
     <script>
         const studyPlanStudentId = <?= json_encode($studentId); ?>;
+        const studyPlanCourseAdditionEndpoint = <?= json_encode($isAdmin ? '../program_coordinator/save_study_plan_course_addition.php' : 'save_study_plan_course_addition.php'); ?>;
+        const studyPlanOverrideEndpoint = <?= json_encode($isAdmin ? '../program_coordinator/save_study_plan_override.php' : 'save_study_plan_override.php'); ?>;
 
         function applyCourseAddedButtonState(buttonEl, isAdded) {
             buttonEl.dataset.added = isAdded ? '1' : '0';
@@ -1580,7 +1582,7 @@ if ($lastPlannedTerm) {
             const desiredAdded = String(buttonEl.dataset.added || '0') !== '1';
             buttonEl.disabled = true;
 
-            fetch('save_study_plan_course_addition.php', {
+            fetch(studyPlanCourseAdditionEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1625,7 +1627,7 @@ if ($lastPlannedTerm) {
             const targetYear = parts[0] || '';
             const targetSemester = parts[1] || '';
 
-            fetch('save_study_plan_override.php', {
+            fetch(studyPlanOverrideEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
