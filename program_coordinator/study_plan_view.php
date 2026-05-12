@@ -1425,7 +1425,7 @@ if ($lastPlannedTerm) {
                                             <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if (!$isCompletedTerm && !$isPartialTerm && !$isAdmin): ?>
+                                            <?php if (!$isCompletedTerm && !$isPartialTerm): ?>
                                                 <?php
                                                     $courseCode = (string)($course['code'] ?? '');
                                                     $currentPlacement = ((string)($term['year'] ?? '')) . '|' . ((string)($term['semester'] ?? ''));
