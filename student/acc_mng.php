@@ -1431,6 +1431,32 @@ $csrfToken = getCSRFToken();
   <script>
     const studentCanEditDetails = <?= $studentCanEditDetails ? 'true' : 'false' ?>;
 
+    function resolveProfileImageUrl(storedPath) {
+      const rawPath = String(storedPath || '').trim();
+      if (!rawPath) {
+        return '../pix/anonymous.jpg';
+      }
+
+      if (/^(?:https?:)?\/\//i.test(rawPath) || rawPath.startsWith('data:')) {
+        return rawPath;
+      }
+
+      return '../' + rawPath.replace(/^\/+/, '');
+    }
+
+    function applyUpdatedProfilePicture(storedPath) {
+      const nextSrc = resolveProfileImageUrl(storedPath) + '?v=' + Date.now();
+      const profilePhoto = document.getElementById('profile-pic');
+      if (profilePhoto) {
+        profilePhoto.src = nextSrc;
+      }
+
+      const headerPhoto = document.querySelector('.student-info img');
+      if (headerPhoto) {
+        headerPhoto.src = nextSrc;
+      }
+    }
+
     function previewImage(event) {
       const file = event.target.files[0];
       if (file) {
@@ -1515,8 +1541,18 @@ function closeModal(modalId) {
             return;
           }
           if (data.success) {
+            if (data.picture_path) {
+              applyUpdatedProfilePicture(data.picture_path);
+            }
             showSuccessModal();
-            setTimeout(() => location.reload(), 1500);
+            const fileInput = document.getElementById("file-input");
+            if (fileInput) {
+              fileInput.value = '';
+            }
+
+            if (studentCanEditDetails) {
+              setTimeout(() => location.reload(), 1200);
+            }
           } else {
             showFeedbackModal('error', 'Profile Update Failed', data.message || 'Unable to update your profile right now.');
           }
