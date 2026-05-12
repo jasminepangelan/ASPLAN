@@ -1592,6 +1592,69 @@ class StudyPlanGenerator {
             'registration_status' => $registration_status,
             'record_classification' => $this->student_classification,
         ];
+
+        $this->syncStoredStudentStatusFromAcademicEvidence([
+            'has_back_subjects' => $has_back_subjects,
+            'has_retention_issue' => $has_retention_issue,
+            'has_terminal_failure' => $has_terminal_failure,
+            'has_validated_history' => $has_validated_history,
+            'active_issue_count' => (int)($active_issues['count'] ?? 0),
+        ]);
+    }
+
+    /**
+     * Safely promote the stored student status from Regular to Irregular when
+     * the checklist already shows concrete academic evidence that the student
+     * is no longer following a regular flow.
+     *
+     * This is intentionally one-way:
+     * - only auto-updates to Irregular
+     * - never auto-reverts back to Regular
+     * - ignores temporary planner states such as shift/transferee gating alone
+     */
+    private function syncStoredStudentStatusFromAcademicEvidence(array $signals) {
+        $stored_status = strtolower(trim((string)$this->student_classification));
+        if ($stored_status === 'irregular' || $stored_status === 'transferee') {
+            return;
+        }
+
+        $has_validated_history = !empty($signals['has_validated_history']);
+        $has_back_subjects = !empty($signals['has_back_subjects']);
+        $has_retention_issue = !empty($signals['has_retention_issue']);
+        $has_terminal_failure = !empty($signals['has_terminal_failure']);
+        $has_academic_evidence = $has_back_subjects || $has_retention_issue || $has_terminal_failure;
+
+        if (!$has_validated_history || !$has_academic_evidence) {
+            return;
+        }
+
+        $stmt = $this->conn->prepare("
+            UPDATE student_info
+            SET stud_classification = 'Irregular'
+            WHERE student_number = ?
+            AND (
+                stud_classification IS NULL
+                OR TRIM(stud_classification) = ''
+                OR LOWER(TRIM(stud_classification)) = 'regular'
+            )
+        ");
+
+        if (!$stmt) {
+            return;
+        }
+
+        $stmt->bind_param("s", $this->student_id);
+        $stmt->execute();
+        $updated = (int)($stmt->affected_rows ?? 0) > 0;
+        $stmt->close();
+
+        if ($updated) {
+            $this->student_classification = 'Irregular';
+            $this->planning_status['record_classification'] = 'Irregular';
+            if (!in_array('Stored student record was auto-updated to irregular based on academic history.', $this->planning_status['reasons'], true)) {
+                $this->planning_status['reasons'][] = 'Stored student record was auto-updated to irregular based on academic history.';
+            }
+        }
     }
 
     private function evaluateShiftTransfereePolicyGate() {
