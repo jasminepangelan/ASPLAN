@@ -26,6 +26,17 @@ try {
     $isAdmin = isset($_SESSION['admin_id']) || isset($_SESSION['admin_username']);
     $sessionStudentId = trim((string) ($_SESSION['student_id'] ?? $_SESSION['student_number'] ?? ''));
     $requestedStudentId = trim((string) ($_POST['student_id'] ?? ''));
+    $studentProtectedFields = [
+        'last_name',
+        'first_name',
+        'middle_name',
+        'email',
+        'contact_no',
+        'address',
+        'admission_date',
+        'stud_classification',
+        'registration_classification',
+    ];
 
     if (!$isAdmin && $sessionStudentId === '') {
         elsWarning('Unauthorized profile update attempt without session identity', [], 'student_profile');
@@ -63,6 +74,24 @@ try {
 
         $student_id = $sessionStudentId;
         $profileContext = 'student';
+    }
+
+    if ($profileContext === 'student') {
+        foreach ($studentProtectedFields as $field) {
+            if (array_key_exists($field, $_POST)) {
+                elsWarning(
+                    'Student profile detail update blocked',
+                    ['student_id' => $student_id, 'blocked_field' => $field],
+                    'student_profile'
+                );
+                http_response_code(403);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Only administrators can update your profile details. You may still change your password or profile picture here.',
+                ]);
+                exit;
+            }
+        }
     }
 
     $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';

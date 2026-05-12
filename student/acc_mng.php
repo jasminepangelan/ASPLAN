@@ -8,12 +8,14 @@ require_once __DIR__ . '/../includes/csrf.php';
 
 $password_display = '********';
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
+$studentCanEditDetails = false;
 
 // If admin is logged in and ?student_id is set, load that student's data from DB
 $is_admin = isset($_SESSION['admin_id']);
 $view_student_id = isset($_GET['student_id']) ? $_GET['student_id'] : null;
 
 if ($is_admin && $view_student_id) {
+  $studentCanEditDetails = true;
   $row = null;
   if ($useLaravelBridge) {
     $bridgeData = postLaravelJsonBridge(
@@ -1242,7 +1244,9 @@ $csrfToken = getCSRFToken();
         <div class="details-heading">
           <div>
             <h3>Account Details</h3>
-            <p>Update your personal information and review the details currently stored in your student profile.</p>
+            <p><?= $studentCanEditDetails
+              ? 'Update the student information stored in this profile.'
+              : 'Review the details currently stored in your student profile. Personal information changes are managed by the administrator.' ?></p>
           </div>
           <div class="details-badge">Profile Center</div>
         </div>
@@ -1250,9 +1254,11 @@ $csrfToken = getCSRFToken();
           <label for="last_name">Last Name</label>
           <div class="field-input-row">
             <input id="last_name" type="text" value="<?= $last_name ?>" disabled>
+            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('last_name')" aria-label="Edit last name">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
+            <?php endif; ?>
           </div>
           <div class="field-note">Use your official surname as it appears in school records.</div>
         </div>
@@ -1260,9 +1266,11 @@ $csrfToken = getCSRFToken();
           <label for="first_name">First Name</label>
           <div class="field-input-row">
             <input id="first_name" type="text" value="<?= $first_name ?>" disabled>
+            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('first_name')" aria-label="Edit first name">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
+            <?php endif; ?>
           </div>
           <div class="field-note">This name is shown across your student dashboard and documents.</div>
         </div>
@@ -1270,9 +1278,11 @@ $csrfToken = getCSRFToken();
           <label for="middle_name">Middle Name</label>
           <div class="field-input-row">
             <input id="middle_name" type="text" value="<?= $middle_name ?>" disabled>
+            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('middle_name')" aria-label="Edit middle name">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
+            <?php endif; ?>
           </div>
           <div class="field-note">Leave as is if you do not use a middle name in your records.</div>
         </div>
@@ -1285,9 +1295,11 @@ $csrfToken = getCSRFToken();
           <label for="email">Email Address</label>
           <div class="field-input-row">
             <input id="email" type="email" value="<?= $email ?>" disabled>
+            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('email')" aria-label="Edit email address">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
+            <?php endif; ?>
           </div>
           <div class="field-note">Student accounts must use an official @cvsu.edu.ph email address for notices and recovery.</div>
         </div>
@@ -1362,9 +1374,11 @@ $csrfToken = getCSRFToken();
           <label for="contact_no">Contact Number</label>
           <div class="field-input-row">
             <input id="contact_no" type="text" value="<?= $contact_no ?>" disabled>
+            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('contact_no')" aria-label="Edit contact number">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
+            <?php endif; ?>
           </div>
           <div class="field-note">Enter a reachable number in case the school needs to contact you.</div>
         </div>
@@ -1377,15 +1391,17 @@ $csrfToken = getCSRFToken();
           <label for="address">Address</label>
           <div class="field-input-row">
             <input id="address" type="text" value="<?= $address ?>" disabled>
+            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('address')" aria-label="Edit address">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
+            <?php endif; ?>
           </div>
           <div class="field-note">Keep your current residence updated for student communications.</div>
         </div>
       </div>
       <div class="buttons" id="student-profile-actions">
-        <button onclick="saveChanges()">SAVE CHANGES</button>
+        <button onclick="saveChanges()"><?= $studentCanEditDetails ? 'SAVE CHANGES' : 'SAVE PHOTO' ?></button>
         <button type="button" onclick="window.history.back();" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">BACK</button>
       </div>
     </div>
@@ -1413,6 +1429,8 @@ $csrfToken = getCSRFToken();
 </div>
 
   <script>
+    const studentCanEditDetails = <?= $studentCanEditDetails ? 'true' : 'false' ?>;
+
     function previewImage(event) {
       const file = event.target.files[0];
       if (file) {
@@ -1425,6 +1443,10 @@ $csrfToken = getCSRFToken();
     }
 
     function toggleEdit(fieldId) {
+      if (!studentCanEditDetails) {
+        showFeedbackModal('error', 'Profile Details Locked', 'Only administrators can update your profile details. You may still change your password or profile picture here.');
+        return;
+      }
       const field = document.getElementById(fieldId);
       field.disabled = !field.disabled;
       if (!field.disabled) field.focus();
@@ -1456,12 +1478,15 @@ function closeModal(modalId) {
       const formData = new FormData();
       formData.append("student_id", "<?= $student_id ?>");
       formData.append("csrf_token", "<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>");
-      formData.append("last_name", document.getElementById("last_name").value);
-      formData.append("first_name", document.getElementById("first_name").value);
-      formData.append("middle_name", document.getElementById("middle_name").value);
-      formData.append("email", document.getElementById("email").value);
-      formData.append("contact_no", document.getElementById("contact_no").value);
-      formData.append("address", document.getElementById("address").value);
+
+      if (studentCanEditDetails) {
+        formData.append("last_name", document.getElementById("last_name").value);
+        formData.append("first_name", document.getElementById("first_name").value);
+        formData.append("middle_name", document.getElementById("middle_name").value);
+        formData.append("email", document.getElementById("email").value);
+        formData.append("contact_no", document.getElementById("contact_no").value);
+        formData.append("address", document.getElementById("address").value);
+      }
 
       const fileInput = document.getElementById("file-input");
       if (fileInput.files.length > 0) {
@@ -1469,6 +1494,10 @@ function closeModal(modalId) {
         console.log('Picture file:', fileInput.files[0]);
       } else {
         console.log('No picture selected');
+        if (!studentCanEditDetails) {
+          showFeedbackModal('error', 'No Changes Allowed', 'Only administrators can update your profile details. You may still change your password or upload a new profile picture here.');
+          return;
+        }
       }
 
       fetch("save_profile.php", {

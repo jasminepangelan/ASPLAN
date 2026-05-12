@@ -122,6 +122,27 @@ class StudentProfileController extends Controller
                 ], 403);
             }
 
+            if ($context === 'student') {
+                foreach ([
+                    'last_name',
+                    'first_name',
+                    'middle_name',
+                    'email',
+                    'contact_no',
+                    'address',
+                    'admission_date',
+                    'stud_classification',
+                    'registration_classification',
+                ] as $field) {
+                    if ($request->has($field)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Only administrators can update your profile details. You may still change your password or profile picture here.',
+                        ], 403);
+                    }
+                }
+            }
+
             $student = DB::table('student_info')
                 ->where('student_number', $studentId)
                 ->first();
