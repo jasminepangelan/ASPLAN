@@ -176,6 +176,7 @@ function srsGetRegistrationAvailability($conn, string $studentId): array {
  */
 function srsValidateRegistration($conn, array $formData): array {
     $errors = [];
+    $allowedStatuses = ['regular', 'irregular'];
     $allowedRegistrationClassifications = ['old', 'new', 'transferee'];
 
     // Check if registration is disabled
@@ -190,7 +191,7 @@ function srsValidateRegistration($conn, array $formData): array {
     }
 
     // Validate required fields
-    $required = ['student_id', 'last_name', 'first_name', 'email', 'password', 'contact_no', 'strand', 'program', 'admission_date', 'registration_classification'];
+    $required = ['student_id', 'last_name', 'first_name', 'email', 'password', 'contact_no', 'strand', 'program', 'admission_date', 'stud_classification', 'registration_classification'];
     foreach ($required as $field) {
         if (empty($formData[$field] ?? '')) {
             $errors[] = ucfirst(str_replace('_', ' ', $field)) . ' is required.';
@@ -199,6 +200,15 @@ function srsValidateRegistration($conn, array $formData): array {
 
     if (!empty($errors)) {
         return ['valid' => false, 'error' => implode(' ', $errors)];
+    }
+
+    $statusClassification = strtolower(trim((string)($formData['stud_classification'] ?? '')));
+    if ($statusClassification === '') {
+        $statusClassification = 'regular';
+    }
+
+    if (!in_array($statusClassification, $allowedStatuses, true)) {
+        return ['valid' => false, 'error' => 'Student status must be Regular or Irregular.'];
     }
 
     $registrationClassification = strtolower(trim((string)($formData['registration_classification'] ?? '')));
@@ -242,8 +252,8 @@ function srsValidateRegistration($conn, array $formData): array {
         'registration_classification_normalized' => $registrationClassification === 'transferee'
             ? 'Transferee'
             : ($registrationClassification === 'old' ? 'Old' : 'New'),
-        'classification_normalized' => $registrationClassification === 'transferee'
-            ? 'Transferee'
+        'classification_normalized' => $statusClassification === 'irregular'
+            ? 'Irregular'
             : 'Regular'
     ];
 }

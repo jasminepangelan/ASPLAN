@@ -397,6 +397,17 @@
             </select>
         </div>
         <div class="form-group">
+            <label for="stud-classification">Student Status</label>
+            <select id="stud-classification" name="stud_classification" required>
+                <option value="">Select student status</option>
+                <option value="Regular">Regular Student</option>
+                <option value="Irregular">Irregular Student</option>
+            </select>
+            <div style="color: #5d715e; font-size: 12px; margin-top: 5px;">
+                This status is used by the system for study-plan handling and related academic flow.
+            </div>
+        </div>
+        <div class="form-group">
             <label for="registration-classification">Student Classification</label>
             <select id="registration-classification" name="registration_classification" required>
                 <option value="">Select student classification</option>
@@ -443,6 +454,7 @@
         if (data.address) document.getElementById('address').value = data.address;
         if (data.strand) document.getElementById('strand').value = data.strand;
         if (data.program) document.getElementById('program').value = data.program;
+        if (data.stud_classification) document.getElementById('stud-classification').value = data.stud_classification;
         if (data.registration_classification) document.getElementById('registration-classification').value = data.registration_classification;
         if (data.admission_date) document.getElementById('admission_date').value = data.admission_date;
         // picture cannot be prefilled for security reasons
@@ -457,6 +469,7 @@
             address: document.getElementById('address').value,
             strand: document.getElementById('strand').value,
             program: document.getElementById('program').value,
+            stud_classification: document.getElementById('stud-classification').value,
             registration_classification: document.getElementById('registration-classification').value,
             admission_date: document.getElementById('admission_date').value
         };
