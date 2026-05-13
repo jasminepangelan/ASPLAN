@@ -244,6 +244,17 @@ foreach ($optimized_plan as $term_index => $term) {
         if ($course_code !== '' && isset($study_plan_overrides[$course_code])) {
             $candidate_year = $study_plan_overrides[$course_code]['year'];
             $candidate_semester = $study_plan_overrides[$course_code]['semester'];
+            $base_year_label = trim((string)($course['year'] ?? $year));
+            $base_semester_label = trim((string)($course['semester'] ?? $semester));
+            $base_is_midyear = strcasecmp($base_semester_label, 'Mid Year') === 0;
+            $allow_override = true;
+
+            if ($base_is_midyear) {
+                $allow_override = ($candidate_year === $base_year_label)
+                    && (strcasecmp($candidate_semester, $base_semester_label) === 0);
+            }
+
+            if ($allow_override) {
             $base_term_order = 0;
             $candidate_term_order = 0;
 
@@ -279,6 +290,7 @@ foreach ($optimized_plan as $term_index => $term) {
                         $study_plan_term_override_deltas[$candidate_meta_key] = (float)($study_plan_term_override_deltas[$candidate_meta_key] ?? 0.0) + $course_counted_units;
                     }
                 }
+            }
             }
         }
 

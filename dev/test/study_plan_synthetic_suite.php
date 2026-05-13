@@ -412,20 +412,21 @@ $scenarios['midyear_courses_term_locked'] = function () use ($seedStudent, $seed
     $foundOutsideMidyear = false;
     foreach ($plan as $term) {
         $termSemester = (string)($term['semester'] ?? '');
+        $termYear = (string)($term['year'] ?? '');
         foreach ((array)($term['courses'] ?? []) as $course) {
             $code = (string)($course['code'] ?? '');
             if ($code !== 'MY401') {
                 continue;
             }
 
-            if ($termSemester !== 'Mid Year') {
+            if ($termSemester !== 'Mid Year' || $termYear !== '4th Yr') {
                 $foundOutsideMidyear = true;
                 break 2;
             }
         }
     }
 
-    return assertScenario(!$foundOutsideMidyear, 'Mid Year courses are term-locked and never relocated into regular semesters.');
+    return assertScenario(!$foundOutsideMidyear, 'Mid Year courses stay locked to their original year and semester.');
 };
 
 $scenarios['non_credit_excluded_from_unit_cap'] = function () use ($seedStudent, $seedProgram) {

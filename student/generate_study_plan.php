@@ -203,6 +203,18 @@ class StudyPlanGenerator {
             || strcasecmp($semester, 'Summer') === 0;
     }
 
+    private function isMidYearCourseLockedToTerm(array $course, $targetYear, $targetSemester): bool {
+        if (!$this->isMidYearSemesterLabel($course['semester'] ?? '')) {
+            return true;
+        }
+
+        if (!$this->isMidYearSemesterLabel($targetSemester ?? '')) {
+            return false;
+        }
+
+        return (string)($course['year'] ?? '') === (string)$targetYear;
+    }
+
     private function registerCurriculumCourseRow(array $row) {
         $course_code = $this->normalizeCourseCode($row['course_code'] ?? $row['code'] ?? '');
         if ($course_code === '' || isset($this->all_courses[$course_code])) {
@@ -2762,6 +2774,10 @@ class StudyPlanGenerator {
                     continue;
                 }
 
+                if (!$this->isMidYearCourseLockedToTerm($course, $term['year'], $term['semester'])) {
+                    continue;
+                }
+
                 if (($course['semester'] ?? '') === $term['semester']) {
                     $available[$code] = $course;
                 } else {
@@ -2804,6 +2820,10 @@ class StudyPlanGenerator {
                 if (!isset($available[$needed_code])) {
                     $needed_course = $simulated_all_courses[$needed_code] ?? null;
                     if ($needed_course === null) {
+                        continue;
+                    }
+
+                    if (!$this->isMidYearCourseLockedToTerm($needed_course, $term['year'], $term['semester'])) {
                         continue;
                     }
 
@@ -2850,6 +2870,10 @@ class StudyPlanGenerator {
             if ($this->shouldUseFlexibleIrregularFill()) {
                 foreach ($simulated_all_courses as $code => $course) {
                     if (!empty($course['completed']) || isset($available[$code])) {
+                        continue;
+                    }
+
+                    if (!$this->isMidYearCourseLockedToTerm($course, $term['year'], $term['semester'])) {
                         continue;
                     }
 
@@ -2975,11 +2999,19 @@ class StudyPlanGenerator {
                 : (!empty($this->term_max_units) ? max($this->term_max_units) : 21);
             
             $available = $this->applyConstraintsForSimulation($semester, $simulated_completed, $simulated_all_courses);
+            foreach (array_keys($available) as $code) {
+                if (!$this->isMidYearCourseLockedToTerm($available[$code], $year_label, $semester)) {
+                    unset($available[$code]);
+                }
+            }
             
             // Include backlog courses from all prior semesters
             $backlog = $this->applyConstraintsForSimulation(null, $simulated_completed, $simulated_all_courses);
             foreach ($backlog as $code => $course) {
                 if (!isset($available[$code])) {
+                    if (!$this->isMidYearCourseLockedToTerm($course, $year_label, $semester)) {
+                        continue;
+                    }
                     if (
                         $this->isMidYearSemesterLabel($course['semester'] ?? '')
                         && !$this->isMidYearSemesterLabel($semester)
@@ -2996,6 +3028,10 @@ class StudyPlanGenerator {
             }));
             foreach ($remaining_codes as $needed_code) {
                 if (!isset($available[$needed_code])) {
+                    $needed_course = $simulated_all_courses[$needed_code] ?? [];
+                    if (!$this->isMidYearCourseLockedToTerm($needed_course, $year_label, $semester)) {
+                        continue;
+                    }
                     if (
                         $this->isMidYearSemesterLabel($simulated_all_courses[$needed_code]['semester'] ?? '')
                         && !$this->isMidYearSemesterLabel($semester)

@@ -253,6 +253,15 @@ foreach ($studyPlan as $term) {
         if ($courseCode !== '' && isset($overrideMap[$courseCode])) {
             $candidateYear = $overrideMap[$courseCode]['year'];
             $candidateSemester = $overrideMap[$courseCode]['semester'];
+            $baseIsMidyear = strcasecmp(trim((string)$baseSemester), 'Mid Year') === 0;
+            $allowOverride = true;
+
+            if ($baseIsMidyear) {
+                $allowOverride = ($candidateYear === $baseYear)
+                    && (strcasecmp(trim((string)$candidateSemester), trim((string)$baseSemester)) === 0);
+            }
+
+            if ($allowOverride) {
             $baseYearOrder = $yearOrder[$baseYear] ?? 99;
             $candidateYearOrder = $yearOrder[$candidateYear] ?? 99;
             $baseSemesterOrder = $semesterOrder[$baseSemester] ?? 99;
@@ -279,6 +288,7 @@ foreach ($studyPlan as $term) {
                         $futureTermOverrideDeltas[$candidateKey] = (float)($futureTermOverrideDeltas[$candidateKey] ?? 0.0) + $courseCountedUnits;
                     }
                 }
+            }
             }
         }
 
@@ -1447,24 +1457,30 @@ if ($lastPlannedTerm) {
                                                     $currentYear = (string)($term['year'] ?? '');
                                                     $currentSemester = (string)($term['semester'] ?? '');
                                                     $currentPlacementOrder = (($yearOrder[$currentYear] ?? 99) * 10) + ($semesterOrder[$currentSemester] ?? 99);
+                                                    $originalSemester = trim((string)($course['original_semester'] ?? $currentSemester));
+                                                    $lockedMidyear = strcasecmp($originalSemester, 'Mid Year') === 0;
                                                 ?>
-                                                <div class="move-controls">
-                                                    <select id="<?= htmlspecialchars($currentSelectId); ?>">
-                                                        <?php foreach ($termOptions as $termValue => $termLabel): ?>
-                                                            <?php
-                                                                [$optionYear, $optionSemester] = array_pad(explode('|', (string)$termValue, 2), 2, '');
-                                                                $optionPlacementOrder = (($yearOrder[$optionYear] ?? 99) * 10) + ($semesterOrder[$optionSemester] ?? 99);
-                                                                if ($optionPlacementOrder < $currentPlacementOrder) {
-                                                                    continue;
-                                                                }
-                                                            ?>
-                                                            <option value="<?= htmlspecialchars($termValue); ?>" <?= $termValue === $currentPlacement ? 'selected' : ''; ?>>
-                                                                <?= htmlspecialchars($termLabel); ?>
-                                                            </option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                    <button type="button" onclick="moveCourseTerm('<?= htmlspecialchars($courseCode, ENT_QUOTES); ?>', '<?= htmlspecialchars($currentSelectId, ENT_QUOTES); ?>')">Move</button>
-                                                </div>
+                                                <?php if ($lockedMidyear): ?>
+                                                    <span style="color:#64748b;font-size:12px;font-weight:600;">Locked (Mid Year)</span>
+                                                <?php else: ?>
+                                                    <div class="move-controls">
+                                                        <select id="<?= htmlspecialchars($currentSelectId); ?>">
+                                                            <?php foreach ($termOptions as $termValue => $termLabel): ?>
+                                                                <?php
+                                                                    [$optionYear, $optionSemester] = array_pad(explode('|', (string)$termValue, 2), 2, '');
+                                                                    $optionPlacementOrder = (($yearOrder[$optionYear] ?? 99) * 10) + ($semesterOrder[$optionSemester] ?? 99);
+                                                                    if ($optionPlacementOrder < $currentPlacementOrder) {
+                                                                        continue;
+                                                                    }
+                                                                ?>
+                                                                <option value="<?= htmlspecialchars($termValue); ?>" <?= $termValue === $currentPlacement ? 'selected' : ''; ?>>
+                                                                    <?= htmlspecialchars($termLabel); ?>
+                                                                </option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                        <button type="button" onclick="moveCourseTerm('<?= htmlspecialchars($courseCode, ENT_QUOTES); ?>', '<?= htmlspecialchars($currentSelectId, ENT_QUOTES); ?>')">Move</button>
+                                                    </div>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <span style="color:#64748b;font-size:12px;font-weight:600;">No Action</span>
                                             <?php endif; ?>
