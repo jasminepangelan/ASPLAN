@@ -3321,6 +3321,12 @@ class StudyPlanGenerator {
             }
 
             foreach ($prioritized as $code => $course) {
+                if (!$this->isMidYearCourseLockedToTerm($course, $target_year, $target_semester)) {
+                    if ($this->debug_enabled) {
+                        $this->debugLog('  SKIP ' . $code . ': midyear course locked to ' . ($course['year'] ?? '') . '|' . ($course['semester'] ?? '') . ' not eligible for ' . ($target_year ?? '?') . '|' . ($target_semester ?? '?'));
+                    }
+                    continue;
+                }
                 // NO OVERLOADING: Strict unit limit enforcement
                 $course_units = $this->getCountedCourseUnits($course);
                 if ($total_units + $course_units <= $max_units) {
@@ -3350,6 +3356,13 @@ class StudyPlanGenerator {
             $prioritized = $this->prioritizeCourses($remaining, $target_year, $effectiveCompleted, $target_semester);
 
             foreach ($prioritized as $code => $course) {
+                if (!$this->isMidYearCourseLockedToTerm($course, $target_year, $target_semester)) {
+                    if ($this->debug_enabled) {
+                        $this->debugLog('  SKIP ' . $code . ': midyear course locked to ' . ($course['year'] ?? '') . '|' . ($course['semester'] ?? '') . ' not eligible for ' . ($target_year ?? '?') . '|' . ($target_semester ?? '?'));
+                    }
+                    continue;
+                }
+
                 $course_units = $this->getCountedCourseUnits($course);
                 if ($total_units + $course_units > $max_units) {
                     if ($this->debug_enabled) {
