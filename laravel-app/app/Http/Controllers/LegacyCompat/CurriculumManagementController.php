@@ -454,6 +454,38 @@ class CurriculumManagementController extends Controller
                 return response()->json(['success' => false, 'message' => 'Student not found'], 404);
             }
 
+            // Server-side guard: if the course is a Mid Year/Summer course in the
+            // curriculum, disallow saving an override that moves it to a different
+            // year or to a non-Mid Year semester.
+            $origRow = DB::table('curriculum_courses')
+                ->select(['year_level', 'semester'])
+                ->whereRaw('UPPER(TRIM(course_code)) = ?', [strtoupper($courseCode)])
+                ->first();
+
+            if ($origRow === null && Schema::hasTable('cvsucarmona_courses')) {
+                $legacyRow = DB::table('cvsucarmona_courses')
+                    ->selectRaw("TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)) AS course_code, year_level, semester")
+                    ->whereRaw('UPPER(TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, "_", -1))) = ?', [strtoupper($courseCode)])
+                    ->first();
+                if ($legacyRow !== null) {
+                    $origRow = (object) ['year_level' => $legacyRow->year_level ?? null, 'semester' => $legacyRow->semester ?? null];
+                }
+            }
+
+            if ($origRow !== null) {
+                $origSem = strtoupper(trim((string) ($origRow->semester ?? '')));
+                $isMid = in_array($origSem, ['MID YEAR', 'MIDYEAR', 'SUMMER'], true);
+                if ($isMid) {
+                    $yearMap = ['FIRST YEAR' => '1st Yr', 'SECOND YEAR' => '2nd Yr', 'THIRD YEAR' => '3rd Yr', 'FOURTH YEAR' => '4th Yr',
+                                '1ST YR' => '1st Yr', '2ND YR' => '2nd Yr', '3RD YR' => '3rd Yr', '4TH YR' => '4th Yr'];
+                    $foundYearRaw = strtoupper(trim((string) ($origRow->year_level ?? '')));
+                    $foundYearNorm = $yearMap[$foundYearRaw] ?? trim((string) ($origRow->year_level ?? ''));
+                    if ($targetYear !== $foundYearNorm || !in_array(strtoupper($targetSemester), ['MID YEAR', 'MIDYEAR', 'SUMMER'], true)) {
+                        return response()->json(['success' => false, 'message' => 'Cannot move Mid Year course to a different term'], 422);
+                    }
+                }
+            }
+
             DB::statement(
                 "CREATE TABLE IF NOT EXISTS student_study_plan_overrides (
                     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/study_plan_override_service.php';
+require_once __DIR__ . '/../includes/program_shift_service.php';
 
 header('Content-Type: application/json');
 
@@ -77,6 +78,32 @@ if (!$student) {
     echo json_encode(['success' => false, 'message' => 'Student not found']);
     closeDBConnection($conn);
     exit();
+}
+
+// Enforce: if the course is defined as a Mid Year/Summer in the curriculum,
+// disallow overrides that move it to a different year or to a non-Mid Year semester.
+$curriculumRows = psFetchChecklistCourses($conn, $studentId, (string)$student['program']);
+$foundCourse = null;
+foreach ($curriculumRows as $r) {
+    if (strcasecmp(psNormalizeCourseCode($r['course_code'] ?? ''), psNormalizeCourseCode($courseCode)) === 0) {
+        $foundCourse = $r;
+        break;
+    }
+}
+if ($foundCourse !== null) {
+    $origSemester = strtoupper(trim((string)($foundCourse['semester'] ?? '')));
+    $isMid = in_array($origSemester, ['MID YEAR', 'MIDYEAR', 'SUMMER'], true);
+    // Normalize year label from possible variants (e.g., 'First Year' -> '1st Yr')
+    $yearMap = ['FIRST YEAR' => '1st Yr', 'SECOND YEAR' => '2nd Yr', 'THIRD YEAR' => '3rd Yr', 'FOURTH YEAR' => '4th Yr'];
+    $foundYearRaw = strtoupper(trim((string)($foundCourse['year'] ?? '')));
+    $foundYearNorm = $yearMap[$foundYearRaw] ?? $foundCourse['year'];
+    if ($isMid) {
+        if ($targetYear !== (string)$foundYearNorm || !in_array(strtoupper($targetSemester), ['MID YEAR', 'MIDYEAR', 'SUMMER'], true)) {
+            echo json_encode(['success' => false, 'message' => 'Cannot move Mid Year course to a different term']);
+            closeDBConnection($conn);
+            exit();
+        }
+    }
 }
 
 $updatedBy = $isAdmin

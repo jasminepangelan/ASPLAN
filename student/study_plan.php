@@ -322,7 +322,11 @@ foreach ($optimized_plan as $term_index => $term) {
     }
 }
 
-$query->close();
+if (isset($query) && is_object($query)) {
+    if (method_exists($query, 'close')) {
+        $query->close();
+    }
+}
 closeDBConnection($conn);
 
 function isNonCreditStudyPlanCourse($course) {

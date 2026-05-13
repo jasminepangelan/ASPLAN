@@ -81,7 +81,81 @@ if (!function_exists('spoLoadStudyPlanOverrides')) {
     function spoLoadStudyPlanOverrides($conn, string $studentId): array
     {
         spoEnsureStudyPlanOverrideTable($conn);
+            // Server-side guard: if this course is defined as a Mid Year/Summer course
+            // in the curriculum, prevent saving an override that relocates it to a
+            // different year or to a non-Mid Year semester.
+            $prog = '';
+            $pstmt = $conn->prepare('SELECT program FROM student_info WHERE student_number = ? LIMIT 1');
+            if ($pstmt) {
+                if ($pstmt instanceof PDOStatement) {
+                    $pstmt->execute([$studentId]);
+                    $prow = $pstmt->fetch(PDO::FETCH_ASSOC);
+                } else {
+                    $pstmt->bind_param('s', $studentId);
+                    $pstmt->execute();
+                    $res = $pstmt->get_result();
+                    $prow = $res ? $res->fetch_assoc() : null;
+                    $pstmt->close();
+                }
+                $prog = trim((string) ($prow['program'] ?? ''));
+            }
 
+            $origYear = null;
+            $origSemester = null;
+            // Try normalized curriculum_courses first
+            $cstmt = $conn->prepare("SELECT year_level, semester FROM curriculum_courses WHERE UPPER(TRIM(course_code)) = UPPER(?) LIMIT 1");
+            if ($cstmt) {
+                if ($cstmt instanceof PDOStatement) {
+                    $cstmt->execute([$courseCode]);
+                    $crow = $cstmt->fetch(PDO::FETCH_ASSOC);
+                } else {
+                    $cstmt->bind_param('s', $courseCode);
+                    $cstmt->execute();
+                    $cres = $cstmt->get_result();
+                    $crow = $cres ? $cres->fetch_assoc() : null;
+                    $cstmt->close();
+                }
+                if ($crow) {
+                    $origYear = trim((string) ($crow['year_level'] ?? ''));
+                    $origSemester = trim((string) ($crow['semester'] ?? ''));
+                }
+            }
+
+            // Fallback to legacy cvsucarmona_courses if present
+            if ($origYear === null && spoTableColumnExists($conn, 'cvsucarmona_courses', 'curriculumyear_coursecode')) {
+                $lstmt = $conn->prepare("SELECT TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)) AS course_code, year_level, semester FROM cvsucarmona_courses WHERE UPPER(TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1))) = UPPER(?) LIMIT 1");
+                if ($lstmt) {
+                    if ($lstmt instanceof PDOStatement) {
+                        $lstmt->execute([$courseCode]);
+                        $lrow = $lstmt->fetch(PDO::FETCH_ASSOC);
+                    } else {
+                        $lstmt->bind_param('s', $courseCode);
+                        $lstmt->execute();
+                        $lres = $lstmt->get_result();
+                        $lrow = $lres ? $lres->fetch_assoc() : null;
+                        $lstmt->close();
+                    }
+                    if ($lrow) {
+                        $origYear = trim((string) ($lrow['year_level'] ?? ''));
+                        $origSemester = trim((string) ($lrow['semester'] ?? ''));
+                    }
+                }
+            }
+
+            if ($origSemester !== null) {
+                $origSemUp = strtoupper($origSemester);
+                $isMid = in_array($origSemUp, ['MID YEAR', 'MIDYEAR', 'SUMMER'], true);
+                if ($isMid) {
+                    $yearMap = ['FIRST YEAR' => '1st Yr', 'SECOND YEAR' => '2nd Yr', 'THIRD YEAR' => '3rd Yr', 'FOURTH YEAR' => '4th Yr',
+                        '1ST YEAR' => '1st Yr', '2ND YEAR' => '2nd Yr', '3RD YEAR' => '3rd Yr', '4TH YEAR' => '4th Yr',
+                        '1ST YR' => '1st Yr', '2ND YR' => '2nd Yr', '3RD YR' => '3rd Yr', '4TH YR' => '4th Yr'];
+                    $foundYearRaw = strtoupper((string) ($origYear ?? ''));
+                    $foundYearNorm = $yearMap[$foundYearRaw] ?? ($origYear ?? '');
+                    if ($targetYear !== (string)$foundYearNorm || !in_array(strtoupper($targetSemester), ['MID YEAR', 'MIDYEAR', 'SUMMER'], true)) {
+                        return ['success' => false, 'message' => 'Cannot move Mid Year course to a different term'];
+                    }
+                }
+            }
         $validYears = spoValidOverrideYears();
         $validSemesters = spoValidOverrideSemesters();
         $overrideMap = [];
