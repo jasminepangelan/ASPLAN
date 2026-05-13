@@ -3194,12 +3194,20 @@ class StudyPlanGenerator {
         $available = [];
         
         foreach ($simulated_all_courses as $code => $course) {
+            $is_gned = (stripos($code, 'GNED') === 0);
+            
             if ($course['completed']) {
+                if ($is_gned && $this->debug_enabled) {
+                    $this->debugLog('BACKLOG_FILTER: ' . $code . ' already completed');
+                }
                 continue;
             }
             
             // Check semester constraint
             if ($target_semester !== null && $course['semester'] !== $target_semester) {
+                if ($is_gned && $this->debug_enabled) {
+                    $this->debugLog('BACKLOG_FILTER: ' . $code . ' semester mismatch: ' . $course['semester'] . ' != ' . $target_semester);
+                }
                 continue;
             }
             
@@ -3215,7 +3223,14 @@ class StudyPlanGenerator {
             }
             
             if ($prereqs_met) {
+                if ($is_gned && $this->debug_enabled) {
+                    $this->debugLog('BACKLOG_ACCEPTED: ' . $code . ' prerequisites satisfied');
+                }
                 $available[$code] = $course;
+            } else {
+                if ($is_gned && $this->debug_enabled) {
+                    $this->debugLog('BACKLOG_FILTER: ' . $code . ' prerequisites not met: [' . implode(', ', $prereqs) . ']');
+                }
             }
         }
         
@@ -3231,18 +3246,33 @@ class StudyPlanGenerator {
         $available = [];
 
         foreach ($simulated_all_courses as $code => $course) {
+            $is_gned = (stripos($code, 'GNED') === 0);
+            
             if (!empty($course['completed'])) {
+                if ($is_gned && $this->debug_enabled) {
+                    $this->debugLog('FILTER: ' . $code . ' already completed, skipped from term ' . $target_year . '|' . $target_semester);
+                }
                 continue;
             }
 
             if (($course['year'] ?? '') !== $target_year || ($course['semester'] ?? '') !== $target_semester) {
+                if ($is_gned && $this->debug_enabled) {
+                    $this->debugLog('FILTER: ' . $code . ' term mismatch: curriculum=' . ($course['year'] ?? '?') . '|' . ($course['semester'] ?? '?') . ', target=' . $target_year . '|' . $target_semester);
+                }
                 continue;
             }
 
             if (!$this->prerequisitesSatisfiedForCompletedSet($code, $simulated_completed)) {
+                if ($is_gned && $this->debug_enabled) {
+                    $prereqs = $this->prerequisite_map[$code] ?? [];
+                    $this->debugLog('FILTER: ' . $code . ' prerequisites not satisfied: [' . implode(', ', $prereqs) . ']');
+                }
                 continue;
             }
 
+            if ($is_gned && $this->debug_enabled) {
+                $this->debugLog('ACCEPTED: ' . $code . ' for term ' . $target_year . '|' . $target_semester);
+            }
             $available[$code] = $course;
         }
 
@@ -3712,6 +3742,10 @@ class StudyPlanGenerator {
 
     public function getPlanningStatus() {
         return $this->planning_status;
+    }
+
+    public function getDebugLogPath() {
+        return $this->debug_log_path;
     }
     
     /**
