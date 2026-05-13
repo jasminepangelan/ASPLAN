@@ -1623,7 +1623,7 @@ class StudyPlanGenerator {
         ];
     }
 
-    private function evaluatePlanningStatus(array $active_issues = null) {
+    private function evaluatePlanningStatus(?array $active_issues = null) {
         if ($active_issues === null) {
             $active_issues = $this->getActiveAcademicIssueSets();
         }
