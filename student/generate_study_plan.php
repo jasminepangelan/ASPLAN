@@ -192,6 +192,17 @@ class StudyPlanGenerator {
         }
     }
 
+    private function isMidYearSemesterLabel($semester): bool {
+        $semester = trim((string)$semester);
+        if ($semester === '') {
+            return false;
+        }
+
+        return strcasecmp($semester, 'Mid Year') === 0
+            || strcasecmp($semester, 'Midyear') === 0
+            || strcasecmp($semester, 'Summer') === 0;
+    }
+
     private function registerCurriculumCourseRow(array $row) {
         $course_code = $this->normalizeCourseCode($row['course_code'] ?? $row['code'] ?? '');
         if ($course_code === '' || isset($this->all_courses[$course_code])) {
@@ -2430,30 +2441,24 @@ class StudyPlanGenerator {
             }
         }
 
-        if ($target_index === null) {
-            $study_plan[] = [
-                'year' => '4th Yr',
-                'semester' => '2nd Sem',
-                'courses' => [],
-                'total_units' => 0,
-                'max_units' => $this->getMaxUnitsForTerm('None', '4th Yr', '2nd Sem'),
-                'retention_status' => 'None',
-                'retake_count' => 0,
-                'cross_reg_count' => 0,
-                'forced_add_count' => 0,
-                'skipped' => false
-            ];
-            $target_index = count($study_plan) - 1;
+        $added_count = 0;
+        $target_max_units = (float) $this->getMaxUnitsForTerm('None', '4th Yr', '2nd Sem');
+        $current_units = 0.0;
+
+        if ($target_index !== null) {
+            $target_max_units = (float)($study_plan[$target_index]['max_units'] ?? $target_max_units);
+            $current_units = $this->sumCountedCourseUnits($study_plan[$target_index]['courses'] ?? []);
+            $study_plan[$target_index]['total_units'] = $current_units;
         }
 
         $forced_courses = $this->prioritizeCourses($remaining, '4th Yr', $simulated_completed, '2nd Sem');
-        $added_count = 0;
-        $target_max_units = (float)($study_plan[$target_index]['max_units'] ?? $this->getMaxUnitsForTerm('None', '4th Yr', '2nd Sem'));
-        $current_units = $this->sumCountedCourseUnits($study_plan[$target_index]['courses'] ?? []);
-        $study_plan[$target_index]['total_units'] = $current_units;
 
         foreach ($forced_courses as $course_code => $course) {
-            if (isset($study_plan[$target_index]['courses'][$course_code])) {
+            if ($target_index !== null && isset($study_plan[$target_index]['courses'][$course_code])) {
+                continue;
+            }
+
+            if ($this->isMidYearSemesterLabel($course['semester'] ?? '')) {
                 continue;
             }
 
@@ -2482,6 +2487,23 @@ class StudyPlanGenerator {
             $course_units = $this->getCountedCourseUnits($course);
             if ($current_units + $course_units > $target_max_units) {
                 continue;
+            }
+
+            if ($target_index === null) {
+                $study_plan[] = [
+                    'year' => '4th Yr',
+                    'semester' => '2nd Sem',
+                    'courses' => [],
+                    'total_units' => 0,
+                    'max_units' => $target_max_units,
+                    'retention_status' => 'None',
+                    'retake_count' => 0,
+                    'cross_reg_count' => 0,
+                    'forced_add_count' => 0,
+                    'skipped' => false
+                ];
+                $target_index = count($study_plan) - 1;
+                $study_plan[$target_index]['total_units'] = $current_units;
             }
 
             $course['forced_added'] = true;
@@ -2743,6 +2765,12 @@ class StudyPlanGenerator {
                 if (($course['semester'] ?? '') === $term['semester']) {
                     $available[$code] = $course;
                 } else {
+                    if (
+                        $this->isMidYearSemesterLabel($course['semester'] ?? '')
+                        && !$this->isMidYearSemesterLabel($term['semester'] ?? '')
+                    ) {
+                        continue;
+                    }
                     $cross_course = $this->findCrossRegistrationOffering($code, $term['semester'], $course);
                     // Only cross-register if the course is offered in the current semester by another program
                     if ($cross_course !== null) {
@@ -2776,6 +2804,13 @@ class StudyPlanGenerator {
                 if (!isset($available[$needed_code])) {
                     $needed_course = $simulated_all_courses[$needed_code] ?? null;
                     if ($needed_course === null) {
+                        continue;
+                    }
+
+                    if (
+                        $this->isMidYearSemesterLabel($needed_course['semester'] ?? '')
+                        && !$this->isMidYearSemesterLabel($term['semester'] ?? '')
+                    ) {
                         continue;
                     }
 
@@ -2815,6 +2850,13 @@ class StudyPlanGenerator {
             if ($this->shouldUseFlexibleIrregularFill()) {
                 foreach ($simulated_all_courses as $code => $course) {
                     if (!empty($course['completed']) || isset($available[$code])) {
+                        continue;
+                    }
+
+                    if (
+                        $this->isMidYearSemesterLabel($course['semester'] ?? '')
+                        && !$this->isMidYearSemesterLabel($term['semester'] ?? '')
+                    ) {
                         continue;
                     }
 
@@ -2938,6 +2980,12 @@ class StudyPlanGenerator {
             $backlog = $this->applyConstraintsForSimulation(null, $simulated_completed, $simulated_all_courses);
             foreach ($backlog as $code => $course) {
                 if (!isset($available[$code])) {
+                    if (
+                        $this->isMidYearSemesterLabel($course['semester'] ?? '')
+                        && !$this->isMidYearSemesterLabel($semester)
+                    ) {
+                        continue;
+                    }
                     $available[$code] = $course;
                 }
             }
@@ -2948,6 +2996,12 @@ class StudyPlanGenerator {
             }));
             foreach ($remaining_codes as $needed_code) {
                 if (!isset($available[$needed_code])) {
+                    if (
+                        $this->isMidYearSemesterLabel($simulated_all_courses[$needed_code]['semester'] ?? '')
+                        && !$this->isMidYearSemesterLabel($semester)
+                    ) {
+                        continue;
+                    }
                     $cross_course = $this->findCrossRegistrationOffering($needed_code, $semester, $simulated_all_courses[$needed_code] ?? []);
                     if ($cross_course !== null) {
                         $prereqs = $this->prerequisite_map[$needed_code] ?? [];

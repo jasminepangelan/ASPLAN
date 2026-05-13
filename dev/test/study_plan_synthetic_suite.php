@@ -361,6 +361,73 @@ $scenarios['incoming_constraint_midyear_rule'] = function () use ($seedStudent, 
     return assertScenario($midYearAllowed && $secondSemBlocked && $yearTwoAllowed, 'Incoming-year standing rule allows prior midyear only.');
 };
 
+$scenarios['midyear_courses_term_locked'] = function () use ($seedStudent, $seedProgram) {
+    $generator = makeGenerator($seedStudent, $seedProgram);
+    $termMax = buildTermMaxUnits(21);
+    $termMax['4th Yr|Mid Year'] = 0;
+
+    seedGenerator($generator, [
+        makeCourse('FL401', '4th Yr', '1st Sem', ['completed' => true]),
+        makeCourse('FL402', '4th Yr', '2nd Sem', ['completed' => true]),
+        makeCourse('MY401', '4th Yr', 'Mid Year', ['units' => 3]),
+    ], [
+        'completed_courses' => ['FL401', 'FL402'],
+        'term_max_units' => $termMax,
+        'semester_grade_history' => [
+            '4th Yr|2nd Sem' => [
+                'year' => '4th Yr',
+                'semester' => '2nd Sem',
+                'total_subjects' => 1,
+                'failed_subjects' => 0,
+                'courses' => [
+                    ['code' => 'FL402', 'grade' => '1.50', 'failed' => false],
+                ],
+            ],
+        ],
+        'cross_reg_courses' => [
+            'MY401' => [
+                [
+                    'code' => 'MY401',
+                    'title' => 'MY401 Course',
+                    'units' => 3,
+                    'year' => '4th Yr',
+                    'semester' => '2nd Sem',
+                    'programs' => 'TEST',
+                    'cross_reg_source_program' => 'Test',
+                    'cross_registered' => true,
+                ],
+            ],
+        ],
+    ]);
+
+    setGeneratorProperty($generator, 'planning_status', [
+        'is_irregular' => true,
+        'label' => 'Irregular',
+        'reasons' => ['Synthetic seed'],
+        'has_validated_history' => true,
+    ]);
+
+    $plan = $generator->generateOptimizedPlan();
+
+    $foundOutsideMidyear = false;
+    foreach ($plan as $term) {
+        $termSemester = (string)($term['semester'] ?? '');
+        foreach ((array)($term['courses'] ?? []) as $course) {
+            $code = (string)($course['code'] ?? '');
+            if ($code !== 'MY401') {
+                continue;
+            }
+
+            if ($termSemester !== 'Mid Year') {
+                $foundOutsideMidyear = true;
+                break 2;
+            }
+        }
+    }
+
+    return assertScenario(!$foundOutsideMidyear, 'Mid Year courses are term-locked and never relocated into regular semesters.');
+};
+
 $scenarios['non_credit_excluded_from_unit_cap'] = function () use ($seedStudent, $seedProgram) {
     $generator = makeGenerator($seedStudent, $seedProgram);
     $termMax = buildTermMaxUnits(21);
