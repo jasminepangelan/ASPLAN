@@ -232,15 +232,21 @@ class StudyPlanGenerator {
     }
 
     private function isMidYearCourseLockedToTerm(array $course, $targetYear, $targetSemester): bool {
-        if (!$this->isMidYearSemesterLabel($course['semester'] ?? '')) {
+        $courseSemester = $this->normalizeCurriculumSemesterLabel($course['semester'] ?? '');
+        if (!$this->isMidYearSemesterLabel($courseSemester)) {
             return true;
         }
 
-        if (!$this->isMidYearSemesterLabel($targetSemester ?? '')) {
+        $targetSemester = $this->normalizeCurriculumSemesterLabel($targetSemester ?? '');
+        if (!$this->isMidYearSemesterLabel($targetSemester)) {
             return false;
         }
 
-        return (string)($course['year'] ?? '') === (string)$targetYear;
+        $courseYear = $this->normalizeCurriculumYearLabel($course['year'] ?? '');
+        $targetYear = $this->normalizeCurriculumYearLabel($targetYear ?? '');
+
+        return $courseYear === $targetYear
+            && $courseSemester === $targetSemester;
     }
 
     private function registerCurriculumCourseRow(array $row) {
@@ -1301,9 +1307,10 @@ class StudyPlanGenerator {
     }
 
     private function findCrossRegistrationOffering($course_code, $target_semester, array $courseContext = []) {
+        $target_semester = $this->normalizeCurriculumSemesterLabel($target_semester ?? '');
         $offerings = $this->cross_reg_courses[$course_code] ?? [];
         foreach ($offerings as $offering) {
-            if (($offering['semester'] ?? null) === $target_semester) {
+            if ($this->normalizeCurriculumSemesterLabel($offering['semester'] ?? '') === $target_semester) {
                 return $offering;
             }
         }
@@ -1312,7 +1319,7 @@ class StudyPlanGenerator {
             $equivalencySignature = $this->buildCourseEquivalencySignatureFromCourse($courseContext);
             $equivalentOfferings = $this->cross_reg_equivalent_courses[$equivalencySignature] ?? [];
             foreach ($equivalentOfferings as $offering) {
-                if (($offering['semester'] ?? null) === $target_semester) {
+                if ($this->normalizeCurriculumSemesterLabel($offering['semester'] ?? '') === $target_semester) {
                     return $offering;
                 }
             }
@@ -2094,7 +2101,15 @@ class StudyPlanGenerator {
     }
 
     private function semesterLabelToOrder($semester_label) {
-        $sem_order = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3];
+        $semester_label = trim((string)$semester_label);
+        $sem_order = [
+            '1st Sem' => 1,
+            '2nd Sem' => 2,
+            'Mid Year' => 3,
+            'Midyear' => 3,
+            'Summer' => 3,
+        ];
+
         return $sem_order[$semester_label] ?? 0;
     }
 
@@ -2424,9 +2439,10 @@ class StudyPlanGenerator {
      * This keeps Mid Year terms constrained to the actual midyear load.
      */
     private function getReferenceTermForSemester($semester) {
+        $semester = $this->normalizeCurriculumSemesterLabel($semester ?? '');
         $terms = array_reverse($this->getOrderedCurriculumTerms());
         foreach ($terms as $term) {
-            if (($term['semester'] ?? '') !== $semester) {
+            if ($this->normalizeCurriculumSemesterLabel($term['semester'] ?? '') !== $semester) {
                 continue;
             }
 
