@@ -46,6 +46,8 @@ class StudyPlanGenerator {
     private $has_active_shift_request = false;
     private $legacy_transferee_inferred = false;
     private $table_column_cache = [];
+    private $debug_enabled = false;
+    private $debug_log_path = '';
     private $planning_status = [
         'is_irregular' => false,
         'label' => 'Regular',
@@ -95,12 +97,38 @@ class StudyPlanGenerator {
         $this->curriculum_year = function_exists('psResolveStudentCurriculumYear')
             ? psResolveStudentCurriculumYear($this->conn, $this->student_id, $this->program_label, $this->program_code)
             : '';
+        // Enable debug logging if query param set or env var set
+        if (isset($_GET['debug_study_plan']) && $_GET['debug_study_plan'] === 'true') {
+            $this->debug_enabled = true;
+        } elseif (getenv('STUDY_PLAN_DEBUG') === '1') {
+            $this->debug_enabled = true;
+        }
+        if ($this->debug_enabled) {
+            $tmpDir = sys_get_temp_dir();
+            $this->debug_log_path = $tmpDir . '/asplan-study-gen-' . $this->student_id . '-' . date('YmdHis') . '.log';
+            $this->debugLog('=== Study Plan Generator Debug Log ===');
+            $this->debugLog('Student: ' . $this->student_id);
+            $this->debugLog('Program: ' . $this->program_label . ' (Code: ' . $this->program_code . ')');
+            $this->debugLog('Curriculum Year: ' . $this->curriculum_year);
+        }
         $this->loadStudentPolicyContext();
         $this->loadStudentData();
         $this->loadCurriculumData();
         $this->loadCrossRegistrationCourses();
         $this->calculateRetentionHistory();
         $this->evaluateShiftTransfereePolicyGate();
+        if ($this->debug_enabled) {
+            $this->debugLog('Debug log written to: ' . $this->debug_log_path);
+        }
+    }
+
+    private function debugLog($message) {
+        if (!$this->debug_enabled || $this->debug_log_path === '') {
+            return;
+        }
+        $timestamp = date('Y-m-d H:i:s');
+        $logLine = "[{$timestamp}] {$message}\n";
+        error_log($logLine, 3, $this->debug_log_path);
     }
 
     /**
@@ -217,18 +245,25 @@ class StudyPlanGenerator {
 
     private function registerCurriculumCourseRow(array $row) {
         $course_code = $this->normalizeCourseCode($row['course_code'] ?? $row['code'] ?? '');
-        if ($course_code === '' || isset($this->all_courses[$course_code])) {
+        if ($course_code === '') {
+            $this->debugLog('REJECT course: code is empty');
+            return;
+        }
+        if (isset($this->all_courses[$course_code])) {
+            $this->debugLog('REJECT course ' . $course_code . ': already registered');
             return;
         }
 
         $title = trim((string)($row['course_title'] ?? $row['title'] ?? ''));
         if ($title === '') {
+            $this->debugLog('REJECT course ' . $course_code . ': title is empty');
             return;
         }
 
         $year = $this->normalizeCurriculumYearLabel($row['year'] ?? $row['year_level'] ?? '');
         $semester = $this->normalizeCurriculumSemesterLabel($row['semester'] ?? '');
         if ($year === '' || $semester === '') {
+            $this->debugLog('REJECT course ' . $course_code . ': year="' . $year . '" or semester="' . $semester . '" is empty');
             return;
         }
 
@@ -243,6 +278,7 @@ class StudyPlanGenerator {
         ];
 
         if ($units <= 0 && !$this->isNonCreditCourse($course_snapshot)) {
+            $this->debugLog('REJECT course ' . $course_code . ': units=' . $units . ' and not non-credit');
             return;
         }
 
@@ -251,6 +287,7 @@ class StudyPlanGenerator {
         $is_dropped = in_array($course_code, $this->dropped_courses);
         $needs_retake = $is_failed || $is_inc || $is_dropped;
         $prerequisite = trim((string)($row['pre_requisite'] ?? $row['prerequisite'] ?? ''));
+        $is_completed = in_array($course_code, $this->completed_courses);
 
         $this->all_courses[$course_code] = [
             'code' => $course_code,
@@ -263,13 +300,16 @@ class StudyPlanGenerator {
             'prerequisite' => $prerequisite,
             'year' => $year,
             'semester' => $semester,
-            'completed' => in_array($course_code, $this->completed_courses),
+            'completed' => $is_completed,
             'is_failed' => $is_failed,
             'is_inc' => $is_inc,
             'is_dropped' => $is_dropped,
             'needs_retake' => $needs_retake,
             'cross_registered' => false
         ];
+
+        $status = $is_completed ? 'COMPLETED' : ($needs_retake ? 'NEEDS_RETAKE' : 'PENDING');
+        $this->debugLog('ACCEPT course ' . $course_code . ': ' . $year . ' | ' . $semester . ' | units=' . $units . ' | status=' . $status);
 
         $this->prerequisite_map[$course_code] = $this->parsePrerequisites($prerequisite);
         $this->standing_constraint_map[$course_code] = $this->extractStandingConstraint($prerequisite);
@@ -1416,6 +1456,30 @@ class StudyPlanGenerator {
         // course set the generator will schedule, regardless of student
         // classification, cross-reg eligibility, or late-stage optimization.
         $this->rebuildTermMaxUnitsFromLoadedCourses();
+        
+        if ($this->debug_enabled) {
+            $this->debugLog('=== Curriculum Load Summary ===');
+            $this->debugLog('Total courses loaded: ' . count($this->all_courses));
+            $completed = 0;
+            $needs_retake = 0;
+            $pending = 0;
+            foreach ($this->all_courses as $course) {
+                if ($course['completed']) {
+                    $completed++;
+                } elseif ($course['needs_retake']) {
+                    $needs_retake++;
+                } else {
+                    $pending++;
+                }
+            }
+            $this->debugLog('  - Completed: ' . $completed);
+            $this->debugLog('  - Needs Retake: ' . $needs_retake);
+            $this->debugLog('  - Pending: ' . $pending);
+            $this->debugLog('Completed courses: ' . implode(', ', $this->completed_courses));
+            $this->debugLog('Failed courses: ' . implode(', ', $this->failed_courses));
+            $this->debugLog('INC courses: ' . implode(', ', $this->inc_courses));
+            $this->debugLog('Dropped courses: ' . implode(', ', $this->dropped_courses));
+        }
     }
 
     private function hasCreditedMigrationEvidence() {
@@ -3222,12 +3286,23 @@ class StudyPlanGenerator {
             $selected = [];
             $total_units = 0;
 
+            if ($this->debug_enabled) {
+                $this->debugLog('--- buildTermPlanFromAvailable: Term=' . ($target_year ?? '?') . '|' . ($target_semester ?? '?') . ', Max Units=' . $max_units . ', Available=' . count($available));
+            }
+
             foreach ($prioritized as $code => $course) {
                 // NO OVERLOADING: Strict unit limit enforcement
                 $course_units = $this->getCountedCourseUnits($course);
                 if ($total_units + $course_units <= $max_units) {
                     $selected[$code] = $course;
                     $total_units += $course_units;
+                    if ($this->debug_enabled) {
+                        $this->debugLog('  SCHEDULE ' . $code . ': units=' . $course_units . ', total=' . $total_units . '/' . $max_units);
+                    }
+                } else {
+                    if ($this->debug_enabled) {
+                        $this->debugLog('  SKIP ' . $code . ': unit limit exceeded (would be ' . ($total_units + $course_units) . ', max ' . $max_units . ')');
+                    }
                 }
             }
 
@@ -3247,10 +3322,16 @@ class StudyPlanGenerator {
             foreach ($prioritized as $code => $course) {
                 $course_units = $this->getCountedCourseUnits($course);
                 if ($total_units + $course_units > $max_units) {
+                    if ($this->debug_enabled) {
+                        $this->debugLog('  SKIP ' . $code . ': unit limit exceeded (would be ' . ($total_units + $course_units) . ', max ' . $max_units . ')');
+                    }
                     continue;
                 }
 
                 if (!$this->prerequisitesSatisfiedForCompletedSet($code, $effectiveCompleted)) {
+                    if ($this->debug_enabled) {
+                        $this->debugLog('  SKIP ' . $code . ': prerequisites not satisfied');
+                    }
                     continue;
                 }
 
@@ -3258,6 +3339,9 @@ class StudyPlanGenerator {
                 $total_units += $course_units;
                 unset($remaining[$code]);
                 $progress = true;
+                if ($this->debug_enabled) {
+                    $this->debugLog('  SCHEDULE ' . $code . ': units=' . $course_units . ', total=' . $total_units . '/' . $max_units);
+                }
                 break;
             }
         }
