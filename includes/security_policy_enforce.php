@@ -23,6 +23,10 @@ function checkAuthenticated() {
         $authenticated = true;
         $userId = $_SESSION['admin_id'] ?? $_SESSION['admin_username'];
         $role = 'admin';
+    } elseif (isset($_SESSION['username']) && (!isset($_SESSION['user_type']) || $_SESSION['user_type'] === 'program_coordinator')) {
+        $authenticated = true;
+        $userId = $_SESSION['username'];
+        $role = 'program_coordinator';
     } elseif (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'program_coordinator' && isset($_SESSION['username'])) {
         $authenticated = true;
         $userId = $_SESSION['username'];
