@@ -8,8 +8,27 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/includes/security_policy_enforce.php';
 require_once __DIR__ . '/includes/laravel_bridge.php';
 
-// Require admin or program coordinator authentication
-$auth = requireRole(['admin', 'program_coordinator']);
+// Require admin or program coordinator authentication (form endpoint => redirect on failure)
+$auth = checkAuthenticated();
+if (empty($auth['authenticated'])) {
+    logSecurityEvent('batch_update_all_auth_missing', [
+        'method' => $_SERVER['REQUEST_METHOD'] ?? 'unknown',
+        'uri' => $_SERVER['REQUEST_URI'] ?? 'unknown',
+        'host' => $_SERVER['HTTP_HOST'] ?? 'unknown',
+        'referer' => $_SERVER['HTTP_REFERER'] ?? null,
+        'session_status' => session_status(),
+        'session_cookie_present' => isset($_COOKIE[session_name()]),
+        'session_id_hash' => session_id() !== '' ? substr(hash('sha256', session_id()), 0, 12) : null,
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+    ], 'warning');
+    header('Location: ' . buildAppRelativeUrl('/index.html') . '?session_expired=1');
+    exit();
+}
+
+if (!in_array((string) ($auth['role'] ?? ''), ['admin', 'program_coordinator'], true)) {
+    header('Location: ' . buildAppRelativeUrl('/index.html'));
+    exit();
+}
 
 // Log batch operation
 logSecurityEvent('batch_update_all_initiated', [
