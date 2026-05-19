@@ -315,7 +315,9 @@ try {
     $professors = [];
     $debug = [];
     if (isset($_POST['bulk_approve']) && $_POST['bulk_approve']) {
-        // Bulk approve via form-data
+        // Bulk approve via form-data.
+        // Note: `program_view` must be supplied for staff bulk approvals so prerequisite
+        // blocker calculation uses the same curriculum/program view as the UI.
         $isBulkApprove = true;
         $student_id = $_POST['student_id'];
         $program_view = trim((string)($_POST['program_view'] ?? ''));
