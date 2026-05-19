@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/includes/csrf.php';
+require_once __DIR__ . '/includes/program_shift_service.php';
 require_once __DIR__ . '/includes/laravel_bridge.php';
 
 // Disable any output buffering or errors that might corrupt JSON
@@ -12,6 +13,250 @@ ob_start();
 
 // Set JSON header immediately
 header('Content-Type: application/json');
+
+function csStaffChecklistIsApprovedRemarkLocal($remark): bool
+{
+    $normalized = strtoupper(trim((string)$remark));
+    if ($normalized === 'APPROVED') {
+        return true;
+    }
+
+    return $normalized !== '' && strpos($normalized, 'CREDITED') !== false;
+}
+
+function csStaffChecklistNormalizeCourseTokenLocal($value): string
+{
+    $value = strtoupper(trim((string)$value));
+    if ($value === '') {
+        return '';
+    }
+
+    $value = preg_replace('/\s+/', ' ', $value);
+    $value = preg_replace('/^([A-Z]{2,})(\d+[A-Z]*)$/', '$1 $2', $value);
+    $value = preg_replace('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)[\s-]+(\d+[A-Z]*)$/', '$1 $2', $value);
+    return trim((string)$value);
+}
+
+function csStaffChecklistIsPassingFinalGradeLocal($grade): bool
+{
+    $normalized = strtoupper(trim((string)$grade));
+    if ($normalized === 'S' || $normalized === 'PASSED') {
+        return true;
+    }
+
+    if (is_numeric($grade)) {
+        $numeric_grade = (float)$grade;
+        return $numeric_grade >= 1.0 && $numeric_grade <= 3.0;
+    }
+
+    return false;
+}
+
+function csStaffChecklistResolveEffectiveApprovedGradeLocal(array $row): ?string
+{
+    $attempts = [
+        3 => ['grade' => trim((string)($row['final_grade_3'] ?? '')), 'remark' => (string)($row['evaluator_remarks_3'] ?? '')],
+        2 => ['grade' => trim((string)($row['final_grade_2'] ?? '')), 'remark' => (string)($row['evaluator_remarks_2'] ?? '')],
+        1 => ['grade' => trim((string)($row['final_grade'] ?? '')), 'remark' => (string)($row['evaluator_remarks'] ?? '')],
+    ];
+
+    foreach ([3, 2, 1] as $slot) {
+        $grade = $attempts[$slot]['grade'] ?? '';
+        if ($grade === '' || strtoupper($grade) === 'NO GRADE') {
+            continue;
+        }
+
+        if (csStaffChecklistIsApprovedRemarkLocal($attempts[$slot]['remark'] ?? '')) {
+            return $grade;
+        }
+    }
+
+    return null;
+}
+
+function csStaffChecklistParsePrerequisitesLocal($prereq_string): array
+{
+    $looksNonCourse = static function ($value): bool {
+        $upper = strtoupper(trim((string)$value));
+        if ($upper === '') {
+            return true;
+        }
+
+        foreach ([
+            'YEAR',
+            'STANDING',
+            'INCOMING',
+            '%',
+            'ALL SUBJECT',
+            'ALL MAJOR',
+            'GRADUATING',
+            'PROF ED',
+            'TOTAL UNIT',
+            'TOTAL UNITS',
+            'HS ',
+            'HIGH SCHOOL',
+            'GWA',
+            'AVERAGE GRADE',
+        ] as $fragment) {
+            if (strpos($upper, $fragment) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    $prereq_string = trim((string)$prereq_string);
+    if ($prereq_string === '' || strtoupper($prereq_string) === 'NONE') {
+        return [];
+    }
+
+    $normalized = str_replace(["\r\n", "\r", "\n"], ', ', $prereq_string);
+    $normalized = preg_replace('/\s*[;\/]\s*/', ', ', $normalized);
+    $normalized = preg_replace('/\s+(?:AND|and)\s+/', ', ', $normalized);
+    $normalized = preg_replace_callback(
+        '/\b([A-Z]{2,}(?:\s+[A-Z]{1,})?[\s-]*\d+[A-Z]*)\s*(?:&|,)\s*((?:\d+[A-Z]*\s*(?:,|&)\s*)*\d+[A-Z]*)/i',
+        static function ($m) {
+            $first = csStaffChecklistNormalizeCourseTokenLocal($m[1]);
+            if ($first === '') {
+                return $m[0];
+            }
+
+            $prefix = preg_replace('/\s+\d+[A-Z]*$/', '', $first);
+            $tailParts = preg_split('/\s*(?:,|&)\s*/', trim((string)$m[2]));
+            $expanded = [$first];
+            foreach ($tailParts as $part) {
+                $part = trim((string)$part);
+                if ($part === '') {
+                    continue;
+                }
+                $expanded[] = csStaffChecklistNormalizeCourseTokenLocal($prefix . ' ' . $part);
+            }
+
+            return implode(', ', array_filter($expanded));
+        },
+        $normalized
+    );
+
+    $segments = preg_split('/\s*,\s*/', (string)$normalized);
+    $valid_prereqs = [];
+    $seen = [];
+    $last_prefix = '';
+
+    foreach ($segments as $segment) {
+        $segment = trim((string)$segment);
+        if ($segment === '' || $looksNonCourse($segment)) {
+            continue;
+        }
+
+        $matches = [];
+        preg_match_all('/\b([A-Z]{2,}(?:\s+[A-Z]{1,})?[\s-]*\d+[A-Z]*)\b/i', $segment, $matches);
+
+        $codes = [];
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $match) {
+                $normalizedCode = csStaffChecklistNormalizeCourseTokenLocal($match);
+                if ($normalizedCode !== '') {
+                    $codes[] = $normalizedCode;
+                }
+            }
+        } elseif ($last_prefix !== '' && preg_match('/^\d+[A-Z]*$/i', $segment)) {
+            $normalizedCode = csStaffChecklistNormalizeCourseTokenLocal($last_prefix . ' ' . $segment);
+            if ($normalizedCode !== '') {
+                $codes[] = $normalizedCode;
+            }
+        }
+
+        foreach ($codes as $code) {
+            if (!preg_match('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)\s+\d+[A-Z]*$/', $code, $pm)) {
+                continue;
+            }
+
+            $last_prefix = $pm[1];
+            if (!isset($seen[$code])) {
+                $seen[$code] = true;
+                $valid_prereqs[] = $code;
+            }
+        }
+    }
+
+    return $valid_prereqs;
+}
+
+function csStaffChecklistBuildPrereqBlockersLocal($conn, string $studentId, string $programView): array
+{
+    $prereqBlockersByCourse = [];
+
+    try {
+        $studentProgramLabel = '';
+        $progStmt = $conn->prepare('SELECT program FROM student_info WHERE student_number = ? LIMIT 1');
+        if ($progStmt) {
+            $progStmt->bind_param('s', $studentId);
+            $progStmt->execute();
+            $progResult = $progStmt->get_result();
+            if ($progResult && ($progRow = $progResult->fetch_assoc())) {
+                $studentProgramLabel = trim((string)($progRow['program'] ?? ''));
+            }
+            $progStmt->close();
+        }
+
+        $programKey = $programView !== '' ? $programView : psNormalizeProgramKey($studentProgramLabel);
+        $programLabel = $studentProgramLabel;
+        $canonical = psCanonicalProgramLabel($programKey);
+        if ($canonical !== '') {
+            $programLabel = $canonical;
+        }
+
+        $rowsForPrereq = [];
+        if (function_exists('psFetchChecklistCourses') && ($programLabel !== '' || $programKey !== '')) {
+            $rowsForPrereq = psFetchChecklistCourses($conn, (string)$studentId, (string)$programLabel, (string)$programKey);
+        }
+
+        if (empty($rowsForPrereq)) {
+            return [];
+        }
+
+        $completed = [];
+        foreach ($rowsForPrereq as $r) {
+            $codeNorm = csStaffChecklistNormalizeCourseTokenLocal($r['course_code'] ?? '');
+            if ($codeNorm === '') {
+                continue;
+            }
+
+            $effective = csStaffChecklistResolveEffectiveApprovedGradeLocal((array)$r);
+            if ($effective !== null && csStaffChecklistIsPassingFinalGradeLocal($effective)) {
+                $completed[$codeNorm] = true;
+            }
+        }
+
+        foreach ($rowsForPrereq as $r) {
+            $codeNorm = csStaffChecklistNormalizeCourseTokenLocal($r['course_code'] ?? '');
+            if ($codeNorm === '') {
+                continue;
+            }
+
+            $prereqs = csStaffChecklistParsePrerequisitesLocal($r['pre_requisite'] ?? '');
+            if (empty($prereqs)) {
+                continue;
+            }
+
+            $blockers = [];
+            foreach ($prereqs as $pr) {
+                if (!isset($completed[$pr])) {
+                    $blockers[] = $pr;
+                }
+            }
+
+            if (!empty($blockers)) {
+                $prereqBlockersByCourse[$codeNorm] = $blockers;
+            }
+        }
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    return $prereqBlockersByCourse;
+}
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -64,6 +309,7 @@ try {
     // Check if this is a bulk approval request (sent as JSON or form-data)
     $isBulkApprove = false;
     $student_id = '';
+    $program_view = '';
     $courses = [];
     $grades = [];
     $professors = [];
@@ -72,6 +318,7 @@ try {
         // Bulk approve via form-data
         $isBulkApprove = true;
         $student_id = $_POST['student_id'];
+        $program_view = trim((string)($_POST['program_view'] ?? ''));
         $courses = isset($_POST['courses']) ? json_decode($_POST['courses'], true) : [];
         $grades = isset($_POST['grades']) ? json_decode($_POST['grades'], true) : [];
         $professors = isset($_POST['professors']) ? json_decode($_POST['professors'], true) : [];
@@ -83,6 +330,7 @@ try {
             if (isset($input['bulk_approve']) && $input['bulk_approve']) {
                 $isBulkApprove = true;
                 $student_id = $input['student_id'];
+                $program_view = trim((string)($input['program_view'] ?? ''));
                 $courses = $input['courses'];
                 $grades = $input['grades'];
                 $professors = isset($input['professors']) ? $input['professors'] : [];
@@ -91,6 +339,7 @@ try {
         }
     }
     $debug['student_id'] = $student_id;
+    $debug['program_view'] = $program_view;
     $debug['courses'] = $courses;
     $debug['grades'] = $grades;
     $debug['professors'] = $professors;
@@ -103,6 +352,7 @@ try {
                     'bulk_approve' => true,
                     'save_context' => 'staff',
                     'student_id' => $student_id,
+                    'program_view' => $program_view,
                     'courses' => $courses,
                     'grades' => $grades,
                     'professors' => $professors,
@@ -114,6 +364,7 @@ try {
                 [
                     'save_context' => 'staff',
                     'student_id' => (string) ($_POST['student_id'] ?? $student_id),
+                    'program_view' => trim((string)($_POST['program_view'] ?? '')),
                     'courses' => $_POST['courses'] ?? [],
                     'final_grades' => $_POST['final_grades'] ?? [],
                     'final_grades_2' => $_POST['final_grades_2'] ?? [],
@@ -136,6 +387,9 @@ try {
         if (!validateStudentExists($conn, $student_id)) {
             throw new Exception('Student does not exist');
         }
+
+        $prereqBlockersByCourse = csStaffChecklistBuildPrereqBlockersLocal($conn, (string)$student_id, (string)$program_view);
+        $errors = [];
 
         // Defensive: ensure grades is associative array
         if (is_array($grades) && array_values($grades) === $grades) {
@@ -183,6 +437,15 @@ try {
         foreach ($courses as $course_code) {
             $grade = isset($grades[$course_code]) ? $grades[$course_code] : '';
             $professor_instructor = isset($professors[$course_code]) ? $professors[$course_code] : '';
+
+            $gradeNorm = trim((string)$grade);
+            $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && strtoupper($gradeNorm) !== 'NO GRADE');
+            $courseCodeNorm = csStaffChecklistNormalizeCourseTokenLocal($course_code);
+            if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
+                $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseCodeNorm]);
+                continue;
+            }
+
             $stmt->bind_param('ssss', $student_id, $course_code, $grade, $professor_instructor);
             if (!$stmt->execute()) {
                 $debug['error'][] = $stmt->error;
@@ -195,16 +458,25 @@ try {
         
         // Clean output buffer and send JSON
         ob_clean();
+        $status = 'success';
+        if ($successful === 0 && !empty($errors)) {
+            $status = 'error';
+        }
         echo json_encode([
-            'status' => 'success',
-            'message' => "Bulk approved $successful records",
+            'status' => $status,
+            'message' => $status === 'error'
+                ? ($errors[0] ?? 'Unable to approve selected grades.')
+                : "Bulk approved $successful records",
             'debug' => $debug
+            ,
+            'errors' => $errors
         ]);
         exit;
     }
 
     // Standard save (form-data)
     $student_id = $_POST['student_id'];
+    $program_view = trim((string)($_POST['program_view'] ?? ''));
     $courses = json_decode($_POST['courses'], true);
     $final_grades = json_decode($_POST['final_grades'], true);
     $final_grades_2 = isset($_POST['final_grades_2']) ? json_decode($_POST['final_grades_2'], true) : [];
@@ -220,6 +492,9 @@ try {
     if (!validateStudentExists($conn, $student_id)) {
         throw new Exception('Student does not exist');
     }
+
+    $prereqBlockersByCourse = csStaffChecklistBuildPrereqBlockersLocal($conn, (string)$student_id, (string)$program_view);
+    $errors = [];
 
     $stmt = $conn->prepare("
         INSERT INTO student_checklists
@@ -263,12 +538,27 @@ try {
         $remarks = $evaluator_remarks[$i];
         $fg2 = isset($final_grades_2[$i]) ? $final_grades_2[$i] : '';
         $fg3 = isset($final_grades_3[$i]) ? $final_grades_3[$i] : '';
+
+        $fg1Norm = trim((string)($final_grades[$i] ?? ''));
+        $fg2Norm = trim((string)$fg2);
+        $fg3Norm = trim((string)$fg3);
+        $hasIncomingSubmittedAttempt = ($fg1Norm !== '' && strtoupper($fg1Norm) !== 'NO GRADE')
+            || ($fg2Norm !== '' && strtoupper($fg2Norm) !== 'NO GRADE')
+            || ($fg3Norm !== '' && strtoupper($fg3Norm) !== 'NO GRADE');
+
+        $courseCode = (string)($courses[$i] ?? '');
+        $courseCodeNorm = csStaffChecklistNormalizeCourseTokenLocal($courseCode);
+        if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
+            $errors[] = "Prerequisite(s) not cleared for {$courseCode}: " . implode(', ', (array)$prereqBlockersByCourse[$courseCodeNorm]);
+            continue;
+        }
+
         // Propagate the same evaluator_remarks to attempt 2/3 only when their grade has a value
         $er2 = $fg2 !== '' ? $remarks : '';
         $er3 = $fg3 !== '' ? $remarks : '';
         $stmt->bind_param('ssssssssssssss',
             $student_id,
-            $courses[$i],
+            $courseCode,
             $final_grades[$i],
             $remarks,
             $professor_instructor,
@@ -294,8 +584,11 @@ try {
     // Clean output buffer and send JSON
     ob_clean();
     echo json_encode([
-        'status' => 'success',
-        'message' => "Successfully saved $successful records"
+        'status' => ($successful === 0 && !empty($errors)) ? 'error' : 'success',
+        'message' => ($successful === 0 && !empty($errors))
+            ? ($errors[0] ?? 'Unable to save checklist.')
+            : "Successfully saved $successful records",
+        'errors' => $errors
     ]);
 
 } catch (Exception $e) {

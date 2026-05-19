@@ -102,6 +102,7 @@ class ChecklistController extends Controller
     private function saveBulk(Request $request): JsonResponse
     {
         $studentId = (string) $request->input('student_id', '');
+        $programView = trim((string) $request->input('program_view', ''));
         $courses = $this->parseArray($request->input('courses', []));
         $grades = $this->parseArray($request->input('grades', []));
         $professors = $this->parseArray($request->input('professors', []));
@@ -123,13 +124,24 @@ class ChecklistController extends Controller
         $grades = $this->normalizeAssoc($grades, $courses);
         $professors = $this->normalizeAssoc($professors, $courses);
 
+        $prereqBlockersByCourse = $this->buildPrereqBlockersForStudent($studentId, $programView);
+        $errors = [];
+
         $successful = 0;
         $timestamp = now();
 
-        DB::transaction(function () use ($studentId, $courses, $grades, $professors, $timestamp, &$successful): void {
+        DB::transaction(function () use ($studentId, $courses, $grades, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$errors): void {
             foreach ($courses as $courseCode) {
                 $courseCode = trim((string) $courseCode);
                 if ($courseCode === '') {
+                    continue;
+                }
+
+                $gradeNorm = $this->normalizeString($grades[$courseCode] ?? '');
+                $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && $gradeNorm !== 'No Grade');
+                $courseCodeNorm = $this->normalizeCourseTokenForPrereq($courseCode);
+                if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
+                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseCodeNorm]);
                     continue;
                 }
 
@@ -164,15 +176,24 @@ class ChecklistController extends Controller
             }
         });
 
+        $status = 'success';
+        if ($successful === 0 && !empty($errors)) {
+            $status = 'error';
+        }
+
         return response()->json([
-            'status' => 'success',
-            'message' => "Bulk approved {$successful} records",
+            'status' => $status,
+            'message' => $status === 'error'
+                ? ($errors[0] ?? 'Unable to approve selected grades')
+                : "Bulk approved {$successful} records",
+            'errors' => $errors,
         ]);
     }
 
     private function saveStaff(Request $request): JsonResponse
     {
         $studentId = (string) $request->input('student_id', '');
+        $programView = trim((string) $request->input('program_view', ''));
         $courses = $this->parseArray($request->input('courses', []));
         $grades = $this->parseArray($request->input('final_grades', []));
         $grades2 = $this->parseArray($request->input('final_grades_2', []));
@@ -203,10 +224,13 @@ class ChecklistController extends Controller
 
         $professors = $this->normalizeAssoc($professors, $courses);
 
+        $prereqBlockersByCourse = $this->buildPrereqBlockersForStudent($studentId, $programView);
+        $errors = [];
+
         $successful = 0;
         $timestamp = now();
 
-        DB::transaction(function () use ($studentId, $courses, $grades, $grades2, $grades3, $remarks, $professors, $timestamp, &$successful): void {
+        DB::transaction(function () use ($studentId, $courses, $grades, $grades2, $grades3, $remarks, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$errors): void {
             foreach ($courses as $index => $courseCode) {
                 $courseCode = trim((string) $courseCode);
                 if ($courseCode === '') {
@@ -218,6 +242,15 @@ class ChecklistController extends Controller
                 $grade3 = $this->normalizeString($grades3[$index] ?? '');
                 $remark = $this->normalizeString($remarks[$index] ?? '');
                 $isApproved = ($remark === 'Approved' && $grade !== '' && $grade !== 'No Grade');
+
+                $hasIncomingSubmittedAttempt = ($grade !== '' && $grade !== 'No Grade')
+                    || ($grade2 !== '' && $grade2 !== 'No Grade')
+                    || ($grade3 !== '' && $grade3 !== 'No Grade');
+                $courseCodeNorm = $this->normalizeCourseTokenForPrereq($courseCode);
+                if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
+                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseCodeNorm]);
+                    continue;
+                }
 
                 $existing = DB::table('student_checklists')
                     ->select(['grade_submitted_at', 'submitted_by'])
@@ -260,10 +293,272 @@ class ChecklistController extends Controller
             }
         });
 
+        $status = 'success';
+        if ($successful === 0 && !empty($errors)) {
+            $status = 'error';
+        }
+
         return response()->json([
-            'status' => 'success',
-            'message' => "Successfully saved {$successful} records",
+            'status' => $status,
+            'message' => $status === 'error'
+                ? ($errors[0] ?? 'Unable to save checklist')
+                : "Successfully saved {$successful} records",
+            'errors' => $errors,
         ]);
+    }
+
+    private function buildPrereqBlockersForStudent(string $studentId, string $programView): array
+    {
+        try {
+            $student = DB::table('student_info')
+                ->select(['program', 'curriculum_year'])
+                ->where('student_number', $studentId)
+                ->first();
+
+            if ($student === null) {
+                return [];
+            }
+
+            $selectedProgramLabel = trim((string) ($student->program ?? ''));
+            $programAbbr = $this->resolveProgramAbbreviation($selectedProgramLabel);
+            if ($programView !== '') {
+                $programAbbr = $programView;
+            }
+
+            $canonicalProgramLabel = $this->canonicalProgramLabel($programAbbr);
+            if ($canonicalProgramLabel !== '') {
+                $selectedProgramLabel = $canonicalProgramLabel;
+            }
+
+            if ($programAbbr === '' && $selectedProgramLabel === '') {
+                return [];
+            }
+
+            $studentCurriculumYear = $this->normalizeCurriculumYear((string) ($student->curriculum_year ?? ''));
+            $rows = $this->fetchChecklistCourses(
+                $studentId,
+                $selectedProgramLabel,
+                $programAbbr,
+                $studentCurriculumYear,
+                (string) ($student->program ?? '')
+            );
+            $rows = $this->normalizeCourseRows($rows);
+
+            if (empty($rows)) {
+                return [];
+            }
+
+            $completed = [];
+            foreach ($rows as $row) {
+                $codeNorm = $this->normalizeCourseTokenForPrereq($row['course_code'] ?? '');
+                if ($codeNorm === '') {
+                    continue;
+                }
+
+                $effective = $this->resolveEffectiveApprovedGradeForPrereq($row);
+                if ($effective !== null && $this->isPassingFinalGradeForPrereq($effective)) {
+                    $completed[$codeNorm] = true;
+                }
+            }
+
+            $blockersByCourse = [];
+            foreach ($rows as $row) {
+                $codeNorm = $this->normalizeCourseTokenForPrereq($row['course_code'] ?? '');
+                if ($codeNorm === '') {
+                    continue;
+                }
+
+                $prereqs = $this->parsePrerequisitesForPrereq((string) ($row['pre_requisite'] ?? ''));
+                if (empty($prereqs)) {
+                    continue;
+                }
+
+                $blockers = [];
+                foreach ($prereqs as $pr) {
+                    if (!isset($completed[$pr])) {
+                        $blockers[] = $pr;
+                    }
+                }
+
+                if (!empty($blockers)) {
+                    $blockersByCourse[$codeNorm] = $blockers;
+                }
+            }
+
+            return $blockersByCourse;
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    private function isApprovedRemarkForPrereq(string $remark): bool
+    {
+        $normalized = strtoupper(trim($remark));
+        if ($normalized === 'APPROVED') {
+            return true;
+        }
+
+        return $normalized !== '' && str_contains($normalized, 'CREDITED');
+    }
+
+    private function normalizeCourseTokenForPrereq(string $value): string
+    {
+        $value = strtoupper(trim($value));
+        if ($value === '') {
+            return '';
+        }
+
+        $value = preg_replace('/\s+/', ' ', $value);
+        $value = preg_replace('/^([A-Z]{2,})(\d+[A-Z]*)$/', '$1 $2', $value);
+        $value = preg_replace('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)[\s-]+(\d+[A-Z]*)$/', '$1 $2', $value);
+        return trim((string) $value);
+    }
+
+    private function isPassingFinalGradeForPrereq(string $grade): bool
+    {
+        $normalized = strtoupper(trim($grade));
+        if ($normalized === 'S' || $normalized === 'PASSED') {
+            return true;
+        }
+
+        if (is_numeric($grade)) {
+            $numeric = (float) $grade;
+            return $numeric >= 1.0 && $numeric <= 3.0;
+        }
+
+        return false;
+    }
+
+    private function resolveEffectiveApprovedGradeForPrereq(array $row): string|null
+    {
+        $attempts = [
+            3 => ['grade' => trim((string) ($row['final_grade_3'] ?? '')), 'remark' => (string) ($row['evaluator_remarks_3'] ?? '')],
+            2 => ['grade' => trim((string) ($row['final_grade_2'] ?? '')), 'remark' => (string) ($row['evaluator_remarks_2'] ?? '')],
+            1 => ['grade' => trim((string) ($row['final_grade'] ?? '')), 'remark' => (string) ($row['evaluator_remarks'] ?? '')],
+        ];
+
+        foreach ([3, 2, 1] as $slot) {
+            $grade = $attempts[$slot]['grade'] ?? '';
+            if ($grade === '' || strtoupper($grade) === 'NO GRADE') {
+                continue;
+            }
+
+            if ($this->isApprovedRemarkForPrereq((string) ($attempts[$slot]['remark'] ?? ''))) {
+                return $grade;
+            }
+        }
+
+        return null;
+    }
+
+    private function parsePrerequisitesForPrereq(string $prereqString): array
+    {
+        $looksNonCourse = static function (string $value): bool {
+            $upper = strtoupper(trim($value));
+            if ($upper === '') {
+                return true;
+            }
+
+            foreach ([
+                'YEAR',
+                'STANDING',
+                'INCOMING',
+                '%',
+                'ALL SUBJECT',
+                'ALL MAJOR',
+                'GRADUATING',
+                'PROF ED',
+                'TOTAL UNIT',
+                'TOTAL UNITS',
+                'HS ',
+                'HIGH SCHOOL',
+                'GWA',
+                'AVERAGE GRADE',
+            ] as $fragment) {
+                if (str_contains($upper, $fragment)) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        $prereqString = trim($prereqString);
+        if ($prereqString === '' || strtoupper($prereqString) === 'NONE') {
+            return [];
+        }
+
+        $normalized = str_replace(["\r\n", "\r", "\n"], ', ', $prereqString);
+        $normalized = preg_replace('/\s*[;\/]\s*/', ', ', $normalized);
+        $normalized = preg_replace('/\s+(?:AND|and)\s+/', ', ', $normalized);
+        $normalized = preg_replace_callback(
+            '/\b([A-Z]{2,}(?:\s+[A-Z]{1,})?[\s-]*\d+[A-Z]*)\s*(?:&|,)\s*((?:\d+[A-Z]*\s*(?:,|&)\s*)*\d+[A-Z]*)/i',
+            function (array $m) {
+                $first = $this->normalizeCourseTokenForPrereq((string) ($m[1] ?? ''));
+                if ($first === '') {
+                    return (string) ($m[0] ?? '');
+                }
+
+                $prefix = preg_replace('/\s+\d+[A-Z]*$/', '', $first);
+                $tailParts = preg_split('/\s*(?:,|&)\s*/', trim((string) ($m[2] ?? '')));
+                $expanded = [$first];
+
+                foreach ($tailParts as $part) {
+                    $part = trim((string) $part);
+                    if ($part === '') {
+                        continue;
+                    }
+                    $expanded[] = $this->normalizeCourseTokenForPrereq($prefix . ' ' . $part);
+                }
+
+                return implode(', ', array_filter($expanded));
+            },
+            $normalized
+        );
+
+        $segments = preg_split('/\s*,\s*/', (string) $normalized);
+        $valid = [];
+        $seen = [];
+        $lastPrefix = '';
+
+        foreach ($segments as $segment) {
+            $segment = trim((string) $segment);
+            if ($segment === '' || $looksNonCourse($segment)) {
+                continue;
+            }
+
+            $matches = [];
+            preg_match_all('/\b([A-Z]{2,}(?:\s+[A-Z]{1,})?[\s-]*\d+[A-Z]*)\b/i', $segment, $matches);
+
+            $codes = [];
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $match) {
+                    $normalizedCode = $this->normalizeCourseTokenForPrereq((string) $match);
+                    if ($normalizedCode !== '') {
+                        $codes[] = $normalizedCode;
+                    }
+                }
+            } elseif ($lastPrefix !== '' && preg_match('/^\d+[A-Z]*$/i', $segment)) {
+                $normalizedCode = $this->normalizeCourseTokenForPrereq($lastPrefix . ' ' . $segment);
+                if ($normalizedCode !== '') {
+                    $codes[] = $normalizedCode;
+                }
+            }
+
+            foreach ($codes as $code) {
+                if (!preg_match('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)\s+\d+[A-Z]*$/', $code, $pm)) {
+                    continue;
+                }
+
+                $lastPrefix = (string) ($pm[1] ?? '');
+                if (!isset($seen[$code])) {
+                    $seen[$code] = true;
+                    $valid[] = $code;
+                }
+            }
+        }
+
+        return $valid;
     }
 
     private function saveStudent(Request $request): JsonResponse

@@ -147,6 +147,172 @@ function isFailingGrade($grade) {
     return in_array(trim($grade ?? ''), ['4.00', '5.00', 'Failed', 'INC', 'DRP', 'US']);
 }
 
+// Helper: prerequisite gating (same rules as student checklist and study plan generator)
+function csChecklistIsApprovedRemark($remark): bool {
+  $normalized = strtoupper(trim((string)$remark));
+  if ($normalized === 'APPROVED') {
+    return true;
+  }
+
+  return $normalized !== '' && strpos($normalized, 'CREDITED') !== false;
+}
+
+function csChecklistNormalizeCourseToken($value): string {
+  $value = strtoupper(trim((string)$value));
+  if ($value === '') {
+    return '';
+  }
+
+  $value = preg_replace('/\s+/', ' ', $value);
+  $value = preg_replace('/^([A-Z]{2,})(\d+[A-Z]*)$/', '$1 $2', $value);
+  $value = preg_replace('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)[\s-]+(\d+[A-Z]*)$/', '$1 $2', $value);
+  return trim((string)$value);
+}
+
+function csChecklistIsPassingFinalGrade($grade): bool {
+  $normalized = strtoupper(trim((string)$grade));
+  if ($normalized === 'S' || $normalized === 'PASSED') {
+    return true;
+  }
+
+  if (is_numeric($grade)) {
+    $numeric_grade = (float)$grade;
+    return $numeric_grade >= 1.0 && $numeric_grade <= 3.0;
+  }
+
+  return false;
+}
+
+function csChecklistResolveEffectiveApprovedGrade(array $row): ?string {
+  $attempts = [
+    3 => ['grade' => trim((string)($row['final_grade_3'] ?? '')), 'remark' => (string)($row['evaluator_remarks_3'] ?? '')],
+    2 => ['grade' => trim((string)($row['final_grade_2'] ?? '')), 'remark' => (string)($row['evaluator_remarks_2'] ?? '')],
+    1 => ['grade' => trim((string)($row['final_grade'] ?? '')), 'remark' => (string)($row['evaluator_remarks'] ?? '')],
+  ];
+
+  foreach ([3, 2, 1] as $slot) {
+    $grade = $attempts[$slot]['grade'] ?? '';
+    if ($grade === '' || strtoupper($grade) === 'NO GRADE') {
+      continue;
+    }
+
+    $remark = $attempts[$slot]['remark'] ?? '';
+    if (csChecklistIsApprovedRemark($remark)) {
+      return $grade;
+    }
+  }
+
+  return null;
+}
+
+function csChecklistParsePrerequisites($prereq_string): array {
+  $looksNonCourse = static function ($value): bool {
+    $upper = strtoupper(trim((string)$value));
+    if ($upper === '') {
+      return true;
+    }
+
+    foreach ([
+      'YEAR',
+      'STANDING',
+      'INCOMING',
+      '%',
+      'ALL SUBJECT',
+      'ALL MAJOR',
+      'GRADUATING',
+      'PROF ED',
+      'TOTAL UNIT',
+      'TOTAL UNITS',
+      'HS ',
+      'HIGH SCHOOL',
+      'GWA',
+      'AVERAGE GRADE',
+    ] as $fragment) {
+      if (strpos($upper, $fragment) !== false) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  $prereq_string = trim((string)$prereq_string);
+  if ($prereq_string === '' || strtoupper($prereq_string) === 'NONE') {
+    return [];
+  }
+
+  $normalized = str_replace(["\r\n", "\r", "\n"], ', ', $prereq_string);
+  $normalized = preg_replace('/\s*[;\/]\s*/', ', ', $normalized);
+  $normalized = preg_replace('/\s+(?:AND|and)\s+/', ', ', $normalized);
+  $normalized = preg_replace_callback(
+    '/\b([A-Z]{2,}(?:\s+[A-Z]{1,})?[\s-]*\d+[A-Z]*)\s*(?:&|,)\s*((?:\d+[A-Z]*\s*(?:,|&)\s*)*\d+[A-Z]*)/i',
+    static function ($m) {
+      $first = csChecklistNormalizeCourseToken($m[1]);
+      if ($first === '') {
+        return $m[0];
+      }
+
+      $prefix = preg_replace('/\s+\d+[A-Z]*$/', '', $first);
+      $tailParts = preg_split('/\s*(?:,|&)\s*/', trim((string)$m[2]));
+      $expanded = [$first];
+      foreach ($tailParts as $part) {
+        $part = trim((string)$part);
+        if ($part === '') {
+          continue;
+        }
+        $expanded[] = csChecklistNormalizeCourseToken($prefix . ' ' . $part);
+      }
+
+      return implode(', ', array_filter($expanded));
+    },
+    $normalized
+  );
+
+  $segments = preg_split('/\s*,\s*/', (string)$normalized);
+  $valid_prereqs = [];
+  $seen = [];
+  $last_prefix = '';
+
+  foreach ($segments as $segment) {
+    $segment = trim((string)$segment);
+    if ($segment === '' || $looksNonCourse($segment)) {
+      continue;
+    }
+
+    $matches = [];
+    preg_match_all('/\b([A-Z]{2,}(?:\s+[A-Z]{1,})?[\s-]*\d+[A-Z]*)\b/i', $segment, $matches);
+
+    $codes = [];
+    if (!empty($matches[1])) {
+      foreach ($matches[1] as $match) {
+        $normalizedCode = csChecklistNormalizeCourseToken($match);
+        if ($normalizedCode !== '') {
+          $codes[] = $normalizedCode;
+        }
+      }
+    } elseif ($last_prefix !== '' && preg_match('/^\d+[A-Z]*$/i', $segment)) {
+      $normalizedCode = csChecklistNormalizeCourseToken($last_prefix . ' ' . $segment);
+      if ($normalizedCode !== '') {
+        $codes[] = $normalizedCode;
+      }
+    }
+
+    foreach ($codes as $code) {
+      if (!preg_match('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)\s+\d+[A-Z]*$/', $code, $pm)) {
+        continue;
+      }
+
+      $last_prefix = $pm[1];
+      if (!isset($seen[$code])) {
+        $seen[$code] = true;
+        $valid_prereqs[] = $code;
+      }
+    }
+  }
+
+  return $valid_prereqs;
+}
+
 // Updated SQL query
 $all_courses = [];
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
@@ -171,6 +337,44 @@ if (empty($all_courses)) {
         (string)$student_program_normalized,
         (string)$program_abbr
     );
+}
+
+// Build completion and prerequisite blocker maps
+$csChecklistCompleted = [];
+foreach ($all_courses as $csRow) {
+  $courseCodeNorm = csChecklistNormalizeCourseToken($csRow['course_code'] ?? '');
+  if ($courseCodeNorm === '') {
+    continue;
+  }
+
+  $effectiveGrade = csChecklistResolveEffectiveApprovedGrade((array)$csRow);
+  if ($effectiveGrade !== null && csChecklistIsPassingFinalGrade($effectiveGrade)) {
+    $csChecklistCompleted[$courseCodeNorm] = true;
+  }
+}
+
+$csChecklistPrereqBlockers = [];
+foreach ($all_courses as $csRow) {
+  $courseCodeNorm = csChecklistNormalizeCourseToken($csRow['course_code'] ?? '');
+  if ($courseCodeNorm === '') {
+    continue;
+  }
+
+  $prereqs = csChecklistParsePrerequisites((string)($csRow['pre_requisite'] ?? ''));
+  if (empty($prereqs)) {
+    continue;
+  }
+
+  $blockers = [];
+  foreach ($prereqs as $pr) {
+    if (!isset($csChecklistCompleted[$pr])) {
+      $blockers[] = $pr;
+    }
+  }
+
+  if (!empty($blockers)) {
+    $csChecklistPrereqBlockers[$courseCodeNorm] = $blockers;
+  }
 }
 
 // Optional: You can also fetch additional student details here if needed
@@ -1204,6 +1408,14 @@ if (empty($all_courses)) {
                 $currentSemester = $row['semester'] ?? '';
             }
 
+            $courseCode = (string)($row['course_code'] ?? '');
+            $courseCodeNorm = csChecklistNormalizeCourseToken($courseCode);
+            $isPrereqBlocked = ($courseCodeNorm !== '' && isset($csChecklistPrereqBlockers[$courseCodeNorm]));
+            $prereqTooltip = '';
+            if ($isPrereqBlocked) {
+              $prereqTooltip = 'Prerequisite(s) not cleared: ' . implode(', ', (array)$csChecklistPrereqBlockers[$courseCodeNorm]);
+            }
+
             $grade1_val  = $row['final_grade'] ?? '';
             $grade2_val  = $row['final_grade_2'] ?? '';
             $grade3_val  = $row['final_grade_3'] ?? '';
@@ -1217,9 +1429,14 @@ if (empty($all_courses)) {
             $show_3rd    = $show_2nd && isFailingGrade($grade2_val);
             $grade_opts  = ['', 'No Grade', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'Passed', 'Failed', 'US', 'S', 'INC', 'DRP'];
             $remark_opts = ['', 'Approved', 'Pending', 'Disapproved'];
-            $courseCode = (string)($row['course_code'] ?? '');
-            echo "<tr data-semester='" . htmlspecialchars((string)$currentYear . '-' . (string)$currentSemester) . "'>
-                    <td>" . htmlspecialchars($courseCode) . "</td>
+            $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "'";
+            $lockTitleAttr = $isPrereqBlocked ? " title='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "'" : '';
+            $disabledAttr = $isPrereqBlocked ? " disabled" . $lockTitleAttr : '';
+            $readonlyAttr = $isPrereqBlocked ? " readonly" . $lockTitleAttr : '';
+            $approveDisabledAttr = $isPrereqBlocked ? " disabled" . $lockTitleAttr : '';
+
+            echo "<tr data-semester='" . htmlspecialchars((string)$currentYear . '-' . (string)$currentSemester) . "'" . $rowPrereqAttrs . ">
+                <td>" . htmlspecialchars($courseCode) . "</td>
                     <td>" . htmlspecialchars((string)($row['course_title'] ?? '')) . "</td>
                     <td>" . htmlspecialchars((string)($row['credit_unit_lec'] ?? '')) . "</td>
                     <td>" . htmlspecialchars((string)($row['credit_unit_lab'] ?? '')) . "</td>
@@ -1227,9 +1444,9 @@ if (empty($all_courses)) {
                     <td>" . htmlspecialchars((string)($row['contact_hrs_lab'] ?? '')) . "</td>
                     <td>" . htmlspecialchars((string)($row['pre_requisite'] ?? '')) . "</td>
                     <td>" . htmlspecialchars((string)($row['semester'] ?? '')) . " " . htmlspecialchars((string)($row['year'] ?? '')) . "</td>
-                    <td><input type='text' name='professor_instructor[" . htmlspecialchars($courseCode) . "]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars((string)$row['professor_instructor']) : "") . "' style='border: none; font-size: 11px; border-bottom: 1px solid #000; width: 108px;'></td>";
+                <td><input type='text' name='professor_instructor[" . htmlspecialchars($courseCode) . "]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars((string)$row['professor_instructor']) : "") . "'" . $readonlyAttr . " style='border: none; font-size: 11px; border-bottom: 1px solid #000; width: 108px;'></td>";
             $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-            echo "<td id='grade1_" . htmlspecialchars($courseCode) . "'><select name='final_grade[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade1Class) . "'>";
+            echo "<td id='grade1_" . htmlspecialchars($courseCode) . "'><select name='final_grade[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade1Class) . "'" . $disabledAttr . ">";
             foreach ($grade_opts as $g) {
                 echo "<option value='" . htmlspecialchars((string)$g) . "'" . ($g === $grade1_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
             }
@@ -1237,7 +1454,7 @@ if (empty($all_courses)) {
             echo "<td id='grade2_" . htmlspecialchars($courseCode) . "'>";
             if ($show_2nd) {
                 $grade2Class = 'checklist-grade-select' . (($remark2_val === 'Pending' || in_array(strtoupper(trim((string)$grade2_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-                echo "<select name='final_grade_2[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade2Class) . "'>";
+              echo "<select name='final_grade_2[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade2Class) . "'" . $disabledAttr . ">";
                 foreach ($grade_opts as $g) {
                     echo "<option value='" . htmlspecialchars((string)$g) . "'" . ($g === $grade2_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
                 }
@@ -1249,7 +1466,7 @@ if (empty($all_courses)) {
             echo "<td id='grade3_" . htmlspecialchars($courseCode) . "'>";
             if ($show_3rd) {
                 $grade3Class = 'checklist-grade-select' . (($remark3_val === 'Pending' || in_array(strtoupper(trim((string)$grade3_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-                echo "<select name='final_grade_3[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade3Class) . "'>";
+              echo "<select name='final_grade_3[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade3Class) . "'" . $disabledAttr . ">";
                 foreach ($grade_opts as $g) {
                     echo "<option value='" . htmlspecialchars((string)$g) . "'" . ($g === $grade3_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
                 }
@@ -1258,12 +1475,12 @@ if (empty($all_courses)) {
                 echo "<span style='color:#ccc;font-size:11px;'>&#8212;</span>";
             }
             echo "</td>";
-            echo "<td><select name='evaluator_remarks[" . htmlspecialchars($courseCode) . "]' style='border:none;font-size:10px;width:108px;'>";
+            echo "<td><select name='evaluator_remarks[" . htmlspecialchars($courseCode) . "]'" . $disabledAttr . " style='border:none;font-size:10px;width:108px;'>";
             foreach ($remark_opts as $ro) {
                 echo "<option value='" . htmlspecialchars((string)$ro) . "'" . ($ro === $effectiveRemark ? ' selected' : '') . ">" . htmlspecialchars((string)$ro) . "</option>";
             }
             echo "</select></td>";
-            echo "<td style='display:none' class='approve-col'><input type='checkbox' class='approve-checkbox' value='" . htmlspecialchars($courseCode) . "'></td>";
+            echo "<td style='display:none' class='approve-col'><input type='checkbox' class='approve-checkbox' value='" . htmlspecialchars($courseCode) . "'" . $approveDisabledAttr . "></td>";
             echo "</tr>";
         }
     } else {
@@ -1326,6 +1543,11 @@ document.getElementById('showApproveMultiple').addEventListener('click', functio
 function setSemesterApproved(semesterKey, checked) {
     // Check/uncheck all approve-checkboxes for this semester, but only for rows with grades
     document.querySelectorAll(`tr[data-semester='${semesterKey}'] .approve-checkbox`).forEach(function(cb) {
+    const row = cb.closest('tr');
+    if (row && row.dataset && row.dataset.prereqBlocked === '1') {
+      cb.checked = false;
+      return;
+    }
         let courseCode = cb.value;
         let gradeSelect = document.querySelector(`[name='final_grade[${courseCode}]']`);
         
@@ -1409,6 +1631,10 @@ document.addEventListener('change', function(e) {
 
     document.querySelectorAll('[name^="final_grade"]').forEach(function(course) {
         if (!/^final_grade\[/.test(course.name)) return; // skip final_grade_2 and final_grade_3
+      const row = course.closest('tr');
+      if (row && row.dataset && row.dataset.prereqBlocked === '1') {
+        return;
+      }
         let courseCode = course.name.match(/\[(.*?)\]/)[1];
         let finalGrade = course.value;
         let evaluatorRemark = document.querySelector(`[name="evaluator_remarks[${courseCode}]"]`).value;
@@ -1431,6 +1657,7 @@ document.addEventListener('change', function(e) {
 
     // Append arrays to FormData
     formData.append('student_id', '<?php echo $_GET['student_id']; ?>');
+    formData.append('program_view', '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>');
     formData.append('courses', JSON.stringify(courses));
     formData.append('final_grades', JSON.stringify(final_grades));
     formData.append('final_grades_2', JSON.stringify(final_grades_2));
@@ -1629,6 +1856,10 @@ function autoSaveGrade(courseCode) {
         
         document.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
             if (!/^final_grade\[/.test(gradeSelect.name)) return; // skip grade_2 and grade_3
+          const row = gradeSelect.closest('tr');
+          if (row && row.dataset && row.dataset.prereqBlocked === '1') {
+            return;
+          }
             let code = gradeSelect.name.match(/\[(.*?)\]/)[1];
             let finalGrade = gradeSelect.value;
             let evaluatorRemark = document.querySelector(`[name="evaluator_remarks[${code}]"]`).value;
@@ -1646,6 +1877,7 @@ function autoSaveGrade(courseCode) {
         
         let formData = new FormData();
         formData.append('student_id', '<?php echo $_GET['student_id']; ?>');
+        formData.append('program_view', '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>');
         formData.append('courses', JSON.stringify(courses));
         formData.append('final_grades', JSON.stringify(final_grades));
         formData.append('final_grades_2', JSON.stringify(final_grades_2));
@@ -1732,6 +1964,7 @@ document.getElementById('bulkApproveButton').addEventListener('click', function(
         body: JSON.stringify({
             bulk_approve: true,
             student_id: studentId,
+          program_view: '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>',
             courses: selectedCourses,
             grades: gradeData,
             professors: professorData
