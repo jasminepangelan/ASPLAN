@@ -73,7 +73,7 @@ if (empty($history)) {
 }
 $historyAll = $history;
 $historyFilter = trim((string)($_GET['status'] ?? ''));
-$allowedHistoryStatuses = ['all', 'pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'approved', 'rejected', 'cancelled'];
+$allowedHistoryStatuses = ['all', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'approved', 'rejected', 'cancelled'];
 if ($historyFilter === '' || !in_array($historyFilter, $allowedHistoryStatuses, true)) {
     $historyFilter = 'all';
 }
@@ -106,7 +106,7 @@ foreach ($historyAll as $item) {
         $historyStats['rejected']++;
     }
 
-    if (in_array($status, ['pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
+    if (in_array($status, ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
         $historyStats['pending']++;
     }
 
@@ -122,7 +122,7 @@ foreach ($historyAll as $item) {
 
 $studentShellPayload = htmlspecialchars(json_encode([
     'title' => 'Program Shift Center',
-    'description' => 'Track your requests, review your current academic path, and submit a shift request through the existing adviser and coordinator approval flow.',
+    'description' => 'Track your requests, review your current academic path, and submit a shift request that will be reviewed by Program Coordinators only.',
     'accent' => 'slate',
     'pageKey' => 'program-shift',
     'stats' => [

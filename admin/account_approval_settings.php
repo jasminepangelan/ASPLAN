@@ -881,7 +881,6 @@ try {
 }
 
 $programShiftStats = [
-    'pending_adviser' => 0,
     'pending_current_coordinator' => 0,
     'pending_destination_coordinator' => 0,
     'pending_coordinator' => 0,
@@ -906,7 +905,6 @@ try {
         }
 
         $programShiftStats['total'] =
-            (int)$programShiftStats['pending_adviser'] +
             (int)$programShiftStats['pending_current_coordinator'] +
             (int)$programShiftStats['pending_destination_coordinator'] +
             (int)$programShiftStats['pending_coordinator'] +

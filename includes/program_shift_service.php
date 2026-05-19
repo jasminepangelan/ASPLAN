@@ -1171,7 +1171,7 @@ if (!function_exists('psFetchCurriculumCourses')) {
 
 if (!function_exists('psHasActiveShiftRequest')) {
     function psHasActiveShiftRequest($conn, $studentNumber) {
-        $stmt = $conn->prepare("SELECT id FROM program_shift_requests WHERE student_number = ? AND status IN ('pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator') LIMIT 1");
+        $stmt = $conn->prepare("SELECT id FROM program_shift_requests WHERE student_number = ? AND status IN ('pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator') LIMIT 1");
         if (!$stmt) {
             return false;
         }
@@ -1220,7 +1220,7 @@ if (!function_exists('psCreateStudentRequest')) {
         $studentName = psGetStudentDisplayName($studentRow);
         $reason = trim((string)$reason);
 
-        $stmt = $conn->prepare("INSERT INTO program_shift_requests (request_code, student_number, student_name, current_program, requested_program, reason, status) VALUES (?, ?, ?, ?, ?, ?, 'pending_adviser')");
+        $stmt = $conn->prepare("INSERT INTO program_shift_requests (request_code, student_number, student_name, current_program, requested_program, reason, status) VALUES (?, ?, ?, ?, ?, ?, 'pending_current_coordinator')");
         if (!$stmt) {
             return ['ok' => false, 'message' => 'Unable to save shift request.'];
         }
@@ -1842,97 +1842,9 @@ if (!function_exists('psExecuteApprovedShift')) {
 
 if (!function_exists('psHandleAdviserDecision')) {
     function psHandleAdviserDecision($conn, $requestId, $action, $actorUsername, $actorName, array $actorProgramKeys, array $adviserBatches, $comment = '') {
-        $request = psGetRequestById($conn, $requestId);
-        if (!$request) {
-            return ['ok' => false, 'message' => 'Shift request not found.'];
-        }
-
-        if ((string)$request['status'] !== 'pending_adviser') {
-            return ['ok' => false, 'message' => 'This request is not pending adviser review.'];
-        }
-
-        if (!psRequestMatchesAdviserScope($request, $actorProgramKeys, $adviserBatches)) {
-            return ['ok' => false, 'message' => 'You are not assigned to review this request for the selected program and batch scope.'];
-        }
-
-        $action = strtolower(trim((string)$action));
-        if (!in_array($action, ['approve', 'reject'], true)) {
-            return ['ok' => false, 'message' => 'Invalid action.'];
-        }
-
-        $nextStatus = $action === 'approve' ? 'pending_current_coordinator' : 'rejected';
-
-        $conn->begin_transaction();
-
-        try {
-            $stmt = $conn->prepare("UPDATE program_shift_requests
-                SET status = ?, adviser_action_by = ?, adviser_action_name = ?, adviser_action_at = NOW(), adviser_comment = ?
-                WHERE id = ? AND status = 'pending_adviser'");
-            if (!$stmt) {
-                throw new RuntimeException('Unable to update request.');
-            }
-
-            $requestId = (int)$requestId;
-            $stmt->bind_param('ssssi', $nextStatus, $actorUsername, $actorName, $comment, $requestId);
-            if (!$stmt->execute()) {
-                $stmt->close();
-                throw new RuntimeException('Unable to update request.');
-            }
-
-            if ((int)$stmt->affected_rows === 0) {
-                $stmt->close();
-                throw new RuntimeException('This request was already processed by another user. Please refresh the queue.');
-            }
-            $stmt->close();
-
-            $approval = $conn->prepare('INSERT INTO program_shift_approvals (request_id, stage, action, actor_username, actor_name, actor_program, comments) VALUES (?, "adviser", ?, ?, ?, ?, ?)');
-            if (!$approval) {
-                throw new RuntimeException('Unable to save adviser action log.');
-            }
-
-            $actorProgram = implode(', ', $actorProgramKeys);
-            $approval->bind_param('isssss', $requestId, $action, $actorUsername, $actorName, $actorProgram, $comment);
-            if (!$approval->execute()) {
-                $approval->close();
-                throw new RuntimeException('Unable to save adviser action log.');
-            }
-            $approval->close();
-
-            $auditMessage = $action === 'approve'
-                ? 'Adviser approved and forwarded the shift request to the current-program coordinator.'
-                : 'Adviser rejected the shift request.';
-            psAddAuditLog($conn, $requestId, 'adviser_' . $action, $auditMessage, $actorUsername, 'adviser', [
-                'comment' => $comment,
-                'next_status' => $nextStatus,
-            ]);
-
-            $conn->commit();
-        } catch (Throwable $e) {
-            $conn->rollback();
-            return ['ok' => false, 'message' => $e->getMessage() !== '' ? $e->getMessage() : 'Unable to process adviser decision.'];
-        }
-
-        $studentRow = psGetCurrentStudentInfo($conn, (string)$request['student_number']);
-        if ($studentRow) {
-            psSendProgramShiftEmail(
-                (string)($studentRow['email'] ?? ''),
-                (string)($request['student_name'] ?? ''),
-                $action === 'approve' ? 'Pending Current Program Coordinator Review' : 'Rejected by Adviser',
-                (string)($request['request_code'] ?? ''),
-                (string)($request['current_program'] ?? ''),
-                (string)($request['requested_program'] ?? ''),
-                $action === 'approve'
-                    ? 'Your request has been forwarded to the Program Coordinator of your current program.'
-                    : 'Your request was rejected by the Adviser.'
-            );
-        }
-
-        return [
-            'ok' => true,
-            'message' => $action === 'approve'
-                ? 'Request approved and forwarded to the current-program coordinator.'
-                : 'Request rejected by adviser.',
-        ];
+        // Adviser role has been removed from the program shift approval flow.
+        // Keep a compatibility shim so legacy calls do not break: return a clear message.
+        return ['ok' => false, 'message' => 'Adviser approval step has been removed. Program shifts now proceed to Program Coordinator review only.'];
     }
 }
 
@@ -2087,19 +1999,8 @@ if (!function_exists('psFetchStudentRequestHistory')) {
 
 if (!function_exists('psFetchAdviserQueue')) {
     function psFetchAdviserQueue($conn, array $programKeys, array $adviserBatches) {
-        $rows = [];
-        $result = $conn->query("SELECT * FROM program_shift_requests WHERE status = 'pending_adviser' ORDER BY requested_at ASC, id ASC");
-        if (!$result) {
-            return $rows;
-        }
-
-        while ($row = $result->fetch_assoc()) {
-            if (psRequestMatchesAdviserScope($row, $programKeys, $adviserBatches)) {
-                $rows[] = $row;
-            }
-        }
-
-        return $rows;
+        // Adviser role removed: no adviser queue. Keep function for compatibility and return empty.
+        return [];
     }
 }
 
@@ -2195,7 +2096,7 @@ if (!function_exists('psGetStudentShiftSummary')) {
         $stmt = $conn->prepare(
             "SELECT
                 COUNT(*) AS total,
-                SUM(CASE WHEN status IN ('pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator') THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN status IN ('pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator') THEN 1 ELSE 0 END) AS pending,
                 SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved,
                 SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected
              FROM program_shift_requests
@@ -2245,7 +2146,7 @@ if (!function_exists('psGetAdviserShiftSummary')) {
             'rejected' => 0,
         ];
 
-        $result = $conn->query("SELECT status, current_program FROM program_shift_requests WHERE status IN ('pending_adviser', 'pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'rejected')");
+        $result = $conn->query("SELECT status, current_program FROM program_shift_requests WHERE status IN ('pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator', 'rejected')");
         if (!$result) {
             return $summary;
         }
@@ -2256,10 +2157,8 @@ if (!function_exists('psGetAdviserShiftSummary')) {
             }
 
             $status = (string)($row['status'] ?? '');
-            if ($status === 'pending_adviser') {
+            if (in_array($status, ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
                 $summary['pending']++;
-            } elseif (in_array($status, ['pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator'], true)) {
-                $summary['forwarded']++;
             } elseif ($status === 'rejected') {
                 $summary['rejected']++;
             }
