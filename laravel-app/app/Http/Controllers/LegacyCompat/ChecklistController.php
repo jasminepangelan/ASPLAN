@@ -99,7 +99,7 @@ class ChecklistController extends Controller
         }
     }
 
-    private function saveBulk(Request $request): JsonResponse
+    protected function saveBulk(Request $request): JsonResponse
     {
         $studentId = (string) $request->input('student_id', '');
         $programView = trim((string) $request->input('program_view', ''));
