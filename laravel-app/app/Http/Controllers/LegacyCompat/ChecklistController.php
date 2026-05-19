@@ -102,6 +102,8 @@ class ChecklistController extends Controller
     protected function saveBulk(Request $request): JsonResponse
     {
         $studentId = (string) $request->input('student_id', '');
+        // Use program_view to calculate prerequisites against the same curriculum view
+        // selected by the staff UI, since bulk approvals may target shifted programs.
         $programView = trim((string) $request->input('program_view', ''));
         $courses = $this->parseArray($request->input('courses', []));
         $grades = $this->parseArray($request->input('grades', []));
@@ -193,6 +195,8 @@ class ChecklistController extends Controller
     private function saveStaff(Request $request): JsonResponse
     {
         $studentId = (string) $request->input('student_id', '');
+        // Use program_view for prerequisite blocker checks so staff edits remain
+        // consistent with the current curriculum/program view selected in the UI.
         $programView = trim((string) $request->input('program_view', ''));
         $courses = $this->parseArray($request->input('courses', []));
         $grades = $this->parseArray($request->input('final_grades', []));
