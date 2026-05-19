@@ -3314,10 +3314,6 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         </div>
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-number"><?php echo (int)$programShiftStats['pending_adviser']; ?></div>
-                <div class="stat-label">Pending Adviser</div>
-            </div>
-            <div class="stat-card">
                 <div class="stat-number"><?php echo (int)$programShiftStats['pending_current_coordinator'] + (int)$programShiftStats['pending_destination_coordinator'] + (int)$programShiftStats['pending_coordinator']; ?></div>
                 <div class="stat-label">Pending Coordinator</div>
             </div>

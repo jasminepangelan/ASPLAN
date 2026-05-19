@@ -104,7 +104,7 @@ class ProgramShiftController extends Controller
                 'current_program' => $currentProgram,
                 'requested_program' => $requestedProgram,
                 'reason' => $reason,
-                'status' => 'pending_adviser',
+                'status' => 'pending_current_coordinator',
                 'requested_at' => $now,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -215,9 +215,8 @@ class ProgramShiftController extends Controller
                 return $this->response(false, 'Shift request not found.', 404);
             }
 
-            if ((string) ($requestRow['status'] ?? '') !== 'pending_adviser') {
-                return $this->response(false, 'This request is not pending adviser review.', 422);
-            }
+            // Adviser stage removed: do not allow adviser actions via bridge.
+            return $this->response(false, 'Adviser approval step has been removed. Program shifts now proceed to Program Coordinator review only.', 422);
 
             if (!$this->requestMatchesAdviserScope($requestRow, $programKeys, $adviserBatches)) {
                 return $this->response(false, 'You are not assigned to review this request for the selected program and batch scope.', 403);
@@ -231,7 +230,7 @@ class ProgramShiftController extends Controller
             try {
                 $updated = DB::table('program_shift_requests')
                     ->where('id', $requestId)
-                    ->where('status', 'pending_adviser')
+                    ->where('status', 'pending_current_coordinator')
                     ->update([
                         'status' => $nextStatus,
                         'adviser_action_by' => $actorUsername,
@@ -437,8 +436,8 @@ class ProgramShiftController extends Controller
     private function loadAdviserQueue(array $programKeys, array $adviserBatches): array
     {
         try {
-            $rows = DB::table('program_shift_requests')
-                ->where('status', 'pending_adviser')
+            // Adviser queue disabled — adviser role removed.
+            $rows = [];
                 ->orderBy('requested_at')
                 ->orderBy('id')
                 ->get()
@@ -574,7 +573,7 @@ class ProgramShiftController extends Controller
                 $stats['rejected']++;
             }
 
-            if (in_array($status, array_merge(['pending_adviser'], $this->coordinatorPendingStatuses()), true)) {
+            if (in_array($status, $this->coordinatorPendingStatuses(), true)) {
                 $stats['pending']++;
             }
         }
@@ -634,7 +633,7 @@ class ProgramShiftController extends Controller
         try {
             return DB::table('program_shift_requests')
                 ->where('student_number', $studentNumber)
-                ->whereIn('status', array_merge(['pending_adviser'], $this->coordinatorPendingStatuses()))
+                ->whereIn('status', $this->coordinatorPendingStatuses())
                 ->exists();
         } catch (Throwable $e) {
             return false;

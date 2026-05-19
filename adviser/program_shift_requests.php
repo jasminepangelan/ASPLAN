@@ -608,7 +608,7 @@ closeDBConnection($conn);
             <?php if ($error !== ''): ?><div class="alert err"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
             <div class="stats">
-                <span class="pill pending">Pending Adviser Queue: <?= (int)$queueCount ?></span>
+                <span class="pill pending">Pending Coordinator Review Queue: <?= (int)$queueCount ?></span>
                 <?php if ($search !== ''): ?><span class="pill filtered">Filtered by: <?= htmlspecialchars($search) ?></span><?php endif; ?>
                 <span class="pill filtered">Sort: <?= htmlspecialchars($sort) ?> (<?= htmlspecialchars(strtoupper($dir)) ?>)</span>
             </div>

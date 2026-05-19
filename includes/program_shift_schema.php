@@ -24,7 +24,7 @@ if (!function_exists('psProgramShiftSchemaStatements')) {
                 current_program VARCHAR(255) NOT NULL,
                 requested_program VARCHAR(255) NOT NULL,
                 reason TEXT DEFAULT NULL,
-                status ENUM('pending_adviser','pending_current_coordinator','pending_destination_coordinator','pending_coordinator','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_adviser',
+                status ENUM('pending_current_coordinator','pending_destination_coordinator','pending_coordinator','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_current_coordinator',
                 adviser_action_by VARCHAR(100) DEFAULT NULL,
                 adviser_action_name VARCHAR(255) DEFAULT NULL,
                 adviser_action_at DATETIME DEFAULT NULL,
@@ -43,7 +43,7 @@ if (!function_exists('psProgramShiftSchemaStatements')) {
                 KEY idx_program_shift_student (student_number),
                 KEY idx_program_shift_status (status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
-            'normalize_program_shift_requests_status' => "ALTER TABLE program_shift_requests MODIFY COLUMN status ENUM('pending_adviser','pending_current_coordinator','pending_destination_coordinator','pending_coordinator','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_adviser'",
+            'normalize_program_shift_requests_status' => "ALTER TABLE program_shift_requests MODIFY COLUMN status ENUM('pending_current_coordinator','pending_destination_coordinator','pending_coordinator','approved','rejected','cancelled') NOT NULL DEFAULT 'pending_current_coordinator'",
             'create_program_shift_approvals' => "CREATE TABLE IF NOT EXISTS program_shift_approvals (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 request_id INT NOT NULL,
@@ -124,8 +124,7 @@ if (!function_exists('psProgramShiftSchemaIssues')) {
                 $column = $statusColumn->fetch_assoc();
                 $statusType = strtolower((string) ($column['Type'] ?? ''));
                 $requiredStatuses = [
-                    'pending_adviser',
-                    'pending_current_coordinator',
+                        'pending_current_coordinator',
                     'pending_destination_coordinator',
                     'pending_coordinator',
                     'approved',

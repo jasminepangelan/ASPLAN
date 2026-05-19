@@ -686,7 +686,7 @@ closeDBConnection($conn);
             font-weight: 700;
         }
 
-        .status.pending_adviser, .status.pending_current_coordinator, .status.pending_destination_coordinator, .status.pending_coordinator { background: #fef3c7; color: #92400e; }
+        .status.pending_current_coordinator, .status.pending_destination_coordinator, .status.pending_coordinator { background: #fef3c7; color: #92400e; }
         .status.approved { background: #dcfce7; color: #166534; }
         .status.rejected { background: #fee2e2; color: #b91c1c; }
         .status.cancelled { background: #e5e7eb; color: #374151; }
@@ -794,7 +794,7 @@ closeDBConnection($conn);
         <section class="hero">
             <div class="hero-card">
                 <h1>Shift With Clarity</h1>
-                <p>Submit your destination program and reason. Requests move through Adviser review and Program Coordinator approval. Auto-credit is applied only for strict equivalent courses.</p>
+                <p>Submit your destination program and reason. Requests are reviewed by Program Coordinators only. Auto-credit is applied only for strict equivalent courses.</p>
                 <div class="program-chip"><strong>Current Program</strong><span><?= htmlspecialchars($currentProgram !== '' ? $currentProgram : 'Not Set') ?></span></div>
             </div>
         </section>
@@ -904,7 +904,6 @@ closeDBConnection($conn);
                 <label for="status" style="font-size:13px;">Status Filter</label>
                 <select id="status" name="status" onchange="this.form.submit()">
                     <option value="all" <?= $historyFilter === 'all' ? 'selected' : '' ?>>All</option>
-                    <option value="pending_adviser" <?= $historyFilter === 'pending_adviser' ? 'selected' : '' ?>>Pending Adviser</option>
                     <option value="pending_current_coordinator" <?= $historyFilter === 'pending_current_coordinator' ? 'selected' : '' ?>>Pending Current Program Coordinator</option>
                     <option value="pending_destination_coordinator" <?= $historyFilter === 'pending_destination_coordinator' ? 'selected' : '' ?>>Pending Destination Program Coordinator</option>
                     <option value="pending_coordinator" <?= $historyFilter === 'pending_coordinator' ? 'selected' : '' ?>>Pending Coordinator (Legacy)</option>

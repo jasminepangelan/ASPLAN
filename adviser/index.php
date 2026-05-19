@@ -554,8 +554,8 @@ if (!$bridgeLoaded) {
       <div class="message-container">
         <span class="message-icon">i</span>
         <span class="message-copy">
-          <small>Adviser Snapshot</small>
-          <span><strong><?= (int)($adviserShiftSummary['pending'] ?? 0) ?></strong> pending adviser reviews, <strong><?= (int)($adviserShiftSummary['forwarded'] ?? 0) ?></strong> forwarded to coordinator, and <strong><?= (int)($adviserShiftSummary['rejected'] ?? 0) ?></strong> rejected at adviser stage.</span>
+          <small>Reviewer Snapshot</small>
+          <span><strong><?= (int)($adviserShiftSummary['pending'] ?? 0) ?></strong> pending coordinator reviews, <strong><?= (int)($adviserShiftSummary['forwarded'] ?? 0) ?></strong> forwarded to coordinator, and <strong><?= (int)($adviserShiftSummary['rejected'] ?? 0) ?></strong> rejected by coordinator.</span>
         </span>
       </div>
 
