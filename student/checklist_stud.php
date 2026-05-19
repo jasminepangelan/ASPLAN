@@ -156,9 +156,7 @@ if ($program_abbr === null) {
 }
 
 $available_program_views = [];
-if ($program_abbr !== '') {
-  $available_program_views[$program_abbr] = trim((string)$student_program);
-}
+$shiftProgramViews = [];
 
 if ($student_id !== '') {
   $shift_stmt = $conn->prepare(
@@ -185,22 +183,27 @@ if ($student_id !== '') {
         if ($candidate_abbr === null || $candidate_abbr === '') {
           continue;
         }
-        if (!isset($available_program_views[$candidate_abbr])) {
-          $available_program_views[$candidate_abbr] = $candidate_program;
+        if (!isset($shiftProgramViews[$candidate_abbr])) {
+          $shiftProgramViews[$candidate_abbr] = $candidate_program;
         }
       }
     }
     $shift_stmt->close();
   }
 }
+if ($program_abbr !== '' && !isset($shiftProgramViews[$program_abbr])) {
+  $shiftProgramViews[$program_abbr] = trim((string)$student_program);
+}
+$available_program_views = $shiftProgramViews;
 
 $selected_program_view = trim((string)($_GET['program_view'] ?? ''));
 if ($selected_program_view === '' || !isset($available_program_views[$selected_program_view])) {
-  $selected_program_view = $program_abbr;
-}
-if ($selected_program_view === '' && !empty($available_program_views)) {
-  $keys = array_keys($available_program_views);
-  $selected_program_view = (string)$keys[0];
+  if (!empty($available_program_views)) {
+    $keys = array_keys($available_program_views);
+    $selected_program_view = (string)$keys[0];
+  } else {
+    $selected_program_view = $program_abbr;
+  }
 }
 
 $selected_program_label = $available_program_views[$selected_program_view] ?? (string)$student_program;
