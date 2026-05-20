@@ -3,7 +3,7 @@ require_once __DIR__ . '/../config/config.php';
 
 // Check if the user is already logged in
 if (!isset($_SESSION['admin_username'])) {
-    header("Location: /PEAS/admin/login.php");
+    header("Location: login.php");
     exit();
 }
 
