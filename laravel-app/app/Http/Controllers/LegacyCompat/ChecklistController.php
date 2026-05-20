@@ -1119,6 +1119,82 @@ class ChecklistController extends Controller
         $programLabels = $this->resolveChecklistProgramLabels($programLabel, $programKey);
         $curriculumYear = $this->resolveStudentCurriculumYear($studentId, $programLabel, $programKey, $storedCurriculumYear, $storedProgramLabel);
         if (Schema::hasTable('curriculum_courses') && !empty($programLabels)) {
+            // Fast path: exact program match (index-friendly). If it returns nothing, fall back
+            // to legacy TRIM/UPPER matching to preserve compatibility with messy data.
+            $fastLabels = [];
+            foreach ($programLabels as $candidateLabel) {
+                $candidateLabel = trim((string) $candidateLabel);
+                if ($candidateLabel !== '') {
+                    $fastLabels[$candidateLabel] = true;
+                }
+            }
+
+            if (!empty($fastLabels)) {
+                $conditions = [];
+                $bindings = [$studentId];
+                foreach (array_keys($fastLabels) as $candidateLabel) {
+                    $conditions[] = 'cc.program = ?';
+                    $bindings[] = $candidateLabel;
+                }
+
+                $curriculumYearClause = '';
+                if ($curriculumYear !== '') {
+                    $curriculumYearClause = ' AND cc.curriculum_year = ?';
+                    $bindings[] = $curriculumYear;
+                }
+
+                $sql = '
+                    SELECT
+                        TRIM(cc.course_code) AS course_code,
+                        TRIM(cc.course_title) AS course_title,
+                        IFNULL(cc.credit_units_lec, 0) AS credit_unit_lec,
+                        IFNULL(cc.credit_units_lab, 0) AS credit_unit_lab,
+                        IFNULL(cc.lect_hrs_lec, 0) AS contact_hrs_lec,
+                        IFNULL(cc.lect_hrs_lab, 0) AS contact_hrs_lab,
+                        TRIM(IFNULL(cc.pre_requisite, "NONE")) AS pre_requisite,
+                        TRIM(cc.year_level) AS year,
+                        TRIM(cc.semester) AS semester,
+                        sc.final_grade,
+                        sc.evaluator_remarks,
+                        sc.professor_instructor,
+                        sc.final_grade_2,
+                        sc.evaluator_remarks_2,
+                        sc.final_grade_3,
+                        sc.evaluator_remarks_3,
+                        sc.approved_by,
+                        sc.submitted_by
+                    FROM curriculum_courses cc
+                    LEFT JOIN student_checklists sc
+                        ON TRIM(cc.course_code) = sc.course_code AND sc.student_id = ?
+                    WHERE (' . implode(' OR ', $conditions) . ')' . $curriculumYearClause . '
+                    ORDER BY
+                        IFNULL(cc.curriculum_year, 0),
+                        CASE UPPER(TRIM(cc.year_level))
+                            WHEN "FIRST YEAR" THEN 1
+                            WHEN "SECOND YEAR" THEN 2
+                            WHEN "THIRD YEAR" THEN 3
+                            WHEN "FOURTH YEAR" THEN 4
+                            ELSE 99
+                        END,
+                        CASE UPPER(TRIM(cc.semester))
+                            WHEN "FIRST SEMESTER" THEN 1
+                            WHEN "SECOND SEMESTER" THEN 2
+                            WHEN "MID YEAR" THEN 3
+                            WHEN "MIDYEAR" THEN 3
+                            WHEN "SUMMER" THEN 3
+                            ELSE 99
+                        END,
+                        cc.id,
+                        TRIM(cc.course_code)
+                ';
+
+                $rows = DB::select($sql, $bindings);
+                $courses = array_map(static fn ($row): array => (array) $row, $rows);
+                if (!empty($courses)) {
+                    return $this->normalizeCourseRows($courses);
+                }
+            }
+
             $conditions = [];
             $bindings = [$studentId];
             foreach ($programLabels as $candidateLabel) {
@@ -1202,7 +1278,9 @@ class ChecklistController extends Controller
 
         $curriculumYearClause = '';
         if ($curriculumYear !== '') {
-            $curriculumYearClause = ' AND TRIM(SUBSTRING_INDEX(c.curriculumyear_coursecode, "_", 1)) = ?';
+            // Index-friendly year filter: curriculumyear_coursecode is expected to start with "YYYY_".
+            // Emits SQL: LIKE CONCAT(?, '\_%') ESCAPE '\'
+            $curriculumYearClause = " AND c.curriculumyear_coursecode LIKE CONCAT(?, '\\\\_%') ESCAPE '\\\\'";
             $bindings[] = $curriculumYear;
         }
 

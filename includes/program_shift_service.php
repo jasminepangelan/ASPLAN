@@ -267,7 +267,9 @@ if (!function_exists('psGetProgramOptions')) {
             ['table' => 'program_shift_requests', 'column' => 'requested_program'],
         ];
 
-        $unique = [];
+        // Build a single UNION query to reduce DB round-trips.
+        // Avoid TRIM()/UPPER() in SQL so indexes can help when present.
+        $selects = [];
         foreach ($sources as $source) {
             $table = (string)$source['table'];
             $column = (string)$source['column'];
@@ -275,12 +277,19 @@ if (!function_exists('psGetProgramOptions')) {
                 continue;
             }
 
-            try {
-                $result = $conn->query("SELECT DISTINCT TRIM($column) AS program FROM $table WHERE $column IS NOT NULL AND TRIM($column) != '' ORDER BY $column ASC");
-                if (!$result) {
-                    continue;
-                }
+            // $table/$column are fixed internal identifiers.
+            $selects[] = "SELECT DISTINCT `{$column}` AS program FROM `{$table}` WHERE `{$column}` IS NOT NULL AND `{$column}` <> ''";
+        }
 
+        if (empty($selects)) {
+            return [];
+        }
+
+        $unique = [];
+        try {
+            $sql = "SELECT program FROM (" . implode(' UNION ALL ', $selects) . ") AS program_sources";
+            $result = $conn->query($sql);
+            if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $program = trim((string)($row['program'] ?? ''));
                     if ($program === '') {
@@ -292,9 +301,9 @@ if (!function_exists('psGetProgramOptions')) {
                         $unique[$key] = $program;
                     }
                 }
-            } catch (Throwable $e) {
-                continue;
             }
+        } catch (Throwable $e) {
+            return [];
         }
 
         $options = array_values($unique);
@@ -906,6 +915,97 @@ if (!function_exists('psFetchChecklistCourses')) {
         $curriculumYear = psResolveStudentCurriculumYear($conn, $studentId, $programLabel, $programKey);
 
         if (psTableExists($conn, 'curriculum_courses') && !empty($programLabels)) {
+            // Fast path: exact program match (index-friendly). If it returns nothing, fall back
+            // to the legacy TRIM/UPPER matching to preserve compatibility with messy data.
+            $fastLabels = [];
+            foreach ($programLabels as $candidateLabel) {
+                $candidateLabel = trim((string)$candidateLabel);
+                if ($candidateLabel !== '') {
+                    $fastLabels[] = $candidateLabel;
+                }
+            }
+            $fastLabels = array_values(array_unique($fastLabels, SORT_STRING));
+
+            if (!empty($fastLabels)) {
+                $conditions = [];
+                $params = [$studentId];
+                $types = 's';
+                foreach ($fastLabels as $candidateLabel) {
+                    $conditions[] = 'cc.program = ?';
+                    $params[] = $candidateLabel;
+                    $types .= 's';
+                }
+
+                $curriculumYearClause = '';
+                if ($curriculumYear !== '') {
+                    $curriculumYearClause = ' AND cc.curriculum_year = ?';
+                    $params[] = $curriculumYear;
+                    $types .= 's';
+                }
+
+                $sql = "
+                    SELECT
+                        TRIM(cc.course_code) AS course_code,
+                        TRIM(cc.course_title) AS course_title,
+                        IFNULL(cc.credit_units_lec, 0) AS credit_unit_lec,
+                        IFNULL(cc.credit_units_lab, 0) AS credit_unit_lab,
+                        IFNULL(cc.lect_hrs_lec, 0) AS contact_hrs_lec,
+                        IFNULL(cc.lect_hrs_lab, 0) AS contact_hrs_lab,
+                        TRIM(IFNULL(cc.pre_requisite, 'NONE')) AS pre_requisite,
+                        TRIM(cc.year_level) AS year,
+                        TRIM(cc.semester) AS semester,
+                        sc.final_grade,
+                        sc.evaluator_remarks,
+                        sc.professor_instructor,
+                        sc.final_grade_2,
+                        sc.evaluator_remarks_2,
+                        sc.final_grade_3,
+                        sc.evaluator_remarks_3,
+                        sc.approved_by,
+                        sc.submitted_by
+                    FROM curriculum_courses cc
+                    LEFT JOIN student_checklists sc
+                        ON TRIM(cc.course_code) = sc.course_code AND sc.student_id = ?
+                    WHERE (" . implode(' OR ', $conditions) . ")" . $curriculumYearClause . "
+                    ORDER BY
+                        IFNULL(cc.curriculum_year, 0),
+                        CASE UPPER(TRIM(cc.year_level))
+                            WHEN 'FIRST YEAR' THEN 1
+                            WHEN 'SECOND YEAR' THEN 2
+                            WHEN 'THIRD YEAR' THEN 3
+                            WHEN 'FOURTH YEAR' THEN 4
+                            ELSE 99
+                        END,
+                        CASE UPPER(TRIM(cc.semester))
+                            WHEN 'FIRST SEMESTER' THEN 1
+                            WHEN 'SECOND SEMESTER' THEN 2
+                            WHEN 'MID YEAR' THEN 3
+                            WHEN 'MIDYEAR' THEN 3
+                            WHEN 'SUMMER' THEN 3
+                            ELSE 99
+                        END,
+                        cc.id,
+                        TRIM(cc.course_code)
+                ";
+
+                $stmt = $conn->prepare($sql);
+                if ($stmt) {
+                    $stmt->bind_param($types, ...$params);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    $rows = [];
+                    while ($result && ($row = $result->fetch_assoc())) {
+                        $rows[] = $row;
+                    }
+                    $stmt->close();
+
+                    if (!empty($rows)) {
+                        return psNormalizeCourseRows($rows);
+                    }
+                }
+            }
+
+            // Compatibility fallback: preserve original behavior (TRIM/UPPER matching).
             $conditions = [];
             $params = [$studentId];
             $types = 's';
@@ -1005,7 +1105,9 @@ if (!function_exists('psFetchChecklistCourses')) {
 
         $curriculumYearClause = '';
         if ($curriculumYear !== '') {
-            $curriculumYearClause = ' AND TRIM(SUBSTRING_INDEX(c.curriculumyear_coursecode, \'_\', 1)) = ?';
+            // Index-friendly year filter: curriculumyear_coursecode is expected to start with "YYYY_".
+            // Emits SQL: LIKE CONCAT(?, '\_%') ESCAPE '\'
+            $curriculumYearClause = " AND c.curriculumyear_coursecode LIKE CONCAT(?, '\\\\_%') ESCAPE '\\\\'";
             $params[] = $curriculumYear;
             $types .= 's';
         }
@@ -1979,7 +2081,13 @@ if (!function_exists('psHandleCoordinatorDecision')) {
 if (!function_exists('psFetchStudentRequestHistory')) {
     function psFetchStudentRequestHistory($conn, $studentNumber) {
         $rows = [];
-        $stmt = $conn->prepare('SELECT * FROM program_shift_requests WHERE student_number = ? ORDER BY requested_at DESC, id DESC');
+        // Fetch only the columns needed by student/program_shift_request.php.
+        $stmt = $conn->prepare(
+            'SELECT request_code, student_number, current_program, requested_program, status, adviser_comment, coordinator_comment, execution_note, requested_at'
+            . ' FROM program_shift_requests'
+            . ' WHERE student_number = ?'
+            . ' ORDER BY requested_at DESC, id DESC'
+        );
         if (!$stmt) {
             return $rows;
         }
