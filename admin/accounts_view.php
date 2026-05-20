@@ -338,9 +338,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
     if ($postedType === 'program_coordinators') {
         $coordinatorAction = trim((string)($_POST['coordinator_action'] ?? ''));
         $coordinatorId = isset($_POST['coordinator_id']) && is_numeric($_POST['coordinator_id']) ? (int)$_POST['coordinator_id'] : 0;
+        $hasCoordinatorId = $coordinatorId > 0;
         $originalUsername = trim((string)($_POST['original_username'] ?? ''));
 
-        if ($coordinatorId <= 0 || $originalUsername === '' || !in_array($coordinatorAction, ['edit', 'delete'], true)) {
+        if ($originalUsername === '' || !in_array($coordinatorAction, ['edit', 'delete'], true)) {
             header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Invalid program coordinator action request.'));
             exit();
         }
@@ -358,11 +359,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
             try {
                 avDeleteCoordinatorVerificationRecord($actionConn, $originalUsername);
 
-                $stmt = $actionConn->prepare("DELETE FROM `$coordinatorTable` WHERE username = ? AND id = ?");
-                if (!$stmt) {
-                    throw new RuntimeException('Failed to prepare program coordinator deletion.');
+                if ($hasCoordinatorId) {
+                    $stmt = $actionConn->prepare("DELETE FROM `$coordinatorTable` WHERE username = ? AND id = ?");
+                    if (!$stmt) {
+                        throw new RuntimeException('Failed to prepare program coordinator deletion.');
+                    }
+                    $stmt->bind_param('si', $originalUsername, $coordinatorId);
+                } else {
+                    $stmt = $actionConn->prepare("DELETE FROM `$coordinatorTable` WHERE username = ? AND (id IS NULL OR id = 0)");
+                    if (!$stmt) {
+                        throw new RuntimeException('Failed to prepare program coordinator deletion.');
+                    }
+                    $stmt->bind_param('s', $originalUsername);
                 }
-                $stmt->bind_param('si', $originalUsername, $coordinatorId);
                 $stmt->execute();
                 $deleted = $stmt->affected_rows > 0;
                 $stmt->close();
@@ -415,13 +424,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
             exit();
         }
 
-        $dupStmt = $actionConn->prepare("SELECT username FROM `$coordinatorTable` WHERE username = ? AND id <> ? LIMIT 1");
-        if (!$dupStmt) {
-            closeDBConnection($actionConn);
-            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to validate program coordinator username.'));
-            exit();
+        if ($hasCoordinatorId) {
+            $dupStmt = $actionConn->prepare("SELECT username FROM `$coordinatorTable` WHERE username = ? AND id <> ? LIMIT 1");
+            if (!$dupStmt) {
+                closeDBConnection($actionConn);
+                header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to validate program coordinator username.'));
+                exit();
+            }
+            $dupStmt->bind_param('si', $username, $coordinatorId);
+        } else {
+            $dupStmt = $actionConn->prepare("SELECT username FROM `$coordinatorTable` WHERE username = ? AND username <> ? LIMIT 1");
+            if (!$dupStmt) {
+                closeDBConnection($actionConn);
+                header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to validate program coordinator username.'));
+                exit();
+            }
+            $dupStmt->bind_param('ss', $username, $originalUsername);
         }
-        $dupStmt->bind_param('si', $username, $coordinatorId);
         $dupStmt->execute();
         $dupResult = $dupStmt->get_result();
         $duplicateExists = $dupResult && $dupResult->num_rows > 0;
@@ -437,17 +456,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
         try {
             if ($hasProgramColumn) {
                 $program = implode(', ', $selectedPrograms);
-                $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ? WHERE username = ? AND id = ?");
-                if (!$stmt) {
-                    throw new RuntimeException('Failed to prepare program coordinator update.');
+                if ($hasCoordinatorId) {
+                    $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ? WHERE username = ? AND id = ?");
+                    if (!$stmt) {
+                        throw new RuntimeException('Failed to prepare program coordinator update.');
+                    }
+                    $stmt->bind_param('sssssssi', $lastName, $firstName, $middleName, $username, $program, $sex, $originalUsername, $coordinatorId);
+                } else {
+                    $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ? WHERE username = ? AND (id IS NULL OR id = 0)");
+                    if (!$stmt) {
+                        throw new RuntimeException('Failed to prepare program coordinator update.');
+                    }
+                    $stmt->bind_param('sssssss', $lastName, $firstName, $middleName, $username, $program, $sex, $originalUsername);
                 }
-                $stmt->bind_param('sssssssi', $lastName, $firstName, $middleName, $username, $program, $sex, $originalUsername, $coordinatorId);
             } else {
-                $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, sex = ? WHERE username = ? AND id = ?");
-                if (!$stmt) {
-                    throw new RuntimeException('Failed to prepare program coordinator update.');
+                if ($hasCoordinatorId) {
+                    $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, sex = ? WHERE username = ? AND id = ?");
+                    if (!$stmt) {
+                        throw new RuntimeException('Failed to prepare program coordinator update.');
+                    }
+                    $stmt->bind_param('ssssssi', $lastName, $firstName, $middleName, $username, $sex, $originalUsername, $coordinatorId);
+                } else {
+                    $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, sex = ? WHERE username = ? AND (id IS NULL OR id = 0)");
+                    if (!$stmt) {
+                        throw new RuntimeException('Failed to prepare program coordinator update.');
+                    }
+                    $stmt->bind_param('ssssss', $lastName, $firstName, $middleName, $username, $sex, $originalUsername);
                 }
-                $stmt->bind_param('ssssssi', $lastName, $firstName, $middleName, $username, $sex, $originalUsername, $coordinatorId);
             }
 
             $stmt->execute();
