@@ -52,6 +52,21 @@ function csStaffChecklistIsPassingFinalGradeLocal($grade): bool
     return false;
 }
 
+function csStaffChecklistResolvePersistedRemarkLocal($incomingRemark, $existingRemark): string
+{
+    $incomingRemark = trim((string)$incomingRemark);
+    if ($incomingRemark !== '') {
+        return $incomingRemark;
+    }
+
+    $existingRemark = trim((string)$existingRemark);
+    if ($existingRemark !== '' && stripos($existingRemark, 'credited') !== false) {
+        return $existingRemark;
+    }
+
+    return $incomingRemark;
+}
+
 function csStaffChecklistResolveEffectiveApprovedGradeLocal(array $row): ?string
 {
     $attempts = [
@@ -534,12 +549,32 @@ try {
         throw new Exception('Unable to process the request. Please try again later.');
     }
 
+    $existingRemarkStmt = $conn->prepare("
+        SELECT evaluator_remarks
+        FROM student_checklists
+        WHERE student_id = ? AND course_code = ?
+        LIMIT 1
+    ");
+
     $successful = 0;
     for ($i = 0; $i < count($courses); $i++) {
         $professor_instructor = isset($professor_instructors[$i]) ? $professor_instructors[$i] : '';
-        $remarks = $evaluator_remarks[$i];
+        $courseCode = trim((string)($courses[$i] ?? ''));
+        $remarks = trim((string)($evaluator_remarks[$i] ?? ''));
         $fg2 = isset($final_grades_2[$i]) ? $final_grades_2[$i] : '';
         $fg3 = isset($final_grades_3[$i]) ? $final_grades_3[$i] : '';
+
+        if ($existingRemarkStmt && $courseCode !== '') {
+            $existingRemarkStmt->bind_param('ss', $student_id, $courseCode);
+            if ($existingRemarkStmt->execute()) {
+                $existingRemarkResult = $existingRemarkStmt->get_result();
+                $existingRemarkRow = $existingRemarkResult ? $existingRemarkResult->fetch_assoc() : null;
+                $remarks = csStaffChecklistResolvePersistedRemarkLocal(
+                    $remarks,
+                    $existingRemarkRow['evaluator_remarks'] ?? ''
+                );
+            }
+        }
 
         $fg1Norm = trim((string)($final_grades[$i] ?? ''));
         $fg2Norm = trim((string)$fg2);
@@ -548,7 +583,6 @@ try {
             || ($fg2Norm !== '' && strtoupper($fg2Norm) !== 'NO GRADE')
             || ($fg3Norm !== '' && strtoupper($fg3Norm) !== 'NO GRADE');
 
-        $courseCode = (string)($courses[$i] ?? '');
         $courseCodeNorm = csStaffChecklistNormalizeCourseTokenLocal($courseCode);
         if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
             $errors[] = "Prerequisite(s) not cleared for {$courseCode}: " . implode(', ', (array)$prereqBlockersByCourse[$courseCodeNorm]);
@@ -578,6 +612,10 @@ try {
             continue;
         }
         $successful++;
+    }
+
+    if ($existingRemarkStmt) {
+        $existingRemarkStmt->close();
     }
 
     $stmt->close();

@@ -245,7 +245,6 @@ class ChecklistController extends Controller
                 $grade2 = $this->normalizeString($grades2[$index] ?? '');
                 $grade3 = $this->normalizeString($grades3[$index] ?? '');
                 $remark = $this->normalizeString($remarks[$index] ?? '');
-                $isApproved = ($remark === 'Approved' && $grade !== '' && $grade !== 'No Grade');
 
                 $hasIncomingSubmittedAttempt = ($grade !== '' && $grade !== 'No Grade')
                     || ($grade2 !== '' && $grade2 !== 'No Grade')
@@ -257,10 +256,13 @@ class ChecklistController extends Controller
                 }
 
                 $existing = DB::table('student_checklists')
-                    ->select(['grade_submitted_at', 'submitted_by'])
+                    ->select(['grade_submitted_at', 'submitted_by', 'evaluator_remarks'])
                     ->where('student_id', $studentId)
                     ->where('course_code', $courseCode)
                     ->first();
+
+                $remark = $this->resolveStaffRemarkForSave($remark, $existing?->evaluator_remarks ?? null);
+                $isApproved = ($remark === 'Approved' && $grade !== '' && $grade !== 'No Grade');
 
                 $payload = [
                     'final_grade' => $grade,
@@ -685,6 +687,21 @@ class ChecklistController extends Controller
         }
 
         return $this->normalizeString($values[$index] ?? '');
+    }
+
+    private function resolveStaffRemarkForSave(mixed $incomingRemark, mixed $existingRemark): string
+    {
+        $incoming = $this->normalizeString($incomingRemark);
+        if ($incoming !== '') {
+            return $incoming;
+        }
+
+        $existing = $this->normalizeString($existingRemark);
+        if ($existing !== '' && str_contains(strtolower($existing), 'credited')) {
+            return $existing;
+        }
+
+        return $incoming;
     }
 
     private function resolveStudentAttemptRemark(mixed $incomingGrade, mixed $existingGrade, mixed $existingRemark): string

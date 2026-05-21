@@ -1429,6 +1429,12 @@ foreach ($all_courses as $csRow) {
             $show_3rd    = $show_2nd && isFailingGrade($grade2_val);
             $grade_opts  = ['', 'No Grade', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'Passed', 'Failed', 'US', 'S', 'INC', 'DRP'];
             $remark_opts = ['', 'Approved', 'Pending', 'Disapproved'];
+            foreach ([$effectiveRemark, $remark1_val, $remark2_val, $remark3_val] as $existingRemark) {
+                $existingRemark = trim((string)$existingRemark);
+                if ($existingRemark !== '' && !in_array($existingRemark, $remark_opts, true)) {
+                    $remark_opts[] = $existingRemark;
+                }
+            }
             $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "'";
             $lockTitleAttr = $isPrereqBlocked ? " title='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "'" : '';
             $disabledAttr = $isPrereqBlocked ? " disabled" . $lockTitleAttr : '';
