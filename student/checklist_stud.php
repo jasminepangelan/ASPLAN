@@ -198,7 +198,10 @@ $available_program_views = $shiftProgramViews;
 
 $selected_program_view = trim((string)($_GET['program_view'] ?? ''));
 if ($selected_program_view === '' || !isset($available_program_views[$selected_program_view])) {
-  if (!empty($available_program_views)) {
+  if ($program_abbr !== '' && isset($available_program_views[$program_abbr])) {
+    // Default to the student's current program from student_info.
+    $selected_program_view = (string)$program_abbr;
+  } elseif (!empty($available_program_views)) {
     $keys = array_keys($available_program_views);
     $selected_program_view = (string)$keys[0];
   } else {
