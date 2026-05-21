@@ -1350,24 +1350,30 @@ if (!function_exists('psCreateStudentRequest')) {
             'requested_program' => $requestedProgram,
         ]);
 
-        psSendProgramShiftEmail(
-            (string)($studentRow['email'] ?? ''),
-            $studentName,
-            'submitted',
-            $requestCode,
-            $currentProgram,
-            $requestedProgram,
-            'Your program shift request has been submitted successfully and is waiting for review.'
-        );
+        if (psShouldSendProgramShiftEmails()) {
+            psSendProgramShiftEmail(
+                (string)($studentRow['email'] ?? ''),
+                $studentName,
+                'submitted',
+                $requestCode,
+                $currentProgram,
+                $requestedProgram,
+                'Your program shift request has been submitted successfully and is waiting for review.'
+            );
+        }
 
-        psNotifyAdvisersOfProgramShiftRequest(
-            $conn,
-            $studentRow,
-            $requestCode,
-            $currentProgram,
-            $requestedProgram,
-            $reason
-        );
+        // Adviser review is no longer part of the current shift workflow, so
+        // adviser notifications remain disabled unless explicitly re-enabled.
+        if (psShouldNotifyProgramShiftAdvisers()) {
+            psNotifyAdvisersOfProgramShiftRequest(
+                $conn,
+                $studentRow,
+                $requestCode,
+                $currentProgram,
+                $requestedProgram,
+                $reason
+            );
+        }
 
         return [
             'ok' => true,
@@ -2081,15 +2087,17 @@ if (!function_exists('psHandleCoordinatorDecision')) {
                         : 'Your request was rejected by the Program Coordinator of your requested program.';
                     $statusLabel = 'Rejected by Program Coordinator';
                 }
-                psSendProgramShiftEmail(
-                    (string)($studentRow['email'] ?? ''),
-                    (string)($request['student_name'] ?? ''),
-                    $statusLabel,
-                    (string)($request['request_code'] ?? ''),
-                    (string)($request['current_program'] ?? ''),
-                    (string)($request['requested_program'] ?? ''),
-                    $details
-                );
+                if (psShouldSendProgramShiftEmails()) {
+                    psSendProgramShiftEmail(
+                        (string)($studentRow['email'] ?? ''),
+                        (string)($request['student_name'] ?? ''),
+                        $statusLabel,
+                        (string)($request['request_code'] ?? ''),
+                        (string)($request['current_program'] ?? ''),
+                        (string)($request['requested_program'] ?? ''),
+                        $details
+                    );
+                }
             }
 
             return [
