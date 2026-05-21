@@ -243,16 +243,24 @@ if (!function_exists('psAddAuditLog')) {
 
 if (!function_exists('psTableExists')) {
     function psTableExists($conn, $tableName) {
+        static $cache = [];
+
         $tableName = trim((string)$tableName);
         if ($tableName === '') {
             return false;
         }
 
+        if (array_key_exists($tableName, $cache)) {
+            return $cache[$tableName];
+        }
+
         $tableSafe = $conn->real_escape_string($tableName);
         try {
             $result = $conn->query("SHOW TABLES LIKE '$tableSafe'");
-            return $result && $result->num_rows > 0;
+            $cache[$tableName] = (bool) ($result && $result->num_rows > 0);
+            return $cache[$tableName];
         } catch (Throwable $e) {
+            $cache[$tableName] = false;
             return false;
         }
     }
@@ -1399,18 +1407,27 @@ if (!function_exists('psSendProgramShiftEmail')) {
 
 if (!function_exists('psTableHasColumn')) {
     function psTableHasColumn($conn, $tableName, $columnName) {
+        static $cache = [];
+
         $tableName = trim((string)$tableName);
         $columnName = trim((string)$columnName);
         if ($tableName === '' || $columnName === '') {
             return false;
         }
 
+        $cacheKey = $tableName . '::' . $columnName;
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
         try {
             $tableSafe = $conn->real_escape_string($tableName);
             $columnSafe = $conn->real_escape_string($columnName);
             $result = $conn->query("SHOW COLUMNS FROM `$tableSafe` LIKE '$columnSafe'");
-            return $result && $result->num_rows > 0;
+            $cache[$cacheKey] = (bool) ($result && $result->num_rows > 0);
+            return $cache[$cacheKey];
         } catch (Throwable $e) {
+            $cache[$cacheKey] = false;
             return false;
         }
     }
@@ -1509,6 +1526,18 @@ if (!function_exists('psNotifyAdvisersOfProgramShiftRequest')) {
 
         $stmt->close();
         return $sent;
+    }
+}
+
+if (!function_exists('psShouldSendProgramShiftEmails')) {
+    function psShouldSendProgramShiftEmails(): bool {
+        return filter_var((string) (getenv('PROGRAM_SHIFT_SEND_EMAILS') ?: '1'), FILTER_VALIDATE_BOOLEAN);
+    }
+}
+
+if (!function_exists('psShouldNotifyProgramShiftAdvisers')) {
+    function psShouldNotifyProgramShiftAdvisers(): bool {
+        return filter_var((string) (getenv('PROGRAM_SHIFT_NOTIFY_ADVISERS') ?: '0'), FILTER_VALIDATE_BOOLEAN);
     }
 }
 

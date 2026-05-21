@@ -35,6 +35,9 @@ class EmailNotification {
             $this->mailer->Password = SMTP_PASSWORD ?? '';
             $this->mailer->SMTPSecure = SMTP_SECURE ?? 'tls';
             $this->mailer->Port = SMTP_PORT ?? 587;
+            $this->mailer->Timeout = SMTP_TIMEOUT ?? 5;
+            $this->mailer->Timelimit = SMTP_TIMEOUT ?? 5;
+            $this->mailer->SMTPKeepAlive = false;
             $this->mailer->CharSet = 'UTF-8';
             $this->mailer->isHTML(true);
         } catch (Exception $e) {
