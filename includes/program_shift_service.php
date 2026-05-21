@@ -2153,7 +2153,22 @@ if (!function_exists('psFetchCoordinatorQueue')) {
     function psFetchCoordinatorQueue($conn, array $programKeys) {
         $rows = [];
         $statuses = "'" . implode("','", array_map([$conn, 'real_escape_string'], psCoordinatorPendingStatuses())) . "'";
-        $result = $conn->query("SELECT * FROM program_shift_requests WHERE status IN ($statuses) ORDER BY adviser_action_at ASC, requested_at ASC, id ASC");
+        $result = $conn->query(
+            "SELECT
+                id,
+                request_code,
+                student_number,
+                student_name,
+                current_program,
+                requested_program,
+                status,
+                adviser_comment,
+                coordinator_comment,
+                requested_at
+             FROM program_shift_requests
+             WHERE status IN ($statuses)
+             ORDER BY requested_at DESC, id DESC"
+        );
         if (!$result) {
             return $rows;
         }

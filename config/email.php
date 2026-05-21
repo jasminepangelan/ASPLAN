@@ -42,7 +42,6 @@ define('SMTP_PORT', (int) (normalizeMailEnvValue(getenv('SMTP_PORT')) ?: 587));
 define('SMTP_SECURE', normalizeMailEnvValue(getenv('SMTP_SECURE')) ?: 'tls');
 define('SMTP_AUTH', filter_var(normalizeMailEnvValue(getenv('SMTP_AUTH')) ?: '1', FILTER_VALIDATE_BOOL));
 define('SMTP_TIMEOUT', (int) (normalizeMailEnvValue(getenv('SMTP_TIMEOUT')) ?: 5));
-define('SMTP_CONNECT_TIMEOUT', (int) (normalizeMailEnvValue(getenv('SMTP_CONNECT_TIMEOUT')) ?: 5));
 
 // Email Credentials - loaded from environment variables
 define('SMTP_USERNAME', normalizeMailEnvValue(getenv('SMTP_USERNAME')) ?: '');
