@@ -76,6 +76,142 @@ function srsClearStudentRejectionLog($conn, string $studentId): void {
     }
 }
 
+function srsDeleteStudentRowsByColumn($conn, string $tableName, string $columnName, string $studentId): bool {
+    if (!is_object($conn) || !method_exists($conn, 'prepare')) {
+        return false;
+    }
+
+    if (function_exists('psTableExists') && !psTableExists($conn, $tableName)) {
+        return true;
+    }
+
+    $safeTableName = preg_replace('/[^A-Za-z0-9_]/', '', $tableName);
+    $safeColumnName = preg_replace('/[^A-Za-z0-9_]/', '', $columnName);
+    if ($safeTableName === '' || $safeColumnName === '') {
+        return false;
+    }
+
+    $stmt = $conn->prepare("DELETE FROM `{$safeTableName}` WHERE `{$safeColumnName}` = ?");
+    if (!$stmt || !method_exists($stmt, 'bind_param')) {
+        return false;
+    }
+
+    $stmt->bind_param('s', $studentId);
+    $executed = $stmt->execute();
+    $stmt->close();
+
+    return (bool) $executed;
+}
+
+function srsFetchProgramShiftRequestIds($conn, string $studentId): array {
+    $requestIds = [];
+
+    if (!is_object($conn) || !method_exists($conn, 'prepare')) {
+        return $requestIds;
+    }
+
+    if (function_exists('psTableExists') && !psTableExists($conn, 'program_shift_requests')) {
+        return $requestIds;
+    }
+
+    $stmt = $conn->prepare('SELECT id FROM program_shift_requests WHERE student_number = ?');
+    if (!$stmt || !method_exists($stmt, 'bind_param')) {
+        return $requestIds;
+    }
+
+    $stmt->bind_param('s', $studentId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($result && ($row = $result->fetch_assoc())) {
+        $requestId = (int)($row['id'] ?? 0);
+        if ($requestId > 0) {
+            $requestIds[] = $requestId;
+        }
+    }
+    $stmt->close();
+
+    return $requestIds;
+}
+
+function srsDeleteProgramShiftRowsByRequestIds($conn, string $tableName, array $requestIds): bool {
+    if (empty($requestIds)) {
+        return true;
+    }
+
+    if (!is_object($conn) || !method_exists($conn, 'query')) {
+        return false;
+    }
+
+    if (function_exists('psTableExists') && !psTableExists($conn, $tableName)) {
+        return true;
+    }
+
+    $safeTableName = preg_replace('/[^A-Za-z0-9_]/', '', $tableName);
+    if ($safeTableName === '') {
+        return false;
+    }
+
+    $requestIds = array_values(array_filter(array_map('intval', $requestIds), static function ($value) {
+        return $value > 0;
+    }));
+    if (empty($requestIds)) {
+        return true;
+    }
+
+    $idList = implode(',', $requestIds);
+    return (bool) $conn->query("DELETE FROM `{$safeTableName}` WHERE request_id IN ({$idList})");
+}
+
+function srsPurgeOrphanedStudentArtifacts($conn, string $studentId): array {
+    if (!is_object($conn) || !method_exists($conn, 'prepare')) {
+        return ['success' => false, 'error' => 'Invalid database connection type'];
+    }
+
+    $studentId = trim($studentId);
+    if ($studentId === '') {
+        return ['success' => false, 'error' => 'Student ID is required'];
+    }
+
+    $requestIds = srsFetchProgramShiftRequestIds($conn, $studentId);
+
+    $deleteTargets = [
+        ['table' => 'student_checklists', 'column' => 'student_id'],
+        ['table' => 'student_study_plan_overrides', 'column' => 'student_id'],
+        ['table' => 'student_study_plan_course_additions', 'column' => 'student_id'],
+        ['table' => 'student_email_verifications', 'column' => 'student_number'],
+        ['table' => 'student_rejection_log', 'column' => 'student_number'],
+        ['table' => 'password_history', 'column' => 'student_number'],
+        ['table' => 'program_shift_credit_map', 'column' => 'student_number'],
+    ];
+
+    foreach ($deleteTargets as $target) {
+        if (!srsDeleteStudentRowsByColumn($conn, (string)$target['table'], (string)$target['column'], $studentId)) {
+            return [
+                'success' => false,
+                'error' => 'Failed to clear stale student data from ' . $target['table'] . '.',
+            ];
+        }
+    }
+
+    foreach (['program_shift_approvals', 'program_shift_audit'] as $tableName) {
+        if (!srsDeleteProgramShiftRowsByRequestIds($conn, $tableName, $requestIds)) {
+            return [
+                'success' => false,
+                'error' => 'Failed to clear stale student shift history from ' . $tableName . '.',
+            ];
+        }
+    }
+
+    if (!srsDeleteStudentRowsByColumn($conn, 'program_shift_requests', 'student_number', $studentId)) {
+        return [
+            'success' => false,
+            'error' => 'Failed to clear stale student data from program_shift_requests.',
+        ];
+    }
+
+    return ['success' => true, 'error' => null];
+}
+
 function srsLoadExistingStudentRegistrationRow($conn, string $studentId): ?array {
     if ($conn instanceof PDO) {
         $stmt = $conn->prepare('SELECT student_number, status FROM student_info WHERE student_number = ? LIMIT 1');
@@ -432,6 +568,13 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
             $params[] = $status;
             $params[] = $student_id;
         } else {
+            // When a student row was manually deleted but related history tables were not,
+            // reset leftover artifacts so a reused student number starts with a clean record.
+            $purgeResult = srsPurgeOrphanedStudentArtifacts($conn, $student_id);
+            if (!$purgeResult['success']) {
+                return ['success' => false, 'error' => (string)($purgeResult['error'] ?? 'Failed to clear stale student data.')];
+            }
+
             $columns = [
                 'student_number',
                 'last_name',
