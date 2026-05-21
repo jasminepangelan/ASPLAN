@@ -1490,26 +1490,6 @@ class StudyPlanGenerator {
     }
 
     private function hasCreditedMigrationEvidence() {
-        if (function_exists('psTableExists') && psTableExists($this->conn, 'program_shift_credit_map')) {
-            $shiftMapStmt = $this->conn->prepare("
-                SELECT 1
-                FROM program_shift_credit_map
-                WHERE student_number = ?
-                LIMIT 1
-            ");
-            if ($shiftMapStmt) {
-                $shiftMapStmt->bind_param("s", $this->student_id);
-                $shiftMapStmt->execute();
-                $shiftMapResult = $shiftMapStmt->get_result();
-                $hasShiftCredits = $shiftMapResult && $shiftMapResult->fetch_assoc();
-                $shiftMapStmt->close();
-
-                if ($hasShiftCredits) {
-                    return true;
-                }
-            }
-        }
-
         $columns = $this->getStudentChecklistColumns();
         $remarkConditions = [];
         foreach (['evaluator_remarks', 'evaluator_remarks_2', 'evaluator_remarks_3'] as $column) {
@@ -1517,7 +1497,12 @@ class StudyPlanGenerator {
                 continue;
             }
 
-            $remarkConditions[] = "(UPPER(TRIM({$column})) LIKE '%CREDITED%')";
+            // Shift equivalency credits are part of normal post-shift execution
+            // and should not be treated as legacy transferee evidence.
+            $remarkConditions[] = "(
+                UPPER(TRIM({$column})) LIKE '%CREDITED%'
+                AND UPPER(TRIM({$column})) NOT LIKE '%SHIFT EQUIVALENCY%'
+            )";
         }
 
         if (empty($remarkConditions)) {
@@ -1545,6 +1530,31 @@ class StudyPlanGenerator {
         return (bool) $hasCreditedRows;
     }
 
+    private function hasCompletedProgramShiftExecution() {
+        if (!(function_exists('psTableExists') && psTableExists($this->conn, 'program_shift_requests'))) {
+            return false;
+        }
+
+        $shiftStmt = $this->conn->prepare("
+            SELECT 1
+            FROM program_shift_requests
+            WHERE student_number = ?
+              AND status = 'approved'
+            LIMIT 1
+        ");
+        if (!$shiftStmt) {
+            return false;
+        }
+
+        $shiftStmt->bind_param("s", $this->student_id);
+        $shiftStmt->execute();
+        $shiftResult = $shiftStmt->get_result();
+        $hasApprovedShift = (bool) ($shiftResult && $shiftResult->fetch_assoc());
+        $shiftStmt->close();
+
+        return $hasApprovedShift;
+    }
+
     private function inferLegacyTransfereeStatus() {
         $classification = strtolower(trim($this->student_classification));
         if ($classification !== '') {
@@ -1555,10 +1565,16 @@ class StudyPlanGenerator {
             return false;
         }
 
+        // Students with completed program shifts should follow the destination
+        // curriculum like other students in that same academic state.
+        if ($this->hasCompletedProgramShiftExecution()) {
+            return false;
+        }
+
         // A partially completed first term is normal for regular students and
         // should not automatically unlock the irregular flexible-fill planner.
         // Only infer legacy transferee status when there is explicit credited
-        // evidence in the student's approved checklist or shift-credit map.
+        // evidence in the student's approved checklist.
         return $this->hasCreditedMigrationEvidence();
     }
 
