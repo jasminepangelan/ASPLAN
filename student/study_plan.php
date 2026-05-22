@@ -2350,7 +2350,7 @@ $currentEnrollmentClientPayload = json_encode([
                         <div style="display: flex; gap: 8px; padding: 4px 12px; font-size: 11px; flex-wrap: wrap;">
                             <?php if ($term_retake_count > 0): ?>
                             <span style="background: #ffebee; color: #c62828; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
-                                <?= $term_retake_count ?> Retake<?= $term_retake_count > 1 ? 's' : '' ?>
+                                <?= $term_retake_count ?> Back/Failed Course<?= $term_retake_count > 1 ? 's' : '' ?>
                             </span>
                             <?php endif; ?>
                             <?php if ($term_cross_reg > 0): ?>
@@ -2404,7 +2404,7 @@ $currentEnrollmentClientPayload = json_encode([
                                         <td>
                                             <?= htmlspecialchars($course['course_code']) ?>
                                             <?php if ($is_retake): ?>
-                                            <span class="plan-tag plan-tag-retake">RETAKE</span>
+                                            <span class="plan-tag plan-tag-retake">BACK/FAILED COURSE</span>
                                             <?php endif; ?>
                                             <?php if ($is_cross_reg): ?>
                                             <span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($cross_reg_tooltip) ?>" aria-label="<?= htmlspecialchars($cross_reg_tooltip) ?>">CROSS-REG</span>
@@ -2520,8 +2520,8 @@ $currentEnrollmentClientPayload = json_encode([
                         Finished Semester
                     </span>
                     <span style="display: flex; align-items: center; gap: 4px;">
-                        <span style="background: #f44336; color: white; padding: 1px 6px; border-radius: 3px; font-size: 9px;">RETAKE</span>
-                        Back and failed Subject
+                        <span style="background: #f44336; color: white; padding: 1px 6px; border-radius: 3px; font-size: 9px;">BACK/FAILED COURSE</span>
+                        Back/failed course
                     </span>
                     <span style="display: flex; align-items: center; gap: 4px;">
                         <span style="background: #2196F3; color: white; padding: 1px 6px; border-radius: 3px; font-size: 9px;">CROSS-REG</span>
