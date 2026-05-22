@@ -742,28 +742,113 @@ if (!$bridgeLoaded) {
         }
 
         .modal-program-list {
-            border: 1px solid #d0d5dd;
-            border-radius: 10px;
-            padding: 10px 12px;
-            background: #fff;
+            border: 1px solid #d7e3d2;
+            border-radius: 16px;
+            padding: 12px;
+            background: linear-gradient(180deg, #fbfdfb 0%, #f4f8f3 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
             max-height: 220px;
             overflow-y: auto;
             display: grid;
-            gap: 8px;
+            gap: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: #8ea588 #edf3ea;
         }
 
         .modal-program-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            color: #344054;
-            font-size: 13px;
-            line-height: 1.35;
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr);
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border: 1px solid #d5e0d1;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #ffffff 0%, #f7faf6 100%);
+            box-shadow: 0 8px 18px rgba(20, 48, 18, 0.06);
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
         }
 
         .modal-program-item input[type="checkbox"] {
-            margin-top: 2px;
-            accent-color: #206018;
+            appearance: none;
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            border: 1.5px solid #8da387;
+            border-radius: 7px;
+            background: linear-gradient(180deg, #ffffff 0%, #f2f6f1 100%);
+            box-shadow: inset 0 1px 2px rgba(18, 38, 18, 0.08);
+            display: grid;
+            place-items: center;
+            transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+
+        .modal-program-item input[type="checkbox"]::after {
+            content: "";
+            width: 6px;
+            height: 11px;
+            border-right: 3px solid #fff;
+            border-bottom: 3px solid #fff;
+            transform: rotate(45deg) scale(0.7);
+            opacity: 0;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            margin-top: -1px;
+        }
+
+        .modal-program-item input[type="checkbox"]:checked {
+            border-color: #206018;
+            background: linear-gradient(135deg, #1f5f19 0%, #2f9124 100%);
+            box-shadow: 0 10px 18px rgba(32, 96, 24, 0.24);
+        }
+
+        .modal-program-item input[type="checkbox"]:checked::after {
+            opacity: 1;
+            transform: rotate(45deg) scale(1);
+        }
+
+        .modal-program-item input[type="checkbox"]:focus-visible {
+            outline: 3px solid rgba(45, 143, 34, 0.2);
+            outline-offset: 2px;
+        }
+
+        .modal-program-text {
+            color: #274227;
+            font-size: 13.5px;
+            font-weight: 700;
+            line-height: 1.45;
+            letter-spacing: 0.02em;
+        }
+
+        .modal-program-item:hover {
+            transform: translateY(-1px);
+            border-color: #b7c9b2;
+            box-shadow: 0 12px 24px rgba(20, 48, 18, 0.10);
+        }
+
+        .modal-program-item.selected {
+            border-color: rgba(32, 96, 24, 0.34);
+            background: linear-gradient(135deg, rgba(32, 96, 24, 0.14) 0%, rgba(245, 251, 243, 0.98) 100%);
+            box-shadow: 0 14px 28px rgba(32, 96, 24, 0.14);
+        }
+
+        .modal-program-item.selected .modal-program-text {
+            color: #183d18;
+        }
+
+        .modal-program-list::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .modal-program-list::-webkit-scrollbar-track {
+            background: #edf3ea;
+            border-radius: 999px;
+        }
+
+        .modal-program-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #a2b69c 0%, #80977b 100%);
+            border-radius: 999px;
+            border: 2px solid #edf3ea;
         }
 
         .table-wrap { overflow: auto; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
@@ -1466,17 +1551,17 @@ if (!$bridgeLoaded) {
                             <label for="modal_coordinator_username">Username</label>
                             <input type="text" id="modal_coordinator_username" name="username" required>
                         </div>
-                        <div class="modal-field full">
-                            <label>Programs</label>
-                            <div class="modal-program-list" role="group" aria-label="Program coordinator programs">
-                                <?php foreach ($programOptions as $programOption): ?>
-                                    <label class="modal-program-item">
-                                        <input type="checkbox" name="program[]" value="<?= htmlspecialchars($programOption) ?>">
-                                        <span><?= htmlspecialchars($programOption) ?></span>
-                                    </label>
-                                <?php endforeach; ?>
+                            <div class="modal-field full">
+                                <label>Programs</label>
+                                <div class="modal-program-list" role="group" aria-label="Program coordinator programs">
+                                    <?php foreach ($programOptions as $programOption): ?>
+                                        <label class="modal-program-item">
+                                            <input type="checkbox" name="program[]" value="<?= htmlspecialchars($programOption) ?>">
+                                            <span class="modal-program-text"><?= htmlspecialchars($programOption) ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
-                        </div>
                         <div class="modal-field">
                             <label for="modal_coordinator_sex">Sex</label>
                             <select id="modal_coordinator_sex" name="sex" required>
@@ -1706,7 +1791,19 @@ if (!$bridgeLoaded) {
         const coordinatorDeleteMessage = document.getElementById('coordinatorDeleteMessage');
         const cancelCoordinatorDeleteBtn = document.getElementById('cancelCoordinatorDelete');
         const confirmCoordinatorDeleteBtn = document.getElementById('confirmCoordinatorDelete');
+        const coordinatorProgramCheckboxes = coordinatorEditModal
+            ? Array.from(coordinatorEditModal.querySelectorAll('input[name="program[]"]'))
+            : [];
         let pendingCoordinatorDeleteForm = null;
+
+        function syncCoordinatorProgramSelectionStyles() {
+            coordinatorProgramCheckboxes.forEach(function(checkbox) {
+                const option = checkbox.closest('.modal-program-item');
+                if (option) {
+                    option.classList.toggle('selected', checkbox.checked);
+                }
+            });
+        }
 
         function setCoordinatorEditModalOpen(isOpen) {
             if (!coordinatorEditModal) {
@@ -1753,7 +1850,6 @@ if (!$bridgeLoaded) {
                 const modalCoordinatorMiddleName = document.getElementById('modal_coordinator_middle_name');
                 const modalCoordinatorUsername = document.getElementById('modal_coordinator_username');
                 const modalCoordinatorSex = document.getElementById('modal_coordinator_sex');
-                const modalProgramCheckboxes = coordinatorEditModal ? coordinatorEditModal.querySelectorAll('input[name="program[]"]') : [];
 
                 if (modalCoordinatorId) modalCoordinatorId.value = coordinatorId;
                 if (modalCoordinatorOriginalUsername) modalCoordinatorOriginalUsername.value = username;
@@ -1763,12 +1859,17 @@ if (!$bridgeLoaded) {
                 if (modalCoordinatorUsername) modalCoordinatorUsername.value = username;
                 if (modalCoordinatorSex) modalCoordinatorSex.value = sex;
 
-                modalProgramCheckboxes.forEach(function(checkbox) {
+                coordinatorProgramCheckboxes.forEach(function(checkbox) {
                     checkbox.checked = selectedPrograms.includes(checkbox.value);
                 });
+                syncCoordinatorProgramSelectionStyles();
 
                 setCoordinatorEditModalOpen(true);
             });
+        });
+
+        coordinatorProgramCheckboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', syncCoordinatorProgramSelectionStyles);
         });
 
         if (closeCoordinatorEditModalBtn) {
