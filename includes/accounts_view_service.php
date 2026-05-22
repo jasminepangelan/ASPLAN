@@ -123,8 +123,25 @@ function avsTableHasColumn($table, $column)
     $conn = getDBConnection();
     $tableSafe = $conn->real_escape_string($table);
     $columnSafe = $conn->real_escape_string($column);
-    $result = $conn->query("SHOW COLUMNS FROM `$tableSafe` LIKE '$columnSafe'");
-    $has = $result && $result->num_rows > 0;
+
+    $tableExists = false;
+    try {
+        $tableResult = $conn->query("SHOW TABLES LIKE '$tableSafe'");
+        $tableExists = $tableResult && $tableResult->num_rows > 0;
+    } catch (Throwable $e) {
+        $tableExists = false;
+    }
+
+    $has = false;
+    if ($tableExists) {
+        try {
+            $result = $conn->query("SHOW COLUMNS FROM `$tableSafe` LIKE '$columnSafe'");
+            $has = $result && $result->num_rows > 0;
+        } catch (Throwable $e) {
+            $has = false;
+        }
+    }
+
     closeDBConnection($conn);
     return $has;
 }

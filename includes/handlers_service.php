@@ -159,15 +159,50 @@ function hsResolveTableVariant($conn, string $singularName): ?string {
 }
 
 /**
+ * Check if a table exists.
+ */
+function hsTableExists($conn, string $table): bool {
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) {
+        return false;
+    }
+
+    try {
+        if ($conn instanceof mysqli) {
+            $result = $conn->query("SHOW TABLES LIKE '$table'");
+            return $result && $result->num_rows > 0;
+        } elseif ($conn instanceof PDO) {
+            $result = $conn->query("SHOW TABLES LIKE '$table'");
+            return $result && $result->rowCount() > 0;
+        }
+    } catch (Throwable $e) {
+        return false;
+    }
+
+    return false;
+}
+
+/**
  * Check if a table has a specific column
  */
 function hsTableHasColumn($conn, string $table, string $column): bool {
-    if ($conn instanceof mysqli) {
-        $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
-        return $result && $result->num_rows > 0;
-    } elseif ($conn instanceof PDO) {
-        $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
-        return $result->rowCount() > 0;
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $table) || !preg_match('/^[A-Za-z0-9_]+$/', $column)) {
+        return false;
+    }
+
+    if (!hsTableExists($conn, $table)) {
+        return false;
+    }
+
+    try {
+        if ($conn instanceof mysqli) {
+            $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+            return $result && $result->num_rows > 0;
+        } elseif ($conn instanceof PDO) {
+            $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+            return $result && $result->rowCount() > 0;
+        }
+    } catch (Throwable $e) {
+        return false;
     }
 
     return false;
