@@ -81,25 +81,24 @@ try {
 
     $generator = new StudyPlanGenerator($studentId, $program);
     $allowedTerms = sceBuildSelectableTermMap($generator->getAllCoursesGroupedByTerm());
-    $termKey = $yearLevel . '|' . $semester;
-    $termData = $allowedTerms[$termKey] ?? null;
+    $allowedCourses = sceBuildSelectableCourseMap($allowedTerms);
 
-    if (!$termData || empty($termData['courses'])) {
+    if (empty($allowedCourses)) {
         http_response_code(422);
-        echo json_encode(['success' => false, 'message' => 'No available subjects were found for the selected term.']);
+        echo json_encode(['success' => false, 'message' => 'No available subjects were found for this student.']);
         closeDBConnection($conn);
         exit();
     }
 
     $selectedCourses = [];
     foreach ($courseCodes as $courseCode) {
-        if (!isset($termData['courses'][$courseCode])) {
+        if (!isset($allowedCourses[$courseCode])) {
             http_response_code(422);
-            echo json_encode(['success' => false, 'message' => 'One or more selected subjects are invalid for the chosen term.']);
+            echo json_encode(['success' => false, 'message' => 'One or more selected subjects are invalid for this student.']);
             closeDBConnection($conn);
             exit();
         }
-        $selectedCourses[] = $termData['courses'][$courseCode];
+        $selectedCourses[] = $allowedCourses[$courseCode];
     }
 
     $savedEnrollment = sceSaveStudentCurrentEnrollment($conn, $studentId, $yearLevel, $semester, $selectedCourses);

@@ -166,6 +166,37 @@ if (!function_exists('sceLoadStudentCurrentEnrollment')) {
     }
 }
 
+if (!function_exists('sceBuildSelectableCourseMap')) {
+    function sceBuildSelectableCourseMap(array $termMap): array
+    {
+        $courseMap = [];
+
+        foreach ($termMap as $term) {
+            $sourceYear = trim((string) ($term['year_level'] ?? ''));
+            $sourceSemester = trim((string) ($term['semester'] ?? ''));
+
+            foreach ((array) ($term['courses'] ?? []) as $courseCode => $course) {
+                $normalizedCode = sceNormalizeCourseCode((string) $courseCode);
+                if ($normalizedCode === '') {
+                    continue;
+                }
+
+                $courseMap[$normalizedCode] = [
+                    'course_code' => $normalizedCode,
+                    'course_title' => trim((string) ($course['course_title'] ?? '')),
+                    'units' => (float) ($course['units'] ?? 0),
+                    'prerequisite' => trim((string) ($course['prerequisite'] ?? 'None')),
+                    'reason' => trim((string) ($course['reason'] ?? '')),
+                    'source_year_level' => $sourceYear,
+                    'source_semester' => $sourceSemester,
+                ];
+            }
+        }
+
+        return $courseMap;
+    }
+}
+
 if (!function_exists('sceSaveStudentCurrentEnrollment')) {
     function sceSaveStudentCurrentEnrollment(
         mysqli $conn,

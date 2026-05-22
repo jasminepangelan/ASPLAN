@@ -842,6 +842,11 @@ $currentEnrollmentClientPayload = json_encode([
             text-align: center;
         }
 
+        .current-enrollment-modal__table td:nth-child(5),
+        .current-enrollment-modal__table th:nth-child(5) {
+            white-space: nowrap;
+        }
+
         .current-enrollment-modal__status {
             margin-top: 14px;
             min-height: 20px;
@@ -2542,9 +2547,15 @@ $currentEnrollmentClientPayload = json_encode([
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div class="current-enrollment-modal__field">
+                        <label for="currentEnrollmentSourceTermSelect">Subject Source Term</label>
+                        <select id="currentEnrollmentSourceTermSelect">
+                            <option value="">All Curriculum Terms</option>
+                        </select>
+                    </div>
                 </div>
 
-                <p class="current-enrollment-modal__helper">Available subjects come from your curriculum and current study-plan data. This prevents saving arbitrary or mismatched course entries.</p>
+                <p class="current-enrollment-modal__helper">Current year/semester is saved separately from the subjects below. You can include back subjects or irregular loads from different curriculum terms, but every subject is still server-validated against your actual remaining curriculum.</p>
 
                 <div class="current-enrollment-modal__table-wrap">
                     <table class="current-enrollment-modal__table">
@@ -2554,6 +2565,7 @@ $currentEnrollmentClientPayload = json_encode([
                                 <th>Course Code</th>
                                 <th>Course Title</th>
                                 <th>Units</th>
+                                <th>Curriculum Term</th>
                                 <th>Prerequisite</th>
                             </tr>
                         </thead>
@@ -2959,6 +2971,7 @@ $currentEnrollmentClientPayload = json_encode([
                 overlay: document.getElementById('current-enrollment-modal-overlay'),
                 yearSelect: document.getElementById('currentEnrollmentYearSelect'),
                 semesterSelect: document.getElementById('currentEnrollmentSemesterSelect'),
+                sourceTermSelect: document.getElementById('currentEnrollmentSourceTermSelect'),
                 tbody: document.getElementById('currentEnrollmentCoursesBody'),
                 status: document.getElementById('currentEnrollmentStatus'),
                 count: document.getElementById('currentEnrollmentSelectionCount'),
@@ -3060,30 +3073,48 @@ $currentEnrollmentClientPayload = json_encode([
         }
 
         function renderCurrentEnrollmentCourses() {
-            const { yearSelect, semesterSelect, tbody } = getCurrentEnrollmentModalElements();
-            if (!yearSelect || !semesterSelect || !tbody) {
+            const { sourceTermSelect, tbody } = getCurrentEnrollmentModalElements();
+            if (!tbody) {
                 return;
             }
 
-            const term = findCurrentEnrollmentTerm(yearSelect.value, semesterSelect.value);
             const savedCodes = new Set(Array.isArray(currentEnrollmentState.savedEnrollment && currentEnrollmentState.savedEnrollment.course_codes)
                 ? currentEnrollmentState.savedEnrollment.course_codes
                 : []);
+            const sourceFilter = sourceTermSelect ? String(sourceTermSelect.value || '') : '';
 
             tbody.innerHTML = '';
 
-            if (!term || !Array.isArray(term.courses) || !term.courses.length) {
+            const courses = [];
+            currentEnrollmentState.terms.forEach((term) => {
+                const sourceKey = `${term.year_level}|${term.semester}`;
+                if (sourceFilter !== '' && sourceFilter !== sourceKey) {
+                    return;
+                }
+
+                (Array.isArray(term.courses) ? term.courses : []).forEach((course) => {
+                    courses.push({
+                        ...course,
+                        source_year_level: term.year_level || '',
+                        source_semester: term.semester || '',
+                    });
+                });
+            });
+
+            if (!courses.length) {
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
-                cell.colSpan = 5;
-                cell.textContent = 'No available uncompleted subjects were found for this term.';
+                cell.colSpan = 6;
+                cell.textContent = sourceFilter === ''
+                    ? 'No available uncompleted subjects were found for this student.'
+                    : 'No available uncompleted subjects were found for the selected source term.';
                 row.appendChild(cell);
                 tbody.appendChild(row);
                 updateCurrentEnrollmentSelectionCount();
                 return;
             }
 
-            term.courses.forEach((course) => {
+            courses.forEach((course) => {
                 const row = document.createElement('tr');
 
                 const selectCell = document.createElement('td');
@@ -3107,6 +3138,10 @@ $currentEnrollmentClientPayload = json_encode([
                 unitsCell.textContent = Number(course.units || 0).toFixed(1);
                 row.appendChild(unitsCell);
 
+                const termCell = document.createElement('td');
+                termCell.textContent = `${course.source_year_level || ''} ${course.source_semester || ''}`.trim();
+                row.appendChild(termCell);
+
                 const prereqCell = document.createElement('td');
                 prereqCell.textContent = course.prerequisite || 'None';
                 row.appendChild(prereqCell);
@@ -3118,13 +3153,13 @@ $currentEnrollmentClientPayload = json_encode([
         }
 
         function syncCurrentEnrollmentSelections() {
-            const { yearSelect, semesterSelect } = getCurrentEnrollmentModalElements();
+            const { yearSelect, semesterSelect, sourceTermSelect } = getCurrentEnrollmentModalElements();
             if (!yearSelect || !semesterSelect) {
                 return;
             }
 
             const saved = currentEnrollmentState.savedEnrollment || {};
-            if (saved.year_level && saved.semester && findCurrentEnrollmentTerm(saved.year_level, saved.semester)) {
+            if (saved.year_level && saved.semester) {
                 yearSelect.value = saved.year_level;
                 semesterSelect.value = saved.semester;
             } else if (currentEnrollmentState.terms.length > 0) {
@@ -3132,7 +3167,33 @@ $currentEnrollmentClientPayload = json_encode([
                 semesterSelect.value = currentEnrollmentState.terms[0].semester || '';
             }
 
+            if (sourceTermSelect) {
+                sourceTermSelect.value = '';
+            }
+
             renderCurrentEnrollmentCourses();
+        }
+
+        function populateCurrentEnrollmentSourceTerms() {
+            const { sourceTermSelect } = getCurrentEnrollmentModalElements();
+            if (!sourceTermSelect) {
+                return;
+            }
+
+            const previousValue = sourceTermSelect.value;
+            sourceTermSelect.innerHTML = '<option value="">All Curriculum Terms</option>';
+
+            currentEnrollmentState.terms.forEach((term) => {
+                const option = document.createElement('option');
+                option.value = `${term.year_level}|${term.semester}`;
+                option.textContent = `${term.year_level} - ${term.semester}`;
+                sourceTermSelect.appendChild(option);
+            });
+
+            const hasPreviousValue = Array.from(sourceTermSelect.options).some((option) => option.value === previousValue);
+            if (previousValue && hasPreviousValue) {
+                sourceTermSelect.value = previousValue;
+            }
         }
 
         function openCurrentEnrollmentModal() {
@@ -3213,13 +3274,21 @@ $currentEnrollmentClientPayload = json_encode([
 
         document.addEventListener('DOMContentLoaded', function() {
             renderCurrentEnrollmentSummary(currentEnrollmentState.savedEnrollment);
+            populateCurrentEnrollmentSourceTerms();
 
-            const { yearSelect, semesterSelect, overlay } = getCurrentEnrollmentModalElements();
+            const { yearSelect, semesterSelect, sourceTermSelect, overlay } = getCurrentEnrollmentModalElements();
             if (yearSelect) {
-                yearSelect.addEventListener('change', renderCurrentEnrollmentCourses);
+                yearSelect.addEventListener('change', function() {
+                    setCurrentEnrollmentStatus('', '');
+                });
             }
             if (semesterSelect) {
-                semesterSelect.addEventListener('change', renderCurrentEnrollmentCourses);
+                semesterSelect.addEventListener('change', function() {
+                    setCurrentEnrollmentStatus('', '');
+                });
+            }
+            if (sourceTermSelect) {
+                sourceTermSelect.addEventListener('change', renderCurrentEnrollmentCourses);
             }
             if (overlay) {
                 overlay.addEventListener('click', function(event) {
