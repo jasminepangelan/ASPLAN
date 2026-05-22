@@ -1309,182 +1309,6 @@ if (!$bridgeLoaded) {
             </table>
         </div>
 
-        <?php if ($type === 'advisers'): ?>
-            <div class="modal-overlay" id="adviserEditModal" aria-hidden="true">
-                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adviserEditTitle">
-                    <div class="modal-head">
-                        <div>
-                            <div class="modal-title" id="adviserEditTitle">Edit Adviser Account</div>
-                            <div class="modal-subtitle">Update the adviser profile directly from the account list.</div>
-                        </div>
-                        <button type="button" class="modal-close" id="closeAdviserEditModal" aria-label="Close">&times;</button>
-                    </div>
-                    <form method="POST" id="adviserEditForm">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-                        <input type="hidden" name="account_action" value="1">
-                        <input type="hidden" name="adviser_action" value="edit">
-                        <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                        <input type="hidden" name="page" value="<?= (int)$current_page ?>">
-                        <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
-                        <input type="hidden" name="adviser_id" id="modal_adviser_id" value="">
-                        <input type="hidden" name="original_username" id="modal_original_username" value="">
-
-                        <div class="modal-grid">
-                            <div class="modal-field">
-                                <label for="modal_last_name">Last Name</label>
-                                <input type="text" id="modal_last_name" name="last_name" required>
-                            </div>
-                            <div class="modal-field">
-                                <label for="modal_first_name">First Name</label>
-                                <input type="text" id="modal_first_name" name="first_name" required>
-                            </div>
-                            <div class="modal-field">
-                                <label for="modal_middle_name">Middle Name</label>
-                                <input type="text" id="modal_middle_name" name="middle_name">
-                            </div>
-                            <div class="modal-field">
-                                <label for="modal_username">Username</label>
-                                <input type="text" id="modal_username" name="username" required>
-                            </div>
-                            <div class="modal-field full">
-                                <label for="modal_program">Program</label>
-                                <select id="modal_program" name="program" required>
-                                    <option value="">Select program</option>
-                                    <?php foreach ($programOptions as $programOption): ?>
-                                        <option value="<?= htmlspecialchars($programOption) ?>"><?= htmlspecialchars($programOption) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="modal-field">
-                                <label for="modal_sex">Sex</label>
-                                <select id="modal_sex" name="sex" required>
-                                    <option value="">Select sex</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="modal-actions">
-                            <button type="button" class="modal-btn cancel" id="cancelAdviserEdit">Cancel</button>
-                            <button type="submit" class="modal-btn save">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="modal-overlay" id="adviserDeleteModal" aria-hidden="true">
-                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adviserDeleteTitle">
-                    <div class="confirm-shell">
-                        <div class="confirm-icon">!</div>
-                        <div class="confirm-copy">
-                            <div class="confirm-kicker">Delete Adviser</div>
-                            <div class="confirm-title" id="adviserDeleteTitle">Delete this adviser account?</div>
-                            <div class="confirm-message" id="adviserDeleteMessage">
-                                This action will permanently remove the adviser account from the system.
-                            </div>
-                            <div class="confirm-detail">
-                                Adviser batch assignments linked to this account will also be removed.
-                            </div>
-                        </div>
-                        <div class="modal-actions">
-                            <button type="button" class="modal-btn cancel" id="cancelAdviserDelete">Cancel</button>
-                            <button type="button" class="modal-btn danger" id="confirmAdviserDelete">Delete Adviser</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($type === 'program_coordinators'): ?>
-            <div class="modal-overlay" id="coordinatorEditModal" aria-hidden="true">
-                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="coordinatorEditTitle">
-                    <div class="modal-head">
-                        <div>
-                            <div class="modal-title" id="coordinatorEditTitle">Edit Program Coordinator Account</div>
-                            <div class="modal-subtitle">Update the program coordinator profile directly from the account list.</div>
-                        </div>
-                        <button type="button" class="modal-close" id="closeCoordinatorEditModal" aria-label="Close">&times;</button>
-                    </div>
-                    <form method="POST" id="coordinatorEditForm">
-                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-                        <input type="hidden" name="account_action" value="1">
-                        <input type="hidden" name="coordinator_action" value="edit">
-                        <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                        <input type="hidden" name="page" value="<?= (int)$current_page ?>">
-                        <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
-                        <input type="hidden" name="coordinator_id" id="modal_coordinator_id" value="">
-                        <input type="hidden" name="original_username" id="modal_coordinator_original_username" value="">
-
-                        <div class="modal-grid">
-                            <div class="modal-field">
-                                <label for="modal_coordinator_last_name">Last Name</label>
-                                <input type="text" id="modal_coordinator_last_name" name="last_name" required>
-                            </div>
-                            <div class="modal-field">
-                                <label for="modal_coordinator_first_name">First Name</label>
-                                <input type="text" id="modal_coordinator_first_name" name="first_name" required>
-                            </div>
-                            <div class="modal-field">
-                                <label for="modal_coordinator_middle_name">Middle Name</label>
-                                <input type="text" id="modal_coordinator_middle_name" name="middle_name">
-                            </div>
-                            <div class="modal-field">
-                                <label for="modal_coordinator_username">Username</label>
-                                <input type="text" id="modal_coordinator_username" name="username" required>
-                            </div>
-                            <div class="modal-field full">
-                                <label>Programs</label>
-                                <div class="modal-program-list" role="group" aria-label="Program coordinator programs">
-                                    <?php foreach ($programOptions as $programOption): ?>
-                                        <label class="modal-program-item">
-                                            <input type="checkbox" name="program[]" value="<?= htmlspecialchars($programOption) ?>">
-                                            <span><?= htmlspecialchars($programOption) ?></span>
-                                        </label>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                            <div class="modal-field">
-                                <label for="modal_coordinator_sex">Sex</label>
-                                <select id="modal_coordinator_sex" name="sex" required>
-                                    <option value="">Select sex</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="modal-actions">
-                            <button type="button" class="modal-btn cancel" id="cancelCoordinatorEdit">Cancel</button>
-                            <button type="submit" class="modal-btn save">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="modal-overlay" id="coordinatorDeleteModal" aria-hidden="true">
-                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="coordinatorDeleteTitle">
-                    <div class="confirm-shell">
-                        <div class="confirm-icon">!</div>
-                        <div class="confirm-copy">
-                            <div class="confirm-kicker">Delete Program Coordinator</div>
-                            <div class="confirm-title" id="coordinatorDeleteTitle">Delete this program coordinator account?</div>
-                            <div class="confirm-message" id="coordinatorDeleteMessage">
-                                This action will permanently remove the program coordinator account from the system.
-                            </div>
-                            <div class="confirm-detail">
-                                Any stored coordinator email verification record linked to this username will also be removed.
-                            </div>
-                        </div>
-                        <div class="modal-actions">
-                            <button type="button" class="modal-btn cancel" id="cancelCoordinatorDelete">Cancel</button>
-                            <button type="button" class="modal-btn danger" id="confirmCoordinatorDelete">Delete Coordinator</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
-
         <?php if ($total_pages > 1): ?>
             <div class="pagination">
                 <div class="pagination-controls">
@@ -1517,6 +1341,182 @@ if (!$bridgeLoaded) {
             </div>
         <?php endif; ?>
     </div>
+
+    <?php if ($type === 'advisers'): ?>
+        <div class="modal-overlay" id="adviserEditModal" aria-hidden="true">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adviserEditTitle">
+                <div class="modal-head">
+                    <div>
+                        <div class="modal-title" id="adviserEditTitle">Edit Adviser Account</div>
+                        <div class="modal-subtitle">Update the adviser profile directly from the account list.</div>
+                    </div>
+                    <button type="button" class="modal-close" id="closeAdviserEditModal" aria-label="Close">&times;</button>
+                </div>
+                <form method="POST" id="adviserEditForm">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                    <input type="hidden" name="account_action" value="1">
+                    <input type="hidden" name="adviser_action" value="edit">
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                    <input type="hidden" name="page" value="<?= (int)$current_page ?>">
+                    <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                    <input type="hidden" name="adviser_id" id="modal_adviser_id" value="">
+                    <input type="hidden" name="original_username" id="modal_original_username" value="">
+
+                    <div class="modal-grid">
+                        <div class="modal-field">
+                            <label for="modal_last_name">Last Name</label>
+                            <input type="text" id="modal_last_name" name="last_name" required>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_first_name">First Name</label>
+                            <input type="text" id="modal_first_name" name="first_name" required>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_middle_name">Middle Name</label>
+                            <input type="text" id="modal_middle_name" name="middle_name">
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_username">Username</label>
+                            <input type="text" id="modal_username" name="username" required>
+                        </div>
+                        <div class="modal-field full">
+                            <label for="modal_program">Program</label>
+                            <select id="modal_program" name="program" required>
+                                <option value="">Select program</option>
+                                <?php foreach ($programOptions as $programOption): ?>
+                                    <option value="<?= htmlspecialchars($programOption) ?>"><?= htmlspecialchars($programOption) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_sex">Sex</label>
+                            <select id="modal_sex" name="sex" required>
+                                <option value="">Select sex</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="modal-btn cancel" id="cancelAdviserEdit">Cancel</button>
+                        <button type="submit" class="modal-btn save">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="adviserDeleteModal" aria-hidden="true">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="adviserDeleteTitle">
+                <div class="confirm-shell">
+                    <div class="confirm-icon">!</div>
+                    <div class="confirm-copy">
+                        <div class="confirm-kicker">Delete Adviser</div>
+                        <div class="confirm-title" id="adviserDeleteTitle">Delete this adviser account?</div>
+                        <div class="confirm-message" id="adviserDeleteMessage">
+                            This action will permanently remove the adviser account from the system.
+                        </div>
+                        <div class="confirm-detail">
+                            Adviser batch assignments linked to this account will also be removed.
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="modal-btn cancel" id="cancelAdviserDelete">Cancel</button>
+                        <button type="button" class="modal-btn danger" id="confirmAdviserDelete">Delete Adviser</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($type === 'program_coordinators'): ?>
+        <div class="modal-overlay" id="coordinatorEditModal" aria-hidden="true">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="coordinatorEditTitle">
+                <div class="modal-head">
+                    <div>
+                        <div class="modal-title" id="coordinatorEditTitle">Edit Program Coordinator Account</div>
+                        <div class="modal-subtitle">Update the program coordinator profile directly from the account list.</div>
+                    </div>
+                    <button type="button" class="modal-close" id="closeCoordinatorEditModal" aria-label="Close">&times;</button>
+                </div>
+                <form method="POST" id="coordinatorEditForm">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                    <input type="hidden" name="account_action" value="1">
+                    <input type="hidden" name="coordinator_action" value="edit">
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                    <input type="hidden" name="page" value="<?= (int)$current_page ?>">
+                    <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                    <input type="hidden" name="coordinator_id" id="modal_coordinator_id" value="">
+                    <input type="hidden" name="original_username" id="modal_coordinator_original_username" value="">
+
+                    <div class="modal-grid">
+                        <div class="modal-field">
+                            <label for="modal_coordinator_last_name">Last Name</label>
+                            <input type="text" id="modal_coordinator_last_name" name="last_name" required>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_coordinator_first_name">First Name</label>
+                            <input type="text" id="modal_coordinator_first_name" name="first_name" required>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_coordinator_middle_name">Middle Name</label>
+                            <input type="text" id="modal_coordinator_middle_name" name="middle_name">
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_coordinator_username">Username</label>
+                            <input type="text" id="modal_coordinator_username" name="username" required>
+                        </div>
+                        <div class="modal-field full">
+                            <label>Programs</label>
+                            <div class="modal-program-list" role="group" aria-label="Program coordinator programs">
+                                <?php foreach ($programOptions as $programOption): ?>
+                                    <label class="modal-program-item">
+                                        <input type="checkbox" name="program[]" value="<?= htmlspecialchars($programOption) ?>">
+                                        <span><?= htmlspecialchars($programOption) ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_coordinator_sex">Sex</label>
+                            <select id="modal_coordinator_sex" name="sex" required>
+                                <option value="">Select sex</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="modal-btn cancel" id="cancelCoordinatorEdit">Cancel</button>
+                        <button type="submit" class="modal-btn save">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="coordinatorDeleteModal" aria-hidden="true">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="coordinatorDeleteTitle">
+                <div class="confirm-shell">
+                    <div class="confirm-icon">!</div>
+                    <div class="confirm-copy">
+                        <div class="confirm-kicker">Delete Program Coordinator</div>
+                        <div class="confirm-title" id="coordinatorDeleteTitle">Delete this program coordinator account?</div>
+                        <div class="confirm-message" id="coordinatorDeleteMessage">
+                            This action will permanently remove the program coordinator account from the system.
+                        </div>
+                        <div class="confirm-detail">
+                            Any stored coordinator email verification record linked to this username will also be removed.
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="modal-btn cancel" id="cancelCoordinatorDelete">Cancel</button>
+                        <button type="button" class="modal-btn danger" id="confirmCoordinatorDelete">Delete Coordinator</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <script>
         function toggleSidebar() {
