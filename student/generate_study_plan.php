@@ -3570,42 +3570,15 @@ class StudyPlanGenerator {
         return !empty($cycle) ? $cycle : ['1st Sem', '2nd Sem', 'Mid Year'];
     }
 
-    private function termHasActiveNonRetakeIncompleteCourses($year, $semester) {
-        foreach ($this->all_courses as $course) {
-            if (($course['year'] ?? '') !== $year || ($course['semester'] ?? '') !== $semester) {
-                continue;
-            }
-
-            if (!empty($course['completed'])) {
-                continue;
-            }
-
-            if (empty($course['needs_retake'])) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /**
-     * Determine the anchor term for future planning.
+     * Determine the effective current term according to school policy.
      *
-     * For irregular students with actual checklist history, the plan should
-     * continue from the next chronological term after the latest attempted
-     * semester, then re-insert lower-year back subjects into future eligible
-     * terms. This avoids displaying failed subjects as if they remain in an
-     * already elapsed historical semester.
-     *
-     * If no history exists yet, fall back to the first incomplete curriculum
-     * term so brand-new cases still start correctly.
+     * The earliest unresolved curriculum term remains the student's current
+     * year/semester until all required subjects in that term are cleared,
+     * including cases driven by back or failed courses.
      */
     private function determineCurrentTerm() {
         $terms = $this->getOrderedCurriculumTerms();
-        $termIndexMap = [];
-        foreach ($terms as $index => $term) {
-            $termIndexMap[$term['year'] . '|' . $term['semester']] = $index;
-        }
 
         $firstIncompleteIndex = -1;
         foreach ($terms as $index => $term) {
@@ -3619,67 +3592,11 @@ class StudyPlanGenerator {
             return $terms[count($terms) - 1];
         }
 
-        $latestHistoryIndex = -1;
-        foreach ($this->semester_grade_history as $termKey => $termData) {
-            if (!isset($termIndexMap[$termKey])) {
-                continue;
-            }
-
-            $latestHistoryIndex = max($latestHistoryIndex, $termIndexMap[$termKey]);
-        }
-
-        $firstIncompleteTerm = $terms[$firstIncompleteIndex];
-
-        // Keep the earliest incomplete term when it still has normal untaken
-        // subjects. Only skip forward when the old term is incomplete solely
-        // because of retakes/back subjects already carried into future planning.
-        if ($this->termHasActiveNonRetakeIncompleteCourses($firstIncompleteTerm['year'], $firstIncompleteTerm['semester'])) {
-            return $firstIncompleteTerm;
-        }
-
-        if ($latestHistoryIndex >= 0 && $firstIncompleteIndex <= $latestHistoryIndex) {
-            if ($latestHistoryIndex < count($terms) - 1) {
-                return $terms[$latestHistoryIndex + 1];
-            }
-
-            return $this->buildProjectedNextTermAfter($terms[$latestHistoryIndex] ?? $firstIncompleteTerm);
-        }
-
-        return $firstIncompleteTerm;
+        return $terms[$firstIncompleteIndex];
     }
 
-    private function buildProjectedNextTermAfter(array $lastTerm) {
-        $cycle = $this->getExtraTermSemesterCycle();
-        if (empty($cycle)) {
-            $cycle = ['1st Sem', '2nd Sem', 'Mid Year'];
-        }
-
-        $lastSemester = trim((string)($lastTerm['semester'] ?? ''));
-        $lastYearOrder = $this->yearLabelToOrder((string)($lastTerm['year'] ?? ''));
-        if ($lastYearOrder <= 0) {
-            $lastYearOrder = 4;
-        }
-
-        $semesterIndex = array_search($lastSemester, $cycle, true);
-        if ($semesterIndex === false) {
-            return [
-                'year' => ($lastYearOrder + 1) . 'th Yr',
-                'semester' => $cycle[0],
-            ];
-        }
-
-        $nextSemesterIndex = $semesterIndex + 1;
-        if ($nextSemesterIndex < count($cycle)) {
-            return [
-                'year' => $lastTerm['year'] ?? ($lastYearOrder . 'th Yr'),
-                'semester' => $cycle[$nextSemesterIndex],
-            ];
-        }
-
-        return [
-            'year' => ($lastYearOrder + 1) . 'th Yr',
-            'semester' => $cycle[0],
-        ];
+    public function getEffectiveCurrentTerm() {
+        return $this->determineCurrentTerm();
     }
     
     /**

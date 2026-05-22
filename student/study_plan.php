@@ -140,6 +140,8 @@ sceEnsureCurrentEnrollmentTables($conn);
 
 // Get completed (past) terms for display
 $completed_terms = $generator->getCompletedTerms();
+$effective_current_term = $generator->getEffectiveCurrentTerm();
+$effective_current_term_key = trim((string)($effective_current_term['year'] ?? '')) . '|' . trim((string)($effective_current_term['semester'] ?? ''));
 
 // Get all courses grouped by curriculum term for the AY popup
 $ay_courses_by_term = $generator->getAllCoursesGroupedByTerm();
@@ -493,6 +495,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
     ],
     'insights' => [
         ['title' => 'Program', 'value' => (string)$program],
+        ['title' => 'Current year/sem', 'value' => trim((string)($effective_current_term['year'] ?? '') . ' ' . (string)($effective_current_term['semester'] ?? ''))],
         ['title' => 'Projected completion', 'value' => $estimated_graduation ? (string)$estimated_graduation : 'In progress'],
         ['title' => 'Semesters to go', 'value' => (string)$remaining_semesters],
     ],
@@ -2148,10 +2151,12 @@ $currentEnrollmentClientPayload = json_encode([
                     foreach ($page_semesters as $sem_index => $sem_data): 
                         $year = $sem_data['year'];
                         $semester = $sem_data['semester'];
+                        $display_term_key = $year . '|' . $semester;
                         $courses = sortTaggedStudyPlanCoursesLast($sem_data['courses'] ?? []);
                         $meta = $sem_data['meta'] ?? [];
                         $is_completed_term = !empty($sem_data['is_completed_term']);
                         $is_partial_term = !empty($sem_data['is_partial_term']);
+                        $is_effective_current_term = ($display_term_key === $effective_current_term_key);
                         $is_skipped = !empty($meta['skipped']);
                         $term_retention = $meta['retention_status'] ?? 'None';
                         $term_max_units = $meta['max_units'] ?? 21;
@@ -2234,10 +2239,12 @@ $currentEnrollmentClientPayload = json_encode([
                     <div class="semester-section" style="border: 2px solid #cfe4d2; background: linear-gradient(180deg, #fbfefb 0%, #f6fbf7 100%);">
                         <div style="background: linear-gradient(135deg, #edf7ee, #dbeadf); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2f5d34;">
                             <?= htmlspecialchars($year) ?> - <?= htmlspecialchars($semester) ?>, <?= $school_year ?>
-                            <span style="font-size: 10px; background: #fff8e1; color: #8d6e00; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;">IN PROGRESS</span>
+                            <span style="font-size: 10px; background: <?= $is_effective_current_term ? '#e8f5e9' : '#fff8e1' ?>; color: <?= $is_effective_current_term ? '#2e7d32' : '#8d6e00' ?>; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;"><?= $is_effective_current_term ? 'CURRENT YEAR/SEM' : 'UNRESOLVED TERM' ?></span>
                         </div>
                         <div style="padding: 8px 12px; font-size: 12px; color: #4e6452; border-bottom: 1px solid #e1ece3;">
-                            This term already has completed courses, but it is not fully completed yet, so it stays visible here for reference.
+                            <?= $is_effective_current_term
+                                ? 'This is the student\'s current year/semester under school policy because it is the earliest unresolved required term.'
+                                : 'This term already has completed courses, but it still has unresolved required subjects, so it stays visible for reference.' ?>
                         </div>
                         <table class="course-table">
                             <thead>
@@ -2327,6 +2334,11 @@ $currentEnrollmentClientPayload = json_encode([
                         ?>
                         <div class="semester-header">
                             <?= htmlspecialchars($term_heading) ?>
+                            <?php if ($is_effective_current_term): ?>
+                            <span style="font-size: 11px; background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 700;">
+                                CURRENT YEAR/SEM
+                            </span>
+                            <?php endif; ?>
                             <?php if ($term_max_units < 21): ?>
                             <span style="font-size: 11px; background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600;">
                                 Max <?= $term_max_units ?> units (<?= $term_retention ?>)
