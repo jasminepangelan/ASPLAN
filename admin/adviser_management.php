@@ -1532,9 +1532,34 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
         }
     });
 
+    function submitFormWithSubmitter(form, submitter) {
+        if (!form) {
+            return;
+        }
+
+        if (typeof form.requestSubmit === 'function' && submitter) {
+            form.requestSubmit(submitter);
+            return;
+        }
+
+        if (submitter && submitter.name) {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = submitter.name;
+            hiddenInput.value = submitter.value || '1';
+            form.appendChild(hiddenInput);
+            form.submit();
+            hiddenInput.remove();
+            return;
+        }
+
+        form.submit();
+    }
+
     function confirmUnassignBatch(event) {
         event.preventDefault();
-        const form = event.target.closest('form');
+        const submitter = event.currentTarget || event.target.closest('button[type="submit"]');
+        const form = submitter ? submitter.closest('form') : null;
         if (!form) {
             return false;
         }
@@ -1546,7 +1571,7 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
             detail: 'This will save the batch with no adviser assigned.',
             confirmLabel: 'Unassign All',
             cancelLabel: 'Keep Assignments',
-            onConfirm: () => form.submit()
+            onConfirm: () => submitFormWithSubmitter(form, submitter)
         });
 
         return false;
@@ -1555,7 +1580,11 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
     // Custom confirmation dialog for batch updates
     function confirmUpdate(event) {
         event.preventDefault();
-        const form = event.target.closest('form');
+        const submitter = event.currentTarget || event.target.closest('button[type="submit"]');
+        const form = submitter ? submitter.closest('form') : null;
+        if (!form) {
+            return false;
+        }
         
         // Check if any checkboxes are selected
         const checkboxes = form.querySelectorAll('input[name="advisers[]"]:checked');
@@ -1578,7 +1607,7 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
             detail: `Selected adviser count: ${checkboxes.length}`,
             confirmLabel: 'Yes, Update',
             cancelLabel: 'Cancel',
-            onConfirm: () => form.submit()
+            onConfirm: () => submitFormWithSubmitter(form, submitter)
         });
 
         return false;
