@@ -18,6 +18,8 @@ require_once __DIR__ . '/../includes/academic_hold_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/study_plan_override_service.php';
 require_once __DIR__ . '/../includes/study_plan_course_addition_service.php';
+require_once __DIR__ . '/../includes/student_current_enrollment_service.php';
+require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
 
 // Check if the user is logged in
@@ -134,12 +136,16 @@ $valid_override_years = spoValidOverrideYears();
 $valid_override_semesters = spoValidOverrideSemesters();
 $study_plan_overrides = spoLoadStudyPlanOverrides($conn, (string) $student_id);
 $study_plan_course_additions = spcaLoadCourseAdditionMap($conn, (string)$student_id);
+sceEnsureCurrentEnrollmentTables($conn);
 
 // Get completed (past) terms for display
 $completed_terms = $generator->getCompletedTerms();
 
 // Get all courses grouped by curriculum term for the AY popup
 $ay_courses_by_term = $generator->getAllCoursesGroupedByTerm();
+$current_enrollment_term_map = sceBuildSelectableTermMap($ay_courses_by_term);
+$saved_current_enrollment = sceLoadStudentCurrentEnrollment($conn, (string)$student_id);
+$csrfToken = getCSRFToken();
 
 // Get courses failed 3+ times (triggers study plan generation stop)
 $thrice_failed = $generator->getThriceFailedCourses();
@@ -479,7 +485,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
 
 $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
     'title' => 'Study Plan Command Deck',
-    'note' => 'Use quick actions to print, review the academic-year overview, or jump back to your progress summary while the current planner output stays server-generated.',
+    'note' => 'Use quick actions to print, review the academic-year overview, capture your current enrollment, or jump back to your progress summary while the current planner output stays server-generated.',
     'stats' => [
         ['label' => 'Completion', 'value' => (string)($stats['completion_percentage'] ?? 0) . '%'],
         ['label' => 'Completed', 'value' => (string)($stats['completed_courses'] ?? 0) . '/' . (string)($stats['total_courses'] ?? 0)],
@@ -491,6 +497,26 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
         ['title' => 'Semesters to go', 'value' => (string)$remaining_semesters],
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+$currentEnrollmentClientPayload = json_encode([
+    'csrfToken' => $csrfToken,
+    'terms' => array_values(array_map(static function (array $term): array {
+        return [
+            'year_level' => (string) ($term['year_level'] ?? ''),
+            'semester' => (string) ($term['semester'] ?? ''),
+            'courses' => array_values(array_map(static function (array $course): array {
+                return [
+                    'course_code' => (string) ($course['course_code'] ?? ''),
+                    'course_title' => (string) ($course['course_title'] ?? ''),
+                    'units' => (float) ($course['units'] ?? 0),
+                    'prerequisite' => (string) ($course['prerequisite'] ?? 'None'),
+                    'reason' => (string) ($course['reason'] ?? ''),
+                ];
+            }, array_values((array) ($term['courses'] ?? [])))),
+        ];
+    }, array_values($current_enrollment_term_map))),
+    'savedEnrollment' => $saved_current_enrollment,
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 ?>
 
 <!DOCTYPE html>
@@ -587,6 +613,291 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
 
         .menu-toggle:hover {
             background: rgba(255, 255, 255, 0.22);
+        }
+
+        .current-enrollment-summary {
+            margin: 0 0 16px;
+            padding: 18px 20px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #f8fffb, #eef7f0);
+            border: 1px solid rgba(32, 96, 24, 0.12);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .current-enrollment-summary__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .current-enrollment-summary__title {
+            margin: 0;
+            font-size: 18px;
+            color: #17361d;
+        }
+
+        .current-enrollment-summary__note {
+            margin: 4px 0 0;
+            color: #4f6453;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .current-enrollment-summary__button {
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #206018, #2d8f22);
+            color: #fff;
+            padding: 11px 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .current-enrollment-summary__meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .current-enrollment-summary__meta-card {
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.88);
+            border: 1px solid rgba(32, 96, 24, 0.08);
+        }
+
+        .current-enrollment-summary__meta-label {
+            display: block;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #58705c;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+
+        .current-enrollment-summary__meta-value {
+            font-size: 16px;
+            font-weight: 800;
+            color: #17361d;
+        }
+
+        .current-enrollment-summary__courses {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .current-enrollment-summary__course {
+            padding: 8px 10px;
+            border-radius: 999px;
+            background: rgba(32, 96, 24, 0.08);
+            color: #214826;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .current-enrollment-summary__empty {
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.7);
+            color: #536758;
+            font-size: 13px;
+        }
+
+        #current-enrollment-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 25, 12, 0.52);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 10020;
+        }
+
+        #current-enrollment-modal-overlay.open {
+            display: flex;
+        }
+
+        #current-enrollment-modal {
+            width: min(920px, 100%);
+            max-height: 92vh;
+            overflow: hidden;
+            border-radius: 20px;
+            background: #fff;
+            box-shadow: 0 30px 70px rgba(15, 23, 42, 0.26);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .current-enrollment-modal__header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 22px 24px 16px;
+            border-bottom: 1px solid #e5ece6;
+        }
+
+        .current-enrollment-modal__header h2 {
+            margin: 0;
+            font-size: 22px;
+            color: #17361d;
+        }
+
+        .current-enrollment-modal__header p {
+            margin: 6px 0 0;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #536758;
+        }
+
+        .current-enrollment-modal__close {
+            border: none;
+            background: transparent;
+            color: #54685a;
+            font-size: 28px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .current-enrollment-modal__body {
+            padding: 18px 24px 22px;
+            overflow-y: auto;
+        }
+
+        .current-enrollment-modal__filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .current-enrollment-modal__field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #335239;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .current-enrollment-modal__field select {
+            width: 100%;
+            border: 1px solid #cddbd0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font: inherit;
+            color: #17361d;
+            background: #fff;
+        }
+
+        .current-enrollment-modal__helper {
+            margin: 0 0 14px;
+            color: #59715e;
+            font-size: 13px;
+        }
+
+        .current-enrollment-modal__table-wrap {
+            border: 1px solid #dbe7dd;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #fdfefd;
+        }
+
+        .current-enrollment-modal__table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .current-enrollment-modal__table th,
+        .current-enrollment-modal__table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #e9efea;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .current-enrollment-modal__table th {
+            background: #206018;
+            color: #fff;
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .current-enrollment-modal__table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .current-enrollment-modal__table td:first-child,
+        .current-enrollment-modal__table th:first-child {
+            width: 70px;
+            text-align: center;
+        }
+
+        .current-enrollment-modal__status {
+            margin-top: 14px;
+            min-height: 20px;
+            font-size: 13px;
+            color: #425746;
+        }
+
+        .current-enrollment-modal__status.is-error {
+            color: #b42318;
+        }
+
+        .current-enrollment-modal__status.is-success {
+            color: #166534;
+        }
+
+        .current-enrollment-modal__footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 24px 22px;
+            border-top: 1px solid #e5ece6;
+        }
+
+        .current-enrollment-modal__selection {
+            font-size: 13px;
+            color: #4d6352;
+        }
+
+        .current-enrollment-modal__actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .current-enrollment-modal__actions button {
+            border: none;
+            border-radius: 10px;
+            padding: 11px 16px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .current-enrollment-modal__actions .secondary {
+            background: #edf3ee;
+            color: #2f4734;
+        }
+
+        .current-enrollment-modal__actions .primary {
+            background: linear-gradient(135deg, #206018, #2d8f22);
+            color: #fff;
+        }
+
+        .current-enrollment-modal__actions button:disabled {
+            opacity: 0.6;
+            cursor: wait;
         }
 
         /* Sidebar */
@@ -1395,6 +1706,26 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>
         </div>
 
+        <section class="current-enrollment-summary" aria-labelledby="currentEnrollmentSummaryTitle">
+            <div class="current-enrollment-summary__header">
+                <div>
+                    <h2 class="current-enrollment-summary__title" id="currentEnrollmentSummaryTitle">Current Enrollment</h2>
+                    <p class="current-enrollment-summary__note">Choose your current year level and semester, then save the subjects you are currently taking. Only valid uncompleted subjects for the selected term are available.</p>
+                </div>
+                <button
+                    type="button"
+                    class="current-enrollment-summary__button"
+                    id="openCurrentEnrollmentButton"
+                    onclick="openCurrentEnrollmentModal()"
+                >Set Current Enrollment</button>
+            </div>
+            <div class="current-enrollment-summary__meta" id="currentEnrollmentSummaryMeta"></div>
+            <div class="current-enrollment-summary__empty" id="currentEnrollmentSummaryEmpty">
+                No current enrollment has been saved yet.
+            </div>
+            <div class="current-enrollment-summary__courses" id="currentEnrollmentSummaryCourses"></div>
+        </section>
+
         <?php if (!empty($academicHold['active'])): ?>
         <div style="margin: 0 0 16px; padding: 15px 18px; background: linear-gradient(135deg, #fff4f4, #ffe0e0); border-left: 5px solid #b71c1c; border-radius: 10px; color: #5f1d1d; box-shadow: 0 3px 14px rgba(183, 28, 28, 0.12);">
             <div style="font-size: 16px; font-weight: 700; color: #8e1b1b; margin-bottom: 6px;"><?= htmlspecialchars((string)$academicHold['title']) ?></div>
@@ -2184,6 +2515,64 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
         </div>
     </div>
 
+    <div id="current-enrollment-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="current-enrollment-modal-title">
+        <div id="current-enrollment-modal">
+            <div class="current-enrollment-modal__header">
+                <div>
+                    <h2 id="current-enrollment-modal-title">Set Current Enrollment</h2>
+                    <p>Select the current year level and semester first, then check the subjects you are currently enrolled in for that term.</p>
+                </div>
+                <button type="button" class="current-enrollment-modal__close" onclick="closeCurrentEnrollmentModal()" aria-label="Close current enrollment modal">&times;</button>
+            </div>
+            <div class="current-enrollment-modal__body">
+                <div class="current-enrollment-modal__filters">
+                    <div class="current-enrollment-modal__field">
+                        <label for="currentEnrollmentYearSelect">Current Year Level</label>
+                        <select id="currentEnrollmentYearSelect">
+                            <?php foreach (sceValidYears() as $yearOption): ?>
+                            <option value="<?= htmlspecialchars($yearOption) ?>"><?= htmlspecialchars($yearOption) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="current-enrollment-modal__field">
+                        <label for="currentEnrollmentSemesterSelect">Current Semester</label>
+                        <select id="currentEnrollmentSemesterSelect">
+                            <?php foreach (sceValidSemesters() as $semesterOption): ?>
+                            <option value="<?= htmlspecialchars($semesterOption) ?>"><?= htmlspecialchars($semesterOption) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <p class="current-enrollment-modal__helper">Available subjects come from your curriculum and current study-plan data. This prevents saving arbitrary or mismatched course entries.</p>
+
+                <div class="current-enrollment-modal__table-wrap">
+                    <table class="current-enrollment-modal__table">
+                        <thead>
+                            <tr>
+                                <th>Select</th>
+                                <th>Course Code</th>
+                                <th>Course Title</th>
+                                <th>Units</th>
+                                <th>Prerequisite</th>
+                            </tr>
+                        </thead>
+                        <tbody id="currentEnrollmentCoursesBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="current-enrollment-modal__status" id="currentEnrollmentStatus" aria-live="polite"></div>
+            </div>
+            <div class="current-enrollment-modal__footer">
+                <div class="current-enrollment-modal__selection" id="currentEnrollmentSelectionCount">0 selected</div>
+                <div class="current-enrollment-modal__actions">
+                    <button type="button" class="secondary" onclick="closeCurrentEnrollmentModal()">Cancel</button>
+                    <button type="button" class="primary" id="currentEnrollmentSaveButton" onclick="saveCurrentEnrollment()">Save Current Enrollment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== A.Y. Course Overview Modal ===== -->
     <div id="ay-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ay-modal-title">
         <div id="ay-modal">
@@ -2506,6 +2895,8 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             const action = event && event.detail ? event.detail.action : '';
             if (action === 'print') {
                 window.print();
+            } else if (action === 'current-enrollment') {
+                openCurrentEnrollmentModal();
             } else if (action === 'overview') {
                 openAYModal();
             } else if (action === 'progress') {
@@ -2535,7 +2926,17 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
 
         // Close modal with Escape key
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeAYModal();
+            if (e.key !== 'Escape') {
+                return;
+            }
+
+            const currentEnrollmentOverlay = document.getElementById('current-enrollment-modal-overlay');
+            if (currentEnrollmentOverlay && currentEnrollmentOverlay.classList.contains('open')) {
+                closeCurrentEnrollmentModal();
+                return;
+            }
+
+            closeAYModal();
         });
 
         function toggleAYBlock(blockId, headerEl) {
@@ -2544,6 +2945,290 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
             const isHidden = body.classList.toggle('hidden');
             headerEl.classList.toggle('collapsed', isHidden);
         }
+
+        const currentEnrollmentConfig = JSON.parse(<?= json_encode($currentEnrollmentClientPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>);
+        const currentEnrollmentState = {
+            terms: Array.isArray(currentEnrollmentConfig.terms) ? currentEnrollmentConfig.terms : [],
+            savedEnrollment: currentEnrollmentConfig.savedEnrollment || null,
+            csrfToken: currentEnrollmentConfig.csrfToken || '',
+            saving: false,
+        };
+
+        function getCurrentEnrollmentModalElements() {
+            return {
+                overlay: document.getElementById('current-enrollment-modal-overlay'),
+                yearSelect: document.getElementById('currentEnrollmentYearSelect'),
+                semesterSelect: document.getElementById('currentEnrollmentSemesterSelect'),
+                tbody: document.getElementById('currentEnrollmentCoursesBody'),
+                status: document.getElementById('currentEnrollmentStatus'),
+                count: document.getElementById('currentEnrollmentSelectionCount'),
+                saveButton: document.getElementById('currentEnrollmentSaveButton'),
+            };
+        }
+
+        function findCurrentEnrollmentTerm(yearLevel, semester) {
+            return currentEnrollmentState.terms.find((term) => (
+                String(term.year_level || '') === String(yearLevel || '') &&
+                String(term.semester || '') === String(semester || '')
+            )) || null;
+        }
+
+        function setCurrentEnrollmentStatus(message, variant) {
+            const { status } = getCurrentEnrollmentModalElements();
+            if (!status) {
+                return;
+            }
+            status.textContent = message || '';
+            status.classList.remove('is-error', 'is-success');
+            if (variant === 'error') {
+                status.classList.add('is-error');
+            } else if (variant === 'success') {
+                status.classList.add('is-success');
+            }
+        }
+
+        function formatEnrollmentTimestamp(value) {
+            if (!value) {
+                return 'Not saved yet';
+            }
+            const date = new Date(String(value).replace(' ', 'T'));
+            if (Number.isNaN(date.getTime())) {
+                return value;
+            }
+            return date.toLocaleString();
+        }
+
+        function renderCurrentEnrollmentSummary(enrollment) {
+            const meta = document.getElementById('currentEnrollmentSummaryMeta');
+            const courses = document.getElementById('currentEnrollmentSummaryCourses');
+            const empty = document.getElementById('currentEnrollmentSummaryEmpty');
+            const openButton = document.getElementById('openCurrentEnrollmentButton');
+            if (!meta || !courses || !empty || !openButton) {
+                return;
+            }
+
+            const courseList = Array.isArray(enrollment && enrollment.courses) ? enrollment.courses : [];
+            const totalUnits = courseList.reduce((sum, course) => sum + (Number(course.units) || 0), 0);
+
+            if (!enrollment || !enrollment.year_level || !enrollment.semester || !courseList.length) {
+                meta.innerHTML = '';
+                courses.innerHTML = '';
+                empty.hidden = false;
+                openButton.textContent = 'Set Current Enrollment';
+                return;
+            }
+
+            empty.hidden = true;
+            openButton.textContent = 'Edit Current Enrollment';
+            meta.innerHTML = `
+                <div class="current-enrollment-summary__meta-card">
+                    <span class="current-enrollment-summary__meta-label">Current Term</span>
+                    <div class="current-enrollment-summary__meta-value">${enrollment.year_level} ${enrollment.semester}</div>
+                </div>
+                <div class="current-enrollment-summary__meta-card">
+                    <span class="current-enrollment-summary__meta-label">Subjects</span>
+                    <div class="current-enrollment-summary__meta-value">${courseList.length}</div>
+                </div>
+                <div class="current-enrollment-summary__meta-card">
+                    <span class="current-enrollment-summary__meta-label">Units</span>
+                    <div class="current-enrollment-summary__meta-value">${totalUnits.toFixed(1)}</div>
+                </div>
+                <div class="current-enrollment-summary__meta-card">
+                    <span class="current-enrollment-summary__meta-label">Last Updated</span>
+                    <div class="current-enrollment-summary__meta-value">${formatEnrollmentTimestamp(enrollment.updated_at)}</div>
+                </div>
+            `;
+
+            courses.innerHTML = '';
+            courseList.forEach((course) => {
+                const tag = document.createElement('div');
+                tag.className = 'current-enrollment-summary__course';
+                const units = Number(course.units) || 0;
+                tag.textContent = `${course.course_code} (${units.toFixed(1)})`;
+                courses.appendChild(tag);
+            });
+        }
+
+        function updateCurrentEnrollmentSelectionCount() {
+            const { tbody, count } = getCurrentEnrollmentModalElements();
+            if (!tbody || !count) {
+                return;
+            }
+            const selected = tbody.querySelectorAll('input[type="checkbox"]:checked');
+            const rows = tbody.querySelectorAll('input[type="checkbox"]');
+            count.textContent = `${selected.length} selected of ${rows.length}`;
+        }
+
+        function renderCurrentEnrollmentCourses() {
+            const { yearSelect, semesterSelect, tbody } = getCurrentEnrollmentModalElements();
+            if (!yearSelect || !semesterSelect || !tbody) {
+                return;
+            }
+
+            const term = findCurrentEnrollmentTerm(yearSelect.value, semesterSelect.value);
+            const savedCodes = new Set(Array.isArray(currentEnrollmentState.savedEnrollment && currentEnrollmentState.savedEnrollment.course_codes)
+                ? currentEnrollmentState.savedEnrollment.course_codes
+                : []);
+
+            tbody.innerHTML = '';
+
+            if (!term || !Array.isArray(term.courses) || !term.courses.length) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 5;
+                cell.textContent = 'No available uncompleted subjects were found for this term.';
+                row.appendChild(cell);
+                tbody.appendChild(row);
+                updateCurrentEnrollmentSelectionCount();
+                return;
+            }
+
+            term.courses.forEach((course) => {
+                const row = document.createElement('tr');
+
+                const selectCell = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = course.course_code;
+                checkbox.checked = savedCodes.has(course.course_code);
+                checkbox.addEventListener('change', updateCurrentEnrollmentSelectionCount);
+                selectCell.appendChild(checkbox);
+                row.appendChild(selectCell);
+
+                const codeCell = document.createElement('td');
+                codeCell.textContent = course.course_code;
+                row.appendChild(codeCell);
+
+                const titleCell = document.createElement('td');
+                titleCell.textContent = course.course_title;
+                row.appendChild(titleCell);
+
+                const unitsCell = document.createElement('td');
+                unitsCell.textContent = Number(course.units || 0).toFixed(1);
+                row.appendChild(unitsCell);
+
+                const prereqCell = document.createElement('td');
+                prereqCell.textContent = course.prerequisite || 'None';
+                row.appendChild(prereqCell);
+
+                tbody.appendChild(row);
+            });
+
+            updateCurrentEnrollmentSelectionCount();
+        }
+
+        function syncCurrentEnrollmentSelections() {
+            const { yearSelect, semesterSelect } = getCurrentEnrollmentModalElements();
+            if (!yearSelect || !semesterSelect) {
+                return;
+            }
+
+            const saved = currentEnrollmentState.savedEnrollment || {};
+            if (saved.year_level && saved.semester && findCurrentEnrollmentTerm(saved.year_level, saved.semester)) {
+                yearSelect.value = saved.year_level;
+                semesterSelect.value = saved.semester;
+            } else if (currentEnrollmentState.terms.length > 0) {
+                yearSelect.value = currentEnrollmentState.terms[0].year_level || '';
+                semesterSelect.value = currentEnrollmentState.terms[0].semester || '';
+            }
+
+            renderCurrentEnrollmentCourses();
+        }
+
+        function openCurrentEnrollmentModal() {
+            const { overlay } = getCurrentEnrollmentModalElements();
+            if (!overlay) {
+                return;
+            }
+            syncCurrentEnrollmentSelections();
+            setCurrentEnrollmentStatus('', '');
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCurrentEnrollmentModal() {
+            const { overlay } = getCurrentEnrollmentModalElements();
+            if (!overlay) {
+                return;
+            }
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function saveCurrentEnrollment() {
+            const { yearSelect, semesterSelect, tbody, saveButton } = getCurrentEnrollmentModalElements();
+            if (!yearSelect || !semesterSelect || !tbody || !saveButton || currentEnrollmentState.saving) {
+                return;
+            }
+
+            const checkedBoxes = Array.from(tbody.querySelectorAll('input[type="checkbox"]:checked'));
+            const selectedCodes = checkedBoxes.map((checkbox) => checkbox.value);
+
+            if (!yearSelect.value || !semesterSelect.value) {
+                setCurrentEnrollmentStatus('Choose the current year level and semester first.', 'error');
+                return;
+            }
+
+            if (!selectedCodes.length) {
+                setCurrentEnrollmentStatus('Select at least one subject before saving.', 'error');
+                return;
+            }
+
+            currentEnrollmentState.saving = true;
+            saveButton.disabled = true;
+            setCurrentEnrollmentStatus('Saving current enrollment...', '');
+
+            fetch('save_current_enrollment.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    csrf_token: currentEnrollmentState.csrfToken,
+                    year_level: yearSelect.value,
+                    semester: semesterSelect.value,
+                    course_codes: selectedCodes,
+                })
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (!data || !data.success) {
+                        throw new Error((data && data.message) || 'Unable to save the current enrollment.');
+                    }
+
+                    currentEnrollmentState.savedEnrollment = data.enrollment || null;
+                    renderCurrentEnrollmentSummary(currentEnrollmentState.savedEnrollment);
+                    syncCurrentEnrollmentSelections();
+                    setCurrentEnrollmentStatus(data.message || 'Current enrollment saved successfully.', 'success');
+                    window.setTimeout(closeCurrentEnrollmentModal, 800);
+                })
+                .catch((error) => {
+                    setCurrentEnrollmentStatus(error.message || 'Unable to save the current enrollment.', 'error');
+                })
+                .finally(() => {
+                    currentEnrollmentState.saving = false;
+                    saveButton.disabled = false;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            renderCurrentEnrollmentSummary(currentEnrollmentState.savedEnrollment);
+
+            const { yearSelect, semesterSelect, overlay } = getCurrentEnrollmentModalElements();
+            if (yearSelect) {
+                yearSelect.addEventListener('change', renderCurrentEnrollmentCourses);
+            }
+            if (semesterSelect) {
+                semesterSelect.addEventListener('change', renderCurrentEnrollmentCourses);
+            }
+            if (overlay) {
+                overlay.addEventListener('click', function(event) {
+                    if (event.target === overlay) {
+                        closeCurrentEnrollmentModal();
+                    }
+                });
+            }
+        });
 
     </script>
 </body>
