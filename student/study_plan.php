@@ -449,7 +449,7 @@ function describeStudyPlanDisplayTerm(array $courses, string $displayYear, strin
     ];
 }
 
-function sortTaggedStudyPlanCoursesLast(array $courses): array {
+function sortTaggedStudyPlanCoursesFirst(array $courses): array {
     $indexed = [];
     foreach ($courses as $index => $course) {
         $hasDeferredTag = !empty($course['needs_retake'])
@@ -467,7 +467,7 @@ function sortTaggedStudyPlanCoursesLast(array $courses): array {
             return $a['index'] <=> $b['index'];
         }
 
-        return $a['has_deferred_tag'] <=> $b['has_deferred_tag'];
+        return $b['has_deferred_tag'] <=> $a['has_deferred_tag'];
     });
 
     return array_column($indexed, 'course');
@@ -2152,7 +2152,7 @@ $currentEnrollmentClientPayload = json_encode([
                         $year = $sem_data['year'];
                         $semester = $sem_data['semester'];
                         $display_term_key = $year . '|' . $semester;
-                        $courses = sortTaggedStudyPlanCoursesLast($sem_data['courses'] ?? []);
+                        $courses = sortTaggedStudyPlanCoursesFirst($sem_data['courses'] ?? []);
                         $meta = $sem_data['meta'] ?? [];
                         $is_completed_term = !empty($sem_data['is_completed_term']);
                         $is_partial_term = !empty($sem_data['is_partial_term']);
