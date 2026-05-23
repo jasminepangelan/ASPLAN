@@ -487,7 +487,7 @@ $studentShellPayload = htmlspecialchars(json_encode([
 
 $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
     'title' => 'Study Plan Command Deck',
-    'note' => 'Use quick actions to print, review the academic-year overview, capture your current enrollment, or jump back to your progress summary while the current planner output stays server-generated.',
+    'note' => 'Use quick actions to print, review the academic-year overview, save your current enrolled courses, or jump back to your progress summary so the planner stays aligned with what you are taking now.',
     'stats' => [
         ['label' => 'Completion', 'value' => (string)($stats['completion_percentage'] ?? 0) . '%'],
         ['label' => 'Completed', 'value' => (string)($stats['completed_courses'] ?? 0) . '/' . (string)($stats['total_courses'] ?? 0)],
@@ -1724,19 +1724,19 @@ $currentEnrollmentClientPayload = json_encode([
         <section class="current-enrollment-summary" aria-labelledby="currentEnrollmentSummaryTitle">
             <div class="current-enrollment-summary__header">
                 <div>
-                    <h2 class="current-enrollment-summary__title" id="currentEnrollmentSummaryTitle">Current Enrollment</h2>
-                    <p class="current-enrollment-summary__note">Choose your current year level and semester, then save the subjects you are currently taking. Only valid uncompleted subjects for the selected term are available.</p>
+                    <h2 class="current-enrollment-summary__title" id="currentEnrollmentSummaryTitle">Current Enrolled Courses</h2>
+                    <p class="current-enrollment-summary__note">Add the subjects you are currently enrolled in so your study plan can stay more accurate and better reflect your actual academic load.</p>
                 </div>
                 <button
                     type="button"
                     class="current-enrollment-summary__button"
                     id="openCurrentEnrollmentButton"
                     onclick="openCurrentEnrollmentModal()"
-                >Set Current Enrollment</button>
+                >Set Current Enrolled Courses</button>
             </div>
             <div class="current-enrollment-summary__meta" id="currentEnrollmentSummaryMeta"></div>
             <div class="current-enrollment-summary__empty" id="currentEnrollmentSummaryEmpty">
-                No current enrollment has been saved yet.
+                No current enrolled courses have been saved yet.
             </div>
             <div class="current-enrollment-summary__courses" id="currentEnrollmentSummaryCourses"></div>
         </section>
@@ -2543,8 +2543,8 @@ $currentEnrollmentClientPayload = json_encode([
         <div id="current-enrollment-modal">
             <div class="current-enrollment-modal__header">
                 <div>
-                    <h2 id="current-enrollment-modal-title">Set Current Enrollment</h2>
-                    <p>Select the current year level and semester first, then check the subjects you are currently enrolled in for that term.</p>
+                    <h2 id="current-enrollment-modal-title">Set Current Enrolled Courses</h2>
+                    <p>Select your current year level and semester, then check the subjects you are enrolled in so the study plan can stay more accurate.</p>
                 </div>
                 <button type="button" class="current-enrollment-modal__close" onclick="closeCurrentEnrollmentModal()" aria-label="Close current enrollment modal">&times;</button>
             </div>
@@ -2574,7 +2574,7 @@ $currentEnrollmentClientPayload = json_encode([
                     </div>
                 </div>
 
-                <p class="current-enrollment-modal__helper">Current year/semester is saved separately from the subjects below. You can include back subjects or irregular loads from different curriculum terms, but every subject is still server-validated against your actual remaining curriculum.</p>
+                <p class="current-enrollment-modal__helper">Your current year/semester is saved separately from the subjects below. You can include back subjects or irregular loads from different curriculum terms, and every subject is still server-validated against your actual remaining curriculum.</p>
 
                 <div class="current-enrollment-modal__table-wrap">
                     <table class="current-enrollment-modal__table">
@@ -2598,7 +2598,7 @@ $currentEnrollmentClientPayload = json_encode([
                 <div class="current-enrollment-modal__selection" id="currentEnrollmentSelectionCount">0 selected</div>
                 <div class="current-enrollment-modal__actions">
                     <button type="button" class="secondary" onclick="closeCurrentEnrollmentModal()">Cancel</button>
-                    <button type="button" class="primary" id="currentEnrollmentSaveButton" onclick="saveCurrentEnrollment()">Save Current Enrollment</button>
+                    <button type="button" class="primary" id="currentEnrollmentSaveButton" onclick="saveCurrentEnrollment()">Save Current Enrolled Courses</button>
                 </div>
             </div>
         </div>
@@ -3046,12 +3046,12 @@ $currentEnrollmentClientPayload = json_encode([
                 meta.innerHTML = '';
                 courses.innerHTML = '';
                 empty.hidden = false;
-                openButton.textContent = 'Set Current Enrollment';
+                openButton.textContent = 'Set Current Enrolled Courses';
                 return;
             }
 
             empty.hidden = true;
-            openButton.textContent = 'Edit Current Enrollment';
+            openButton.textContent = 'Edit Current Enrolled Courses';
             meta.innerHTML = `
                 <div class="current-enrollment-summary__meta-card">
                     <span class="current-enrollment-summary__meta-label">Current Term</span>

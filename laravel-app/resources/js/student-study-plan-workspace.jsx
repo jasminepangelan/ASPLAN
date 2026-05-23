@@ -24,7 +24,7 @@ function StudentStudyPlanWorkspace({
                         Print Study Plan
                     </button>
                     <button type="button" onClick={() => dispatchStudyPlanAction('current-enrollment')}>
-                        Current Enrollment
+                        Current Enrolled Courses
                     </button>
                     <button type="button" onClick={() => dispatchStudyPlanAction('overview')}>
                         Open A.Y. Overview
