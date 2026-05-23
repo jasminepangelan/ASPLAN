@@ -362,6 +362,10 @@ function calculateTotalUnits($courses) {
     return $total;
 }
 
+function formatStudyPlanUnits($units): string {
+    return number_format((float)($units ?? 0), 0);
+}
+
 function studyPlanDisplayTermOrder(string $year, string $semester): array {
     $year_order = 999;
     if (preg_match('/(\d+)/', $year, $matches)) {
@@ -1773,7 +1777,7 @@ $currentEnrollmentClientPayload = json_encode([
                     <div class="stat-sub">Courses Completed</div>
                 </div>
                 <div class="stat-card" data-stat="units">
-                    <div class="stat-value" id="units-completed"><?= $stats['completed_units'] ?>/<?= $stats['total_units'] ?></div>
+                    <div class="stat-value" id="units-completed"><?= formatStudyPlanUnits($stats['completed_units'] ?? 0) ?>/<?= formatStudyPlanUnits($stats['total_units'] ?? 0) ?></div>
                     <div class="stat-sub">Units Completed</div>
                 </div>
                 <div class="stat-card" data-stat="remaining">
@@ -2230,13 +2234,13 @@ $currentEnrollmentClientPayload = json_encode([
                                             <?php endif; ?>
                                         </td>
                                         <td><?= htmlspecialchars($course['title']) ?></td>
-                                        <td><?= number_format($units, 1) ?></td>
+                                        <td><?= formatStudyPlanUnits($units) ?></td>
                                         <td class="<?= $prereq_class ?>" style="text-align: center;"><?= htmlspecialchars($prerequisite) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="total-row">
                                     <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                                    <td><strong><?= number_format($semester_total, 1) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanUnits($semester_total) ?></strong></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -2293,13 +2297,13 @@ $currentEnrollmentClientPayload = json_encode([
                                             <?php endif; ?>
                                         </td>
                                         <td><?= htmlspecialchars($course['title']) ?></td>
-                                        <td><?= $is_non_credit ? '(' . number_format($units, 1) . ')' : number_format($units, 1) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanUnits($units) . ')' : formatStudyPlanUnits($units) ?></td>
                                         <td style="text-align: center;"><?= htmlspecialchars($prerequisite) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="total-row">
                                     <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                                    <td><strong><?= number_format($semester_total, 1) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanUnits($semester_total) ?></strong></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -2436,13 +2440,13 @@ $currentEnrollmentClientPayload = json_encode([
                                             </div>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= $is_non_credit ? '(' . number_format($units, 1) . ')' : number_format($units, 1) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanUnits($units) . ')' : formatStudyPlanUnits($units) ?></td>
                                         <td><?= htmlspecialchars($prerequisite) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="total-row">
                                     <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                                    <td><strong><?= number_format($semester_total, 1) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanUnits($semester_total) ?></strong></td>
                                     <td></td>
                                 </tr>
                             </tbody>
