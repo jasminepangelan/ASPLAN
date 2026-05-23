@@ -198,6 +198,20 @@ function csStaffChecklistParsePrerequisitesLocal($prereq_string): array
     return $valid_prereqs;
 }
 
+function csStaffChecklistBuildRowKeyLocal(array $row): string
+{
+    $courseCode = csStaffChecklistNormalizeCourseTokenLocal($row['course_code'] ?? '');
+    if ($courseCode === '') {
+        return '';
+    }
+
+    $courseTitle = strtoupper(trim((string)($row['course_title'] ?? '')));
+    $year = strtoupper(trim((string)($row['year'] ?? '')));
+    $semester = strtoupper(trim((string)($row['semester'] ?? '')));
+
+    return implode('|', [$courseCode, $courseTitle, $year, $semester]);
+}
+
 function csStaffChecklistBuildPrereqBlockersLocal($conn, string $studentId, string $programView): array
 {
     $prereqBlockersByCourse = [];
@@ -234,7 +248,8 @@ function csStaffChecklistBuildPrereqBlockersLocal($conn, string $studentId, stri
         $completed = [];
         foreach ($rowsForPrereq as $r) {
             $codeNorm = csStaffChecklistNormalizeCourseTokenLocal($r['course_code'] ?? '');
-            if ($codeNorm === '') {
+            $courseRowKey = csStaffChecklistBuildRowKeyLocal((array)$r);
+            if ($codeNorm === '' || $courseRowKey === '') {
                 continue;
             }
 
@@ -263,7 +278,7 @@ function csStaffChecklistBuildPrereqBlockersLocal($conn, string $studentId, stri
             }
 
             if (!empty($blockers)) {
-                $prereqBlockersByCourse[$codeNorm] = $blockers;
+                $prereqBlockersByCourse[$courseRowKey] = $blockers;
             }
         }
     } catch (Throwable $e) {
@@ -326,6 +341,7 @@ try {
     $student_id = '';
     $program_view = '';
     $courses = [];
+    $course_row_keys = [];
     $grades = [];
     $professors = [];
     $debug = [];
@@ -337,6 +353,7 @@ try {
         $student_id = $_POST['student_id'];
         $program_view = trim((string)($_POST['program_view'] ?? ''));
         $courses = isset($_POST['courses']) ? json_decode($_POST['courses'], true) : [];
+        $course_row_keys = isset($_POST['course_row_keys']) ? json_decode($_POST['course_row_keys'], true) : [];
         $grades = isset($_POST['grades']) ? json_decode($_POST['grades'], true) : [];
         $professors = isset($_POST['professors']) ? json_decode($_POST['professors'], true) : [];
         $debug['source'] = 'form-data';
@@ -349,6 +366,7 @@ try {
                 $student_id = $input['student_id'];
                 $program_view = trim((string)($input['program_view'] ?? ''));
                 $courses = $input['courses'];
+                $course_row_keys = $input['course_row_keys'] ?? [];
                 $grades = $input['grades'];
                 $professors = isset($input['professors']) ? $input['professors'] : [];
                 $debug['source'] = 'json';
@@ -358,6 +376,7 @@ try {
     $debug['student_id'] = $student_id;
     $debug['program_view'] = $program_view;
     $debug['courses'] = $courses;
+    $debug['course_row_keys'] = $course_row_keys;
     $debug['grades'] = $grades;
     $debug['professors'] = $professors;
 
@@ -371,6 +390,7 @@ try {
                     'student_id' => $student_id,
                     'program_view' => $program_view,
                     'courses' => $courses,
+                    'course_row_keys' => $course_row_keys,
                     'grades' => $grades,
                     'professors' => $professors,
                 ]
@@ -383,6 +403,7 @@ try {
                     'student_id' => (string) ($_POST['student_id'] ?? $student_id),
                     'program_view' => trim((string)($_POST['program_view'] ?? '')),
                     'courses' => $_POST['courses'] ?? [],
+                    'course_row_keys' => $_POST['course_row_keys'] ?? [],
                     'final_grades' => $_POST['final_grades'] ?? [],
                     'final_grades_2' => $_POST['final_grades_2'] ?? [],
                     'final_grades_3' => $_POST['final_grades_3'] ?? [],
@@ -451,15 +472,15 @@ try {
             exit;
         }
         $successful = 0;
-        foreach ($courses as $course_code) {
+        foreach ($courses as $idx => $course_code) {
             $grade = isset($grades[$course_code]) ? $grades[$course_code] : '';
             $professor_instructor = isset($professors[$course_code]) ? $professors[$course_code] : '';
+            $courseRowKey = trim((string)($course_row_keys[$idx] ?? ''));
 
             $gradeNorm = trim((string)$grade);
             $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && strtoupper($gradeNorm) !== 'NO GRADE');
-            $courseCodeNorm = csStaffChecklistNormalizeCourseTokenLocal($course_code);
-            if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
-                $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseCodeNorm]);
+            if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+                $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
                 continue;
             }
 
@@ -495,6 +516,7 @@ try {
     $student_id = $_POST['student_id'];
     $program_view = trim((string)($_POST['program_view'] ?? ''));
     $courses = json_decode($_POST['courses'], true);
+    $course_row_keys = isset($_POST['course_row_keys']) ? json_decode($_POST['course_row_keys'], true) : [];
     $final_grades = json_decode($_POST['final_grades'], true);
     $final_grades_2 = isset($_POST['final_grades_2']) ? json_decode($_POST['final_grades_2'], true) : [];
     $final_grades_3 = isset($_POST['final_grades_3']) ? json_decode($_POST['final_grades_3'], true) : [];
@@ -583,9 +605,9 @@ try {
             || ($fg2Norm !== '' && strtoupper($fg2Norm) !== 'NO GRADE')
             || ($fg3Norm !== '' && strtoupper($fg3Norm) !== 'NO GRADE');
 
-        $courseCodeNorm = csStaffChecklistNormalizeCourseTokenLocal($courseCode);
-        if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
-            $errors[] = "Prerequisite(s) not cleared for {$courseCode}: " . implode(', ', (array)$prereqBlockersByCourse[$courseCodeNorm]);
+        $courseRowKey = trim((string)($course_row_keys[$i] ?? ''));
+        if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+            $errors[] = "Prerequisite(s) not cleared for {$courseCode}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
             continue;
         }
 

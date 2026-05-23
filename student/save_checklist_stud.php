@@ -186,6 +186,20 @@ function csStudChecklistParsePrerequisitesLocal($prereq_string): array
     return $valid_prereqs;
 }
 
+function csStudChecklistBuildRowKeyLocal(array $row): string
+{
+    $courseCode = csStudChecklistNormalizeCourseTokenLocal($row['course_code'] ?? '');
+    if ($courseCode === '') {
+        return '';
+    }
+
+    $courseTitle = strtoupper(trim((string)($row['course_title'] ?? '')));
+    $year = strtoupper(trim((string)($row['year'] ?? '')));
+    $semester = strtoupper(trim((string)($row['semester'] ?? '')));
+
+    return implode('|', [$courseCode, $courseTitle, $year, $semester]);
+}
+
 function normalizeChecklistValue($value): string
 {
     return trim((string) $value);
@@ -374,6 +388,7 @@ try {
     $student_id = $_POST['student_id'];
     $program_view = trim((string)($_POST['program_view'] ?? ''));
     $courses = $_POST['courses'];
+    $course_row_keys = $_POST['course_row_keys'] ?? [];
     $final_grades = $_POST['final_grades'];
     $final_grades_2 = $_POST['final_grades_2'] ?? [];
     $final_grades_3 = $_POST['final_grades_3'] ?? [];
@@ -411,7 +426,8 @@ try {
             $completed = [];
             foreach ($rowsForPrereq as $r) {
                 $codeNorm = csStudChecklistNormalizeCourseTokenLocal($r['course_code'] ?? '');
-                if ($codeNorm === '') {
+                $courseRowKey = csStudChecklistBuildRowKeyLocal((array)$r);
+                if ($codeNorm === '' || $courseRowKey === '') {
                     continue;
                 }
 
@@ -440,7 +456,7 @@ try {
                 }
 
                 if (!empty($blockers)) {
-                    $prereqBlockersByCourse[$codeNorm] = $blockers;
+                    $prereqBlockersByCourse[$courseRowKey] = $blockers;
                 }
             }
         }
@@ -460,7 +476,9 @@ try {
             [
                 'save_context' => 'student',
                 'student_id' => $student_id,
+                'program_view' => $program_view,
                 'courses' => $courses,
+                'course_row_keys' => $course_row_keys,
                 'final_grades' => $final_grades,
                 'final_grades_2' => $final_grades_2,
                 'final_grades_3' => $final_grades_3,
@@ -511,8 +529,9 @@ try {
             || ($finalGrade3 !== '' && $finalGrade3 !== 'No Grade');
 
         $courseCodeNorm = csStudChecklistNormalizeCourseTokenLocal($course_code);
-        if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
-            $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseCodeNorm]);
+        $courseRowKey = trim((string)($course_row_keys[$index] ?? ''));
+        if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+            $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
             continue;
         }
 

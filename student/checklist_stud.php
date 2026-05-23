@@ -402,6 +402,19 @@ function csChecklistParsePrerequisites($prereq_string): array {
   return $valid_prereqs;
 }
 
+function csChecklistBuildRowKey(array $row): string {
+  $courseCode = csChecklistNormalizeCourseToken($row['course_code'] ?? '');
+  if ($courseCode === '') {
+    return '';
+  }
+
+  $courseTitle = strtoupper(trim((string)($row['course_title'] ?? '')));
+  $year = strtoupper(trim((string)($row['year'] ?? '')));
+  $semester = strtoupper(trim((string)($row['semester'] ?? '')));
+
+  return implode('|', [$courseCode, $courseTitle, $year, $semester]);
+}
+
 $all_courses = [];
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
@@ -444,7 +457,8 @@ foreach ($all_courses as $csRow) {
 $csChecklistPrereqBlockers = [];
 foreach ($all_courses as $csRow) {
   $courseCodeNorm = csChecklistNormalizeCourseToken($csRow['course_code'] ?? '');
-  if ($courseCodeNorm === '') {
+  $courseRowKey = csChecklistBuildRowKey((array)$csRow);
+  if ($courseCodeNorm === '' || $courseRowKey === '') {
     continue;
   }
 
@@ -462,7 +476,7 @@ foreach ($all_courses as $csRow) {
   }
 
   if (!empty($blockers)) {
-    $csChecklistPrereqBlockers[$courseCodeNorm] = $blockers;
+    $csChecklistPrereqBlockers[$courseRowKey] = $blockers;
   }
 }
 
@@ -1814,14 +1828,16 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 $show_3rd    = $show_2nd && isFailingGrade($grade2_val);
 
                                 $courseCodeNorm = csChecklistNormalizeCourseToken($row['course_code'] ?? '');
-                                $prereqBlockers = $courseCodeNorm !== '' ? ($csChecklistPrereqBlockers[$courseCodeNorm] ?? []) : [];
+                                $courseRowKey = csChecklistBuildRowKey((array)$row);
+                                $prereqBlockers = $courseRowKey !== '' ? ($csChecklistPrereqBlockers[$courseRowKey] ?? []) : [];
                                 $isPrereqBlocked = !empty($prereqBlockers);
                                 $prereqTooltip = $isPrereqBlocked
                                   ? ('Prerequisite(s) not cleared: ' . implode(', ', $prereqBlockers))
                                   : '';
-                                $prereqAttr = $isPrereqBlocked
-                                  ? (" data-prereq-blocked='1' data-prereq-tooltip='" . htmlspecialchars($prereqTooltip, ENT_QUOTES, 'UTF-8') . "'")
-                                  : '';
+                                $prereqAttr = " data-course-row-key='" . htmlspecialchars((string)$courseRowKey, ENT_QUOTES, 'UTF-8') . "'";
+                                if ($isPrereqBlocked) {
+                                  $prereqAttr .= " data-prereq-blocked='1' data-prereq-tooltip='" . htmlspecialchars($prereqTooltip, ENT_QUOTES, 'UTF-8') . "'";
+                                }
                                 $prereqInputAttrs = $isPrereqBlocked
                                   ? (" readonly data-prereq-blocked='1' title='" . htmlspecialchars($prereqTooltip, ENT_QUOTES, 'UTF-8') . "'")
                                   : '';
@@ -2262,6 +2278,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                 return;
               }
                 let courseCode = profInput.name.split('[')[1].split(']')[0];
+                let courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
                 let professorValue = profInput.value;
 
                 let gradeInput  = document.querySelector(`[name='final_grade[${courseCode}]']`);
@@ -2292,6 +2309,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                 ) ? 'Pending' : currentRemarks;
 
                 formData.append('courses[]', courseCode);
+                formData.append('course_row_keys[]', courseRowKey);
                 formData.append('final_grades[]', finalGrade);
                 formData.append('final_grades_2[]', finalGrade2);
                 formData.append('final_grades_3[]', finalGrade3);
@@ -2501,7 +2519,9 @@ function bindChecklistFieldListeners(root = document) {
             }
 
             syncGradeSelectVisualState(this, isPendingUnsettledGradeValue(this.value));
-            autoSaveGrade(courseCode);
+            const row = this.closest('tr');
+            const courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
+            autoSaveGrade(courseCode, courseRowKey);
         });
     });
 
@@ -2681,7 +2701,7 @@ function stopChecklistLiveRefresh() {
 let autoSaveTimeout;
 let isSaving = false;
 
-function autoSaveGrade(courseCode) {
+function autoSaveGrade(courseCode, courseRowKey = '') {
     if (academicHold.active) {
         showNotification('error', academicHold.title || 'Academic Hold', academicHold.message || 'Your account is currently read-only.');
         return;
@@ -2694,10 +2714,14 @@ function autoSaveGrade(courseCode) {
         isSaving = true;
         
         let formData = new FormData();
-        let gradeInput  = document.querySelector(`[name='final_grade[${courseCode}]']`);
-        let gradeInput2 = document.querySelector(`[name='final_grade_2[${courseCode}]']`);
-        let gradeInput3 = document.querySelector(`[name='final_grade_3[${courseCode}]']`);
-        let profInput   = document.querySelector(`[name='professor_instructor[${courseCode}]']`);
+        let targetRow = null;
+        if (courseRowKey !== '') {
+            targetRow = document.querySelector(`tr[data-course-row-key="${courseRowKey.replace(/"/g, '\\"')}"]`);
+        }
+        let gradeInput  = targetRow ? targetRow.querySelector(`[name='final_grade[${courseCode}]']`) : document.querySelector(`[name='final_grade[${courseCode}]']`);
+        let gradeInput2 = targetRow ? targetRow.querySelector(`[name='final_grade_2[${courseCode}]']`) : document.querySelector(`[name='final_grade_2[${courseCode}]']`);
+        let gradeInput3 = targetRow ? targetRow.querySelector(`[name='final_grade_3[${courseCode}]']`) : document.querySelector(`[name='final_grade_3[${courseCode}]']`);
+        let profInput   = targetRow ? targetRow.querySelector(`[name='professor_instructor[${courseCode}]']`) : document.querySelector(`[name='professor_instructor[${courseCode}]']`);
         let remarksCell = document.getElementById(`remarks_${courseCode}`);
         
         let finalGrade  = gradeInput  ? gradeInput.value  : '';
@@ -2713,12 +2737,14 @@ function autoSaveGrade(courseCode) {
         ) ? 'Pending' : currentRemarks;
         
         formData.append('courses[]', courseCode);
+        formData.append('course_row_keys[]', courseRowKey);
         formData.append('final_grades[]', finalGrade);
         formData.append('final_grades_2[]', finalGrade2);
         formData.append('final_grades_3[]', finalGrade3);
         formData.append('professor_instructors[]', professorValue);
         formData.append('evaluator_remarks[]', evaluatorRemark);
         formData.append('student_id', '<?= $student_id ?>');
+        formData.append('program_view', '<?= htmlspecialchars((string)$selected_program_view, ENT_QUOTES, 'UTF-8') ?>');
         
         fetch('save_checklist_stud.php', {
             method: 'POST',

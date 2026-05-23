@@ -106,6 +106,7 @@ class ChecklistController extends Controller
         // selected by the staff UI, since bulk approvals may target shifted programs.
         $programView = trim((string) $request->input('program_view', ''));
         $courses = $this->parseArray($request->input('courses', []));
+        $courseRowKeys = $this->parseArray($request->input('course_row_keys', []));
         $grades = $this->parseArray($request->input('grades', []));
         $professors = $this->parseArray($request->input('professors', []));
 
@@ -132,8 +133,8 @@ class ChecklistController extends Controller
         $successful = 0;
         $timestamp = now();
 
-        DB::transaction(function () use ($studentId, $courses, $grades, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$errors): void {
-            foreach ($courses as $courseCode) {
+        DB::transaction(function () use ($studentId, $courses, $courseRowKeys, $grades, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$errors): void {
+            foreach ($courses as $index => $courseCode) {
                 $courseCode = trim((string) $courseCode);
                 if ($courseCode === '') {
                     continue;
@@ -141,9 +142,9 @@ class ChecklistController extends Controller
 
                 $gradeNorm = $this->normalizeString($grades[$courseCode] ?? '');
                 $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && $gradeNorm !== 'No Grade');
-                $courseCodeNorm = $this->normalizeCourseTokenForPrereq($courseCode);
-                if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
-                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseCodeNorm]);
+                $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
                     continue;
                 }
 
@@ -199,6 +200,7 @@ class ChecklistController extends Controller
         // consistent with the current curriculum/program view selected in the UI.
         $programView = trim((string) $request->input('program_view', ''));
         $courses = $this->parseArray($request->input('courses', []));
+        $courseRowKeys = $this->parseArray($request->input('course_row_keys', []));
         $grades = $this->parseArray($request->input('final_grades', []));
         $grades2 = $this->parseArray($request->input('final_grades_2', []));
         $grades3 = $this->parseArray($request->input('final_grades_3', []));
@@ -234,7 +236,7 @@ class ChecklistController extends Controller
         $successful = 0;
         $timestamp = now();
 
-        DB::transaction(function () use ($studentId, $courses, $grades, $grades2, $grades3, $remarks, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$errors): void {
+        DB::transaction(function () use ($studentId, $courses, $courseRowKeys, $grades, $grades2, $grades3, $remarks, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$errors): void {
             foreach ($courses as $index => $courseCode) {
                 $courseCode = trim((string) $courseCode);
                 if ($courseCode === '') {
@@ -249,9 +251,9 @@ class ChecklistController extends Controller
                 $hasIncomingSubmittedAttempt = ($grade !== '' && $grade !== 'No Grade')
                     || ($grade2 !== '' && $grade2 !== 'No Grade')
                     || ($grade3 !== '' && $grade3 !== 'No Grade');
-                $courseCodeNorm = $this->normalizeCourseTokenForPrereq($courseCode);
-                if ($hasIncomingSubmittedAttempt && $courseCodeNorm !== '' && isset($prereqBlockersByCourse[$courseCodeNorm])) {
-                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseCodeNorm]);
+                $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
                     continue;
                 }
 
@@ -370,7 +372,8 @@ class ChecklistController extends Controller
             $blockersByCourse = [];
             foreach ($rows as $row) {
                 $codeNorm = $this->normalizeCourseTokenForPrereq($row['course_code'] ?? '');
-                if ($codeNorm === '') {
+                $courseRowKey = $this->buildChecklistRowKeyForPrereq($row);
+                if ($codeNorm === '' || $courseRowKey === '') {
                     continue;
                 }
 
@@ -387,7 +390,7 @@ class ChecklistController extends Controller
                 }
 
                 if (!empty($blockers)) {
-                    $blockersByCourse[$codeNorm] = $blockers;
+                    $blockersByCourse[$courseRowKey] = $blockers;
                 }
             }
 
@@ -418,6 +421,20 @@ class ChecklistController extends Controller
         $value = preg_replace('/^([A-Z]{2,})(\d+[A-Z]*)$/', '$1 $2', $value);
         $value = preg_replace('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)[\s-]+(\d+[A-Z]*)$/', '$1 $2', $value);
         return trim((string) $value);
+    }
+
+    private function buildChecklistRowKeyForPrereq(array $row): string
+    {
+        $courseCode = $this->normalizeCourseTokenForPrereq((string) ($row['course_code'] ?? ''));
+        if ($courseCode === '') {
+            return '';
+        }
+
+        $courseTitle = strtoupper(trim((string) ($row['course_title'] ?? '')));
+        $year = strtoupper(trim((string) ($row['year'] ?? '')));
+        $semester = strtoupper(trim((string) ($row['semester'] ?? '')));
+
+        return implode('|', [$courseCode, $courseTitle, $year, $semester]);
     }
 
     private function isPassingFinalGradeForPrereq(string $grade): bool
@@ -570,7 +587,9 @@ class ChecklistController extends Controller
     private function saveStudent(Request $request): JsonResponse
     {
         $studentId = (string) $request->input('student_id', '');
+        $programView = trim((string) $request->input('program_view', ''));
         $courses = $this->parseArray($request->input('courses', []));
+        $courseRowKeys = $this->parseArray($request->input('course_row_keys', []));
         $grades = $this->parseArray($request->input('final_grades', []));
         $grades2 = $this->parseArray($request->input('final_grades_2', []));
         $grades3 = $this->parseArray($request->input('final_grades_3', []));
@@ -594,8 +613,9 @@ class ChecklistController extends Controller
         $unchanged = 0;
         $errors = [];
         $timestamp = now();
+        $prereqBlockersByCourse = $this->buildPrereqBlockersForStudent($studentId, $programView);
 
-        DB::transaction(function () use ($studentId, $courses, $grades, $grades2, $grades3, $professors, $timestamp, &$successful, &$unchanged, &$errors): void {
+        DB::transaction(function () use ($studentId, $courses, $courseRowKeys, $grades, $grades2, $grades3, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$unchanged, &$errors): void {
             foreach ($courses as $index => $courseCode) {
                 $courseCode = trim((string) $courseCode);
                 if ($courseCode === '') {
@@ -627,6 +647,11 @@ class ChecklistController extends Controller
                 $grade2 = $this->normalizeString($grades2[$index] ?? '');
                 $grade3 = $this->normalizeString($grades3[$index] ?? '');
                 $hasIncomingSubmittedAttempt = $grade !== '' || $grade2 !== '' || $grade3 !== '';
+                $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
+                    continue;
+                }
 
                 $payload = [
                     'professor_instructor' => $this->resolveCourseValue($professors, $index, $courseCode),

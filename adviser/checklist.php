@@ -169,6 +169,19 @@ function csChecklistNormalizeCourseToken($value): string {
   return trim((string)$value);
 }
 
+function csChecklistBuildRowKey(array $row): string {
+  $courseCode = csChecklistNormalizeCourseToken($row['course_code'] ?? '');
+  if ($courseCode === '') {
+    return '';
+  }
+
+  $courseTitle = strtoupper(trim((string)($row['course_title'] ?? '')));
+  $year = strtoupper(trim((string)($row['year'] ?? '')));
+  $semester = strtoupper(trim((string)($row['semester'] ?? '')));
+
+  return implode('|', [$courseCode, $courseTitle, $year, $semester]);
+}
+
 function csChecklistIsPassingFinalGrade($grade): bool {
   $normalized = strtoupper(trim((string)$grade));
   if ($normalized === 'S' || $normalized === 'PASSED') {
@@ -356,7 +369,8 @@ foreach ($all_courses as $csRow) {
 $csChecklistPrereqBlockers = [];
 foreach ($all_courses as $csRow) {
   $courseCodeNorm = csChecklistNormalizeCourseToken($csRow['course_code'] ?? '');
-  if ($courseCodeNorm === '') {
+  $courseRowKey = csChecklistBuildRowKey((array)$csRow);
+  if ($courseCodeNorm === '' || $courseRowKey === '') {
     continue;
   }
 
@@ -373,7 +387,7 @@ foreach ($all_courses as $csRow) {
   }
 
   if (!empty($blockers)) {
-    $csChecklistPrereqBlockers[$courseCodeNorm] = $blockers;
+    $csChecklistPrereqBlockers[$courseRowKey] = $blockers;
   }
 }
 
@@ -1410,10 +1424,11 @@ foreach ($all_courses as $csRow) {
 
             $courseCode = (string)($row['course_code'] ?? '');
             $courseCodeNorm = csChecklistNormalizeCourseToken($courseCode);
-            $isPrereqBlocked = ($courseCodeNorm !== '' && isset($csChecklistPrereqBlockers[$courseCodeNorm]));
+            $courseRowKey = csChecklistBuildRowKey((array)$row);
+            $isPrereqBlocked = ($courseRowKey !== '' && isset($csChecklistPrereqBlockers[$courseRowKey]));
             $prereqTooltip = '';
             if ($isPrereqBlocked) {
-              $prereqTooltip = 'Prerequisite(s) not cleared: ' . implode(', ', (array)$csChecklistPrereqBlockers[$courseCodeNorm]);
+              $prereqTooltip = 'Prerequisite(s) not cleared: ' . implode(', ', (array)$csChecklistPrereqBlockers[$courseRowKey]);
             }
 
             $grade1_val  = $row['final_grade'] ?? '';
@@ -1435,7 +1450,8 @@ foreach ($all_courses as $csRow) {
                     $remark_opts[] = $existingRemark;
                 }
             }
-            $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "'";
+            $courseRowKey = csChecklistBuildRowKey((array)$row);
+            $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "' data-course-row-key='" . htmlspecialchars((string)$courseRowKey, ENT_QUOTES, 'UTF-8') . "'";
             $lockTitleAttr = $isPrereqBlocked ? " title='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "'" : '';
             $disabledAttr = $isPrereqBlocked ? " disabled" . $lockTitleAttr : '';
             $readonlyAttr = $isPrereqBlocked ? " readonly" . $lockTitleAttr : '';
@@ -1629,6 +1645,7 @@ document.addEventListener('change', function(e) {
 
     // Create arrays (only iterate 1st-attempt selects to avoid duplicates from grade_2/grade_3)
     let courses = [];
+    let course_row_keys = [];
     let final_grades = [];
     let final_grades_2 = [];
     let final_grades_3 = [];
@@ -1642,6 +1659,7 @@ document.addEventListener('change', function(e) {
         return;
       }
         let courseCode = course.name.match(/\[(.*?)\]/)[1];
+        let courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
         let finalGrade = course.value;
         let evaluatorRemark = document.querySelector(`[name="evaluator_remarks[${courseCode}]"]`).value;
         let professorInstructor = document.querySelector(`[name="professor_instructor[${courseCode}]"]`).value;
@@ -1654,6 +1672,7 @@ document.addEventListener('change', function(e) {
             evaluatorRemark = 'Approved';
         }
         courses.push(courseCode);
+        course_row_keys.push(courseRowKey);
         final_grades.push(finalGrade);
         final_grades_2.push(grade2el ? grade2el.value : '');
         final_grades_3.push(grade3el ? grade3el.value : '');
@@ -1665,6 +1684,7 @@ document.addEventListener('change', function(e) {
     formData.append('student_id', '<?php echo $_GET['student_id']; ?>');
     formData.append('program_view', '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>');
     formData.append('courses', JSON.stringify(courses));
+    formData.append('course_row_keys', JSON.stringify(course_row_keys));
     formData.append('final_grades', JSON.stringify(final_grades));
     formData.append('final_grades_2', JSON.stringify(final_grades_2));
     formData.append('final_grades_3', JSON.stringify(final_grades_3));
@@ -1854,6 +1874,7 @@ function autoSaveGrade(courseCode) {
         
         // Collect all course data (only 1st-attempt selects to avoid duplicates)
         let courses = [];
+        let course_row_keys = [];
         let final_grades = [];
         let final_grades_2 = [];
         let final_grades_3 = [];
@@ -1867,6 +1888,7 @@ function autoSaveGrade(courseCode) {
             return;
           }
             let code = gradeSelect.name.match(/\[(.*?)\]/)[1];
+            let courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
             let finalGrade = gradeSelect.value;
             let evaluatorRemark = document.querySelector(`[name="evaluator_remarks[${code}]"]`).value;
             let professorInstructor = document.querySelector(`[name="professor_instructor[${code}]"]`).value;
@@ -1874,6 +1896,7 @@ function autoSaveGrade(courseCode) {
             let grade3el = document.querySelector(`[name="final_grade_3[${code}]"]`);
 
             courses.push(code);
+            course_row_keys.push(courseRowKey);
             final_grades.push(finalGrade);
             final_grades_2.push(grade2el ? grade2el.value : '');
             final_grades_3.push(grade3el ? grade3el.value : '');
@@ -1885,6 +1908,7 @@ function autoSaveGrade(courseCode) {
         formData.append('student_id', '<?php echo $_GET['student_id']; ?>');
         formData.append('program_view', '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>');
         formData.append('courses', JSON.stringify(courses));
+        formData.append('course_row_keys', JSON.stringify(course_row_keys));
         formData.append('final_grades', JSON.stringify(final_grades));
         formData.append('final_grades_2', JSON.stringify(final_grades_2));
         formData.append('final_grades_3', JSON.stringify(final_grades_3));
@@ -1954,6 +1978,10 @@ document.getElementById('bulkApproveButton').addEventListener('click', function(
         return;
     }
     const selectedCourses = Array.from(checkedBoxes).map(cb => cb.value);
+    const selectedCourseRowKeys = Array.from(checkedBoxes).map(cb => {
+        const row = cb.closest('tr');
+        return row && row.dataset ? (row.dataset.courseRowKey || '') : '';
+    });
     const studentId = '<?php echo $_GET['student_id']; ?>';
     // Optionally, you can also send the current grade and professor values for each course
     let gradeData = {};
@@ -1974,6 +2002,7 @@ document.getElementById('bulkApproveButton').addEventListener('click', function(
             // curriculum/program view selected in the UI for prerequisite checking.
             program_view: '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>',
             courses: selectedCourses,
+            course_row_keys: selectedCourseRowKeys,
             grades: gradeData,
             professors: professorData
         })
