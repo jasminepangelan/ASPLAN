@@ -1307,6 +1307,12 @@ $currentEnrollmentClientPayload = json_encode([
             border: 1px solid #000;
         }
 
+        .course-table th:nth-child(3),
+        .course-table td:nth-child(3) {
+            text-align: center;
+            width: 72px;
+        }
+
         .course-table td:last-child {
             text-align: center;
         }
