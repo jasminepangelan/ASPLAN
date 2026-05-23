@@ -501,6 +501,13 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
+$current_enrollment_allowed_course_map = sceBuildSelectableCourseMap($current_enrollment_term_map);
+$_SESSION['current_enrollment_allowed_courses'] = [
+    'student_id' => (string) $student_id,
+    'generated_at' => time(),
+    'courses' => $current_enrollment_allowed_course_map,
+];
+
 $currentEnrollmentClientPayload = json_encode([
     'csrfToken' => $csrfToken,
     'terms' => array_values(array_map(static function (array $term): array {
@@ -3248,13 +3255,18 @@ $currentEnrollmentClientPayload = json_encode([
             }
 
             currentEnrollmentState.saving = true;
+            const originalLabel = saveButton.textContent;
             saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
             setCurrentEnrollmentStatus('Saving current enrollment...', '');
 
             fetch('save_current_enrollment.php', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify({
                     csrf_token: currentEnrollmentState.csrfToken,
@@ -3263,12 +3275,33 @@ $currentEnrollmentClientPayload = json_encode([
                     course_codes: selectedCodes,
                 })
             })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (!data || !data.success) {
+                .then(async (response) => {
+                    const responseText = await response.text();
+                    let data = null;
+
+                    if (responseText) {
+                        try {
+                            data = JSON.parse(responseText);
+                        } catch (parseError) {
+                            throw new Error(response.ok
+                                ? 'The server returned an invalid response while saving your current enrollment.'
+                                : 'The save request failed before the server could return a valid response.');
+                        }
+                    }
+
+                    if (!response.ok || !data || !data.success) {
+                        if (data && data.redirect) {
+                            window.setTimeout(function() {
+                                window.location.href = data.redirect;
+                            }, 1200);
+                        }
+
                         throw new Error((data && data.message) || 'Unable to save the current enrollment.');
                     }
 
+                    return data;
+                })
+                .then((data) => {
                     currentEnrollmentState.savedEnrollment = data.enrollment || null;
                     renderCurrentEnrollmentSummary(currentEnrollmentState.savedEnrollment);
                     syncCurrentEnrollmentSelections();
@@ -3281,6 +3314,7 @@ $currentEnrollmentClientPayload = json_encode([
                 .finally(() => {
                     currentEnrollmentState.saving = false;
                     saveButton.disabled = false;
+                    saveButton.textContent = originalLabel;
                 });
         }
 
