@@ -3749,6 +3749,10 @@ class StudyPlanGenerator {
                     'code' => $c['code'],
                     'title' => $course_info['title'] ?? $c['code'],
                     'units' => $course_info['units'] ?? 0,
+                    'credit_unit_lec' => $course_info['credit_unit_lec'] ?? 0,
+                    'credit_unit_lab' => $course_info['credit_unit_lab'] ?? 0,
+                    'lect_hrs_lec' => $course_info['lect_hrs_lec'] ?? 0,
+                    'lect_hrs_lab' => $course_info['lect_hrs_lab'] ?? 0,
                     'prerequisite' => $prerequisite,
                     'grade' => $c['grade'],
                     'failed' => $c['failed']
@@ -3817,6 +3821,10 @@ class StudyPlanGenerator {
                     'code'  => $code,
                     'title' => $course['title'],
                     'units' => $course['units'],
+                    'credit_unit_lec' => $course['credit_unit_lec'] ?? 0,
+                    'credit_unit_lab' => $course['credit_unit_lab'] ?? 0,
+                    'lect_hrs_lec' => $course['lect_hrs_lec'] ?? 0,
+                    'lect_hrs_lab' => $course['lect_hrs_lab'] ?? 0,
                     'prerequisite' => $prerequisite,
                     'grade' => $grade_info['grade'] ?? ''
                 ];
@@ -3841,6 +3849,10 @@ class StudyPlanGenerator {
                     'code'   => $code,
                     'title'  => $course['title'],
                     'units'  => $course['units'],
+                    'credit_unit_lec' => $course['credit_unit_lec'] ?? 0,
+                    'credit_unit_lab' => $course['credit_unit_lab'] ?? 0,
+                    'lect_hrs_lec' => $course['lect_hrs_lec'] ?? 0,
+                    'lect_hrs_lab' => $course['lect_hrs_lab'] ?? 0,
                     'prerequisite' => $prerequisite,
                     'grade'  => $grade,
                     'reason' => $reason

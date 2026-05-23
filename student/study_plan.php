@@ -312,9 +312,11 @@ foreach ($optimized_plan as $term_index => $term) {
         $study_plan[$target_year][$target_semester][] = [
             'course_code' => $course['code'],
             'course_title' => $course['title'],
-            'credit_unit_lec' => $course['units'],
-            'credit_unit_lab' => 0,
-            'total_units' => $course['units'],
+            'credit_unit_lec' => (float)($course['credit_unit_lec'] ?? $course['units'] ?? 0),
+            'credit_unit_lab' => (float)($course['credit_unit_lab'] ?? 0),
+            'lect_hrs_lec' => (float)($course['lect_hrs_lec'] ?? 0),
+            'lect_hrs_lab' => (float)($course['lect_hrs_lab'] ?? 0),
+            'total_units' => (float)(($course['credit_unit_lec'] ?? $course['units'] ?? 0) + ($course['credit_unit_lab'] ?? 0)),
             'non_credit' => $is_non_credit_course,
             'prerequisite' => $course['prerequisite'] ?? 'None',
             'needs_retake' => !empty($course['needs_retake']),
@@ -364,6 +366,51 @@ function calculateTotalUnits($courses) {
 
 function formatStudyPlanUnits($units): string {
     return number_format((float)($units ?? 0), 0);
+}
+
+function formatStudyPlanMeasure($value): string {
+    $number = (float)($value ?? 0);
+    if (abs($number - round($number)) < 0.001) {
+        return number_format($number, 0);
+    }
+
+    return rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
+}
+
+function getStudyPlanCourseBreakdown(array $course): array {
+    $lecUnits = (float)($course['credit_unit_lec'] ?? $course['units'] ?? 0);
+    $labUnits = (float)($course['credit_unit_lab'] ?? 0);
+    $lecHours = (float)($course['lect_hrs_lec'] ?? $course['contact_hrs_lec'] ?? 0);
+    $labHours = (float)($course['lect_hrs_lab'] ?? $course['contact_hrs_lab'] ?? 0);
+
+    return [
+        'credit_unit_lec' => $lecUnits,
+        'credit_unit_lab' => $labUnits,
+        'lect_hrs_lec' => $lecHours,
+        'lect_hrs_lab' => $labHours,
+    ];
+}
+
+function sumStudyPlanCourseBreakdowns(array $courses): array {
+    $totals = [
+        'credit_unit_lec' => 0.0,
+        'credit_unit_lab' => 0.0,
+        'lect_hrs_lec' => 0.0,
+        'lect_hrs_lab' => 0.0,
+    ];
+
+    foreach ($courses as $course) {
+        if (isNonCreditStudyPlanCourse($course)) {
+            continue;
+        }
+
+        $breakdown = getStudyPlanCourseBreakdown((array)$course);
+        foreach ($totals as $key => $value) {
+            $totals[$key] += (float)($breakdown[$key] ?? 0);
+        }
+    }
+
+    return $totals;
 }
 
 function studyPlanDisplayTermOrder(string $year, string $semester): array {
@@ -856,8 +903,20 @@ $currentEnrollmentClientPayload = json_encode([
             text-align: center;
         }
 
+        .current-enrollment-modal__table td:nth-child(4),
         .current-enrollment-modal__table td:nth-child(5),
-        .current-enrollment-modal__table th:nth-child(5) {
+        .current-enrollment-modal__table td:nth-child(6),
+        .current-enrollment-modal__table td:nth-child(7),
+        .current-enrollment-modal__table th:nth-child(4),
+        .current-enrollment-modal__table th:nth-child(5),
+        .current-enrollment-modal__table th:nth-child(6),
+        .current-enrollment-modal__table th:nth-child(7) {
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .current-enrollment-modal__table td:nth-child(8),
+        .current-enrollment-modal__table th:nth-child(8) {
             white-space: nowrap;
         }
 
@@ -2071,6 +2130,10 @@ $currentEnrollmentClientPayload = json_encode([
                             'code' => $course['code'],
                             'title' => $course['title'],
                             'units' => $course['units'],
+                            'credit_unit_lec' => $course['credit_unit_lec'] ?? $course['units'] ?? 0,
+                            'credit_unit_lab' => $course['credit_unit_lab'] ?? 0,
+                            'lect_hrs_lec' => $course['lect_hrs_lec'] ?? 0,
+                            'lect_hrs_lab' => $course['lect_hrs_lab'] ?? 0,
                             'prerequisite' => $course['prerequisite'] ?? 'None',
                             'status' => $is_credit_migration_term ? 'Credited' : 'Passed',
                             'status_variant' => $is_credit_migration_term ? 'credited' : 'passed',
@@ -2083,6 +2146,10 @@ $currentEnrollmentClientPayload = json_encode([
                             'code' => $course['code'],
                             'title' => $course['title'],
                             'units' => $course['units'],
+                            'credit_unit_lec' => $course['credit_unit_lec'] ?? $course['units'] ?? 0,
+                            'credit_unit_lab' => $course['credit_unit_lab'] ?? 0,
+                            'lect_hrs_lec' => $course['lect_hrs_lec'] ?? 0,
+                            'lect_hrs_lab' => $course['lect_hrs_lab'] ?? 0,
                             'prerequisite' => $course['prerequisite'] ?? 'None',
                             'status' => $reason,
                             'status_variant' => strtolower(str_replace(' ', '-', $reason)),
@@ -2212,21 +2279,26 @@ $currentEnrollmentClientPayload = json_encode([
                         <table class="course-table">
                             <thead>
                                 <tr>
-                                    <th>Course Code</th>
-                                    <th>Course Title</th>
-                                    <th>Units</th>
-                                    <th>Prerequisite</th>
+                                    <th rowspan="2">Course Code</th>
+                                    <th rowspan="2">Course Title</th>
+                                    <th colspan="2">Credit Unit</th>
+                                    <th colspan="2">Contact Hrs</th>
+                                    <th rowspan="2">Prerequisite</th>
+                                </tr>
+                                <tr>
+                                    <th>Lec</th>
+                                    <th>Lab</th>
+                                    <th>Lec</th>
+                                    <th>Lab</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php 
-                                $semester_total = 0;
+                                $semester_totals = ['credit_unit_lec' => 0.0, 'credit_unit_lab' => 0.0, 'lect_hrs_lec' => 0.0, 'lect_hrs_lab' => 0.0];
                                 foreach ($courses as $course): 
-                                    $units = $course['units'] ?? 0;
                                     $is_non_credit = isNonCreditStudyPlanCourse($course);
-                                    if (!$is_non_credit) {
-                                        $semester_total += $units;
-                                    }
+                                    $breakdown = getStudyPlanCourseBreakdown((array)$course);
+                                    if (!$is_non_credit) foreach ($semester_totals as $key => $value) $semester_totals[$key] += (float)($breakdown[$key] ?? 0);
                                     $prerequisite = $course['prerequisite'] ?? 'None';
                                     $is_failed_grade = !empty($course['failed']);
                                     $prereq_class = ($prerequisite === 'None') ? 'grade-passed' : 'grade-failed';
@@ -2240,13 +2312,19 @@ $currentEnrollmentClientPayload = json_encode([
                                             <?php endif; ?>
                                         </td>
                                         <td><?= htmlspecialchars($course['title']) ?></td>
-                                        <td><?= formatStudyPlanUnits($units) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : formatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['lect_hrs_lab']) . ')' : formatStudyPlanMeasure($breakdown['lect_hrs_lab']) ?></td>
                                         <td class="<?= $prereq_class ?>" style="text-align: center;"><?= htmlspecialchars($prerequisite) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="total-row">
                                     <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                                    <td><strong><?= formatStudyPlanUnits($semester_total) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['credit_unit_lec']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['credit_unit_lab']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['lect_hrs_lec']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['lect_hrs_lab']) ?></strong></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -2266,21 +2344,26 @@ $currentEnrollmentClientPayload = json_encode([
                         <table class="course-table">
                             <thead>
                                 <tr>
-                                    <th>Course Code</th>
-                                    <th>Course Title</th>
-                                    <th>Units</th>
-                                    <th>Prerequisite</th>
+                                    <th rowspan="2">Course Code</th>
+                                    <th rowspan="2">Course Title</th>
+                                    <th colspan="2">Credit Unit</th>
+                                    <th colspan="2">Contact Hrs</th>
+                                    <th rowspan="2">Prerequisite</th>
+                                </tr>
+                                <tr>
+                                    <th>Lec</th>
+                                    <th>Lab</th>
+                                    <th>Lec</th>
+                                    <th>Lab</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php 
-                                $semester_total = 0;
+                                $semester_totals = ['credit_unit_lec' => 0.0, 'credit_unit_lab' => 0.0, 'lect_hrs_lec' => 0.0, 'lect_hrs_lab' => 0.0];
                                 foreach ($courses as $course): 
-                                    $units = $course['units'] ?? 0;
                                     $is_non_credit = isNonCreditStudyPlanCourse($course);
-                                    if (!$is_non_credit) {
-                                        $semester_total += $units;
-                                    }
+                                    $breakdown = getStudyPlanCourseBreakdown((array)$course);
+                                    if (!$is_non_credit) foreach ($semester_totals as $key => $value) $semester_totals[$key] += (float)($breakdown[$key] ?? 0);
                                     $prerequisite = $course['prerequisite'] ?? 'None';
                                     $status = trim((string)($course['status'] ?? ''));
                                     $status_variant = trim((string)($course['status_variant'] ?? ''));
@@ -2303,13 +2386,19 @@ $currentEnrollmentClientPayload = json_encode([
                                             <?php endif; ?>
                                         </td>
                                         <td><?= htmlspecialchars($course['title']) ?></td>
-                                        <td><?= $is_non_credit ? '(' . formatStudyPlanUnits($units) . ')' : formatStudyPlanUnits($units) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : formatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['lect_hrs_lab']) . ')' : formatStudyPlanMeasure($breakdown['lect_hrs_lab']) ?></td>
                                         <td style="text-align: center;"><?= htmlspecialchars($prerequisite) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="total-row">
                                     <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                                    <td><strong><?= formatStudyPlanUnits($semester_total) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['credit_unit_lec']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['credit_unit_lab']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['lect_hrs_lec']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['lect_hrs_lab']) ?></strong></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -2386,21 +2475,26 @@ $currentEnrollmentClientPayload = json_encode([
                         <table class="course-table">
                             <thead>
                                 <tr>
-                                    <th>Course Code</th>
-                                    <th>Course Title</th>
-                                    <th>Units</th>
-                                    <th>Prerequisite</th>
+                                    <th rowspan="2">Course Code</th>
+                                    <th rowspan="2">Course Title</th>
+                                    <th colspan="2">Credit Unit</th>
+                                    <th colspan="2">Contact Hrs</th>
+                                    <th rowspan="2">Prerequisite</th>
+                                </tr>
+                                <tr>
+                                    <th>Lec</th>
+                                    <th>Lab</th>
+                                    <th>Lec</th>
+                                    <th>Lab</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php 
-                                $semester_total = 0;
+                                $semester_totals = ['credit_unit_lec' => 0.0, 'credit_unit_lab' => 0.0, 'lect_hrs_lec' => 0.0, 'lect_hrs_lab' => 0.0];
                                 foreach ($courses as $course): 
-                                    $units = isset($course['total_units']) ? $course['total_units'] : (($course['credit_unit_lec'] ?? 0) + ($course['credit_unit_lab'] ?? 0));
                                     $is_non_credit = isNonCreditStudyPlanCourse($course);
-                                    if (!$is_non_credit) {
-                                        $semester_total += $units;
-                                    }
+                                    $breakdown = getStudyPlanCourseBreakdown((array)$course);
+                                    if (!$is_non_credit) foreach ($semester_totals as $key => $value) $semester_totals[$key] += (float)($breakdown[$key] ?? 0);
                                     $is_retake = !empty($course['needs_retake']);
                                     $is_cross_reg = !empty($course['cross_registered']);
                                     $is_action_required = $is_retake || $is_cross_reg;
@@ -2446,13 +2540,19 @@ $currentEnrollmentClientPayload = json_encode([
                                             </div>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= $is_non_credit ? '(' . formatStudyPlanUnits($units) . ')' : formatStudyPlanUnits($units) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : formatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
+                                        <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['lect_hrs_lab']) . ')' : formatStudyPlanMeasure($breakdown['lect_hrs_lab']) ?></td>
                                         <td><?= htmlspecialchars($prerequisite) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <tr class="total-row">
                                     <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                                    <td><strong><?= formatStudyPlanUnits($semester_total) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['credit_unit_lec']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['credit_unit_lab']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['lect_hrs_lec']) ?></strong></td>
+                                    <td><strong><?= formatStudyPlanMeasure($semester_totals['lect_hrs_lab']) ?></strong></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -2590,12 +2690,19 @@ $currentEnrollmentClientPayload = json_encode([
                     <table class="current-enrollment-modal__table">
                         <thead>
                             <tr>
-                                <th>Select</th>
-                                <th>Course Code</th>
-                                <th>Course Title</th>
-                                <th>Units</th>
-                                <th>Curriculum Term</th>
-                                <th>Prerequisite</th>
+                                <th rowspan="2">Select</th>
+                                <th rowspan="2">Course Code</th>
+                                <th rowspan="2">Course Title</th>
+                                <th colspan="2">Credit Unit</th>
+                                <th colspan="2">Contact Hrs</th>
+                                <th rowspan="2">Curriculum Term</th>
+                                <th rowspan="2">Prerequisite</th>
+                            </tr>
+                            <tr>
+                                <th>Lec</th>
+                                <th>Lab</th>
+                                <th>Lec</th>
+                                <th>Lab</th>
                             </tr>
                         </thead>
                         <tbody id="currentEnrollmentCoursesBody"></tbody>
@@ -3044,6 +3151,14 @@ $currentEnrollmentClientPayload = json_encode([
             return String(Math.round(Number(value) || 0));
         }
 
+        function formatDisplayedMeasure(value) {
+            const number = Number(value) || 0;
+            if (Math.abs(number - Math.round(number)) < 0.001) {
+                return String(Math.round(number));
+            }
+            return number.toFixed(2).replace(/\.?0+$/, '');
+        }
+
         function renderCurrentEnrollmentSummary(enrollment) {
             const meta = document.getElementById('currentEnrollmentSummaryMeta');
             const courses = document.getElementById('currentEnrollmentSummaryCourses');
@@ -3137,7 +3252,7 @@ $currentEnrollmentClientPayload = json_encode([
             if (!courses.length) {
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
-                cell.colSpan = 6;
+                cell.colSpan = 9;
                 cell.textContent = sourceFilter === ''
                     ? 'No available uncompleted subjects were found for this student.'
                     : 'No available uncompleted subjects were found for the selected source term.';
@@ -3167,9 +3282,21 @@ $currentEnrollmentClientPayload = json_encode([
                 titleCell.textContent = course.course_title;
                 row.appendChild(titleCell);
 
-                const unitsCell = document.createElement('td');
-                unitsCell.textContent = formatDisplayedUnits(course.units);
-                row.appendChild(unitsCell);
+                const lecUnitsCell = document.createElement('td');
+                lecUnitsCell.textContent = formatDisplayedMeasure(course.credit_unit_lec ?? course.units);
+                row.appendChild(lecUnitsCell);
+
+                const labUnitsCell = document.createElement('td');
+                labUnitsCell.textContent = formatDisplayedMeasure(course.credit_unit_lab);
+                row.appendChild(labUnitsCell);
+
+                const lecHoursCell = document.createElement('td');
+                lecHoursCell.textContent = formatDisplayedMeasure(course.lect_hrs_lec);
+                row.appendChild(lecHoursCell);
+
+                const labHoursCell = document.createElement('td');
+                labHoursCell.textContent = formatDisplayedMeasure(course.lect_hrs_lab);
+                row.appendChild(labHoursCell);
 
                 const termCell = document.createElement('td');
                 termCell.textContent = `${course.source_year_level || ''} ${course.source_semester || ''}`.trim();

@@ -85,6 +85,10 @@ if (!function_exists('sceBuildSelectableTermMap')) {
                     'course_code' => $code,
                     'course_title' => trim((string) ($course['title'] ?? '')),
                     'units' => (float) ($course['units'] ?? 0),
+                    'credit_unit_lec' => (float) ($course['credit_unit_lec'] ?? $course['units'] ?? 0),
+                    'credit_unit_lab' => (float) ($course['credit_unit_lab'] ?? 0),
+                    'lect_hrs_lec' => (float) ($course['lect_hrs_lec'] ?? 0),
+                    'lect_hrs_lab' => (float) ($course['lect_hrs_lab'] ?? 0),
                     'prerequisite' => $prerequisite,
                     'reason' => trim((string) ($course['reason'] ?? '')),
                 ];

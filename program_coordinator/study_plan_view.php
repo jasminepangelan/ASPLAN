@@ -66,6 +66,49 @@ function pcGetCountedStudyPlanUnits(array $course): float
     return (float)($course['credit_unit_lec'] ?? 0) + (float)($course['credit_unit_lab'] ?? 0);
 }
 
+function pcFormatStudyPlanMeasure($value): string
+{
+    $number = (float)($value ?? 0);
+    if (abs($number - round($number)) < 0.001) {
+        return number_format($number, 0);
+    }
+
+    return rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
+}
+
+function pcGetStudyPlanCourseBreakdown(array $course): array
+{
+    return [
+        'credit_unit_lec' => (float)($course['credit_unit_lec'] ?? $course['units'] ?? 0),
+        'credit_unit_lab' => (float)($course['credit_unit_lab'] ?? 0),
+        'lect_hrs_lec' => (float)($course['lect_hrs_lec'] ?? $course['contact_hrs_lec'] ?? 0),
+        'lect_hrs_lab' => (float)($course['lect_hrs_lab'] ?? $course['contact_hrs_lab'] ?? 0),
+    ];
+}
+
+function pcSumStudyPlanCourseBreakdowns(array $courses): array
+{
+    $totals = [
+        'credit_unit_lec' => 0.0,
+        'credit_unit_lab' => 0.0,
+        'lect_hrs_lec' => 0.0,
+        'lect_hrs_lab' => 0.0,
+    ];
+
+    foreach ($courses as $course) {
+        if (pcIsNonCreditStudyPlanCourse((array)$course)) {
+            continue;
+        }
+
+        $breakdown = pcGetStudyPlanCourseBreakdown((array)$course);
+        foreach ($totals as $key => $value) {
+            $totals[$key] += (float)($breakdown[$key] ?? 0);
+        }
+    }
+
+    return $totals;
+}
+
 $coordinatorName = $isAdmin
     ? (isset($_SESSION['admin_full_name']) ? htmlspecialchars((string)$_SESSION['admin_full_name']) : 'Admin')
     : (isset($_SESSION['full_name']) ? htmlspecialchars((string)$_SESSION['full_name']) : 'Program Coordinator');
@@ -181,6 +224,10 @@ foreach ($ayCoursesByTerm as $termKey => $termData) {
             'code' => $course['code'] ?? '',
             'title' => $course['title'] ?? '',
             'units' => $course['units'] ?? 0,
+            'credit_unit_lec' => $course['credit_unit_lec'] ?? $course['units'] ?? 0,
+            'credit_unit_lab' => $course['credit_unit_lab'] ?? 0,
+            'lect_hrs_lec' => $course['lect_hrs_lec'] ?? 0,
+            'lect_hrs_lab' => $course['lect_hrs_lab'] ?? 0,
             'prerequisite' => $course['prerequisite'] ?? 'None',
             'status' => 'Passed',
             'status_variant' => 'passed',
@@ -194,6 +241,10 @@ foreach ($ayCoursesByTerm as $termKey => $termData) {
             'code' => $course['code'] ?? '',
             'title' => $course['title'] ?? '',
             'units' => $course['units'] ?? 0,
+            'credit_unit_lec' => $course['credit_unit_lec'] ?? $course['units'] ?? 0,
+            'credit_unit_lab' => $course['credit_unit_lab'] ?? 0,
+            'lect_hrs_lec' => $course['lect_hrs_lec'] ?? 0,
+            'lect_hrs_lab' => $course['lect_hrs_lab'] ?? 0,
             'prerequisite' => $course['prerequisite'] ?? 'None',
             'status' => $reason,
             'status_variant' => strtolower(str_replace(' ', '-', $reason)),
@@ -1368,32 +1419,40 @@ if ($lastPlannedTerm) {
                             <table class="course-table">
                                 <thead>
                                     <tr>
-                                        <th>Course Code</th>
-                                        <th>Course Title</th>
-                                        <th>Units</th>
-                                        <th>Prerequisite</th>
-                                        <th>Remarks</th>
-                                        <th>Action</th>
+                                        <th rowspan="2">Course Code</th>
+                                        <th rowspan="2">Course Title</th>
+                                        <th colspan="2">Credit Unit</th>
+                                        <th colspan="2">Contact Hrs</th>
+                                        <th rowspan="2">Prerequisite</th>
+                                        <th rowspan="2">Remarks</th>
+                                        <th rowspan="2">Action</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Lec</th>
+                                        <th>Lab</th>
+                                        <th>Lec</th>
+                                        <th>Lab</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                 <?php $termCourses = pcSortTaggedCoursesLast((array)($term['courses'] ?? [])); ?>
+                                <?php $termBreakdownTotals = pcSumStudyPlanCourseBreakdowns($termCourses); ?>
                                 <?php foreach ($termCourses as $course): ?>
                                     <?php
                                         $prerequisite = trim((string)($course['prerequisite'] ?? ''));
                                         if ($prerequisite === '') {
                                             $prerequisite = 'None';
                                         }
-                                        $courseCode = strtoupper(trim((string)($course['code'] ?? '')));
-                                        $courseTitle = strtoupper(trim((string)($course['title'] ?? '')));
-                                        $isNonCredit = $courseCode === 'CVSU 101'
-                                            || strpos($courseTitle, 'NON-CREDIT') !== false
-                                            || strpos($courseTitle, 'NON CREDIT') !== false;
+                                        $isNonCredit = pcIsNonCreditStudyPlanCourse((array)$course);
+                                        $breakdown = pcGetStudyPlanCourseBreakdown((array)$course);
                                     ?>
                                     <tr>
                                         <td><?= htmlspecialchars((string)($course['code'] ?? '')); ?></td>
                                         <td><?= htmlspecialchars((string)($course['title'] ?? '')); ?></td>
-                                        <td><?= $isNonCredit ? '(' . number_format((float)($course['units'] ?? 0), 1) . ')' : number_format((float)($course['units'] ?? 0), 1) ?></td>
+                                        <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : pcFormatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
+                                        <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : pcFormatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
+                                        <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : pcFormatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
+                                        <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['lect_hrs_lab']) . ')' : pcFormatStudyPlanMeasure($breakdown['lect_hrs_lab']) ?></td>
                                         <td><?= htmlspecialchars($prerequisite); ?></td>
                                         <td>
                                             <?php
@@ -1489,7 +1548,10 @@ if ($lastPlannedTerm) {
                                 <?php endforeach; ?>
                                     <tr class="total-row">
                                         <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                                        <td><strong><?= $termUnits; ?></strong></td>
+                                        <td><strong><?= pcFormatStudyPlanMeasure($termBreakdownTotals['credit_unit_lec']) ?></strong></td>
+                                        <td><strong><?= pcFormatStudyPlanMeasure($termBreakdownTotals['credit_unit_lab']) ?></strong></td>
+                                        <td><strong><?= pcFormatStudyPlanMeasure($termBreakdownTotals['lect_hrs_lec']) ?></strong></td>
+                                        <td><strong><?= pcFormatStudyPlanMeasure($termBreakdownTotals['lect_hrs_lab']) ?></strong></td>
                                         <td colspan="3"></td>
                                     </tr>
                                 </tbody>

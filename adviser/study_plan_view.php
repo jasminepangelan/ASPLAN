@@ -61,6 +61,59 @@ function aspvSortTaggedCoursesLast(array $courses): array
     return array_column($indexed, 'course');
 }
 
+function aspvIsNonCreditStudyPlanCourse(array $course): bool
+{
+    $courseCode = strtoupper(trim((string)($course['code'] ?? $course['course_code'] ?? '')));
+    $courseTitle = strtoupper(trim((string)($course['title'] ?? $course['course_title'] ?? '')));
+
+    return $courseCode === 'CVSU 101'
+        || strpos($courseTitle, 'NON-CREDIT') !== false
+        || strpos($courseTitle, 'NON CREDIT') !== false;
+}
+
+function aspvFormatStudyPlanMeasure($value): string
+{
+    $number = (float)($value ?? 0);
+    if (abs($number - round($number)) < 0.001) {
+        return number_format($number, 0);
+    }
+
+    return rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
+}
+
+function aspvGetStudyPlanCourseBreakdown(array $course): array
+{
+    return [
+        'credit_unit_lec' => (float)($course['credit_unit_lec'] ?? $course['units'] ?? 0),
+        'credit_unit_lab' => (float)($course['credit_unit_lab'] ?? 0),
+        'lect_hrs_lec' => (float)($course['lect_hrs_lec'] ?? $course['contact_hrs_lec'] ?? 0),
+        'lect_hrs_lab' => (float)($course['lect_hrs_lab'] ?? $course['contact_hrs_lab'] ?? 0),
+    ];
+}
+
+function aspvSumStudyPlanCourseBreakdowns(array $courses): array
+{
+    $totals = [
+        'credit_unit_lec' => 0.0,
+        'credit_unit_lab' => 0.0,
+        'lect_hrs_lec' => 0.0,
+        'lect_hrs_lab' => 0.0,
+    ];
+
+    foreach ($courses as $course) {
+        if (aspvIsNonCreditStudyPlanCourse((array)$course)) {
+            continue;
+        }
+
+        $breakdown = aspvGetStudyPlanCourseBreakdown((array)$course);
+        foreach ($totals as $key => $value) {
+            $totals[$key] += (float)($breakdown[$key] ?? 0);
+        }
+    }
+
+    return $totals;
+}
+
 function aspvDisplayTermOrder(string $year, string $semester): array
 {
     $yearOrder = 999;
@@ -1196,31 +1249,39 @@ if ($last_planned_term) {
                                 <table class="course-table">
                                     <thead>
                                         <tr>
-                                            <th>Course Code</th>
-                                            <th>Course Title</th>
-                                            <th>Units</th>
-                                            <th>Prerequisite</th>
-                                            <th>Remarks</th>
+                                            <th rowspan="2">Course Code</th>
+                                            <th rowspan="2">Course Title</th>
+                                            <th colspan="2">Credit Unit</th>
+                                            <th colspan="2">Contact Hrs</th>
+                                            <th rowspan="2">Prerequisite</th>
+                                            <th rowspan="2">Remarks</th>
+                                        </tr>
+                                        <tr>
+                                            <th>Lec</th>
+                                            <th>Lab</th>
+                                            <th>Lec</th>
+                                            <th>Lab</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php $termCourses = aspvSortTaggedCoursesLast((array)($term['courses'] ?? [])); ?>
+                                        <?php $termBreakdownTotals = aspvSumStudyPlanCourseBreakdowns($termCourses); ?>
                                         <?php foreach ($termCourses as $course): ?>
                                         <?php
                                             $prerequisite = trim((string)($course['prerequisite'] ?? ''));
                                             if ($prerequisite === '') {
                                                 $prerequisite = 'None';
                                             }
-                                            $courseCode = strtoupper(trim((string)($course['code'] ?? '')));
-                                            $courseTitle = strtoupper(trim((string)($course['title'] ?? '')));
-                                            $isNonCredit = $courseCode === 'CVSU 101'
-                                                || strpos($courseTitle, 'NON-CREDIT') !== false
-                                                || strpos($courseTitle, 'NON CREDIT') !== false;
+                                            $isNonCredit = aspvIsNonCreditStudyPlanCourse((array)$course);
+                                            $breakdown = aspvGetStudyPlanCourseBreakdown((array)$course);
                                         ?>
                                         <tr>
                                             <td><?= htmlspecialchars((string)($course['code'] ?? '')) ?></td>
                                             <td><?= htmlspecialchars((string)($course['title'] ?? '')) ?></td>
-                                            <td><?= $isNonCredit ? '(' . number_format((float)($course['units'] ?? 0), 1) . ')' : number_format((float)($course['units'] ?? 0), 1) ?></td>
+                                            <td><?= $isNonCredit ? '(' . aspvFormatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : aspvFormatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
+                                            <td><?= $isNonCredit ? '(' . aspvFormatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : aspvFormatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
+                                            <td><?= $isNonCredit ? '(' . aspvFormatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : aspvFormatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
+                                            <td><?= $isNonCredit ? '(' . aspvFormatStudyPlanMeasure($breakdown['lect_hrs_lab']) . ')' : aspvFormatStudyPlanMeasure($breakdown['lect_hrs_lab']) ?></td>
                                             <td><?= htmlspecialchars($prerequisite) ?></td>
                                         <td>
                                                 <?php
@@ -1247,7 +1308,10 @@ if ($last_planned_term) {
                                     <?php endforeach; ?>
                                         <tr class="total-row">
                                             <td colspan="2" style="text-align: right;"><strong>TOTAL</strong></td>
-                                            <td><strong><?= $term_units ?></strong></td>
+                                            <td><strong><?= aspvFormatStudyPlanMeasure($termBreakdownTotals['credit_unit_lec']) ?></strong></td>
+                                            <td><strong><?= aspvFormatStudyPlanMeasure($termBreakdownTotals['credit_unit_lab']) ?></strong></td>
+                                            <td><strong><?= aspvFormatStudyPlanMeasure($termBreakdownTotals['lect_hrs_lec']) ?></strong></td>
+                                            <td><strong><?= aspvFormatStudyPlanMeasure($termBreakdownTotals['lect_hrs_lab']) ?></strong></td>
                                             <td colspan="2"></td>
                                         </tr>
                                     </tbody>
