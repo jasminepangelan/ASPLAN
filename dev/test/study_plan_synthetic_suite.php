@@ -727,6 +727,26 @@ $scenarios['standing_constraint_parser_detects_incoming'] = function () use ($se
     return assertScenario($ok, 'Standing parser detects incoming year constraints from free text.');
 };
 
+$scenarios['standing_constraint_parser_detects_graduating_only'] = function () use ($seedStudent, $seedProgram) {
+    $generator = makeGenerator($seedStudent, $seedProgram);
+    $constraint = (array) invokeGeneratorMethod($generator, 'extractStandingConstraint', ['Graduating Only']);
+    $ok = (($constraint['type'] ?? '') === 'graduating') && ((int)($constraint['year'] ?? 0) === 4);
+
+    return assertScenario($ok, 'Standing parser detects graduating-only constraints from free text.');
+};
+
+$scenarios['graduating_only_constraint_blocks_early_years'] = function () use ($seedStudent, $seedProgram) {
+    $generator = makeGenerator($seedStudent, $seedProgram);
+    $course = makeCourse('GP400', '4th Yr', '2nd Sem');
+    $course['standing_constraint'] = ['type' => 'graduating', 'year' => 4];
+    seedGenerator($generator, [$course]);
+
+    $blocked = !(bool) invokeGeneratorMethod($generator, 'standingConstraintSatisfied', ['GP400', '1st Yr', '2nd Sem']);
+    $allowed = (bool) invokeGeneratorMethod($generator, 'standingConstraintSatisfied', ['GP400', '4th Yr', '2nd Sem']);
+
+    return assertScenario($blocked && $allowed, 'Graduating-only constraints block early terms and allow late-year scheduling.');
+};
+
 $scenarios['retention_probation_unit_cap'] = function () use ($seedStudent, $seedProgram) {
     $generator = makeGenerator($seedStudent, $seedProgram);
     $courses = [];

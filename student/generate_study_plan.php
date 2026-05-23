@@ -2020,6 +2020,7 @@ class StudyPlanGenerator {
      * Examples:
      * - "Incoming 4th yr."
      * - "4th Year Standing"
+     * - "Graduating Only"
      */
     private function extractStandingConstraint($prereq_string) {
         $parseYear = static function ($value) {
@@ -2049,6 +2050,13 @@ class StudyPlanGenerator {
         }
 
         $normalized = preg_replace('/\s+/', ' ', $prereq_string);
+
+        if (preg_match('/\bgraduating\s+only\b/i', $normalized)) {
+            return [
+                'type' => 'graduating',
+                'year' => 4,
+            ];
+        }
 
         if (preg_match('/(?:for\s+)?incoming\s+(first|second|third|fourth|fifth|\d(?:st|nd|rd|th)?)\s*(?:yr|year)\b/i', $normalized, $m)) {
             $year = $parseYear($m[1]);
@@ -2188,6 +2196,10 @@ class StudyPlanGenerator {
             }
 
             return $term_year_order === ($required_year - 1) && $target_semester === 'Mid Year';
+        }
+
+        if ($constraint_type === 'graduating') {
+            return $term_year_order >= $required_year;
         }
 
         return $term_year_order >= $required_year;
