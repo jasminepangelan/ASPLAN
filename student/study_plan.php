@@ -3034,6 +3034,10 @@ $currentEnrollmentClientPayload = json_encode([
             return date.toLocaleString();
         }
 
+        function formatDisplayedUnits(value) {
+            return String(Math.round(Number(value) || 0));
+        }
+
         function renderCurrentEnrollmentSummary(enrollment) {
             const meta = document.getElementById('currentEnrollmentSummaryMeta');
             const courses = document.getElementById('currentEnrollmentSummaryCourses');
@@ -3067,7 +3071,7 @@ $currentEnrollmentClientPayload = json_encode([
                 </div>
                 <div class="current-enrollment-summary__meta-card">
                     <span class="current-enrollment-summary__meta-label">Units</span>
-                    <div class="current-enrollment-summary__meta-value">${totalUnits.toFixed(1)}</div>
+                    <div class="current-enrollment-summary__meta-value">${formatDisplayedUnits(totalUnits)}</div>
                 </div>
                 <div class="current-enrollment-summary__meta-card">
                     <span class="current-enrollment-summary__meta-label">Last Updated</span>
@@ -3080,7 +3084,7 @@ $currentEnrollmentClientPayload = json_encode([
                 const tag = document.createElement('div');
                 tag.className = 'current-enrollment-summary__course';
                 const units = Number(course.units) || 0;
-                tag.textContent = `${course.course_code} (${units.toFixed(1)})`;
+                tag.textContent = `${course.course_code} (${formatDisplayedUnits(units)})`;
                 courses.appendChild(tag);
             });
         }
@@ -3158,7 +3162,7 @@ $currentEnrollmentClientPayload = json_encode([
                 row.appendChild(titleCell);
 
                 const unitsCell = document.createElement('td');
-                unitsCell.textContent = Number(course.units || 0).toFixed(1);
+                unitsCell.textContent = formatDisplayedUnits(course.units);
                 row.appendChild(unitsCell);
 
                 const termCell = document.createElement('td');
