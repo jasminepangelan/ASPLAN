@@ -24,20 +24,27 @@ function pcSortTaggedCoursesLast(array $courses): array
 {
     $indexed = [];
     foreach ($courses as $index => $course) {
-        $hasDeferredTag = !empty($course['needs_retake']) || !empty($course['cross_registered']) || !empty($course['forced_added']);
+        $sortGroup = 3;
+        if (!empty($course['needs_retake'])) {
+            $sortGroup = 0;
+        } elseif (!empty($course['cross_registered'])) {
+            $sortGroup = 1;
+        } elseif (!empty($course['forced_added'])) {
+            $sortGroup = 2;
+        }
         $indexed[] = [
             'index' => $index,
-            'has_deferred_tag' => $hasDeferredTag,
+            'sort_group' => $sortGroup,
             'course' => $course,
         ];
     }
 
     usort($indexed, function ($a, $b) {
-        if ($a['has_deferred_tag'] === $b['has_deferred_tag']) {
+        if ($a['sort_group'] === $b['sort_group']) {
             return $a['index'] <=> $b['index'];
         }
 
-        return $a['has_deferred_tag'] <=> $b['has_deferred_tag'];
+        return $a['sort_group'] <=> $b['sort_group'];
     });
 
     return array_column($indexed, 'course');

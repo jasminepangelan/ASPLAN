@@ -1479,6 +1479,7 @@ $currentEnrollmentClientPayload = json_encode([
             width: 100%;
             border-collapse: collapse;
             border: 1px solid #000;
+            table-layout: fixed;
         }
 
         .course-table thead {
@@ -1492,6 +1493,7 @@ $currentEnrollmentClientPayload = json_encode([
             color: #000;
             border: 1px solid #000;
             font-size: 13px;
+            vertical-align: middle;
         }
 
         .course-table th:first-child {
@@ -1516,12 +1518,37 @@ $currentEnrollmentClientPayload = json_encode([
             font-size: 13px;
             color: #000;
             border: 1px solid #000;
+            vertical-align: middle;
+        }
+
+        .course-table th:first-child,
+        .course-table td:first-child {
+            width: 110px;
+            text-align: center;
+        }
+
+        .course-table th:nth-child(2),
+        .course-table td:nth-child(2) {
+            width: auto;
+            text-align: left;
         }
 
         .course-table th:nth-child(3),
-        .course-table td:nth-child(3) {
+        .course-table td:nth-child(3),
+        .course-table th:nth-child(4),
+        .course-table td:nth-child(4),
+        .course-table th:nth-child(5),
+        .course-table td:nth-child(5),
+        .course-table th:nth-child(6),
+        .course-table td:nth-child(6) {
             text-align: center;
             width: 72px;
+        }
+
+        .course-table th:last-child,
+        .course-table td:last-child {
+            width: 110px;
+            text-align: center;
         }
 
         .course-table td:last-child {

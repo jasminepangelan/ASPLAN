@@ -42,20 +42,27 @@ function aspvSortTaggedCoursesLast(array $courses): array
 {
     $indexed = [];
     foreach ($courses as $index => $course) {
-        $hasDeferredTag = !empty($course['needs_retake']) || !empty($course['cross_registered']);
+        $sortGroup = 3;
+        if (!empty($course['needs_retake'])) {
+            $sortGroup = 0;
+        } elseif (!empty($course['cross_registered'])) {
+            $sortGroup = 1;
+        } elseif (!empty($course['forced_added'])) {
+            $sortGroup = 2;
+        }
         $indexed[] = [
             'index' => $index,
-            'has_deferred_tag' => $hasDeferredTag,
+            'sort_group' => $sortGroup,
             'course' => $course,
         ];
     }
 
     usort($indexed, function ($a, $b) {
-        if ($a['has_deferred_tag'] === $b['has_deferred_tag']) {
+        if ($a['sort_group'] === $b['sort_group']) {
             return $a['index'] <=> $b['index'];
         }
 
-        return $a['has_deferred_tag'] <=> $b['has_deferred_tag'];
+        return $a['sort_group'] <=> $b['sort_group'];
     });
 
     return array_column($indexed, 'course');
@@ -546,8 +553,17 @@ if ($last_planned_term) {
             color: #206018;
             border: 1px solid #d1e0cf;
         }
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+        .course-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .course-table th, .course-table td {
+            padding: 6px 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+            vertical-align: middle;
+        }
         th {
             background: #333;
             color: #fff;
@@ -555,11 +571,18 @@ if ($last_planned_term) {
             font-size: 12px;
             text-align: left;
         }
-        td { text-align: left; vertical-align: middle; }
-        th:nth-child(3), td:nth-child(3),
-        th:nth-child(4), td:nth-child(4) {
+        .course-table td { text-align: left; }
+        .course-table th:nth-child(1), .course-table td:nth-child(1) { width: 110px; text-align: center; }
+        .course-table th:nth-child(2), .course-table td:nth-child(2) { width: auto; text-align: left; }
+        .course-table th:nth-child(3), .course-table td:nth-child(3),
+        .course-table th:nth-child(4), .course-table td:nth-child(4),
+        .course-table th:nth-child(5), .course-table td:nth-child(5),
+        .course-table th:nth-child(6), .course-table td:nth-child(6) {
+            width: 72px;
             text-align: center;
         }
+        .course-table th:nth-child(7), .course-table td:nth-child(7) { width: 120px; text-align: center; }
+        .course-table th:nth-child(8), .course-table td:nth-child(8) { width: 120px; text-align: center; }
         .tag {
             display: inline-block;
             padding: 3px 7px;
