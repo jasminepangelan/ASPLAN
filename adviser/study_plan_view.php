@@ -229,6 +229,28 @@ function aspvDescribeStudyPlanCourseReason(array $course): string
     return implode(' ', $reasons);
 }
 
+function aspvDescribeStudyPlanCourseReasonTooltip(array $course): string
+{
+    $parts = [];
+    if (!empty($course['forced_added'])) {
+        $forcedReason = trim((string)($course['forced_reason'] ?? ''));
+        $parts[] = $forcedReason !== '' ? 'Manually added: ' . $forcedReason : 'Manually added to plan';
+    }
+    if (!empty($course['needs_retake'])) {
+        $parts[] = 'Back/failed — prioritized early';
+    }
+    if (!empty($course['cross_registered'])) {
+        $src = trim((string)($course['cross_reg_source_program'] ?? ''));
+        $parts[] = $src !== '' ? 'Cross-registered from ' . $src : 'Cross-registered course';
+    }
+    if (empty($parts)) {
+        $parts[] = 'Matches curriculum slot for this term after prerequisites and unit limits were checked.';
+    }
+    $text = implode(' · ', $parts);
+    if (mb_strlen($text) > 400) $text = mb_substr($text, 0, 397) . '...';
+    return $text;
+}
+
 $conn = getDBConnection();
 
 if (!isset($_SESSION['id'])) {
@@ -1339,7 +1361,7 @@ if ($last_planned_term) {
                                             <td><?= htmlspecialchars((string)($course['code'] ?? '')) ?></td>
                                             <td>
                                                 <?= htmlspecialchars((string)($course['title'] ?? '')) ?>
-                                                <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(aspvDescribeStudyPlanCourseReason((array)$course), ENT_QUOTES) ?>">i</button>
+                                                <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(aspvDescribeStudyPlanCourseReasonTooltip((array)$course), ENT_QUOTES) ?>">i</button>
                                             </td>
                                             <td><?= $isNonCredit ? '(' . aspvFormatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : aspvFormatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
                                             <td><?= $isNonCredit ? '(' . aspvFormatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : aspvFormatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>

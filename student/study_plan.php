@@ -559,6 +559,62 @@ function describeStudyPlanCourseReason(array $course, array $termSourceContext =
     return implode(' ', $reasons);
 }
 
+function describeStudyPlanCourseReasonTooltip(array $course, array $termSourceContext = []): string {
+    $parts = [];
+
+    if (!empty($course['forced_added'])) {
+        $forcedReason = trim((string)($course['forced_reason'] ?? ''));
+        $parts[] = $forcedReason !== '' ? 'Manually added: ' . $forcedReason : 'Manually added to plan';
+    }
+
+    if (!empty($course['needs_retake'])) {
+        $parts[] = 'Back/failed — prioritized early';
+    }
+
+    if (!empty($course['cross_registered'])) {
+        $crossRegSourceProgram = trim((string)($course['cross_reg_source_program'] ?? ''));
+        $parts[] = $crossRegSourceProgram !== '' ? 'Cross-registered from ' . $crossRegSourceProgram : 'Cross-registered course';
+    }
+
+    if (!empty($termSourceContext['is_relocated'])) {
+        $nonDisplaySummary = trim((string)($termSourceContext['non_display_summary'] ?? ''));
+        $sourceSummary = trim((string)($termSourceContext['source_summary'] ?? ''));
+        if ($nonDisplaySummary !== '' && $sourceSummary !== '') {
+            $parts[] = 'Moved from ' . $nonDisplaySummary . ' to ' . $sourceSummary;
+        } elseif ($sourceSummary !== '') {
+            $parts[] = 'Placed here after curriculum timeline check (' . $sourceSummary . ')';
+        }
+    }
+
+    // Original/planned slot info if available
+    $orig = [];
+    if (!empty($course['source_year']) || !empty($course['source_semester'])) {
+        $origYear = trim((string)($course['source_year'] ?? ''));
+        $origSem = trim((string)($course['source_semester'] ?? ''));
+        $orig[] = trim($origYear . ' ' . $origSem);
+    }
+    if (!empty($course['planned_year']) || !empty($course['planned_semester'])) {
+        $planYear = trim((string)($course['planned_year'] ?? ''));
+        $planSem = trim((string)($course['planned_semester'] ?? ''));
+        $orig[] = 'Planned: ' . trim($planYear . ' ' . $planSem);
+    }
+    if (!empty($orig)) {
+        $parts[] = implode(' · ', $orig);
+    }
+
+    if (empty($parts)) {
+        $parts[] = 'Matches curriculum slot for this term after prerequisites and unit limits were checked.';
+    }
+
+    $text = implode(' · ', $parts);
+    // keep tooltip concise
+    if (mb_strlen($text) > 400) {
+        $text = mb_substr($text, 0, 397) . '...';
+    }
+
+    return $text;
+}
+
 $studentShellPayload = htmlspecialchars(json_encode([
     'title' => 'Study Plan Workspace',
     'description' => 'Review your generated roadmap, keep an eye on completion progress, and stay inside the existing student planning workflow while we modernize the shell around it.',
@@ -2606,7 +2662,7 @@ $currentEnrollmentClientPayload = json_encode([
                                         </td>
                                             <td>
                                             <?= htmlspecialchars($course['course_title']) ?>
-                                            <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(describeStudyPlanCourseReason((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
+                                            <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(describeStudyPlanCourseReasonTooltip((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
                                             <?php if ($is_forced_added && !empty($course['forced_reason'])): ?>
                                             <div style="font-size: 10px; color: #ef6c00; font-weight: 600; margin-top: 3px;">
                                                 <?= htmlspecialchars($course['forced_reason']) ?>

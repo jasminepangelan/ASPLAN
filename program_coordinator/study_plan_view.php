@@ -152,6 +152,40 @@ function pcDescribeStudyPlanCourseReason(array $course, array $termSourceContext
     return implode(' ', $reasons);
 }
 
+function pcDescribeStudyPlanCourseReasonTooltip(array $course, array $termSourceContext = []): string
+{
+    $parts = [];
+    if (!empty($course['forced_added'])) {
+        $forcedReason = trim((string)($course['forced_reason'] ?? ''));
+        $parts[] = $forcedReason !== '' ? 'Manually added: ' . $forcedReason : 'Manually added to plan';
+    }
+    if (!empty($course['needs_retake'])) {
+        $parts[] = 'Back/failed — prioritized early';
+    }
+    if (!empty($course['cross_registered'])) {
+        $src = trim((string)($course['cross_reg_source_program'] ?? ''));
+        $parts[] = $src !== '' ? 'Cross-registered from ' . $src : 'Cross-registered course';
+    }
+    if (!empty($course['moved_override'])) {
+        $parts[] = 'Moved manually for advisory reasons';
+    }
+    if (!empty($termSourceContext['is_relocated'])) {
+        $nonDisplaySummary = trim((string)($termSourceContext['non_display_summary'] ?? ''));
+        $sourceSummary = trim((string)($termSourceContext['source_summary'] ?? ''));
+        if ($nonDisplaySummary !== '' && $sourceSummary !== '') {
+            $parts[] = 'Moved from ' . $nonDisplaySummary . ' to ' . $sourceSummary;
+        } elseif ($sourceSummary !== '') {
+            $parts[] = 'Placed here after curriculum timeline check (' . $sourceSummary . ')';
+        }
+    }
+    if (empty($parts)) {
+        $parts[] = 'Matches curriculum slot for this term after prerequisites and unit limits were checked.';
+    }
+    $text = implode(' · ', $parts);
+    if (mb_strlen($text) > 400) $text = mb_substr($text, 0, 397) . '...';
+    return $text;
+}
+
 $coordinatorName = $isAdmin
     ? (isset($_SESSION['admin_full_name']) ? htmlspecialchars((string)$_SESSION['admin_full_name']) : 'Admin')
     : (isset($_SESSION['full_name']) ? htmlspecialchars((string)$_SESSION['full_name']) : 'Program Coordinator');
@@ -1524,7 +1558,7 @@ if ($lastPlannedTerm) {
                                         <td><?= htmlspecialchars((string)($course['code'] ?? '')); ?></td>
                                         <td>
                                             <?= htmlspecialchars((string)($course['title'] ?? '')); ?>
-                                            <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(pcDescribeStudyPlanCourseReason((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
+                                            <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(pcDescribeStudyPlanCourseReasonTooltip((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
                                         </td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : pcFormatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : pcFormatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
