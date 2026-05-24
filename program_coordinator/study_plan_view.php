@@ -758,7 +758,7 @@ if ($lastPlannedTerm) {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            table-layout: auto;
+            table-layout: fixed;
             border: 1px solid #e4ebe3;
             border-left: none;
             border-right: none;
@@ -781,9 +781,14 @@ if ($lastPlannedTerm) {
         tbody tr:hover { background: #eef6ee; }
         td { color: #223328; }
         th:nth-child(1), td:nth-child(1) { width: 110px; text-align: center; }
-        th:nth-child(2), td:nth-child(2) { text-align: left; }
-        th:nth-child(3), td:nth-child(3) { width: 80px; text-align: center; }
-        th:nth-child(4), td:nth-child(4) { width: 175px; text-align: center; }
+        th:nth-child(2), td:nth-child(2) { width: 260px; text-align: left; }
+        th:nth-child(3), td:nth-child(3) { width: 72px; text-align: center; }
+        th:nth-child(4), td:nth-child(4) { width: 72px; text-align: center; }
+        th:nth-child(5), td:nth-child(5) { width: 72px; text-align: center; }
+        th:nth-child(6), td:nth-child(6) { width: 72px; text-align: center; }
+        th:nth-child(7), td:nth-child(7) { width: 120px; text-align: center; }
+        th:nth-child(8), td:nth-child(8) { width: 120px; text-align: center; }
+        th:nth-child(9), td:nth-child(9) { width: 150px; text-align: center; }
         .warning {
             background: #fef3c7;
             border: 1px solid #fde68a;
