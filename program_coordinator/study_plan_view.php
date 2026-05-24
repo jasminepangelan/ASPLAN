@@ -856,7 +856,8 @@ if ($lastPlannedTerm) {
             border-radius: 8px;
             padding: 40px 50px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 1120px;
+            width: 100%;
+            max-width: none;
             margin: 0 auto;
         }
         .student-header {
