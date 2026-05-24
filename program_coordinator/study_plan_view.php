@@ -881,43 +881,36 @@ if ($lastPlannedTerm) {
             opacity: 0.7;
             cursor: wait;
         }
-        .plan-reason {
-            margin-top: 6px;
-            font-size: 10px;
-            color: #546e7a;
-        }
-        .plan-reason > summary {
-            list-style: none;
+        .sp-info {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #e0f2f1;
+            color: #00695c;
+            border: 1px solid #c8e6c9;
+            font-weight: 700;
+            font-size: 12px;
+            line-height: 18px;
             cursor: pointer;
-            user-select: none;
-            padding: 2px 8px;
-            border: 1px solid #d9e2d8;
-            background: #f7faf7;
-            border-radius: 999px;
-            font-weight: 600;
+            margin-left: 8px;
         }
-        .plan-reason > summary::-webkit-details-marker {
-            display: none;
-        }
-        .plan-reason > summary::after {
-            content: '\u25BE';
-            font-size: 9px;
-            line-height: 1;
-            transition: transform 0.2s ease;
-        }
-        .plan-reason[open] > summary::after {
-            transform: rotate(180deg);
-        }
-        .plan-reason__body {
-            margin-top: 6px;
-            padding: 8px 10px;
-            border-left: 2px solid #b9d9b5;
-            background: #fbfcfb;
-            border-radius: 0 8px 8px 8px;
-            line-height: 1.45;
+        .sp-info:focus { outline: 2px solid rgba(0,105,96,0.15); }
+        .sp-tooltip {
+            position: absolute;
+            z-index: 9999;
+            background: #fff;
+            border: 1px solid #cfd8dc;
+            padding: 10px 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #263238;
+            max-width: 420px;
+            word-break: break-word;
+            line-height: 1.4;
         }
         .completed-divider {
             text-align: center;
@@ -1531,10 +1524,7 @@ if ($lastPlannedTerm) {
                                         <td><?= htmlspecialchars((string)($course['code'] ?? '')); ?></td>
                                         <td>
                                             <?= htmlspecialchars((string)($course['title'] ?? '')); ?>
-                                            <details class="plan-reason">
-                                                <summary>Why shown</summary>
-                                                <div class="plan-reason__body"><?= htmlspecialchars(pcDescribeStudyPlanCourseReason((array)$course, (array)($term_source_context ?? []))) ?></div>
-                                            </details>
+                                            <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(pcDescribeStudyPlanCourseReason((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
                                         </td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : pcFormatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : pcFormatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
@@ -1902,7 +1892,26 @@ if ($lastPlannedTerm) {
             const isHidden = body.classList.toggle('hidden');
             headerEl.classList.toggle('collapsed', isHidden);
         }
-    </script>
+
+        // Tooltip for 'Why shown' info buttons
+        (function() {
+            function hideTooltip() { const t = document.querySelector('.sp-tooltip'); if (t) t.remove(); }
+            function showTooltip(button) {
+                hideTooltip();
+                const reason = button.getAttribute('data-reason') || '';
+                if (!reason) return;
+                const tooltip = document.createElement('div'); tooltip.className = 'sp-tooltip'; tooltip.textContent = reason; document.body.appendChild(tooltip);
+                const rect = button.getBoundingClientRect(); const top = rect.top + window.scrollY + rect.height + 8; let left = rect.left + window.scrollX;
+                const maxRight = window.scrollX + window.innerWidth - 20; if (left + tooltip.offsetWidth > maxRight) left = Math.max(window.scrollX + 10, maxRight - tooltip.offsetWidth);
+                tooltip.style.top = top + 'px'; tooltip.style.left = left + 'px';
+                setTimeout(function() { document.addEventListener('click', outsideHandler); }, 10);
+                function outsideHandler(e) { if (!tooltip.contains(e.target) && e.target !== button) { hideTooltip(); document.removeEventListener('click', outsideHandler); } }
+            }
+            document.addEventListener('click', function(e) { const btn = e.target.closest('.sp-info'); if (btn) { e.preventDefault(); showTooltip(btn); } });
+            document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hideTooltip(); });
+        })();
+
+	</script>
 </body>
 </html>
 <?php $conn->close(); ?>
