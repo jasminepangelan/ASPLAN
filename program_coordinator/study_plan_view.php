@@ -765,7 +765,7 @@ if ($lastPlannedTerm) {
             background: #fff;
         }
         th, td {
-            padding: 9px 10px;
+            padding: 6px 12px;
             border-bottom: 1px solid #edf2ec;
             font-size: 13px;
         }
@@ -781,13 +781,13 @@ if ($lastPlannedTerm) {
         tbody tr:hover { background: #eef6ee; }
         td { color: #223328; }
         th:nth-child(1), td:nth-child(1) { width: 110px; text-align: center; }
-        th:nth-child(2), td:nth-child(2) { width: 260px; text-align: left; }
+        th:nth-child(2), td:nth-child(2) { width: auto; text-align: left; }
         th:nth-child(3), td:nth-child(3) { width: 72px; text-align: center; }
         th:nth-child(4), td:nth-child(4) { width: 72px; text-align: center; }
         th:nth-child(5), td:nth-child(5) { width: 72px; text-align: center; }
         th:nth-child(6), td:nth-child(6) { width: 72px; text-align: center; }
         th:nth-child(7), td:nth-child(7) { width: 120px; text-align: center; }
-        th:nth-child(8), td:nth-child(8) { width: 150px; text-align: center; }
+        th:nth-child(8), td:nth-child(8) { width: 95px; text-align: center; }
         .warning {
             background: #fef3c7;
             border: 1px solid #fde68a;
