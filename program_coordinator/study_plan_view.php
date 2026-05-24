@@ -919,6 +919,30 @@ if ($lastPlannedTerm) {
             opacity: 0.7;
             cursor: wait;
         }
+        .course-title-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+        .course-tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+        }
+        .course-title-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            min-width: 0;
+            line-height: 1.3;
+        }
+        .course-title-text {
+            min-width: 0;
+            word-break: break-word;
+        }
         .sp-info {
             display: inline-flex;
             align-items: center;
@@ -1557,57 +1581,54 @@ if ($lastPlannedTerm) {
                                         }
                                         $isNonCredit = pcIsNonCreditStudyPlanCourse((array)$course);
                                         $breakdown = pcGetStudyPlanCourseBreakdown((array)$course);
+                                        $status = trim((string)($course['status'] ?? ''));
+                                        $statusVariant = trim((string)($course['status_variant'] ?? ''));
+                                        $statusBadgeClass = 'plan-tag-to-add';
+                                        if ($statusVariant === 'passed' || $statusVariant === 'credited') {
+                                            $statusBadgeClass = 'plan-tag-completed';
+                                        } elseif ($statusVariant === 'failed') {
+                                            $statusBadgeClass = 'plan-tag-retake';
+                                        } elseif ($statusVariant === 'inc' || $statusVariant === 'dropped') {
+                                            $statusBadgeClass = 'plan-tag-cross';
+                                        }
+                                        $crossRegSourceProgram = trim((string)($course['cross_reg_source_program'] ?? ''));
+                                        $crossRegTooltip = $crossRegSourceProgram !== '' ? 'Cross-registered from: ' . $crossRegSourceProgram : 'Cross-registered course';
+                                        $isActionRequired = !empty($course['needs_retake']) || !empty($course['cross_registered']);
+                                        $courseAdditionKey = spcaBuildCourseAdditionKey((string)($course['code'] ?? ''), (string)($term['year'] ?? ''), (string)($term['semester'] ?? ''));
+                                        $isAddedConfirmed = $isActionRequired && !empty($courseAdditionMap[$courseAdditionKey]);
                                     ?>
                                     <tr>
                                         <td><?= htmlspecialchars((string)($course['code'] ?? '')); ?></td>
                                         <td>
-                                            <?= htmlspecialchars((string)($course['title'] ?? '')); ?>
-                                            <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(pcDescribeStudyPlanCourseReasonTooltip((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
+                                            <div class="course-title-stack">
+                                                <div class="course-tag-row">
+                                                    <?php if ($status !== ''): ?>
+                                                        <span class="plan-tag <?= htmlspecialchars($statusBadgeClass); ?>"><?= htmlspecialchars(strtoupper($status)); ?></span>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
+                                                    <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($crossRegTooltip) ?>" aria-label="<?= htmlspecialchars($crossRegTooltip) ?>">Cross-Reg</span><?php endif; ?>
+                                                    <?php if ($isActionRequired): ?>
+                                                        <button
+                                                            type="button"
+                                                            class="plan-tag <?= $isAddedConfirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
+                                                            data-added="<?= $isAddedConfirmed ? '1' : '0' ?>"
+                                                            onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['year'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['semester'] ?? ''), ENT_QUOTES); ?>')"
+                                                        ><?= $isAddedConfirmed ? 'Added' : 'To be added' ?></button>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
+                                                </div>
+                                                <div class="course-title-line">
+                                                    <span class="course-title-text"><?= htmlspecialchars((string)($course['title'] ?? '')); ?></span>
+                                                    <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(pcDescribeStudyPlanCourseReasonTooltip((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : pcFormatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : pcFormatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : pcFormatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['lect_hrs_lab']) . ')' : pcFormatStudyPlanMeasure($breakdown['lect_hrs_lab']) ?></td>
                                         <td><?= htmlspecialchars($prerequisite); ?></td>
-                                        <td>
-                                            <?php
-                                                $crossRegSourceProgram = trim((string)($course['cross_reg_source_program'] ?? ''));
-                                                $crossRegTooltip = $crossRegSourceProgram !== '' ? 'Cross-registered from: ' . $crossRegSourceProgram : 'Cross-registered course';
-                                                $isActionRequired = !empty($course['needs_retake']) || !empty($course['cross_registered']);
-                                                $courseAdditionKey = spcaBuildCourseAdditionKey((string)($course['code'] ?? ''), (string)($term['year'] ?? ''), (string)($term['semester'] ?? ''));
-                                                $isAddedConfirmed = $isActionRequired && !empty($courseAdditionMap[$courseAdditionKey]);
-                                            ?>
-                                            <?php if ($isCompletedTerm): ?><span class="plan-tag plan-tag-completed">Completed</span><?php endif; ?>
-                                            <?php if ($isPartialTerm): ?><span class="plan-tag plan-tag-cross">In Progress</span><?php endif; ?>
-                                            <?php
-                                                $status = trim((string)($course['status'] ?? ''));
-                                                $statusVariant = trim((string)($course['status_variant'] ?? ''));
-                                            ?>
-                                            <?php if ($isPartialTerm && $status !== ''): ?>
-                                                <?php
-                                                    $partialBadgeClass = 'plan-tag-to-add';
-                                                    if ($statusVariant === 'passed' || $statusVariant === 'credited') {
-                                                        $partialBadgeClass = 'plan-tag-completed';
-                                                    } elseif ($statusVariant === 'failed') {
-                                                        $partialBadgeClass = 'plan-tag-retake';
-                                                    } elseif ($statusVariant === 'inc' || $statusVariant === 'dropped') {
-                                                        $partialBadgeClass = 'plan-tag-cross';
-                                                    }
-                                                ?>
-                                                <span class="plan-tag <?= htmlspecialchars($partialBadgeClass); ?>"><?= htmlspecialchars(strtoupper($status)); ?></span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
-                                            <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($crossRegTooltip) ?>" aria-label="<?= htmlspecialchars($crossRegTooltip) ?>">Cross-Reg</span><?php endif; ?>
-                                            <?php if ($isActionRequired): ?>
-                                                <button
-                                                    type="button"
-                                                    class="plan-tag <?= $isAddedConfirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
-                                                    data-added="<?= $isAddedConfirmed ? '1' : '0' ?>"
-                                                    onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['year'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['semester'] ?? ''), ENT_QUOTES); ?>')"
-                                                ><?= $isAddedConfirmed ? 'Added' : 'To be added' ?></button>
-                                            <?php endif; ?>
-                                            <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
-                                        </td>
+                                        <td></td>
                                         <td>
                                             <?php if (!$isCompletedTerm && !$isPartialTerm): ?>
                                                 <?php

@@ -1362,6 +1362,30 @@ $currentEnrollmentClientPayload = json_encode([
             cursor: wait;
             opacity: 0.8;
         }
+        .course-title-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+        .course-tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+        }
+        .course-title-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            min-width: 0;
+            line-height: 1.3;
+        }
+        .course-title-text {
+            min-width: 0;
+            word-break: break-word;
+        }
         .plan-tag-warning { background: #ef6c00; }
         .plan-tag-pending { background: #455a64; }
         .completed-badge.plan-tag {
@@ -2435,13 +2459,19 @@ $currentEnrollmentClientPayload = json_encode([
                                     <tr>
                                         <td>
                                             <?= htmlspecialchars($course['code']) ?>
-                                            <span class="plan-tag plan-tag-completed">COMPLETED</span>
-                                            <?php if ($is_failed_grade): ?>
-                                            <span class="plan-tag plan-tag-failed">FAILED</span>
-                                            <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?= htmlspecialchars($course['title']) ?>
+                                            <div class="course-title-stack">
+                                                <div class="course-tag-row">
+                                                    <span class="plan-tag plan-tag-completed">COMPLETED</span>
+                                                    <?php if ($is_failed_grade): ?>
+                                                    <span class="plan-tag plan-tag-failed">FAILED</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="course-title-line">
+                                                    <span class="course-title-text"><?= htmlspecialchars($course['title']) ?></span>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
@@ -2510,13 +2540,21 @@ $currentEnrollmentClientPayload = json_encode([
                                     <tr>
                                         <td>
                                             <?= htmlspecialchars($course['code']) ?>
-                                            <?php if ($status !== ''): ?>
-                                            <span class="plan-tag <?= htmlspecialchars($status_badge_class) ?>">
-                                                <?= htmlspecialchars(strtoupper($status)) ?>
-                                            </span>
-                                            <?php endif; ?>
                                         </td>
-                                        <td><?= htmlspecialchars($course['title']) ?></td>
+                                        <td>
+                                            <div class="course-title-stack">
+                                                <div class="course-tag-row">
+                                                    <?php if ($status !== ''): ?>
+                                                    <span class="plan-tag <?= htmlspecialchars($status_badge_class) ?>">
+                                                        <?= htmlspecialchars(strtoupper($status)) ?>
+                                                    </span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="course-title-line">
+                                                    <span class="course-title-text"><?= htmlspecialchars($course['title']) ?></span>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : formatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
