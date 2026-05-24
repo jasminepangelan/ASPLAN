@@ -2,9 +2,6 @@
 // Prevent caching to always show fresh data
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
-header("Pragma: no-cache");
-header("Expires: 0");
-header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
 header("ETag: " . md5(microtime() . rand()));
 
 // Force browser to never cache this page
@@ -522,6 +519,44 @@ function sortTaggedStudyPlanCoursesFirst(array $courses): array {
     });
 
     return array_column($indexed, 'course');
+}
+
+function describeStudyPlanCourseReason(array $course, array $termSourceContext = []): string {
+    $reasons = [];
+
+    if (!empty($course['forced_added'])) {
+        $forcedReason = trim((string)($course['forced_reason'] ?? ''));
+        $reasons[] = $forcedReason !== ''
+            ? $forcedReason
+            : 'This course was manually added to the plan.';
+    }
+
+    if (!empty($course['needs_retake'])) {
+        $reasons[] = 'This is a back/failed subject, so it is prioritized early.';
+    }
+
+    if (!empty($course['cross_registered'])) {
+        $crossRegSourceProgram = trim((string)($course['cross_reg_source_program'] ?? ''));
+        $reasons[] = $crossRegSourceProgram !== ''
+            ? 'This course was cross-registered from ' . $crossRegSourceProgram . '.'
+            : 'This course was cross-registered to keep your load balanced.';
+    }
+
+    if (!empty($termSourceContext['is_relocated'])) {
+        $nonDisplaySummary = trim((string)($termSourceContext['non_display_summary'] ?? ''));
+        $sourceSummary = trim((string)($termSourceContext['source_summary'] ?? ''));
+        if ($nonDisplaySummary !== '' && $sourceSummary !== '') {
+            $reasons[] = 'The planner moved this course from ' . $nonDisplaySummary . ' and now shows it with ' . $sourceSummary . '.';
+        } elseif ($sourceSummary !== '') {
+            $reasons[] = 'The planner placed this course here after checking your curriculum timeline (' . $sourceSummary . ').';
+        }
+    }
+
+    if (empty($reasons)) {
+        $reasons[] = 'This course matches the curriculum slot for this term and fits the current plan after prerequisites and unit limits were checked.';
+    }
+
+    return implode(' ', $reasons);
 }
 
 $studentShellPayload = htmlspecialchars(json_encode([
@@ -1273,6 +1308,45 @@ $currentEnrollmentClientPayload = json_encode([
             background: #4CAF50;
             padding: 2px 6px;
             margin-left: 6px;
+        }
+
+        .plan-reason {
+            margin-top: 6px;
+            font-size: 10px;
+            color: #546e7a;
+        }
+        .plan-reason > summary {
+            list-style: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            user-select: none;
+            padding: 2px 8px;
+            border: 1px solid #d9e2d8;
+            background: #f7faf7;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+        .plan-reason > summary::-webkit-details-marker {
+            display: none;
+        }
+        .plan-reason > summary::after {
+            content: '\u25BE';
+            font-size: 9px;
+            line-height: 1;
+            transition: transform 0.2s ease;
+        }
+        .plan-reason[open] > summary::after {
+            transform: rotate(180deg);
+        }
+        .plan-reason__body {
+            margin-top: 6px;
+            padding: 8px 10px;
+            border-left: 2px solid #b9d9b5;
+            background: #fbfcfb;
+            border-radius: 0 8px 8px 8px;
+            line-height: 1.45;
         }
 
         .grade-passed {
@@ -2311,7 +2385,12 @@ $currentEnrollmentClientPayload = json_encode([
                                             <span class="plan-tag plan-tag-failed">FAILED</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= htmlspecialchars($course['title']) ?></td>
+                                        <td>
+                                            <?= htmlspecialchars($course['title']) ?>
+                                            <div style="font-size: 11px; color: #5c6f60; margin-top: 4px; line-height: 1.35;">
+                                                Shown here so you can see how this completed course fits into the generated plan.
+                                            </div>
+                                        </td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : formatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
@@ -2534,6 +2613,9 @@ $currentEnrollmentClientPayload = json_encode([
                                         </td>
                                         <td>
                                             <?= htmlspecialchars($course['course_title']) ?>
+                                            <div style="font-size: 11px; color: #5c6f60; margin-top: 4px; line-height: 1.35;">
+                                                <strong>Why shown:</strong> <?= htmlspecialchars(describeStudyPlanCourseReason((array)$course, (array)($term_source_context ?? []))) ?>
+                                            </div>
                                             <?php if ($is_forced_added && !empty($course['forced_reason'])): ?>
                                             <div style="font-size: 10px; color: #ef6c00; font-weight: 600; margin-top: 3px;">
                                                 <?= htmlspecialchars($course['forced_reason']) ?>
