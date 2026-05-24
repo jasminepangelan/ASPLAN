@@ -2491,13 +2491,13 @@ $currentEnrollmentClientPayload = json_encode([
                                         <td>
                                             <div class="course-title-stack">
                                                 <div class="course-title-line">
+                                                    <span class="course-title-text"><?= htmlspecialchars($course['title']) ?></span>
                                                     <div class="course-tag-row">
                                                         <span class="plan-tag plan-tag-completed">COMPLETED</span>
                                                         <?php if ($is_failed_grade): ?>
                                                         <span class="plan-tag plan-tag-failed">FAILED</span>
                                                         <?php endif; ?>
                                                     </div>
-                                                    <span class="course-title-text"><?= htmlspecialchars($course['title']) ?></span>
                                                 </div>
                                             </div>
                                         </td>
@@ -2572,6 +2572,7 @@ $currentEnrollmentClientPayload = json_encode([
                                         <td>
                                             <div class="course-title-stack">
                                                 <div class="course-title-line">
+                                                    <span class="course-title-text"><?= htmlspecialchars($course['title']) ?></span>
                                                     <div class="course-tag-row">
                                                         <?php if ($status !== ''): ?>
                                                         <span class="plan-tag <?= htmlspecialchars($status_badge_class) ?>">
@@ -2579,7 +2580,6 @@ $currentEnrollmentClientPayload = json_encode([
                                                         </span>
                                                         <?php endif; ?>
                                                     </div>
-                                                    <span class="course-title-text"><?= htmlspecialchars($course['title']) ?></span>
                                                 </div>
                                             </div>
                                         </td>
@@ -2711,26 +2711,22 @@ $currentEnrollmentClientPayload = json_encode([
                                     <tr style="<?= $row_style ?>">
                                         <td>
                                             <?= htmlspecialchars($course['course_code']) ?>
-                                            <?php if ($is_retake): ?>
-                                            <span class="plan-tag plan-tag-retake">BACK/FAILED COURSE</span>
-                                            <?php endif; ?>
-                                            <?php if ($is_cross_reg): ?>
-                                            <span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($cross_reg_tooltip) ?>" aria-label="<?= htmlspecialchars($cross_reg_tooltip) ?>">CROSS-REG</span>
-                                            <?php endif; ?>
-                                            <?php if ($is_action_required): ?>
-                                            <button
-                                                type="button"
-                                                class="plan-tag <?= $is_added_confirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
-                                                data-added="<?= $is_added_confirmed ? '1' : '0' ?>"
-                                                onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['course_code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)$year, ENT_QUOTES); ?>', '<?= htmlspecialchars((string)$semester, ENT_QUOTES); ?>')"
-                                            ><?= $is_added_confirmed ? 'ADDED' : 'TO BE ADDED' ?></button>
-                                            <?php endif; ?>
-                                            <?php if ($is_forced_added): ?>
-                                            <span class="plan-tag plan-tag-forced">FORCED</span>
-                                            <?php endif; ?>
                                         </td>
                                             <td>
                                             <?= htmlspecialchars($course['course_title']) ?>
+                                            <div class="course-tag-row" style="display:inline-flex; gap:6px; margin-left:8px; vertical-align:middle;">
+                                                <?php if ($is_retake): ?><span class="plan-tag plan-tag-retake">BACK/FAILED COURSE</span><?php endif; ?>
+                                                <?php if ($is_cross_reg): ?><span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($cross_reg_tooltip) ?>" aria-label="<?= htmlspecialchars($cross_reg_tooltip) ?>">CROSS-REG</span><?php endif; ?>
+                                                <?php if ($is_action_required): ?>
+                                                <button
+                                                    type="button"
+                                                    class="plan-tag <?= $is_added_confirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
+                                                    data-added="<?= $is_added_confirmed ? '1' : '0' ?>"
+                                                    onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['course_code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)$year, ENT_QUOTES); ?>', '<?= htmlspecialchars((string)$semester, ENT_QUOTES); ?>')"
+                                                ><?= $is_added_confirmed ? 'ADDED' : 'TO BE ADDED' ?></button>
+                                                <?php endif; ?>
+                                                <?php if ($is_forced_added): ?><span class="plan-tag plan-tag-forced">FORCED</span><?php endif; ?>
+                                            </div>
                                             <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(describeStudyPlanCourseReasonTooltip((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
                                             <?php if ($is_forced_added && !empty($course['forced_reason'])): ?>
                                             <div style="font-size: 10px; color: #ef6c00; font-weight: 600; margin-top: 3px;">

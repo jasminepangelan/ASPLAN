@@ -1434,6 +1434,7 @@ if ($last_planned_term) {
                                             <td>
                                                 <div class="course-title-stack">
                                                     <div class="course-title-line">
+                                                        <span class="course-title-text"><?= htmlspecialchars((string)($course['title'] ?? '')) ?></span>
                                                         <div class="course-tag-row">
                                                             <?php if ($status !== ''): ?>
                                                                 <span class="plan-tag <?= htmlspecialchars($statusBadgeClass); ?>"><?= htmlspecialchars(strtoupper($status)); ?></span>
@@ -1450,7 +1451,6 @@ if ($last_planned_term) {
                                                             <?php endif; ?>
                                                             <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
                                                         </div>
-                                                        <span class="course-title-text"><?= htmlspecialchars((string)($course['title'] ?? '')) ?></span>
                                                         <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(aspvDescribeStudyPlanCourseReasonTooltip((array)$course), ENT_QUOTES) ?>">i</button>
                                                     </div>
                                                 </div>
