@@ -154,34 +154,38 @@ function pcDescribeStudyPlanCourseReason(array $course, array $termSourceContext
 
 function pcDescribeStudyPlanCourseReasonTooltip(array $course, array $termSourceContext = []): string
 {
-    $parts = [];
+    $reasons = [];
     if (!empty($course['forced_added'])) {
         $forcedReason = trim((string)($course['forced_reason'] ?? ''));
-        $parts[] = $forcedReason !== '' ? 'Manually added: ' . $forcedReason : 'Manually added to plan';
+        $reasons[] = $forcedReason !== '' ? 'Manually added: ' . $forcedReason : 'Manually added to the study plan by adviser';
     }
     if (!empty($course['needs_retake'])) {
-        $parts[] = 'Back/failed — prioritized early';
+        $reasons[] = 'Requires retake (previous attempt failed) — prioritized earlier to allow progression';
     }
     if (!empty($course['cross_registered'])) {
         $src = trim((string)($course['cross_reg_source_program'] ?? ''));
-        $parts[] = $src !== '' ? 'Cross-registered from ' . $src : 'Cross-registered course';
+        $reasons[] = $src !== '' ? 'Cross-registered from ' . $src . ' to balance program load' : 'Cross-registered to balance load across programs';
     }
     if (!empty($course['moved_override'])) {
-        $parts[] = 'Moved manually for advisory reasons';
+        $reasons[] = 'Manually moved by adviser for scheduling or curriculum reasons';
     }
     if (!empty($termSourceContext['is_relocated'])) {
         $nonDisplaySummary = trim((string)($termSourceContext['non_display_summary'] ?? ''));
         $sourceSummary = trim((string)($termSourceContext['source_summary'] ?? ''));
         if ($nonDisplaySummary !== '' && $sourceSummary !== '') {
-            $parts[] = 'Moved from ' . $nonDisplaySummary . ' to ' . $sourceSummary;
+            $reasons[] = 'Relocated due to curriculum timeline adjustment';
         } elseif ($sourceSummary !== '') {
-            $parts[] = 'Placed here after curriculum timeline check (' . $sourceSummary . ')';
+            $reasons[] = 'Placed here after curriculum timeline review (' . $sourceSummary . ')';
         }
     }
-    if (empty($parts)) {
-        $parts[] = 'Matches curriculum slot for this term after prerequisites and unit limits were checked.';
+
+    if (!empty($reasons)) {
+        $why = 'Recommended here because ' . implode(' · ', $reasons) . '.';
+    } else {
+        $why = 'Recommended here as it matches the curriculum slot and prerequisites for this term.';
     }
-    $text = implode(' · ', $parts);
+
+    $text = $why;
     if (mb_strlen($text) > 400) $text = mb_substr($text, 0, 397) . '...';
     return $text;
 }

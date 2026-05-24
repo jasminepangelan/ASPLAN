@@ -231,22 +231,30 @@ function aspvDescribeStudyPlanCourseReason(array $course): string
 
 function aspvDescribeStudyPlanCourseReasonTooltip(array $course): string
 {
-    $parts = [];
+    $reasons = [];
     if (!empty($course['forced_added'])) {
         $forcedReason = trim((string)($course['forced_reason'] ?? ''));
-        $parts[] = $forcedReason !== '' ? 'Manually added: ' . $forcedReason : 'Manually added to plan';
+        $reasons[] = $forcedReason !== '' ? 'Manually added: ' . $forcedReason : 'Manually added to the study plan by adviser';
     }
     if (!empty($course['needs_retake'])) {
-        $parts[] = 'Back/failed — prioritized early';
+        $reasons[] = 'Requires retake (previous attempt failed) — prioritized earlier to allow progression';
     }
     if (!empty($course['cross_registered'])) {
         $src = trim((string)($course['cross_reg_source_program'] ?? ''));
-        $parts[] = $src !== '' ? 'Cross-registered from ' . $src : 'Cross-registered course';
+        $reasons[] = $src !== '' ? 'Cross-registered from ' . $src . ' to balance program load' : 'Cross-registered to balance load across programs';
     }
-    if (empty($parts)) {
-        $parts[] = 'Matches curriculum slot for this term after prerequisites and unit limits were checked.';
+
+    if (!empty($course['moved_override'])) {
+        $reasons[] = 'Manually moved by adviser for scheduling or curriculum reasons';
     }
-    $text = implode(' · ', $parts);
+
+    if (!empty($reasons)) {
+        $why = 'Recommended here because ' . implode(' · ', $reasons) . '.';
+    } else {
+        $why = 'Recommended here as it matches the curriculum slot and prerequisites for this term.';
+    }
+
+    $text = $why;
     if (mb_strlen($text) > 400) $text = mb_substr($text, 0, 397) . '...';
     return $text;
 }
