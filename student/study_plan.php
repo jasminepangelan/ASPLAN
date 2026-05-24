@@ -2490,13 +2490,13 @@ $currentEnrollmentClientPayload = json_encode([
                                         </td>
                                         <td>
                                             <div class="course-title-stack">
-                                                <div class="course-tag-row">
-                                                    <span class="plan-tag plan-tag-completed">COMPLETED</span>
-                                                    <?php if ($is_failed_grade): ?>
-                                                    <span class="plan-tag plan-tag-failed">FAILED</span>
-                                                    <?php endif; ?>
-                                                </div>
                                                 <div class="course-title-line">
+                                                    <div class="course-tag-row">
+                                                        <span class="plan-tag plan-tag-completed">COMPLETED</span>
+                                                        <?php if ($is_failed_grade): ?>
+                                                        <span class="plan-tag plan-tag-failed">FAILED</span>
+                                                        <?php endif; ?>
+                                                    </div>
                                                     <span class="course-title-text"><?= htmlspecialchars($course['title']) ?></span>
                                                 </div>
                                             </div>
@@ -2571,14 +2571,14 @@ $currentEnrollmentClientPayload = json_encode([
                                         </td>
                                         <td>
                                             <div class="course-title-stack">
-                                                <div class="course-tag-row">
-                                                    <?php if ($status !== ''): ?>
-                                                    <span class="plan-tag <?= htmlspecialchars($status_badge_class) ?>">
-                                                        <?= htmlspecialchars(strtoupper($status)) ?>
-                                                    </span>
-                                                    <?php endif; ?>
-                                                </div>
                                                 <div class="course-title-line">
+                                                    <div class="course-tag-row">
+                                                        <?php if ($status !== ''): ?>
+                                                        <span class="plan-tag <?= htmlspecialchars($status_badge_class) ?>">
+                                                            <?= htmlspecialchars(strtoupper($status)) ?>
+                                                        </span>
+                                                        <?php endif; ?>
+                                                    </div>
                                                     <span class="course-title-text"><?= htmlspecialchars($course['title']) ?></span>
                                                 </div>
                                             </div>

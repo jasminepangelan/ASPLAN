@@ -1612,23 +1612,23 @@ if ($lastPlannedTerm) {
                                         <td><?= htmlspecialchars((string)($course['code'] ?? '')); ?></td>
                                         <td>
                                             <div class="course-title-stack">
-                                                <div class="course-tag-row">
-                                                    <?php if ($status !== ''): ?>
-                                                        <span class="plan-tag <?= htmlspecialchars($statusBadgeClass); ?>"><?= htmlspecialchars(strtoupper($status)); ?></span>
-                                                    <?php endif; ?>
-                                                    <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
-                                                    <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($crossRegTooltip) ?>" aria-label="<?= htmlspecialchars($crossRegTooltip) ?>">Cross-Reg</span><?php endif; ?>
-                                                    <?php if ($isActionRequired): ?>
-                                                        <button
-                                                            type="button"
-                                                            class="plan-tag <?= $isAddedConfirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
-                                                            data-added="<?= $isAddedConfirmed ? '1' : '0' ?>"
-                                                            onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['year'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['semester'] ?? ''), ENT_QUOTES); ?>')"
-                                                        ><?= $isAddedConfirmed ? 'Added' : 'To be added' ?></button>
-                                                    <?php endif; ?>
-                                                    <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
-                                                </div>
                                                 <div class="course-title-line">
+                                                    <div class="course-tag-row">
+                                                        <?php if ($status !== ''): ?>
+                                                            <span class="plan-tag <?= htmlspecialchars($statusBadgeClass); ?>"><?= htmlspecialchars(strtoupper($status)); ?></span>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($course['needs_retake'])): ?><span class="plan-tag plan-tag-retake">Retake</span><?php endif; ?>
+                                                        <?php if (!empty($course['cross_registered'])): ?><span class="plan-tag plan-tag-cross" title="<?= htmlspecialchars($crossRegTooltip) ?>" aria-label="<?= htmlspecialchars($crossRegTooltip) ?>">Cross-Reg</span><?php endif; ?>
+                                                        <?php if ($isActionRequired): ?>
+                                                            <button
+                                                                type="button"
+                                                                class="plan-tag <?= $isAddedConfirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
+                                                                data-added="<?= $isAddedConfirmed ? '1' : '0' ?>"
+                                                                onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['year'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['semester'] ?? ''), ENT_QUOTES); ?>')"
+                                                            ><?= $isAddedConfirmed ? 'Added' : 'To be added' ?></button>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
+                                                    </div>
                                                     <span class="course-title-text"><?= htmlspecialchars((string)($course['title'] ?? '')); ?></span>
                                                     <button type="button" class="sp-info" aria-label="Why shown" data-reason="<?= htmlspecialchars(pcDescribeStudyPlanCourseReasonTooltip((array)$course, (array)($term_source_context ?? [])), ENT_QUOTES) ?>">i</button>
                                                 </div>
