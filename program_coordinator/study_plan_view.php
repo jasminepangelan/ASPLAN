@@ -787,8 +787,7 @@ if ($lastPlannedTerm) {
         th:nth-child(5), td:nth-child(5) { width: 72px; text-align: center; }
         th:nth-child(6), td:nth-child(6) { width: 72px; text-align: center; }
         th:nth-child(7), td:nth-child(7) { width: 120px; text-align: center; }
-        th:nth-child(8), td:nth-child(8) { width: 120px; text-align: center; }
-        th:nth-child(9), td:nth-child(9) { width: 150px; text-align: center; }
+        th:nth-child(8), td:nth-child(8) { width: 150px; text-align: center; }
         .warning {
             background: #fef3c7;
             border: 1px solid #fde68a;
@@ -1573,7 +1572,6 @@ if ($lastPlannedTerm) {
                                         <th colspan="2">Credit Unit</th>
                                         <th colspan="2">Contact Hrs</th>
                                         <th rowspan="2">Prerequisite</th>
-                                        <th rowspan="2">Remarks</th>
                                         <th rowspan="2">Action</th>
                                     </tr>
                                     <tr>
@@ -1641,7 +1639,6 @@ if ($lastPlannedTerm) {
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['lect_hrs_lec']) . ')' : pcFormatStudyPlanMeasure($breakdown['lect_hrs_lec']) ?></td>
                                         <td><?= $isNonCredit ? '(' . pcFormatStudyPlanMeasure($breakdown['lect_hrs_lab']) . ')' : pcFormatStudyPlanMeasure($breakdown['lect_hrs_lab']) ?></td>
                                         <td><?= htmlspecialchars($prerequisite); ?></td>
-                                        <td></td>
                                         <td>
                                             <?php if (!$isCompletedTerm && !$isPartialTerm): ?>
                                                 <?php
@@ -1701,7 +1698,7 @@ if ($lastPlannedTerm) {
                                         <td><strong><?= pcFormatStudyPlanMeasure($termBreakdownTotals['credit_unit_lab']) ?></strong></td>
                                         <td><strong><?= pcFormatStudyPlanMeasure($termBreakdownTotals['lect_hrs_lec']) ?></strong></td>
                                         <td><strong><?= pcFormatStudyPlanMeasure($termBreakdownTotals['lect_hrs_lab']) ?></strong></td>
-                                        <td colspan="3"></td>
+                                        <td colspan="2"></td>
                                     </tr>
                                 </tbody>
                             </table>
