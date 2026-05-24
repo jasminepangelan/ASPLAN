@@ -2395,6 +2395,7 @@ $currentEnrollmentClientPayload = json_encode([
                     <?php if ($is_completed_term): ?>
                     <!-- Completed Semester -->
                     <div class="semester-section completed-term" style="border: 1px solid #c8e6c9;">
+                        <div class="completed-note" style="font-size:11px;color:#5c6f60;padding:6px 10px;">Completed courses are shown to indicate how they fit into the generated plan.</div>
                         <div style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2e7d32;">
                             <?= htmlspecialchars($year) ?> - <?= htmlspecialchars($semester) ?>, <?= $school_year ?>
                             <span class="completed-badge plan-tag plan-tag-completed">COMPLETED</span>
@@ -2441,9 +2442,6 @@ $currentEnrollmentClientPayload = json_encode([
                                         </td>
                                         <td>
                                             <?= htmlspecialchars($course['title']) ?>
-                                            <div style="font-size: 11px; color: #5c6f60; margin-top: 4px; line-height: 1.35;">
-                                                Shown here so you can see how this completed course fits into the generated plan.
-                                            </div>
                                         </td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lec']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lec']) ?></td>
                                         <td><?= $is_non_credit ? '(' . formatStudyPlanMeasure($breakdown['credit_unit_lab']) . ')' : formatStudyPlanMeasure($breakdown['credit_unit_lab']) ?></td>
