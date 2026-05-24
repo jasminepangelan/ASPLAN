@@ -266,6 +266,54 @@ if (!function_exists('psTableExists')) {
     }
 }
 
+if (!function_exists('psResetStudentCurrentEnrollment')) {
+    function psResetStudentCurrentEnrollment($conn, $studentNumber) {
+        $studentNumber = trim((string)$studentNumber);
+        if ($studentNumber === '') {
+            return;
+        }
+
+        if (!psTableExists($conn, 'student_current_enrollments') || !psTableExists($conn, 'student_current_enrollment_courses')) {
+            return;
+        }
+
+        $enrollmentId = 0;
+        $selectEnrollment = $conn->prepare('SELECT id FROM student_current_enrollments WHERE student_id = ? LIMIT 1');
+        if (!$selectEnrollment) {
+            return;
+        }
+
+        $selectEnrollment->bind_param('s', $studentNumber);
+        $selectEnrollment->execute();
+        $enrollmentResult = $selectEnrollment->get_result();
+        $enrollmentRow = $enrollmentResult ? $enrollmentResult->fetch_assoc() : null;
+        $selectEnrollment->close();
+
+        if (!$enrollmentRow) {
+            return;
+        }
+
+        $enrollmentId = (int)($enrollmentRow['id'] ?? 0);
+        if ($enrollmentId <= 0) {
+            return;
+        }
+
+        $deleteCourses = $conn->prepare('DELETE FROM student_current_enrollment_courses WHERE enrollment_id = ?');
+        if ($deleteCourses) {
+            $deleteCourses->bind_param('i', $enrollmentId);
+            $deleteCourses->execute();
+            $deleteCourses->close();
+        }
+
+        $deleteEnrollment = $conn->prepare('DELETE FROM student_current_enrollments WHERE id = ?');
+        if ($deleteEnrollment) {
+            $deleteEnrollment->bind_param('i', $enrollmentId);
+            $deleteEnrollment->execute();
+            $deleteEnrollment->close();
+        }
+    }
+}
+
 if (!function_exists('psGetProgramOptions')) {
     function psGetProgramOptions($conn) {
         $sources = [
@@ -1938,6 +1986,8 @@ if (!function_exists('psExecuteApprovedShift')) {
         $updateProgram->bind_param('sss', $destinationProgram, $destinationCurriculumYear, $studentNumber);
         $updateProgram->execute();
         $updateProgram->close();
+
+        psResetStudentCurrentEnrollment($conn, $studentNumber);
 
         if (psTableExists($conn, 'student_study_plan_overrides')) {
             $clearOverrides = $conn->prepare('DELETE FROM student_study_plan_overrides WHERE student_id = ?');

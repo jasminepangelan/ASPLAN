@@ -786,6 +786,28 @@ class ProgramShiftController extends Controller
                 'curriculum_year' => $destinationCurriculumYear !== '' ? $destinationCurriculumYear : null,
             ]);
 
+        if (Schema::hasTable('student_current_enrollments') && Schema::hasTable('student_current_enrollment_courses')) {
+            $rawEnrollmentIds = DB::table('student_current_enrollments')
+                ->where('student_id', $studentNumber)
+                ->pluck('id')
+                ->all();
+
+            $enrollmentIds = [];
+            foreach ($rawEnrollmentIds as $rawEnrollmentId) {
+                $enrollmentIds[] = (int) $rawEnrollmentId;
+            }
+
+            if (!empty($enrollmentIds)) {
+                DB::table('student_current_enrollment_courses')
+                    ->whereIn('enrollment_id', $enrollmentIds)
+                    ->delete();
+
+                DB::table('student_current_enrollments')
+                    ->whereIn('id', $enrollmentIds)
+                    ->delete();
+            }
+        }
+
         if (Schema::hasTable('student_study_plan_overrides')) {
             DB::table('student_study_plan_overrides')
                 ->where('student_id', $studentNumber)
