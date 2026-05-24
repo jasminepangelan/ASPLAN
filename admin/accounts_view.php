@@ -272,6 +272,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
         $username = trim((string)($_POST['username'] ?? ''));
         $program = trim((string)($_POST['program'] ?? ''));
         $sex = trim((string)($_POST['sex'] ?? ''));
+        $newPassword = trim((string)($_POST['new_password'] ?? ''));
+        $confirmPassword = trim((string)($_POST['confirm_password'] ?? ''));
+
+        if (($newPassword === '' && $confirmPassword !== '') || ($newPassword !== '' && $confirmPassword === '')) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Enter and confirm the new adviser password, or leave both fields blank.'));
+            exit();
+        }
+
+        if ($newPassword !== '' && $newPassword !== $confirmPassword) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('The adviser password confirmation does not match.'));
+            exit();
+        }
+
+        if ($newPassword !== '' && strlen($newPassword) < 8) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('The adviser password must be at least 8 characters long.'));
+            exit();
+        }
 
         if ($lastName === '' || $firstName === '' || $username === '' || $program === '' || $sex === '') {
             closeDBConnection($actionConn);
@@ -315,13 +335,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
             exit();
         }
 
-        $stmt = $actionConn->prepare('UPDATE adviser SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ? WHERE username = ? AND id = ?');
+        $updateSql = 'UPDATE adviser SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ?';
+        $updateParams = [$lastName, $firstName, $middleName, $username, $program, $sex];
+        $updateTypes = 'ssssss';
+
+        if ($newPassword !== '') {
+            $updateSql .= ', password = ?';
+            $updateParams[] = hsHashPassword($newPassword);
+            $updateTypes .= 's';
+        }
+
+        $updateSql .= ' WHERE username = ? AND id = ?';
+        $updateParams[] = $originalUsername;
+        $updateParams[] = $adviserId;
+        $updateTypes .= 'si';
+
+        $stmt = $actionConn->prepare($updateSql);
         if (!$stmt) {
             closeDBConnection($actionConn);
             header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Failed to prepare adviser update.'));
             exit();
         }
-        $stmt->bind_param('sssssssi', $lastName, $firstName, $middleName, $username, $program, $sex, $originalUsername, $adviserId);
+        $stmt->bind_param($updateTypes, ...$updateParams);
         $stmt->execute();
         $updated = $stmt->affected_rows >= 0;
         $stmt->close();
@@ -397,7 +432,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
         $middleName = trim((string)($_POST['middle_name'] ?? ''));
         $username = trim((string)($_POST['username'] ?? ''));
         $sex = trim((string)($_POST['sex'] ?? ''));
+        $newPassword = trim((string)($_POST['new_password'] ?? ''));
+        $confirmPassword = trim((string)($_POST['confirm_password'] ?? ''));
         $selectedPrograms = avNormalizeSelectedPrograms($_POST['program'] ?? [], $programOptions);
+
+        if (($newPassword === '' && $confirmPassword !== '') || ($newPassword !== '' && $confirmPassword === '')) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('Enter and confirm the new program coordinator password, or leave both fields blank.'));
+            exit();
+        }
+
+        if ($newPassword !== '' && $newPassword !== $confirmPassword) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('The program coordinator password confirmation does not match.'));
+            exit();
+        }
+
+        if ($newPassword !== '' && strlen($newPassword) < 8) {
+            closeDBConnection($actionConn);
+            header('Location: accounts_view.php?' . $redirectParams . '&error=' . urlencode('The program coordinator password must be at least 8 characters long.'));
+            exit();
+        }
 
         if ($lastName === '' || $firstName === '' || $username === '' || $sex === '') {
             closeDBConnection($actionConn);
@@ -457,31 +512,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['account_action'])) {
             if ($hasProgramColumn) {
                 $program = implode(', ', $selectedPrograms);
                 if ($hasCoordinatorId) {
-                    $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ? WHERE username = ? AND id = ?");
+                    $updateSql = "UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ?";
+                    $updateParams = [$lastName, $firstName, $middleName, $username, $program, $sex];
+                    $updateTypes = 'ssssss';
+                    if ($newPassword !== '') {
+                        $updateSql .= ', password = ?';
+                        $updateParams[] = hsHashPassword($newPassword);
+                        $updateTypes .= 's';
+                    }
+                    $updateSql .= ' WHERE username = ? AND id = ?';
+                    $updateParams[] = $originalUsername;
+                    $updateParams[] = $coordinatorId;
+                    $updateTypes .= 'si';
+                    $stmt = $actionConn->prepare($updateSql);
                     if (!$stmt) {
                         throw new RuntimeException('Failed to prepare program coordinator update.');
                     }
-                    $stmt->bind_param('sssssssi', $lastName, $firstName, $middleName, $username, $program, $sex, $originalUsername, $coordinatorId);
+                    $stmt->bind_param($updateTypes, ...$updateParams);
                 } else {
-                    $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ? WHERE username = ? AND (id IS NULL OR id = 0)");
+                    $updateSql = "UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, program = ?, sex = ?";
+                    $updateParams = [$lastName, $firstName, $middleName, $username, $program, $sex];
+                    $updateTypes = 'ssssss';
+                    if ($newPassword !== '') {
+                        $updateSql .= ', password = ?';
+                        $updateParams[] = hsHashPassword($newPassword);
+                        $updateTypes .= 's';
+                    }
+                    $updateSql .= ' WHERE username = ? AND (id IS NULL OR id = 0)';
+                    $updateParams[] = $originalUsername;
+                    $updateTypes .= 's';
+                    $stmt = $actionConn->prepare($updateSql);
                     if (!$stmt) {
                         throw new RuntimeException('Failed to prepare program coordinator update.');
                     }
-                    $stmt->bind_param('sssssss', $lastName, $firstName, $middleName, $username, $program, $sex, $originalUsername);
+                    $stmt->bind_param($updateTypes, ...$updateParams);
                 }
             } else {
                 if ($hasCoordinatorId) {
-                    $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, sex = ? WHERE username = ? AND id = ?");
+                    $updateSql = "UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, sex = ?";
+                    $updateParams = [$lastName, $firstName, $middleName, $username, $sex];
+                    $updateTypes = 'sssss';
+                    if ($newPassword !== '') {
+                        $updateSql .= ', password = ?';
+                        $updateParams[] = hsHashPassword($newPassword);
+                        $updateTypes .= 's';
+                    }
+                    $updateSql .= ' WHERE username = ? AND id = ?';
+                    $updateParams[] = $originalUsername;
+                    $updateParams[] = $coordinatorId;
+                    $updateTypes .= 'si';
+                    $stmt = $actionConn->prepare($updateSql);
                     if (!$stmt) {
                         throw new RuntimeException('Failed to prepare program coordinator update.');
                     }
-                    $stmt->bind_param('ssssssi', $lastName, $firstName, $middleName, $username, $sex, $originalUsername, $coordinatorId);
+                    $stmt->bind_param($updateTypes, ...$updateParams);
                 } else {
-                    $stmt = $actionConn->prepare("UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, sex = ? WHERE username = ? AND (id IS NULL OR id = 0)");
+                    $updateSql = "UPDATE `$coordinatorTable` SET last_name = ?, first_name = ?, middle_name = ?, username = ?, sex = ?";
+                    $updateParams = [$lastName, $firstName, $middleName, $username, $sex];
+                    $updateTypes = 'sssss';
+                    if ($newPassword !== '') {
+                        $updateSql .= ', password = ?';
+                        $updateParams[] = hsHashPassword($newPassword);
+                        $updateTypes .= 's';
+                    }
+                    $updateSql .= ' WHERE username = ? AND (id IS NULL OR id = 0)';
+                    $updateParams[] = $originalUsername;
+                    $updateTypes .= 's';
+                    $stmt = $actionConn->prepare($updateSql);
                     if (!$stmt) {
                         throw new RuntimeException('Failed to prepare program coordinator update.');
                     }
-                    $stmt->bind_param('ssssss', $lastName, $firstName, $middleName, $username, $sex, $originalUsername);
+                    $stmt->bind_param($updateTypes, ...$updateParams);
                 }
             }
 
@@ -1028,6 +1129,12 @@ if (!$bridgeLoaded) {
             background: #fff;
             color: #213623;
         }
+        .modal-field-note {
+            margin-top: -1px;
+            font-size: 11px;
+            line-height: 1.35;
+            color: #6b7d69;
+        }
         .modal-actions {
             display: flex;
             justify-content: flex-end;
@@ -1464,6 +1571,16 @@ if (!$bridgeLoaded) {
                             <label for="modal_username">Username</label>
                             <input type="text" id="modal_username" name="username" required>
                         </div>
+                        <div class="modal-field">
+                            <label for="modal_new_password">New Password</label>
+                            <input type="password" id="modal_new_password" name="new_password" placeholder="Leave blank to keep current password">
+                            <div class="modal-field-note">Leave blank to keep the current password.</div>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_confirm_password">Confirm New Password</label>
+                            <input type="password" id="modal_confirm_password" name="confirm_password" placeholder="Repeat the new password only if changing it">
+                            <div class="modal-field-note">Only needed if you entered a new password above.</div>
+                        </div>
                         <div class="modal-field full">
                             <label for="modal_program">Program</label>
                             <select id="modal_program" name="program" required>
@@ -1550,6 +1667,16 @@ if (!$bridgeLoaded) {
                         <div class="modal-field">
                             <label for="modal_coordinator_username">Username</label>
                             <input type="text" id="modal_coordinator_username" name="username" required>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_coordinator_new_password">New Password</label>
+                            <input type="password" id="modal_coordinator_new_password" name="new_password" placeholder="Leave blank to keep current password">
+                            <div class="modal-field-note">Leave blank to keep the current password.</div>
+                        </div>
+                        <div class="modal-field">
+                            <label for="modal_coordinator_confirm_password">Confirm New Password</label>
+                            <input type="password" id="modal_coordinator_confirm_password" name="confirm_password" placeholder="Repeat the new password only if changing it">
+                            <div class="modal-field-note">Only needed if you entered a new password above.</div>
                         </div>
                             <div class="modal-field full">
                                 <label>Programs</label>
@@ -1711,6 +1838,10 @@ if (!$bridgeLoaded) {
                 if (modalUsername) modalUsername.value = username;
                 if (modalProgram) modalProgram.value = program;
                 if (modalSex) modalSex.value = sex;
+                const modalNewPassword = document.getElementById('modal_new_password');
+                const modalConfirmPassword = document.getElementById('modal_confirm_password');
+                if (modalNewPassword) modalNewPassword.value = '';
+                if (modalConfirmPassword) modalConfirmPassword.value = '';
 
                 setAdviserEditModalOpen(true);
             });
@@ -1858,6 +1989,10 @@ if (!$bridgeLoaded) {
                 if (modalCoordinatorMiddleName) modalCoordinatorMiddleName.value = middleName;
                 if (modalCoordinatorUsername) modalCoordinatorUsername.value = username;
                 if (modalCoordinatorSex) modalCoordinatorSex.value = sex;
+                const modalCoordinatorNewPassword = document.getElementById('modal_coordinator_new_password');
+                const modalCoordinatorConfirmPassword = document.getElementById('modal_coordinator_confirm_password');
+                if (modalCoordinatorNewPassword) modalCoordinatorNewPassword.value = '';
+                if (modalCoordinatorConfirmPassword) modalCoordinatorConfirmPassword.value = '';
 
                 coordinatorProgramCheckboxes.forEach(function(checkbox) {
                     checkbox.checked = selectedPrograms.includes(checkbox.value);
