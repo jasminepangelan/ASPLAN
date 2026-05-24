@@ -438,11 +438,6 @@ class ProgramShiftController extends Controller
         try {
             // Adviser queue disabled — adviser role removed.
             $rows = [];
-                ->orderBy('requested_at')
-                ->orderBy('id')
-                ->get()
-                ->map(static fn ($row): array => (array) $row)
-                ->all();
         } catch (Throwable $e) {
             return [];
         }
@@ -786,6 +781,9 @@ class ProgramShiftController extends Controller
                 'curriculum_year' => $destinationCurriculumYear !== '' ? $destinationCurriculumYear : null,
             ]);
 
+        $currentEnrollmentResetApplied = false;
+        $currentEnrollmentRowsDeleted = 0;
+        $currentEnrollmentCourseRowsDeleted = 0;
         if (Schema::hasTable('student_current_enrollments') && Schema::hasTable('student_current_enrollment_courses')) {
             $rawEnrollmentIds = DB::table('student_current_enrollments')
                 ->where('student_id', $studentNumber)
@@ -798,13 +796,15 @@ class ProgramShiftController extends Controller
             }
 
             if (!empty($enrollmentIds)) {
-                DB::table('student_current_enrollment_courses')
+                $currentEnrollmentCourseRowsDeleted = (int) DB::table('student_current_enrollment_courses')
                     ->whereIn('enrollment_id', $enrollmentIds)
                     ->delete();
 
-                DB::table('student_current_enrollments')
+                $currentEnrollmentRowsDeleted = (int) DB::table('student_current_enrollments')
                     ->whereIn('id', $enrollmentIds)
                     ->delete();
+
+                $currentEnrollmentResetApplied = $currentEnrollmentRowsDeleted > 0;
             }
         }
 
@@ -834,7 +834,18 @@ class ProgramShiftController extends Controller
             'credited_courses' => $credited,
             'auto_credit_skipped' => !$canAutoCredit,
             'auto_credit_skip_reason' => $autoCreditSkippedReason,
+            'current_enrollment_reset_applied' => $currentEnrollmentResetApplied,
+            'current_enrollment_rows_deleted' => $currentEnrollmentRowsDeleted,
+            'current_enrollment_course_rows_deleted' => $currentEnrollmentCourseRowsDeleted,
         ]);
+
+        if ($currentEnrollmentResetApplied) {
+            $this->addAuditLog($requestId, 'current_enrollment_reset', 'Current enrolled courses were cleared after shift execution.', $actorUsername, 'program_coordinator', [
+                'student_number' => $studentNumber,
+                'enrollment_rows_deleted' => $currentEnrollmentRowsDeleted,
+                'course_rows_deleted' => $currentEnrollmentCourseRowsDeleted,
+            ]);
+        }
 
         return [
             'ok' => true,

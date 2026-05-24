@@ -268,19 +268,25 @@ if (!function_exists('psTableExists')) {
 
 if (!function_exists('psResetStudentCurrentEnrollment')) {
     function psResetStudentCurrentEnrollment($conn, $studentNumber) {
+        $result = [
+            'reset_applied' => false,
+            'enrollment_rows_deleted' => 0,
+            'course_rows_deleted' => 0,
+        ];
+
         $studentNumber = trim((string)$studentNumber);
         if ($studentNumber === '') {
-            return;
+            return $result;
         }
 
         if (!psTableExists($conn, 'student_current_enrollments') || !psTableExists($conn, 'student_current_enrollment_courses')) {
-            return;
+            return $result;
         }
 
         $enrollmentId = 0;
         $selectEnrollment = $conn->prepare('SELECT id FROM student_current_enrollments WHERE student_id = ? LIMIT 1');
         if (!$selectEnrollment) {
-            return;
+            return $result;
         }
 
         $selectEnrollment->bind_param('s', $studentNumber);
@@ -290,18 +296,19 @@ if (!function_exists('psResetStudentCurrentEnrollment')) {
         $selectEnrollment->close();
 
         if (!$enrollmentRow) {
-            return;
+            return $result;
         }
 
         $enrollmentId = (int)($enrollmentRow['id'] ?? 0);
         if ($enrollmentId <= 0) {
-            return;
+            return $result;
         }
 
         $deleteCourses = $conn->prepare('DELETE FROM student_current_enrollment_courses WHERE enrollment_id = ?');
         if ($deleteCourses) {
             $deleteCourses->bind_param('i', $enrollmentId);
             $deleteCourses->execute();
+            $result['course_rows_deleted'] = (int)$deleteCourses->affected_rows;
             $deleteCourses->close();
         }
 
@@ -309,8 +316,12 @@ if (!function_exists('psResetStudentCurrentEnrollment')) {
         if ($deleteEnrollment) {
             $deleteEnrollment->bind_param('i', $enrollmentId);
             $deleteEnrollment->execute();
+            $result['enrollment_rows_deleted'] = (int)$deleteEnrollment->affected_rows;
             $deleteEnrollment->close();
         }
+
+        $result['reset_applied'] = $result['enrollment_rows_deleted'] > 0;
+        return $result;
     }
 }
 
@@ -1987,7 +1998,7 @@ if (!function_exists('psExecuteApprovedShift')) {
         $updateProgram->execute();
         $updateProgram->close();
 
-        psResetStudentCurrentEnrollment($conn, $studentNumber);
+        $currentEnrollmentReset = psResetStudentCurrentEnrollment($conn, $studentNumber);
 
         if (psTableExists($conn, 'student_study_plan_overrides')) {
             $clearOverrides = $conn->prepare('DELETE FROM student_study_plan_overrides WHERE student_id = ?');
@@ -2021,7 +2032,26 @@ if (!function_exists('psExecuteApprovedShift')) {
             'credited_courses' => $credited,
             'auto_credit_skipped' => !$canAutoCredit,
             'auto_credit_skip_reason' => $autoCreditSkippedReason,
+            'current_enrollment_reset_applied' => !empty($currentEnrollmentReset['reset_applied']),
+            'current_enrollment_rows_deleted' => (int)($currentEnrollmentReset['enrollment_rows_deleted'] ?? 0),
+            'current_enrollment_course_rows_deleted' => (int)($currentEnrollmentReset['course_rows_deleted'] ?? 0),
         ]);
+
+        if (!empty($currentEnrollmentReset['reset_applied'])) {
+            psAddAuditLog(
+                $conn,
+                $requestId,
+                'current_enrollment_reset',
+                'Current enrolled courses were cleared after shift execution.',
+                $actorUsername,
+                'program_coordinator',
+                [
+                    'student_number' => $studentNumber,
+                    'enrollment_rows_deleted' => (int)($currentEnrollmentReset['enrollment_rows_deleted'] ?? 0),
+                    'course_rows_deleted' => (int)($currentEnrollmentReset['course_rows_deleted'] ?? 0),
+                ]
+            );
+        }
 
         return ['ok' => true, 'message' => $executionNote, 'credited_courses' => $credited];
     }
