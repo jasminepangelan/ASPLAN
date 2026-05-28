@@ -1129,7 +1129,7 @@ $auditTotalPages = max(1, (int)ceil($auditTotalRecords / $auditRecordsPerPage));
 $auditCurrentPage = min($auditCurrentPage, $auditTotalPages);
 $auditLogsPage = array_slice($auditLogs, ($auditCurrentPage - 1) * $auditRecordsPerPage, $auditRecordsPerPage);
 
-$masterlistRecordsPerPage = max(5, min(100, $defaultRecordsPerPage));
+$masterlistRecordsPerPage = 4;
 $masterlistCurrentPage = isset($_GET['masterlist_page']) && is_numeric($_GET['masterlist_page']) ? max(1, (int)$_GET['masterlist_page']) : 1;
 $masterlistTotalRecords = count($masterlistSummary);
 $masterlistTotalPages = max(1, (int)ceil($masterlistTotalRecords / $masterlistRecordsPerPage));
@@ -1441,10 +1441,14 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .settings-layout {
             display: grid;
-            grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
+            grid-template-columns: minmax(0, 1fr);
             gap: 12px;
             margin-bottom: 14px;
             align-items: start;
+        }
+
+        .settings-layout > .settings-card {
+            margin-bottom: 0;
         }
 
         .settings-column {
@@ -1460,7 +1464,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         .settings-card {
             background: var(--surface-1);
             border-radius: 10px;
-            padding: 16px;
+            padding: 14px;
             margin-bottom: 15px;
             box-shadow: var(--shadow-soft);
             border: 1px solid var(--line-soft);
@@ -1478,7 +1482,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         .settings-card p.card-note {
             font-size: 12px;
             color: var(--text-700);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             line-height: 1.45;
         }
 
@@ -1676,6 +1680,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .masterlist-summary-table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: separate;
             border-spacing: 0;
             overflow: hidden;
@@ -1686,11 +1691,34 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .masterlist-summary-table th,
         .masterlist-summary-table td {
-            padding: 11px 12px;
+            padding: 9px 12px;
             font-size: 12px;
             text-align: left;
             border-bottom: 1px solid #edf2ed;
-            vertical-align: top;
+            vertical-align: middle;
+        }
+
+        .masterlist-summary-table th:nth-child(1),
+        .masterlist-summary-table td:nth-child(1) {
+            width: 48%;
+        }
+
+        .masterlist-summary-table th:nth-child(2),
+        .masterlist-summary-table td:nth-child(2) {
+            width: 12%;
+            white-space: nowrap;
+        }
+
+        .masterlist-summary-table th:nth-child(3),
+        .masterlist-summary-table td:nth-child(3) {
+            width: 24%;
+            white-space: nowrap;
+        }
+
+        .masterlist-summary-table th:nth-child(4),
+        .masterlist-summary-table td:nth-child(4) {
+            width: 16%;
+            white-space: nowrap;
         }
 
         .masterlist-summary-table th {
@@ -1714,6 +1742,10 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             color: #225c1f;
             font-weight: 700;
             font-size: 11px;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .masterlist-modal[hidden] {
@@ -1996,12 +2028,12 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .admin-account-shell {
             display: grid;
-            gap: 12px;
+            gap: 10px;
         }
 
         .admin-account-summary {
             display: grid;
-            gap: 10px;
+            gap: 8px;
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
@@ -2009,7 +2041,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             background: var(--surface-2);
             border: 1px solid var(--line-soft);
             border-radius: 10px;
-            padding: 12px 14px;
+            padding: 10px 12px;
         }
 
         .admin-account-pill span {
@@ -2024,7 +2056,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .admin-account-pill strong {
             display: block;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.35;
             color: var(--brand-700);
             word-break: break-word;
@@ -2033,7 +2065,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         .admin-account-pill small {
             display: block;
             margin-top: 6px;
-            font-size: 11px;
+            font-size: 10px;
             line-height: 1.45;
             color: var(--text-700);
             word-break: break-word;
@@ -2046,14 +2078,14 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         .admin-account-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
+            gap: 8px;
         }
 
         .admin-account-field {
             background: #fff;
             border: 1px solid var(--line-soft);
             border-radius: 8px;
-            padding: 10px;
+            padding: 8px;
         }
 
         .admin-account-field.full-span {
@@ -2062,7 +2094,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .admin-account-field label {
             display: block;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             color: var(--brand-700);
             margin-bottom: 6px;
@@ -2072,7 +2104,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .admin-account-field input {
             width: 100%;
-            padding: 8px 10px;
+            padding: 7px 9px;
             border: 1px solid #cfd9cf;
             border-radius: 6px;
             font-size: 13px;
@@ -2086,17 +2118,17 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         .admin-account-field small {
             display: block;
             margin-top: 6px;
-            font-size: 11px;
+            font-size: 10px;
             color: #5f6d62;
             line-height: 1.4;
         }
 
         .admin-account-note {
-            padding: 10px 12px;
+            padding: 8px 10px;
             background: #f7faf7;
             border: 1px dashed #c9d7c9;
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-700);
             line-height: 1.45;
         }
@@ -3079,7 +3111,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                     <tbody>
                                         <?php foreach ($masterlistSummaryPage as $summaryRow): ?>
                                             <tr>
-                                                <td><span class="masterlist-program-pill"><?php echo htmlspecialchars((string) ($summaryRow['program'] ?? '')); ?></span></td>
+                                                <td><span class="masterlist-program-pill" title="<?php echo htmlspecialchars((string) ($summaryRow['program'] ?? ''), ENT_QUOTES); ?>"><?php echo htmlspecialchars((string) ($summaryRow['program'] ?? '')); ?></span></td>
                                                 <td><?php echo (int) ($summaryRow['total_students'] ?? 0); ?></td>
                                                 <td><?php echo htmlspecialchars((string) ($summaryRow['last_uploaded_at'] ?? '')); ?></td>
                                                 <td><?php echo htmlspecialchars((string) ($summaryRow['uploaded_by'] ?? '')); ?></td>
