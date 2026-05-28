@@ -497,22 +497,32 @@ try {
 
       // Build conditions to match curriculum_courses rows for this coordinator.
       // We always attempt to query `curriculum_courses` using the program code
-      // and any resolved program labels so that synced edits are preferred.
+      // plus any resolved program labels, and fall back to a broader LIKE match.
       $syncedCurriculumCatalog = [];
       $conditions = [];
       $params = [];
       $types = '';
+      $programCandidates = [];
 
-      // Prefer matching by normalized program code as a defensive check.
       if ($coordinatorProgramCode !== '') {
+        $programCandidates[] = strtoupper(trim((string)$coordinatorProgramCode));
+      }
+      if ($canonicalProgramLabel !== '') {
+        $programCandidates[] = strtoupper(trim((string)$canonicalProgramLabel));
+      }
+      foreach ($candidateProgramLabels as $candidateProgramLabel) {
+        $programCandidates[] = strtoupper(trim((string)$candidateProgramLabel));
+      }
+      $programCandidates = array_values(array_filter(array_unique($programCandidates, SORT_REGULAR), static fn($value) => $value !== ''));
+
+      foreach ($programCandidates as $candidate) {
         $conditions[] = 'UPPER(TRIM(program)) = ?';
-        $params[] = strtoupper(trim((string)$coordinatorProgramCode));
+        $params[] = $candidate;
         $types .= 's';
       }
-
-      foreach ($candidateProgramLabels as $candidateProgramLabel) {
-        $conditions[] = 'UPPER(TRIM(program)) = ?';
-        $params[] = strtoupper(trim((string)$candidateProgramLabel));
+      foreach ($programCandidates as $candidate) {
+        $conditions[] = 'UPPER(program) LIKE ?';
+        $params[] = '%' . $candidate . '%';
         $types .= 's';
       }
 

@@ -711,11 +711,29 @@ try {
         ];
     }
 
-    $deleteCurriculumRows = $conn->prepare("
-        DELETE FROM curriculum_courses
-        WHERE curriculum_year = ? AND UPPER(TRIM(program)) = ?
-    ");
-    $deleteCurriculumRows->bind_param('is', $curriculum_year, $canonicalProgramLabelUpper);
+    $programCandidatesToDelete = [];
+    $programCandidatesToDelete[] = strtoupper(trim((string)$program));
+    $programCandidatesToDelete[] = $canonicalProgramLabelUpper;
+    $legacyCanonicalProgram = strtoupper(trim((string)psCanonicalProgramLabel(psNormalizeProgramKey($program))));
+    if ($legacyCanonicalProgram !== '' && $legacyCanonicalProgram !== $canonicalProgramLabelUpper) {
+        $programCandidatesToDelete[] = $legacyCanonicalProgram;
+    }
+    $programCandidatesToDelete = array_values(array_unique(array_filter($programCandidatesToDelete, static fn($value) => $value !== '')));
+
+    if (empty($programCandidatesToDelete)) {
+        throw new RuntimeException('Failed to resolve program label patterns for curriculum sync.');
+    }
+
+    $deleteConditions = array_fill(0, count($programCandidatesToDelete), 'UPPER(TRIM(program)) = ?');
+    $deleteSql = "DELETE FROM curriculum_courses WHERE curriculum_year = ? AND (" . implode(' OR ', $deleteConditions) . ")";
+    $deleteCurriculumRows = $conn->prepare($deleteSql);
+    if (!$deleteCurriculumRows) {
+        throw new RuntimeException('Failed to prepare curriculum cleanup: ' . $conn->error);
+    }
+
+    $deleteTypes = 'i' . str_repeat('s', count($programCandidatesToDelete));
+    $deleteParams = array_merge([$curriculum_year], $programCandidatesToDelete);
+    $deleteCurriculumRows->bind_param($deleteTypes, ...$deleteParams);
     if (!$deleteCurriculumRows->execute()) {
         throw new RuntimeException('Failed to clear synced curriculum rows: ' . $deleteCurriculumRows->error);
     }
