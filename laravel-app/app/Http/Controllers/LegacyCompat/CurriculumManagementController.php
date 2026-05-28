@@ -293,10 +293,10 @@ class CurriculumManagementController extends Controller
             }
 
             $duplicateCodes = DB::table('cvsucarmona_courses')
-                ->selectRaw("UPPER(TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1))) AS normalized_code")
+                ->selectRaw("UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1))) AS normalized_code")
                 ->where('curriculumyear_coursecode', 'like', $prefix . '%')
                 ->whereRaw("FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0", [$program])
-                ->groupByRaw("UPPER(TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)))")
+                ->groupByRaw("UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1)))")
                 ->havingRaw('COUNT(*) > 1')
                 ->pluck('normalized_code')
                 ->filter(static fn ($value) => (string) $value !== '')
@@ -662,7 +662,7 @@ class CurriculumManagementController extends Controller
         if (Schema::hasTable('cvsucarmona_courses')) {
             $legacyRows = DB::table('cvsucarmona_courses')
                 ->selectRaw("
-                    TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)) AS course_code,
+                    TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1)) AS course_code,
                     course_title,
                     year_level,
                     semester,

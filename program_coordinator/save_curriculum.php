@@ -372,14 +372,14 @@ try {
         $check->close();
     }
 
-    $dupQuery = $conn->prepare(
-        "SELECT UPPER(TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1))) AS normalized_code, COUNT(*) AS duplicate_count
-         FROM cvsucarmona_courses
-         WHERE curriculumyear_coursecode LIKE ?
-           AND FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
-         GROUP BY UPPER(TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)))
-         HAVING COUNT(*) > 1"
-    );
+        $dupQuery = $conn->prepare(
+                "SELECT UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1))) AS normalized_code, COUNT(*) AS duplicate_count
+                 FROM cvsucarmona_courses
+                 WHERE curriculumyear_coursecode LIKE ?
+                     AND FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
+                 GROUP BY UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1)))
+                 HAVING COUNT(*) > 1"
+        );
     $likePrefix = $prefix . '%';
     $dupQuery->bind_param('ss', $likePrefix, $program);
     $dupQuery->execute();
@@ -450,7 +450,7 @@ try {
     $legacyCurriculumRows = [];
     $legacyCurriculumStmt = $conn->prepare("
         SELECT
-            TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, '_', -1)) AS course_code,
+            TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1)) AS course_code,
             course_title,
             year_level,
             semester,
