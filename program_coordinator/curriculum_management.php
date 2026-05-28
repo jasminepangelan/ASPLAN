@@ -2261,7 +2261,27 @@ function saveAllCourses() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   })
-  .then(res => res.json())
+  .then(async (res) => {
+    const text = await res.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (e) {
+      console.error('save_curriculum.php returned non-JSON response', {
+        status: res.status,
+        statusText: res.statusText,
+        body: text
+      });
+      throw new Error(`Save failed (HTTP ${res.status}). Server returned an invalid response.`);
+    }
+
+    if (!res.ok) {
+      const msg = (data && typeof data === 'object' && data.message) ? data.message : `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+
+    return data;
+  })
   .then(data => {
     saveBtn.disabled = false;
     saveBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Curriculum';
@@ -2284,7 +2304,7 @@ function saveAllCourses() {
   .catch(err => {
     saveBtn.disabled = false;
     saveBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Curriculum';
-    showNotification('error', 'Network error: ' + err.message);
+    showNotification('error', err && err.message ? err.message : 'Failed to save curriculum.');
   });
 }
 
