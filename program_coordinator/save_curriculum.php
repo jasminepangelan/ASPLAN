@@ -213,6 +213,39 @@ try {
 
     if (!empty($conflicts)) {
         echo json_encode(['success' => false, 'message' => 'Conflicting course codes found: ' . implode(', ', $conflicts)]);
+        $conn->rollback();
+        closeDBConnection($conn);
+        exit();
+    }
+
+    // Pre-check: detect duplicates that already exist in the database for this program + year
+    $preCheckDupQuery = $conn->prepare(
+        "SELECT UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1))) AS normalized_code, COUNT(*) AS dup_count
+         FROM cvsucarmona_courses
+         WHERE curriculumyear_coursecode LIKE ?
+           AND FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
+         GROUP BY UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1)))
+         HAVING dup_count > 1"
+    );
+    if (!$preCheckDupQuery) {
+        throw new RuntimeException('Failed to prepare pre-check duplicate query: ' . $conn->error);
+    }
+    $likePrefix = $prefix . '%';
+    $preCheckDupQuery->bind_param('ss', $likePrefix, $program);
+    $preCheckDupQuery->execute();
+    $preCheckDupRes = $preCheckDupQuery->get_result();
+    $existingDuplicates = [];
+    if ($preCheckDupRes) {
+        while ($dupRow = $preCheckDupRes->fetch_assoc()) {
+            $existingDuplicates[] = (string)($dupRow['normalized_code'] ?? '');
+        }
+    }
+    $preCheckDupQuery->close();
+
+    if (!empty($existingDuplicates)) {
+        echo json_encode(['success' => false, 'message' => 'Database integrity error: Duplicate course codes already exist: ' . implode(', ', array_values(array_unique($existingDuplicates))) . '. Please contact support to fix these duplicates before proceeding.']);
+        $conn->rollback();
+        closeDBConnection($conn);
         exit();
     }
 
@@ -460,14 +493,92 @@ try {
                 $changed++;
             }
         } else {
-            $stmt = $conn->prepare(
-                "INSERT INTO cvsucarmona_courses (curriculumyear_coursecode, programs, course_title, year_level, semester, credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            );
-            $stmt->bind_param('sssssiiiis', $key, $program, $course_title, $year_level, $semester, $credit_lec, $credit_lab, $hrs_lec, $hrs_lab, $prereq);
-            $stmt->execute();
-            $stmt->close();
-            $changed++;
+            // Before inserting, do one more forgiving lookup by course code to avoid creating
+            // a duplicate legacy row when an existing row uses a different prefix token.
+            $existingFallbackKey = pcSaveFindLegacyCurriculumKey($conn, $program, (string)$curriculum_year, $course_code);
+            if ($existingFallbackKey !== '') {
+                $progFind = $conn->prepare("SELECT programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ? LIMIT 1");
+                if ($progFind) {
+                    $progFind->bind_param('s', $existingFallbackKey);
+                    $progFind->execute();
+                    $progRes = $progFind->get_result();
+                    $existingProgramsCsv = '';
+                    if ($progRes && ($prow = $progRes->fetch_assoc())) {
+                        $existingProgramsCsv = (string)($prow['programs'] ?? '');
+                    }
+                    $progFind->close();
+
+                    $progList = array_values(array_filter(array_map('trim', explode(',', $existingProgramsCsv))));
+                    if (!in_array($program, $progList, true)) {
+                        $progList[] = $program;
+                    }
+                    $newProgramsCsv = implode(', ', $progList);
+
+                    $upd = $conn->prepare(
+                        "UPDATE cvsucarmona_courses
+                         SET curriculumyear_coursecode = ?, programs = ?, course_title = ?, year_level = ?, semester = ?, credit_units_lec = ?, credit_units_lab = ?, lect_hrs_lec = ?, lect_hrs_lab = ?, pre_requisite = ?
+                         WHERE curriculumyear_coursecode = ?"
+                    );
+                    if ($upd) {
+                        $upd->bind_param('sssssiiiiss', $key, $newProgramsCsv, $course_title, $year_level, $semester, $credit_lec, $credit_lab, $hrs_lec, $hrs_lab, $prereq, $existingFallbackKey);
+                        if (!$upd->execute()) {
+                            throw new RuntimeException('Failed to update legacy curriculum row (fallback): ' . $upd->error);
+                        }
+                        $upd->close();
+
+                        // If the legacy key changed, update student references
+                        if ($existingFallbackKey !== $key && $original_course_code !== '') {
+                            $studentChecklistUpd = $conn->prepare("UPDATE student_checklists SET course_code = ? WHERE course_code = ?");
+                            $studentChecklistUpd->bind_param('ss', $course_code, $original_course_code);
+                            if (!$studentChecklistUpd->execute()) {
+                                throw new RuntimeException('Failed to update student checklist rows: ' . $studentChecklistUpd->error);
+                            }
+                            $studentChecklistUpd->close();
+
+                            $studyPlanUpd = $conn->prepare("UPDATE student_study_plan_overrides SET course_code = ? WHERE course_code = ?");
+                            $studyPlanUpd->bind_param('ss', $course_code, $original_course_code);
+                            if (!$studyPlanUpd->execute()) {
+                                throw new RuntimeException('Failed to update study plan override rows: ' . $studyPlanUpd->error);
+                            }
+                            $studyPlanUpd->close();
+                        }
+
+                        $changed++;
+                    }
+                }
+            } else {
+                // Final check: ensure no duplicate exists before inserting
+                $finalCheck = $conn->prepare(
+                    "SELECT curriculumyear_coursecode FROM cvsucarmona_courses 
+                     WHERE UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1))) = ?
+                       AND FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
+                     LIMIT 1"
+                );
+                if (!$finalCheck) {
+                    throw new RuntimeException('Failed to prepare final duplicate check: ' . $conn->error);
+                }
+                $normCourseCode = strtoupper(trim($course_code));
+                $finalCheck->bind_param('ss', $normCourseCode, $program);
+                $finalCheck->execute();
+                $finalCheckRes = $finalCheck->get_result();
+                
+                if ($finalCheckRes && $finalCheckRes->num_rows === 0) {
+                    $stmt = $conn->prepare(
+                        "INSERT INTO cvsucarmona_courses (curriculumyear_coursecode, programs, course_title, year_level, semester, credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    );
+                    if (!$stmt) {
+                        throw new RuntimeException('Failed to prepare insert statement: ' . $conn->error);
+                    }
+                    $stmt->bind_param('sssssiiiis', $key, $program, $course_title, $year_level, $semester, $credit_lec, $credit_lab, $hrs_lec, $hrs_lab, $prereq);
+                    if (!$stmt->execute()) {
+                        throw new RuntimeException('Failed to insert curriculum row: ' . $stmt->error);
+                    }
+                    $stmt->close();
+                    $changed++;
+                }
+                $finalCheck->close();
+            }
         }
 
         $check->close();
