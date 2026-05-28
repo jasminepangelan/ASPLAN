@@ -21,6 +21,25 @@ if (!$input || empty($input['program']) || empty($input['curriculum_year'])) {
 $program = trim((string)$input['program']);
 $curriculumYear = trim((string)$input['curriculum_year']);
 
+if (!function_exists('pcDeleteNormalizeCurriculumYearToken')) {
+    function pcDeleteNormalizeCurriculumYearToken(string $value): string {
+        $token = strtoupper(trim($value));
+        if ($token === '') {
+            return '';
+        }
+
+        if (preg_match('/^(\d{2})V\d+$/', $token, $matches)) {
+            return '20' . $matches[1];
+        }
+
+        if (preg_match('/^\d{4}$/', $token)) {
+            return $token;
+        }
+
+        return '';
+    }
+}
+
 $useLaravelBridge = getenv('USE_LARAVEL_BRIDGE') === '1';
 if ($useLaravelBridge) {
     $bridgePayload = $input;
@@ -56,13 +75,9 @@ try {
         throw new RuntimeException('Unable to resolve program label for curriculum deletion.');
     }
 
-    $prefix = $curriculumYear . '_';
-
     $existing = null;
-    $existingStmt = $conn->prepare("SELECT curriculumyear_coursecode, programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode LIKE ?");
+    $existingStmt = $conn->prepare("SELECT curriculumyear_coursecode, programs FROM cvsucarmona_courses");
     if ($existingStmt) {
-        $prefixLike = $prefix . '%';
-        $existingStmt->bind_param('s', $prefixLike);
         $existingStmt->execute();
         $existing = $existingStmt->get_result();
     }
@@ -72,6 +87,12 @@ try {
     }
 
     while ($row = $existing->fetch_assoc()) {
+        $rowKey = (string)($row['curriculumyear_coursecode'] ?? '');
+        $rowPrefix = explode('_', $rowKey, 2)[0] ?? '';
+        if (pcDeleteNormalizeCurriculumYearToken($rowPrefix) !== $curriculumYear) {
+            continue;
+        }
+
         $progs = array_map('trim', explode(',', (string)$row['programs']));
         if (!in_array($program, $progs, true)) {
             continue;
@@ -79,7 +100,7 @@ try {
 
         if (count($progs) === 1) {
             $stmt = $conn->prepare('DELETE FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ?');
-            $stmt->bind_param('s', $row['curriculumyear_coursecode']);
+            $stmt->bind_param('s', $rowKey);
             $stmt->execute();
             $stmt->close();
         } else {
@@ -88,7 +109,7 @@ try {
             }));
             $newPrograms = implode(', ', $progs);
             $stmt = $conn->prepare('UPDATE cvsucarmona_courses SET programs = ? WHERE curriculumyear_coursecode = ?');
-            $stmt->bind_param('ss', $newPrograms, $row['curriculumyear_coursecode']);
+            $stmt->bind_param('ss', $newPrograms, $rowKey);
             $stmt->execute();
             $stmt->close();
         }

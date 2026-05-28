@@ -65,7 +65,7 @@ class CurriculumManagementController extends Controller
 
             $codeMap = [];
             foreach ($courses as $course) {
-                $courseCode = strtoupper($this->normalizeCourseCode((string) ($course['course_code'] ?? '')));
+                $courseCode = strtoupper($this->normalizeEditableCourseCode((string) ($course['course_code'] ?? '')));
                 if ($courseCode === '') {
                     continue;
                 }
@@ -102,7 +102,10 @@ class CurriculumManagementController extends Controller
                     continue;
                 }
 
-                $lookupKey = preg_match('/^\d{4}_.+$/', $deletedToken) ? $deletedToken : ($prefix . $deletedToken);
+                $lookupKey = $this->resolveCurriculumLookupKey($deletedToken, $curriculumYear, $prefix);
+                if ($lookupKey === '') {
+                    continue;
+                }
                 $existingDelete = DB::table('cvsucarmona_courses')
                     ->select(['curriculumyear_coursecode', 'programs'])
                     ->where('curriculumyear_coursecode', $lookupKey)
@@ -133,11 +136,11 @@ class CurriculumManagementController extends Controller
             }
 
             foreach ($courses as $course) {
-                $courseCode = $this->normalizeCourseCode((string) ($course['course_code'] ?? ''));
+                $courseCode = $this->normalizeEditableCourseCode((string) ($course['course_code'] ?? ''));
                 $courseTitle = trim((string) ($course['course_title'] ?? ''));
                 $yearLevel = trim((string) ($course['year_level'] ?? ''));
                 $semester = trim((string) ($course['semester'] ?? ''));
-                $originalCourseCode = $this->normalizeCourseCode((string) ($course['original_course_code'] ?? ''));
+                $originalCourseCode = $this->normalizeEditableCourseCode((string) ($course['original_course_code'] ?? ''));
                 $originalCurriculumKey = trim((string) ($course['original_curriculum_key'] ?? ''));
                 $curriculumKeyPrefix = trim((string) ($course['curriculum_key_prefix'] ?? ''));
 
@@ -368,7 +371,6 @@ class CurriculumManagementController extends Controller
                 return response()->json(['success' => false, 'message' => 'Invalid curriculum year'], 422);
             }
 
-            $prefix = $curriculumYear . '_';
             $canonicalProgramLabel = $this->canonicalProgramLabel($program);
             if ($canonicalProgramLabel === '') {
                 return response()->json(['success' => false, 'message' => 'Unable to resolve program label for curriculum deletion.'], 422);
@@ -389,10 +391,15 @@ class CurriculumManagementController extends Controller
 
             $existingRows = DB::table('cvsucarmona_courses')
                 ->select(['curriculumyear_coursecode', 'programs'])
-                ->where('curriculumyear_coursecode', 'like', $prefix . '%')
                 ->get();
 
             foreach ($existingRows as $row) {
+                $rowKey = (string) ($row->curriculumyear_coursecode ?? '');
+                $rowPrefix = explode('_', $rowKey, 2)[0] ?? '';
+                if ($this->normalizeCurriculumYear($rowPrefix) !== $curriculumYear) {
+                    continue;
+                }
+
                 $programs = array_map('trim', explode(',', (string) ($row->programs ?? '')));
                 if (!in_array($program, $programs, true)) {
                     continue;
@@ -400,12 +407,12 @@ class CurriculumManagementController extends Controller
 
                 if (count($programs) === 1) {
                     DB::table('cvsucarmona_courses')
-                        ->where('curriculumyear_coursecode', $row->curriculumyear_coursecode)
+                        ->where('curriculumyear_coursecode', $rowKey)
                         ->delete();
                 } else {
                     $programs = array_values(array_filter($programs, static fn ($value) => $value !== $program));
                     DB::table('cvsucarmona_courses')
-                        ->where('curriculumyear_coursecode', $row->curriculumyear_coursecode)
+                        ->where('curriculumyear_coursecode', $rowKey)
                         ->update(['programs' => implode(', ', $programs)]);
                 }
             }
@@ -684,7 +691,7 @@ class CurriculumManagementController extends Controller
         }
 
         foreach ($deletedCourses as $deletedCodeRaw) {
-            $deletedCode = $this->extractCurriculumCourseCode((string) $deletedCodeRaw);
+            $deletedCode = $this->extractCurriculumCourseCode((string) $deletedCodeRaw, $curriculumYear);
             $deletedKey = $this->curriculumSyncCodeKey($deletedCode);
             if ($deletedKey !== '') {
                 unset($rowsByCode[$deletedKey]);
@@ -701,7 +708,7 @@ class CurriculumManagementController extends Controller
 
             $originalCourseCode = trim((string) ($row['original_course_code'] ?? ''));
             if ($originalCourseCode === '') {
-                $originalCourseCode = $this->extractCurriculumCourseCode((string) ($row['original_curriculum_key'] ?? ''));
+                $originalCourseCode = $this->extractCurriculumCourseCode((string) ($row['original_curriculum_key'] ?? ''), $curriculumYear);
             }
             $originalKey = $this->curriculumSyncCodeKey($originalCourseCode);
             if ($originalKey !== '' && $originalKey !== $courseKey) {
@@ -734,7 +741,7 @@ class CurriculumManagementController extends Controller
     private function normalizeCurriculumSyncRow(array $row): array
     {
         return [
-            'course_code' => $this->normalizeCourseCode((string) ($row['course_code'] ?? '')),
+            'course_code' => $this->normalizeEditableCourseCode((string) ($row['course_code'] ?? '')),
             'course_title' => trim((string) ($row['course_title'] ?? '')),
             'year_level' => trim((string) ($row['year_level'] ?? '')),
             'semester' => trim((string) ($row['semester'] ?? '')),
@@ -764,18 +771,45 @@ class CurriculumManagementController extends Controller
         return '';
     }
 
-    private function extractCurriculumCourseCode(string $value): string
+    private function resolveCurriculumLookupKey(string $token, string $selectedYear, string $fallbackPrefix): string
+    {
+        $token = trim($token);
+        if ($token === '') {
+            return '';
+        }
+
+        $separator = strpos($token, '_');
+        if ($separator !== false && $separator > 0) {
+            $tokenPrefix = substr($token, 0, $separator);
+            if ($this->normalizeCurriculumYear($tokenPrefix) === $selectedYear) {
+                return $token;
+            }
+        }
+
+        return $fallbackPrefix . $token;
+    }
+
+    private function extractCurriculumCourseCode(string $value, string $selectedYear = ''): string
     {
         $value = trim($value);
         if ($value === '') {
             return '';
         }
 
-        if (preg_match('/^\d{4}_(.+)$/', $value, $matches)) {
-            return $this->normalizeCourseCode((string) ($matches[1] ?? ''));
+        $separator = strpos($value, '_');
+        if ($separator !== false && $separator > 0) {
+            $tokenPrefix = substr($value, 0, $separator);
+            if ($selectedYear === '' || $this->normalizeCurriculumYear($tokenPrefix) === $selectedYear) {
+                return $this->normalizeEditableCourseCode(substr($value, $separator + 1));
+            }
         }
 
-        return $this->normalizeCourseCode($value);
+        return $this->normalizeEditableCourseCode($value);
+    }
+
+    private function normalizeEditableCourseCode(string $value): string
+    {
+        return preg_replace('/\s+/', ' ', trim($value)) ?: '';
     }
 
     private function normalizeCourseCode(string $value): string

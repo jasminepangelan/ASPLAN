@@ -25,6 +25,50 @@ if (!function_exists('pcSaveNormalizeCurriculumYearToken')) {
     }
 }
 
+if (!function_exists('pcSaveNormalizeEditableCourseCode')) {
+    function pcSaveNormalizeEditableCourseCode(string $value): string {
+        return preg_replace('/\s+/', ' ', trim($value)) ?: '';
+    }
+}
+
+if (!function_exists('pcSaveResolveCurriculumLookupKey')) {
+    function pcSaveResolveCurriculumLookupKey(string $token, string $selectedYear, string $fallbackPrefix): string {
+        $token = trim($token);
+        if ($token === '') {
+            return '';
+        }
+
+        $separator = strpos($token, '_');
+        if ($separator !== false && $separator > 0) {
+            $tokenPrefix = substr($token, 0, $separator);
+            if (pcSaveNormalizeCurriculumYearToken($tokenPrefix) === (string)$selectedYear) {
+                return $token;
+            }
+        }
+
+        return $fallbackPrefix . $token;
+    }
+}
+
+if (!function_exists('pcSaveExtractCourseCodeFromCurriculumKey')) {
+    function pcSaveExtractCourseCodeFromCurriculumKey(string $value, string $selectedYear = ''): string {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        $separator = strpos($value, '_');
+        if ($separator !== false && $separator > 0) {
+            $tokenPrefix = substr($value, 0, $separator);
+            if ($selectedYear === '' || pcSaveNormalizeCurriculumYearToken($tokenPrefix) === (string)$selectedYear) {
+                return pcSaveNormalizeEditableCourseCode(substr($value, $separator + 1));
+            }
+        }
+
+        return pcSaveNormalizeEditableCourseCode($value);
+    }
+}
+
 if (!(isset($_SESSION['username']) && (!isset($_SESSION['user_type']) || $_SESSION['user_type'] === 'program_coordinator'))
     && !isset($_SESSION['admin_username'])
     && !isset($_SESSION['admin_id'])) {
@@ -109,7 +153,7 @@ try {
 
     $codeMap = [];
     foreach ($courses as $course) {
-        $courseCode = strtoupper(psNormalizeCourseCode($course['course_code'] ?? ''));
+        $courseCode = strtoupper(pcSaveNormalizeEditableCourseCode((string)($course['course_code'] ?? '')));
         if ($courseCode === '') {
             continue;
         }
@@ -141,7 +185,10 @@ try {
             continue;
         }
 
-        $lookupKey = preg_match('/^\d{4}_.+$/', $deletedToken) ? $deletedToken : ($prefix . $deletedToken);
+        $lookupKey = pcSaveResolveCurriculumLookupKey($deletedToken, (string)$curriculum_year, $prefix);
+        if ($lookupKey === '') {
+            continue;
+        }
         $find = $conn->prepare("SELECT programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ? LIMIT 1");
         $find->bind_param('s', $lookupKey);
         $find->execute();
@@ -183,11 +230,11 @@ try {
     }
 
     foreach ($courses as $course) {
-        $course_code = psNormalizeCourseCode($course['course_code'] ?? '');
+        $course_code = pcSaveNormalizeEditableCourseCode((string)($course['course_code'] ?? ''));
         $course_title = trim((string)($course['course_title'] ?? ''));
         $year_level = trim((string)($course['year_level'] ?? ''));
         $semester = trim((string)($course['semester'] ?? ''));
-        $original_course_code = psNormalizeCourseCode($course['original_course_code'] ?? '');
+        $original_course_code = pcSaveNormalizeEditableCourseCode((string)($course['original_course_code'] ?? ''));
         $original_curriculum_key = trim((string)($course['original_curriculum_key'] ?? ''));
         $curriculum_key_prefix = trim((string)($course['curriculum_key_prefix'] ?? ''));
 
@@ -386,7 +433,7 @@ try {
         $existingCurriculumRes = $existingCurriculumStmt->get_result();
         while ($existingCurriculumRes && ($existingRow = $existingCurriculumRes->fetch_assoc())) {
             $existingCurriculumRows[] = [
-                'course_code' => psNormalizeCourseCode($existingRow['course_code'] ?? ''),
+                'course_code' => pcSaveNormalizeEditableCourseCode((string)($existingRow['course_code'] ?? '')),
                 'course_title' => trim((string)($existingRow['course_title'] ?? '')),
                 'year_level' => trim((string)($existingRow['year_level'] ?? '')),
                 'semester' => trim((string)($existingRow['semester'] ?? '')),
@@ -424,7 +471,7 @@ try {
         $legacyCurriculumRes = $legacyCurriculumStmt->get_result();
         while ($legacyCurriculumRes && ($legacyRow = $legacyCurriculumRes->fetch_assoc())) {
             $legacyCurriculumRows[] = [
-                'course_code' => psNormalizeCourseCode($legacyRow['course_code'] ?? ''),
+                'course_code' => pcSaveNormalizeEditableCourseCode((string)($legacyRow['course_code'] ?? '')),
                 'course_title' => trim((string)($legacyRow['course_title'] ?? '')),
                 'year_level' => trim((string)($legacyRow['year_level'] ?? '')),
                 'semester' => trim((string)($legacyRow['semester'] ?? '')),
@@ -456,10 +503,7 @@ try {
             continue;
         }
 
-        if (preg_match('/^\d{4}_(.+)$/', $deletedToken, $deletedMatches)) {
-            $deletedToken = trim((string)($deletedMatches[1] ?? ''));
-        }
-        $deletedToken = psNormalizeCourseCode($deletedToken);
+        $deletedToken = pcSaveExtractCourseCodeFromCurriculumKey($deletedToken, (string)$curriculum_year);
 
         if ($deletedToken === '') {
             continue;
@@ -469,15 +513,15 @@ try {
     }
 
     foreach ($curriculumRowsToSync as $syncRow) {
-        $courseCode = psNormalizeCourseCode($syncRow['course_code'] ?? '');
+        $courseCode = pcSaveNormalizeEditableCourseCode((string)($syncRow['course_code'] ?? ''));
         if ($courseCode === '') {
             continue;
         }
 
-        $originalCourseCode = psNormalizeCourseCode($syncRow['original_course_code'] ?? '');
+        $originalCourseCode = pcSaveNormalizeEditableCourseCode((string)($syncRow['original_course_code'] ?? ''));
         $originalCurriculumKey = trim((string)($syncRow['original_curriculum_key'] ?? ''));
-        if ($originalCourseCode === '' && preg_match('/^\d{4}_(.+)$/', $originalCurriculumKey, $originalMatches)) {
-            $originalCourseCode = psNormalizeCourseCode($originalMatches[1] ?? '');
+        if ($originalCourseCode === '') {
+            $originalCourseCode = pcSaveExtractCourseCodeFromCurriculumKey($originalCurriculumKey, (string)$curriculum_year);
         }
 
         if ($originalCourseCode !== '' && strcasecmp($originalCourseCode, $courseCode) !== 0) {

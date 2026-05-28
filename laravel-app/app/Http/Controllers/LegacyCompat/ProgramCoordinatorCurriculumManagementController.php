@@ -375,18 +375,7 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
 
     private function normalizeCourseCode(string $value): string
     {
-        $code = trim($value);
-        if ($code === '') {
-            return '';
-        }
-
-        foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
-            if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
-                return trim(substr($code, 0, -strlen($suffix)));
-            }
-        }
-
-        return $code;
+        return preg_replace('/\s+/', ' ', trim($value)) ?: '';
     }
 
     private function normalizeCurriculumYear(string $value): string

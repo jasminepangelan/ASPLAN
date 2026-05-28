@@ -104,18 +104,7 @@ function normalizeCurriculumYear(string $value): string {
 }
 
 function normalizeViewCourseCode(string $value): string {
-    $code = trim($value);
-    if ($code === '') {
-        return '';
-    }
-
-    foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
-        if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
-            return trim(substr($code, 0, -strlen($suffix)));
-        }
-    }
-
-    return $code;
+    return preg_replace('/\s+/', ' ', trim($value)) ?: '';
 }
 
 $programNames = [
@@ -255,6 +244,7 @@ if ($errorMessage === '') {
         }
 
         $coursesByTerm[$yearLevel][$semester][] = [
+            'curriculum_key' => (string)$row['curriculumyear_coursecode'],
             'course_code' => $courseCode,
             'course_title' => (string)($row['course_title'] ?? ''),
             'credit_units_lec' => (int)($row['credit_units_lec'] ?? 0),
@@ -530,6 +520,7 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
               <tbody data-year-level="<?= htmlspecialchars($yearLevel) ?>" data-semester="<?= htmlspecialchars($semester) ?>">
                 <?php foreach ($rows as $c): ?>
                   <tr class="course-row"
+                      data-original-key="<?= htmlspecialchars($c['curriculum_key']) ?>"
                       data-original-code="<?= htmlspecialchars($c['course_code']) ?>"
                       data-original-title="<?= htmlspecialchars($c['course_title']) ?>"
                       data-original-credit-lec="<?= (int)$c['credit_units_lec'] ?>"
@@ -578,6 +569,7 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
 
       const row = document.createElement('tr');
       row.className = 'course-row';
+      row.dataset.originalKey = '';
       row.dataset.originalCode = '';
       row.dataset.originalTitle = '';
       row.dataset.originalCreditLec = '';
@@ -604,9 +596,11 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
       const row = btn.closest('tr');
       if (!row) return;
 
+      const originalKey = (row.dataset.originalKey || '').trim();
       const originalCode = (row.dataset.originalCode || '').trim();
-      if (originalCode && !deletedCourseCodes.includes(originalCode)) {
-        deletedCourseCodes.push(originalCode);
+      const deletionToken = originalKey || originalCode;
+      if (deletionToken && !deletedCourseCodes.includes(deletionToken)) {
+        deletedCourseCodes.push(deletionToken);
       }
 
       row.remove();
@@ -620,6 +614,7 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
 
         tbody.querySelectorAll('tr.course-row').forEach((row) => {
           const originalCode = (row.dataset.originalCode || '').trim();
+          const originalKey = (row.dataset.originalKey || '').trim();
           const originalTitle = (row.dataset.originalTitle || '').trim();
           const originalCreditLec = parseInt(row.dataset.originalCreditLec || '0', 10) || 0;
           const originalCreditLab = parseInt(row.dataset.originalCreditLab || '0', 10) || 0;
@@ -663,7 +658,8 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
             lect_hrs_lec: hrsLec,
             lect_hrs_lab: hrsLab,
             pre_requisite: prereq,
-            original_course_code: originalCode
+            original_course_code: originalCode,
+            original_curriculum_key: originalKey
           });
         });
       });

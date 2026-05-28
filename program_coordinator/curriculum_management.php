@@ -130,18 +130,7 @@ function normalizeCurriculumYear(string $value): string {
 }
 
 function normalizeDisplayCourseCode(string $value): string {
-  $code = trim($value);
-  if ($code === '') {
-    return '';
-  }
-
-  foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
-    if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
-      return trim(substr($code, 0, -strlen($suffix)));
-    }
-  }
-
-  return $code;
+  return preg_replace('/\s+/', ' ', trim($value)) ?: '';
 }
 
 function splitProgramTokens(string $value): array {
@@ -1423,6 +1412,7 @@ const isAdminView = <?= json_encode($isAdmin) ?>;
 
 let selectedProgram = coordinatorProgramCode || '';
 let selectedYear = '';
+let loadedChecklistYear = '';
 let deletedCourseKeys = [];
 
 function refreshExistingInfo() {
@@ -1651,6 +1641,7 @@ function initChecklist(forcedYear, ignoreDropdownSelection = false) {
 
   // Reset pending row deletions whenever checklist is (re)initialized from server data.
   deletedCourseKeys = [];
+  loadedChecklistYear = selectedYear;
   buildChecklistTables(selectedYear);
 }
 
@@ -2098,6 +2089,7 @@ function deleteCurriculumYear(year) {
 
     if (selectedYear === String(year)) {
       selectedYear = '';
+      loadedChecklistYear = '';
       const checklistArea = document.getElementById('checklistArea');
       const checklistBody = document.getElementById('checklistBody');
       if (checklistBody) {
@@ -2143,6 +2135,12 @@ function saveAllCourses() {
   const typedYear = inputEl ? String(inputEl.value || '').trim() : '';
   const selectedYearFromDropdown = selectEl ? String(selectEl.value || '').trim() : '';
   selectedYear = typedYear || selectedYearFromDropdown || selectedYear;
+  const checklistArea = document.getElementById('checklistArea');
+  const checklistVisible = checklistArea && checklistArea.style.display !== 'none';
+  if (checklistVisible && loadedChecklistYear && selectedYear !== loadedChecklistYear) {
+    showNotification('error', 'Click View/Edit to load curriculum year ' + selectedYear + ' before saving changes.');
+    return;
+  }
 
   if (!selectedYear) {
     const promptedYear = String(prompt('Enter curriculum year (YYYY):') || '').trim();
@@ -2151,6 +2149,7 @@ function saveAllCourses() {
       return;
     }
     selectedYear = promptedYear;
+    loadedChecklistYear = promptedYear;
     applyYearToControls(selectedYear);
     updateChecklistYearLabel(selectedYear);
   }
