@@ -1402,16 +1402,17 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         }
 
         .container {
-            margin: 65px auto 15px;
-            width: min(1500px, calc(100vw - 280px));
+            margin: 65px 0 15px 250px;
+            width: calc(100vw - 250px);
             padding: 0 6px;
-            transform: translateX(125px);
-            transition: transform 0.3s ease, width 0.3s ease;
+            box-sizing: border-box;
+            transform: none;
+            transition: margin-left 0.3s ease, width 0.3s ease;
         }
 
         .sidebar.collapsed ~ .container {
-            width: min(1600px, calc(100vw - 32px));
-            transform: translateX(0);
+            margin-left: 0;
+            width: 100vw;
         }
 
         .page-title {
@@ -2687,12 +2688,6 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             .admin-info {
                 font-size: 12px;
                 padding: 3px 10px;
-            }
-
-            .container {
-                margin: 80px 10px 20px;
-                width: calc(100vw - 20px);
-                transform: none;
             }
 
             .settings-layout {
