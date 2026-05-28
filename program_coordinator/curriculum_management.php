@@ -2292,6 +2292,7 @@ function saveAllCourses() {
       if (selectedYear) {
         syncChecklistOriginalState(selectedYear);
         curriculumCatalog[selectedYear] = captureChecklistSnapshot(selectedYear);
+        buildChecklistTables(selectedYear);
       }
       // Update existing info and dropdown after saving a new curriculum year.
       if (!existingCurriculums[selectedProgram]) existingCurriculums[selectedProgram] = [];
@@ -2299,7 +2300,7 @@ function saveAllCourses() {
         existingCurriculums[selectedProgram].push(selectedYear);
       }
       refreshExistingInfo();
-      applyYearToControls(selectedYear);    
+      applyYearToControls(selectedYear);
     } else {
       showNotification('error', data.message || 'Failed to save curriculum');
     }

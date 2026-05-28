@@ -726,6 +726,16 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
         if (data && data.success) {
           deletedCourseCodes = [];
           showSaveNotice('success', data.message || 'Curriculum changes saved successfully.');
+          document.querySelectorAll('.term-card tbody tr.course-row').forEach((row) => {
+            row.dataset.originalKey = (row.dataset.originalKey || '').trim();
+            row.dataset.originalCode = String(row.querySelector('.code')?.value || '').trim();
+            row.dataset.originalTitle = String(row.querySelector('.title')?.value || '').trim();
+            row.dataset.originalCreditLec = String(row.querySelector('.credit-lec')?.value || '0').trim();
+            row.dataset.originalCreditLab = String(row.querySelector('.credit-lab')?.value || '0').trim();
+            row.dataset.originalHrsLec = String(row.querySelector('.hrs-lec')?.value || '0').trim();
+            row.dataset.originalHrsLab = String(row.querySelector('.hrs-lab')?.value || '0').trim();
+            row.dataset.originalPrereq = String(row.querySelector('.prereq')?.value || 'NONE').trim() || 'NONE';
+          });
         } else {
           showSaveNotice('error', (data && data.message) ? data.message : 'Failed to save curriculum changes.');
         }
