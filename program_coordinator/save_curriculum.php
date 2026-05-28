@@ -218,6 +218,7 @@ try {
 
     $changed = 0;
     $curriculumRowsToSync = [];
+    $processedNormalizedCodes = [];
 
     foreach ($deleted_courses as $deletedCodeRaw) {
         $deletedToken = trim((string)$deletedCodeRaw);
@@ -353,6 +354,12 @@ try {
             'original_curriculum_key' => $original_curriculum_key,
         ];
 
+        // Track normalized course codes processed in this save operation
+        $normCode = strtoupper(trim((string)$course_code));
+        if ($normCode !== '') {
+            $processedNormalizedCodes[$normCode] = $key; // store preferred key for this code
+        }
+
         if ($lookupKey !== $key) {
             $conflict = $conn->prepare("SELECT curriculumyear_coursecode FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ? LIMIT 1");
             $conflict->bind_param('s', $key);
@@ -378,6 +385,21 @@ try {
             if ($fallbackKey !== '' && $fallbackKey !== $lookupKey) {
                 $check->close();
                 $lookupKey = $fallbackKey;
+                $check = $conn->prepare("SELECT curriculumyear_coursecode, programs, course_title, year_level, semester, credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ?");
+                $check->bind_param('s', $lookupKey);
+                $check->execute();
+                $result = $check->get_result();
+            }
+        }
+
+        // If we still don't have a match, try a more forgiving legacy lookup by course code alone.
+        // This helps catch cases where the stored key used a different prefix/token but the
+        // course code is the same — avoid inserting a duplicate when the intent was an edit.
+        if (($result === false || $result->num_rows === 0)) {
+            $fallbackByCode = pcSaveFindLegacyCurriculumKey($conn, $program, (string)$curriculum_year, $course_code);
+            if ($fallbackByCode !== '' && $fallbackByCode !== $lookupKey) {
+                $check->close();
+                $lookupKey = $fallbackByCode;
                 $check = $conn->prepare("SELECT curriculumyear_coursecode, programs, course_title, year_level, semester, credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ?");
                 $check->bind_param('s', $lookupKey);
                 $check->execute();
@@ -451,7 +473,76 @@ try {
         $check->close();
     }
 
-        $dupQuery = $conn->prepare(
+            // Cleanup: for any normalized course codes processed, ensure there are no duplicate rows
+            // visible for this program in the legacy cvsucarmona_courses table. If duplicates exist,
+            // remove this program token from the non-preferred rows (or delete empty rows).
+            foreach ($processedNormalizedCodes as $normCode => $preferredKey) {
+                $findDupStmt = $conn->prepare(
+                    "SELECT curriculumyear_coursecode, programs
+                     FROM cvsucarmona_courses
+                     WHERE UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1))) = ?
+                       AND FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0"
+                );
+                if (!$findDupStmt) continue;
+                $findDupStmt->bind_param('ss', $normCode, $program);
+                $findDupStmt->execute();
+                $dupRes = $findDupStmt->get_result();
+                $rowsToAdjust = [];
+                if ($dupRes) {
+                    while ($r = $dupRes->fetch_assoc()) {
+                        $rowsToAdjust[] = $r;
+                    }
+                }
+                $findDupStmt->close();
+
+                if (count($rowsToAdjust) <= 1) {
+                    continue;
+                }
+
+                // Prefer the row matching the preferred key; if not present, keep the first and adjust others.
+                $keepKey = $preferredKey;
+                $foundKeep = false;
+                foreach ($rowsToAdjust as $r) {
+                    if (trim((string)$r['curriculumyear_coursecode']) === $keepKey) {
+                        $foundKeep = true;
+                        break;
+                    }
+                }
+                if (!$foundKeep) {
+                    $keepKey = (string)($rowsToAdjust[0]['curriculumyear_coursecode'] ?? '');
+                }
+
+                foreach ($rowsToAdjust as $r) {
+                    $rowKey = (string)$r['curriculumyear_coursecode'];
+                    $rowPrograms = (string)$r['programs'];
+                    if ($rowKey === $keepKey) {
+                        continue;
+                    }
+
+                    // Remove the program token from this row's programs list.
+                    $progList = array_values(array_filter(array_map('trim', explode(',', $rowPrograms))));
+                    $newProgList = array_values(array_filter($progList, static fn($v) => strtoupper(trim($v)) !== strtoupper(trim($program))));
+                    $newPrograms = implode(', ', $newProgList);
+
+                    if ($newPrograms === '') {
+                        $del = $conn->prepare("DELETE FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ?");
+                        if ($del) {
+                            $del->bind_param('s', $rowKey);
+                            $del->execute();
+                            $del->close();
+                        }
+                    } else {
+                        $upd = $conn->prepare("UPDATE cvsucarmona_courses SET programs = ? WHERE curriculumyear_coursecode = ?");
+                        if ($upd) {
+                            $upd->bind_param('ss', $newPrograms, $rowKey);
+                            $upd->execute();
+                            $upd->close();
+                        }
+                    }
+                }
+            }
+
+                $dupQuery = $conn->prepare(
                 "SELECT UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1))) AS normalized_code, COUNT(*) AS duplicate_count
                  FROM cvsucarmona_courses
                  WHERE curriculumyear_coursecode LIKE ?
