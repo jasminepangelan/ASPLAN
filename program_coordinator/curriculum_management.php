@@ -212,8 +212,12 @@ function appendCurriculumCatalogCourse(array &$catalog, string $curriculumYear, 
     $catalog[$curriculumYear][$yearLevel][$semester] = [];
   }
 
-  foreach ($catalog[$curriculumYear][$yearLevel][$semester] as $existingCourse) {
+  // If a course with the same code already exists in this slot, replace it with
+  // the newer/last-seen $course so edits (which may have created a second row)
+  // are shown in the coordinator view instead of the original.
+  foreach ($catalog[$curriculumYear][$yearLevel][$semester] as $idx => $existingCourse) {
     if (strtoupper(trim((string)($existingCourse['course_code'] ?? ''))) === $courseCode) {
+      $catalog[$curriculumYear][$yearLevel][$semester][$idx] = $course;
       return;
     }
   }
