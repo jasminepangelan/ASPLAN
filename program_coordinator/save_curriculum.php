@@ -170,6 +170,46 @@ try {
             $conflicts[] = count($uniqueTitles) > 1 ? ($code . ' (' . implode(' / ', $uniqueTitles) . ')') : $code;
         }
     }
+    if (!function_exists('pcSaveFindLegacyCurriculumKey')) {
+        function pcSaveFindLegacyCurriculumKey(mysqli $conn, string $program, string $curriculumYear, string $courseCode): string {
+            $courseCode = pcSaveNormalizeEditableCourseCode($courseCode);
+            $curriculumYear = pcSaveNormalizeCurriculumYearToken($curriculumYear);
+            if ($courseCode === '' || $curriculumYear === '') {
+                return '';
+            }
+
+            $sql = "
+                SELECT curriculumyear_coursecode
+                FROM cvsucarmona_courses
+                WHERE UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1))) = UPPER(?)
+                  AND FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
+                  AND (
+                    CASE
+                      WHEN SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) REGEXP '^[0-9]{2}V[0-9]+$'
+                        THEN CONCAT('20', LEFT(SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1), 2))
+                      ELSE SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1)
+                    END
+                  ) = ?
+                ORDER BY curriculumyear_coursecode
+                LIMIT 1
+            ";
+
+            $stmt = $conn->prepare($sql);
+            if (!$stmt) {
+                return '';
+            }
+            $stmt->bind_param('sss', $courseCode, $program, $curriculumYear);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $key = '';
+            if ($res && $res->num_rows > 0) {
+                $row = $res->fetch_assoc();
+                $key = trim((string)($row['curriculumyear_coursecode'] ?? ''));
+            }
+            $stmt->close();
+            return $key;
+        }
+    }
 
     if (!empty($conflicts)) {
         echo json_encode(['success' => false, 'message' => 'Conflicting course codes found: ' . implode(', ', $conflicts)]);
@@ -189,14 +229,36 @@ try {
         if ($lookupKey === '') {
             continue;
         }
+
         $find = $conn->prepare("SELECT programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ? LIMIT 1");
+        if (!$find) {
+            throw new RuntimeException('Failed to prepare delete lookup: ' . $conn->error);
+        }
         $find->bind_param('s', $lookupKey);
         $find->execute();
         $found = $find->get_result();
 
         if (!$found || $found->num_rows === 0) {
             $find->close();
-            continue;
+
+            $deletedCourseCode = pcSaveExtractCourseCodeFromCurriculumKey($deletedToken, (string)$curriculum_year);
+            $fallbackKey = pcSaveFindLegacyCurriculumKey($conn, $program, (string)$curriculum_year, $deletedCourseCode);
+            if ($fallbackKey === '') {
+                continue;
+            }
+
+            $lookupKey = $fallbackKey;
+            $find = $conn->prepare("SELECT programs FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ? LIMIT 1");
+            if (!$find) {
+                throw new RuntimeException('Failed to prepare delete fallback lookup: ' . $conn->error);
+            }
+            $find->bind_param('s', $lookupKey);
+            $find->execute();
+            $found = $find->get_result();
+            if (!$found || $found->num_rows === 0) {
+                $find->close();
+                continue;
+            }
         }
 
         $row = $found->fetch_assoc();
@@ -209,6 +271,9 @@ try {
 
         if (count($progList) === 1) {
             $deleteStmt = $conn->prepare("DELETE FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ?");
+            if (!$deleteStmt) {
+                throw new RuntimeException('Failed to prepare delete statement: ' . $conn->error);
+            }
             $deleteStmt->bind_param('s', $lookupKey);
             if (!$deleteStmt->execute()) {
                 throw new RuntimeException('Failed to delete curriculum row: ' . $deleteStmt->error);
@@ -221,6 +286,9 @@ try {
         $remainingPrograms = array_values(array_filter($progList, static fn ($value) => $value !== $program));
         $newPrograms = implode(', ', $remainingPrograms);
         $updPrograms = $conn->prepare("UPDATE cvsucarmona_courses SET programs = ? WHERE curriculumyear_coursecode = ?");
+        if (!$updPrograms) {
+            throw new RuntimeException('Failed to prepare program update: ' . $conn->error);
+        }
         $updPrograms->bind_param('ss', $newPrograms, $lookupKey);
         if (!$updPrograms->execute()) {
             throw new RuntimeException('Failed to update curriculum row programs: ' . $updPrograms->error);
@@ -302,7 +370,22 @@ try {
         $check->execute();
         $result = $check->get_result();
 
-        if ($result->num_rows > 0) {
+        if (($result === false || $result->num_rows === 0) && $hasOriginalIdentity) {
+            $fallbackOriginalCode = $original_course_code !== ''
+                ? $original_course_code
+                : pcSaveExtractCourseCodeFromCurriculumKey($original_curriculum_key, (string)$curriculum_year);
+            $fallbackKey = pcSaveFindLegacyCurriculumKey($conn, $program, (string)$curriculum_year, $fallbackOriginalCode);
+            if ($fallbackKey !== '' && $fallbackKey !== $lookupKey) {
+                $check->close();
+                $lookupKey = $fallbackKey;
+                $check = $conn->prepare("SELECT curriculumyear_coursecode, programs, course_title, year_level, semester, credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite FROM cvsucarmona_courses WHERE curriculumyear_coursecode = ?");
+                $check->bind_param('s', $lookupKey);
+                $check->execute();
+                $result = $check->get_result();
+            }
+        }
+
+        if ($result && $result->num_rows > 0) {
             $existingRow = $result->fetch_assoc();
             $existing_progs = (string)($existingRow['programs'] ?? '');
             $prog_list = array_map('trim', explode(',', $existing_progs));
@@ -355,10 +438,6 @@ try {
                 $changed++;
             }
         } else {
-            if ($hasOriginalIdentity) {
-                throw new RuntimeException('Unable to update course: original entry was not found. Please reload the curriculum and try again.');
-            }
-
             $stmt = $conn->prepare(
                 "INSERT INTO cvsucarmona_courses (curriculumyear_coursecode, programs, course_title, year_level, semester, credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"

@@ -112,7 +112,20 @@ class CurriculumManagementController extends Controller
                     ->first();
 
                 if ($existingDelete === null) {
-                    continue;
+                    $deletedCourseCode = $this->extractCurriculumCourseCode($deletedToken, $curriculumYear);
+                    $fallbackKey = $this->findLegacyCurriculumKey($program, $curriculumYear, $deletedCourseCode);
+                    if ($fallbackKey === '') {
+                        continue;
+                    }
+
+                    $lookupKey = $fallbackKey;
+                    $existingDelete = DB::table('cvsucarmona_courses')
+                        ->select(['curriculumyear_coursecode', 'programs'])
+                        ->where('curriculumyear_coursecode', $lookupKey)
+                        ->first();
+                    if ($existingDelete === null) {
+                        continue;
+                    }
                 }
 
                 $programs = array_values(array_filter(array_map('trim', explode(',', (string) ($existingDelete->programs ?? '')))));
@@ -220,6 +233,31 @@ class CurriculumManagementController extends Controller
                     ->where('curriculumyear_coursecode', $lookupKey)
                     ->first();
 
+                if ($existing === null && $hasOriginalIdentity) {
+                    $fallbackOriginalCode = $originalCourseCode !== ''
+                        ? $originalCourseCode
+                        : $this->extractCurriculumCourseCode($originalCurriculumKey, $curriculumYear);
+                    $fallbackKey = $this->findLegacyCurriculumKey($program, $curriculumYear, $fallbackOriginalCode);
+                    if ($fallbackKey !== '' && $fallbackKey !== $lookupKey) {
+                        $lookupKey = $fallbackKey;
+                        $existing = DB::table('cvsucarmona_courses')
+                            ->select([
+                                'curriculumyear_coursecode',
+                                'programs',
+                                'course_title',
+                                'year_level',
+                                'semester',
+                                'credit_units_lec',
+                                'credit_units_lab',
+                                'lect_hrs_lec',
+                                'lect_hrs_lab',
+                                'pre_requisite',
+                            ])
+                            ->where('curriculumyear_coursecode', $lookupKey)
+                            ->first();
+                    }
+                }
+
                 if ($existing !== null) {
                     $programList = array_map('trim', explode(',', (string) ($existing->programs ?? '')));
                     if (!in_array($program, $programList, true)) {
@@ -268,14 +306,6 @@ class CurriculumManagementController extends Controller
                         $changed++;
                     }
                 } else {
-                    if ($hasOriginalIdentity) {
-                        $this->safeRollback();
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Unable to update course: original entry was not found. Please reload the curriculum and try again.',
-                        ], 422);
-                    }
-
                     DB::table('cvsucarmona_courses')->insert([
                         'curriculumyear_coursecode' => $key,
                         'programs' => $program,
@@ -787,6 +817,31 @@ class CurriculumManagementController extends Controller
         }
 
         return $fallbackPrefix . $token;
+    }
+
+    private function findLegacyCurriculumKey(string $program, string $curriculumYear, string $courseCode): string
+    {
+        $courseCode = $this->normalizeEditableCourseCode($courseCode);
+        $curriculumYear = $this->normalizeCurriculumYear($curriculumYear);
+        if ($courseCode === '' || $curriculumYear === '') {
+            return '';
+        }
+
+        $row = DB::table('cvsucarmona_courses')
+            ->select(['curriculumyear_coursecode'])
+            ->whereRaw(
+                "UPPER(TRIM(SUBSTRING(curriculumyear_coursecode, LOCATE('_', curriculumyear_coursecode) + 1))) = UPPER(?)",
+                [$courseCode]
+            )
+            ->whereRaw("FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0", [$program])
+            ->whereRaw(
+                "(CASE WHEN SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) REGEXP '^[0-9]{2}V[0-9]+$' THEN CONCAT('20', LEFT(SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1), 2)) ELSE SUBSTRING_INDEX(curriculumyear_coursecode, '_', 1) END) = ?",
+                [$curriculumYear]
+            )
+            ->orderBy('curriculumyear_coursecode')
+            ->first();
+
+        return trim((string) ($row->curriculumyear_coursecode ?? ''));
     }
 
     private function extractCurriculumCourseCode(string $value, string $selectedYear = ''): string
