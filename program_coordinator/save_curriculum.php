@@ -6,6 +6,25 @@ require_once __DIR__ . '/../includes/program_catalog.php';
 
 header('Content-Type: application/json');
 
+if (!function_exists('pcSaveNormalizeCurriculumYearToken')) {
+    function pcSaveNormalizeCurriculumYearToken(string $value): string {
+        $token = strtoupper(trim($value));
+        if ($token === '') {
+            return '';
+        }
+
+        if (preg_match('/^(\d{2})V\d+$/', $token, $matches)) {
+            return '20' . $matches[1];
+        }
+
+        if (preg_match('/^\d{4}$/', $token)) {
+            return $token;
+        }
+
+        return '';
+    }
+}
+
 if (!(isset($_SESSION['username']) && (!isset($_SESSION['user_type']) || $_SESSION['user_type'] === 'program_coordinator'))
     && !isset($_SESSION['admin_username'])
     && !isset($_SESSION['admin_id'])) {
@@ -179,16 +198,26 @@ try {
             continue;
         }
 
-        $keyPrefix = $prefix;
+        $keyPrefix = rtrim($prefix, '_');
+        $originalKeyBelongsToSelectedYear = false;
         if ($original_curriculum_key !== '' && preg_match('/^([^_]+)_.+$/', $original_curriculum_key, $matches)) {
-            $keyPrefix = trim((string)$matches[1]);
-        } elseif ($curriculum_key_prefix !== '') {
+            $originalKeyPrefix = trim((string)$matches[1]);
+            if (pcSaveNormalizeCurriculumYearToken($originalKeyPrefix) === (string)$curriculum_year) {
+                $keyPrefix = $originalKeyPrefix;
+                $originalKeyBelongsToSelectedYear = true;
+            }
+        }
+        if (!$originalKeyBelongsToSelectedYear && $curriculum_key_prefix !== ''
+            && pcSaveNormalizeCurriculumYearToken($curriculum_key_prefix) === (string)$curriculum_year) {
             $keyPrefix = $curriculum_key_prefix;
         }
 
         $key = $keyPrefix . '_' . $course_code;
-        $lookupKey = $original_curriculum_key !== '' ? $original_curriculum_key : ($original_course_code !== '' ? $prefix . $original_course_code : $key);
-        $hasOriginalIdentity = $original_curriculum_key !== '' || $original_course_code !== '';
+        $lookupKey = $originalKeyBelongsToSelectedYear
+            ? $original_curriculum_key
+            : ($original_course_code !== '' ? ($keyPrefix . '_' . $original_course_code) : $key);
+        $hasOriginalIdentity = $originalKeyBelongsToSelectedYear
+            || ($original_curriculum_key === '' && $original_course_code !== '');
         $credit_lec = (int)($course['credit_units_lec'] ?? 0);
         $credit_lab = (int)($course['credit_units_lab'] ?? 0);
         $hrs_lec = (int)($course['lect_hrs_lec'] ?? 0);

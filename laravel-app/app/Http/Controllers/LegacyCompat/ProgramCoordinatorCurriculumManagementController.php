@@ -471,12 +471,37 @@ class ProgramCoordinatorCurriculumManagementController extends Controller
             return;
         }
 
+        $courseCode = strtoupper(trim((string) ($course['course_code'] ?? '')));
+        if ($courseCode === '') {
+            return;
+        }
+
+        if (isset($catalog[$curriculumYear]) && is_array($catalog[$curriculumYear])) {
+            foreach ($catalog[$curriculumYear] as $existingYearBuckets) {
+                if (!is_array($existingYearBuckets)) {
+                    continue;
+                }
+
+                foreach ($existingYearBuckets as $existingSemesterCourses) {
+                    if (!is_array($existingSemesterCourses)) {
+                        continue;
+                    }
+
+                    foreach ($existingSemesterCourses as $existingCourse) {
+                        if (strtoupper(trim((string) ($existingCourse['course_code'] ?? ''))) === $courseCode) {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
         $catalog[$curriculumYear] ??= [];
         $catalog[$curriculumYear][$yearLevel] ??= [];
         $catalog[$curriculumYear][$yearLevel][$semester] ??= [];
 
         foreach ($catalog[$curriculumYear][$yearLevel][$semester] as $existingCourse) {
-            if (($existingCourse['course_code'] ?? '') === ($course['course_code'] ?? '')) {
+            if (strtoupper(trim((string) ($existingCourse['course_code'] ?? ''))) === $courseCode) {
                 return;
             }
         }

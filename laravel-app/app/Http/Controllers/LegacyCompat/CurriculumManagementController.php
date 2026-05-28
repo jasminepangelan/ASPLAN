@@ -148,16 +148,27 @@ class CurriculumManagementController extends Controller
                     continue;
                 }
 
-                $keyPrefix = $prefix;
+                $keyPrefix = rtrim($prefix, '_');
+                $originalKeyBelongsToSelectedYear = false;
                 if ($originalCurriculumKey !== '' && preg_match('/^([^_]+)_.+$/', $originalCurriculumKey, $matches)) {
-                    $keyPrefix = trim((string) ($matches[1] ?? $prefix));
-                } elseif ($curriculumKeyPrefix !== '') {
+                    $originalKeyPrefix = trim((string) ($matches[1] ?? ''));
+                    if ($this->normalizeCurriculumYear($originalKeyPrefix) === $curriculumYear) {
+                        $keyPrefix = $originalKeyPrefix;
+                        $originalKeyBelongsToSelectedYear = true;
+                    }
+                }
+                if (!$originalKeyBelongsToSelectedYear
+                    && $curriculumKeyPrefix !== ''
+                    && $this->normalizeCurriculumYear($curriculumKeyPrefix) === $curriculumYear) {
                     $keyPrefix = $curriculumKeyPrefix;
                 }
 
                 $key = $keyPrefix . '_' . $courseCode;
-                $lookupKey = $originalCurriculumKey !== '' ? $originalCurriculumKey : ($originalCourseCode !== '' ? $prefix . $originalCourseCode : $key);
-                $hasOriginalIdentity = $originalCurriculumKey !== '' || $originalCourseCode !== '';
+                $lookupKey = $originalKeyBelongsToSelectedYear
+                    ? $originalCurriculumKey
+                    : ($originalCourseCode !== '' ? ($keyPrefix . '_' . $originalCourseCode) : $key);
+                $hasOriginalIdentity = $originalKeyBelongsToSelectedYear
+                    || ($originalCurriculumKey === '' && $originalCourseCode !== '');
                 $creditLec = (int) ($course['credit_units_lec'] ?? 0);
                 $creditLab = (int) ($course['credit_units_lab'] ?? 0);
                 $hrsLec = (int) ($course['lect_hrs_lec'] ?? 0);
@@ -733,6 +744,24 @@ class CurriculumManagementController extends Controller
             'lect_hrs_lab' => (int) ($row['lect_hrs_lab'] ?? 0),
             'pre_requisite' => trim((string) ($row['pre_requisite'] ?? 'NONE')) ?: 'NONE',
         ];
+    }
+
+    private function normalizeCurriculumYear(string $value): string
+    {
+        $token = strtoupper(trim($value));
+        if ($token === '') {
+            return '';
+        }
+
+        if (preg_match('/^(\d{2})V\d+$/', $token, $matches)) {
+            return '20' . $matches[1];
+        }
+
+        if (preg_match('/^\d{4}$/', $token)) {
+            return $token;
+        }
+
+        return '';
     }
 
     private function extractCurriculumCourseCode(string $value): string

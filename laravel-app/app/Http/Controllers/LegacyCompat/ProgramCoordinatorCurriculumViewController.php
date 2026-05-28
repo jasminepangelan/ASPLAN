@@ -70,6 +70,7 @@ class ProgramCoordinatorCurriculumViewController extends Controller
                     'pre_requisite',
                 ])
                 ->whereRaw("FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0", [$coordinatorProgramCode])
+                ->orderBy('curriculumyear_coursecode')
                 ->get();
 
             $availableYearsMap = [];
@@ -95,15 +96,21 @@ class ProgramCoordinatorCurriculumViewController extends Controller
             $yearOrder = ['First Year' => 1, 'Second Year' => 2, 'Third Year' => 3, 'Fourth Year' => 4];
             $semesterOrder = ['First Semester' => 1, 'Second Semester' => 2, 'Mid Year' => 3, 'Midyear' => 3];
 
+            $seenSelectedYearCodes = [];
             foreach ($allRows as $row) {
                 $parts = explode('_', (string) ($row->curriculumyear_coursecode ?? ''), 2);
                 $prefix = $parts[0] ?? '';
-                $courseCode = $parts[1] ?? (string) ($row->curriculumyear_coursecode ?? '');
+                $courseCode = $this->normalizeCourseCode($parts[1] ?? (string) ($row->curriculumyear_coursecode ?? ''));
                 $normalizedYear = $this->normalizeCurriculumYear($prefix);
 
                 if ($normalizedYear === '' || $normalizedYear !== $selectedYear) {
                     continue;
                 }
+                $codeKey = strtoupper(trim($courseCode));
+                if ($codeKey === '' || isset($seenSelectedYearCodes[$codeKey])) {
+                    continue;
+                }
+                $seenSelectedYearCodes[$codeKey] = true;
 
                 $yearLevel = (string) ($row->year_level ?? '');
                 $semester = (string) ($row->semester ?? '');
@@ -232,6 +239,22 @@ class ProgramCoordinatorCurriculumViewController extends Controller
         }
 
         return '';
+    }
+
+    private function normalizeCourseCode(string $value): string
+    {
+        $code = trim($value);
+        if ($code === '') {
+            return '';
+        }
+
+        foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
+            if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
+                return trim(substr($code, 0, -strlen($suffix)));
+            }
+        }
+
+        return $code;
     }
 
     private function normalizeCurriculumYear(string $value): string

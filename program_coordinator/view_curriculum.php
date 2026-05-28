@@ -103,6 +103,21 @@ function normalizeCurriculumYear(string $value): string {
     return '';
 }
 
+function normalizeViewCourseCode(string $value): string {
+    $code = trim($value);
+    if ($code === '') {
+        return '';
+    }
+
+    foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
+        if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
+            return trim(substr($code, 0, -strlen($suffix)));
+        }
+    }
+
+    return $code;
+}
+
 $programNames = [
     'BSIndT' => 'BS Industrial Technology',
     'BSCpE' => 'BS Computer Engineering',
@@ -187,7 +202,8 @@ if ($errorMessage === '') {
         "SELECT curriculumyear_coursecode, programs, course_title, year_level, semester,
                 credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite
          FROM cvsucarmona_courses
-         WHERE FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0"
+         WHERE FIND_IN_SET(?, REPLACE(programs, ', ', ',')) > 0
+         ORDER BY curriculumyear_coursecode"
     );
     $stmt->bind_param('s', $coordinatorProgramCode);
     $stmt->execute();
@@ -212,15 +228,21 @@ if ($errorMessage === '') {
         $selectedYear = end($availableYears);
     }
 
+    $seenSelectedYearCodes = [];
     foreach ($allProgramRows as $row) {
         $parts = explode('_', (string)$row['curriculumyear_coursecode'], 2);
         $prefix = $parts[0] ?? '';
-        $courseCode = $parts[1] ?? (string)$row['curriculumyear_coursecode'];
+        $courseCode = normalizeViewCourseCode($parts[1] ?? (string)$row['curriculumyear_coursecode']);
         $normalized = normalizeCurriculumYear($prefix);
 
         if ($normalized === '' || $normalized !== $selectedYear) {
             continue;
         }
+        $codeKey = strtoupper(trim($courseCode));
+        if ($codeKey === '' || isset($seenSelectedYearCodes[$codeKey])) {
+            continue;
+        }
+        $seenSelectedYearCodes[$codeKey] = true;
 
         $yearLevel = (string)($row['year_level'] ?? '');
         $semester = (string)($row['semester'] ?? '');

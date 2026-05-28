@@ -188,6 +188,31 @@ function appendCurriculumCatalogCourse(array &$catalog, string $curriculumYear, 
     return;
   }
 
+  $courseCode = strtoupper(trim((string)($course['course_code'] ?? '')));
+  if ($courseCode === '') {
+    return;
+  }
+
+  if (isset($catalog[$curriculumYear]) && is_array($catalog[$curriculumYear])) {
+    foreach ($catalog[$curriculumYear] as $existingYearBuckets) {
+      if (!is_array($existingYearBuckets)) {
+        continue;
+      }
+
+      foreach ($existingYearBuckets as $existingSemesterCourses) {
+        if (!is_array($existingSemesterCourses)) {
+          continue;
+        }
+
+        foreach ($existingSemesterCourses as $existingCourse) {
+          if (strtoupper(trim((string)($existingCourse['course_code'] ?? ''))) === $courseCode) {
+            return;
+          }
+        }
+      }
+    }
+  }
+
   if (!isset($catalog[$curriculumYear])) {
     $catalog[$curriculumYear] = [];
   }
@@ -199,7 +224,7 @@ function appendCurriculumCatalogCourse(array &$catalog, string $curriculumYear, 
   }
 
   foreach ($catalog[$curriculumYear][$yearLevel][$semester] as $existingCourse) {
-    if (($existingCourse['course_code'] ?? '') === ($course['course_code'] ?? '')) {
+    if (strtoupper(trim((string)($existingCourse['course_code'] ?? ''))) === $courseCode) {
       return;
     }
   }
