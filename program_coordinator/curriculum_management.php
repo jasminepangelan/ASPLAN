@@ -544,9 +544,9 @@ try {
         }
 
         foreach (array_keys($syncedCurriculumCatalog) as $catalogYear) {
-          if (countCurriculumCatalogCoursesForYear($syncedCurriculumCatalog, $catalogYear) > countCurriculumCatalogCoursesForYear($curriculumCatalog, $catalogYear)) {
-            $curriculumCatalog[$catalogYear] = $syncedCurriculumCatalog[$catalogYear];
-          }
+          // Always prefer persisted synced curriculum_courses data for years where it exists,
+          // because it reflects the latest managed curriculum state.
+          $curriculumCatalog[$catalogYear] = $syncedCurriculumCatalog[$catalogYear];
         }
       }
     }
