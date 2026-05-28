@@ -1539,7 +1539,7 @@ function isValidCurriculumYear(yearValue) {
     return false;
   }
   const yearNum = parseInt(y, 10);
-  return yearNum >= 2017 && yearNum <= 2099;
+  return yearNum >= 2013 && yearNum <= 2099;
 }
 
 function startCreateChecklistFlow() {
@@ -1586,7 +1586,7 @@ function generateFromInputOrPrompt() {
   const year = typedYear !== '' ? typedYear : selectedYearFromDropdown;
 
   if (year !== '' && !isValidCurriculumYear(year)) {
-    showNotification('error', 'Invalid curriculum year. Please enter a year from 2017 to 2099.');
+    showNotification('error', 'Invalid curriculum year. Please enter a year from 2013 to 2099.');
     return;
   }
 
@@ -1644,7 +1644,7 @@ function viewChecklist() {
     return;
   }
   if (!isValidCurriculumYear(selected)) {
-    showNotification('error', 'Invalid curriculum year. Please select a year from 2017 to 2099.');
+    showNotification('error', 'Invalid curriculum year. Please select a year from 2013 to 2099.');
     return;
   }
 
@@ -2130,7 +2130,7 @@ function saveAllCourses() {
     updateChecklistYearLabel(selectedYear);
   }
   if (!isValidCurriculumYear(selectedYear)) {
-    showNotification('error', 'Invalid curriculum year. Please enter a year from 2017 to 2099 before saving.');
+    showNotification('error', 'Invalid curriculum year. Please enter a year from 2013 to 2099 before saving.');
     return;
   }
 
@@ -2156,11 +2156,14 @@ function saveAllCourses() {
       const title = row.querySelector('[name="course_title"]').value.trim();
       if (!code || !title) continue; // skip empty rows
 
-      const normalizedCode = code.toUpperCase();
-      if (!allVisibleCodes.has(normalizedCode)) {
-        allVisibleCodes.set(normalizedCode, []);
+      const codeIdentity = (curriculumKeyPrefix || selectedYear || '') + '_' + code.toUpperCase();
+      if (!allVisibleCodes.has(codeIdentity)) {
+        allVisibleCodes.set(codeIdentity, {
+          code: code.toUpperCase(),
+          titles: []
+        });
       }
-      allVisibleCodes.get(normalizedCode).push(title);
+      allVisibleCodes.get(codeIdentity).titles.push(title);
 
       const lec = parseInt(row.querySelector('[name="credit_lec"]').value) || 0;
       const lab = parseInt(row.querySelector('[name="credit_lab"]').value) || 0;
@@ -2201,7 +2204,9 @@ function saveAllCourses() {
 
   // Validate the submitted curriculum snapshot for duplicate course codes.
   const duplicates = [];
-  allVisibleCodes.forEach((titles, code) => {
+  allVisibleCodes.forEach((entry) => {
+    const code = entry.code || '';
+    const titles = entry.titles || [];
     if (titles.length > 1) {
       const uniqueTitles = [...new Set(titles.filter(Boolean))];
       duplicates.push(uniqueTitles.length > 1

@@ -15,6 +15,20 @@ if (!(isset($_SESSION['username']) && (!isset($_SESSION['user_type']) || $_SESSI
 
 $input = json_decode(file_get_contents('php://input'), true);
 
+function pcSaveNormalizeCurriculumPrefix(string $value): string {
+    $value = strtoupper(trim($value));
+    if ($value === '') {
+        return '';
+    }
+    if (preg_match('/^(\d{2})V\d+$/', $value, $matches)) {
+        return '20' . $matches[1];
+    }
+    if (preg_match('/^\d{4}$/', $value)) {
+        return $value;
+    }
+    return trim($value);
+}
+
 if (!$input || empty($input['program']) || empty($input['curriculum_year']) || !array_key_exists('courses', $input)) {
     echo json_encode(['success' => false, 'message' => 'Missing required fields']);
     exit();
@@ -48,7 +62,7 @@ if (!in_array($program, $valid_programs, true)) {
     exit();
 }
 
-if (!preg_match('/^\d{4}$/', (string)$curriculum_year) || $curriculum_year < 2017 || $curriculum_year > 2099) {
+if (!preg_match('/^\d{4}$/', (string)$curriculum_year) || $curriculum_year < 2013 || $curriculum_year > 2099) {
     echo json_encode(['success' => false, 'message' => 'Invalid curriculum year']);
     exit();
 }
@@ -94,14 +108,33 @@ try {
         if ($courseCode === '') {
             continue;
         }
-        if (!isset($codeMap[$courseCode])) {
-            $codeMap[$courseCode] = [];
+
+        $originalCurriculumKey = trim((string)($course['original_curriculum_key'] ?? ''));
+        $curriculumKeyPrefix = trim((string)($course['curriculum_key_prefix'] ?? ''));
+        $codePrefix = (string)$curriculum_year;
+        if ($originalCurriculumKey !== '' && preg_match('/^([^_]+)_.+$/', $originalCurriculumKey, $matches)) {
+            $originalPrefix = trim((string)$matches[1]);
+            if (pcSaveNormalizeCurriculumPrefix($originalPrefix) === (string)$curriculum_year) {
+                $codePrefix = $originalPrefix;
+            }
+        } elseif ($curriculumKeyPrefix === (string)$curriculum_year) {
+            $codePrefix = $curriculumKeyPrefix;
         }
-        $codeMap[$courseCode][] = trim((string)($course['course_title'] ?? ''));
+
+        $codeKey = $codePrefix . '_' . $courseCode;
+        if (!isset($codeMap[$codeKey])) {
+            $codeMap[$codeKey] = [
+                'code' => $courseCode,
+                'titles' => [],
+            ];
+        }
+        $codeMap[$codeKey]['titles'][] = trim((string)($course['course_title'] ?? ''));
     }
 
     $conflicts = [];
-    foreach ($codeMap as $code => $titles) {
+    foreach ($codeMap as $entry) {
+        $code = (string)($entry['code'] ?? '');
+        $titles = $entry['titles'] ?? [];
         if (count($titles) > 1) {
             $uniqueTitles = array_values(array_unique(array_filter($titles, static fn ($value) => $value !== '')));
             $conflicts[] = count($uniqueTitles) > 1 ? ($code . ' (' . implode(' / ', $uniqueTitles) . ')') : $code;
@@ -179,15 +212,24 @@ try {
             continue;
         }
 
-        $keyPrefix = $prefix;
+        $keyPrefix = $curriculum_year;
         if ($original_curriculum_key !== '' && preg_match('/^([^_]+)_.+$/', $original_curriculum_key, $matches)) {
-            $keyPrefix = trim((string)$matches[1]);
-        } elseif ($curriculum_key_prefix !== '') {
+            $originalPrefix = trim((string)$matches[1]);
+            if (pcSaveNormalizeCurriculumPrefix($originalPrefix) === (string)$curriculum_year) {
+                $keyPrefix = $originalPrefix;
+            }
+        } elseif ($curriculum_key_prefix === (string)$curriculum_year) {
             $keyPrefix = $curriculum_key_prefix;
         }
 
         $key = $keyPrefix . '_' . $course_code;
-        $lookupKey = $original_curriculum_key !== '' ? $original_curriculum_key : ($original_course_code !== '' ? $prefix . $original_course_code : $key);
+        $lookupKey = $original_course_code !== '' ? $prefix . $original_course_code : $key;
+        if ($original_curriculum_key !== '' && preg_match('/^([^_]+)_.+$/', $original_curriculum_key, $lookupMatches)) {
+            $originalLookupPrefix = trim((string)$lookupMatches[1]);
+            if (pcSaveNormalizeCurriculumPrefix($originalLookupPrefix) === (string)$curriculum_year) {
+                $lookupKey = $original_curriculum_key;
+            }
+        }
         $hasOriginalIdentity = $original_curriculum_key !== '' || $original_course_code !== '';
         $credit_lec = (int)($course['credit_units_lec'] ?? 0);
         $credit_lab = (int)($course['credit_units_lab'] ?? 0);

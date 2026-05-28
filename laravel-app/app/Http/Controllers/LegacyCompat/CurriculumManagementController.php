@@ -32,7 +32,7 @@ class CurriculumManagementController extends Controller
                 return response()->json(['success' => false, 'message' => 'Invalid program'], 422);
             }
 
-            if (!preg_match('/^\d{4}$/', $curriculumYear) || (int) $curriculumYear < 2017 || (int) $curriculumYear > 2099) {
+            if (!preg_match('/^\d{4}$/', $curriculumYear) || (int) $curriculumYear < 2013 || (int) $curriculumYear > 2099) {
                 return response()->json(['success' => false, 'message' => 'Invalid curriculum year'], 422);
             }
 
@@ -70,15 +70,33 @@ class CurriculumManagementController extends Controller
                     continue;
                 }
 
-                if (!isset($codeMap[$courseCode])) {
-                    $codeMap[$courseCode] = [];
+                $originalCurriculumKey = trim((string) ($course['original_curriculum_key'] ?? ''));
+                $curriculumKeyPrefix = trim((string) ($course['curriculum_key_prefix'] ?? ''));
+                $codePrefix = $curriculumYear;
+                if ($originalCurriculumKey !== '' && preg_match('/^([^_]+)_.+$/', $originalCurriculumKey, $matches)) {
+                    $originalPrefix = trim((string) ($matches[1] ?? ''));
+                    if ($this->normalizeCurriculumPrefix($originalPrefix) === $curriculumYear) {
+                        $codePrefix = $originalPrefix;
+                    }
+                } elseif ($curriculumKeyPrefix === $curriculumYear) {
+                    $codePrefix = $curriculumKeyPrefix;
                 }
 
-                $codeMap[$courseCode][] = trim((string) ($course['course_title'] ?? ''));
+                $codeKey = $codePrefix . '_' . $courseCode;
+                if (!isset($codeMap[$codeKey])) {
+                    $codeMap[$codeKey] = [
+                        'code' => $courseCode,
+                        'titles' => [],
+                    ];
+                }
+
+                $codeMap[$codeKey]['titles'][] = trim((string) ($course['course_title'] ?? ''));
             }
 
             $conflicts = [];
-            foreach ($codeMap as $code => $titles) {
+            foreach ($codeMap as $entry) {
+                $code = (string) ($entry['code'] ?? '');
+                $titles = $entry['titles'] ?? [];
                 if (count($titles) > 1) {
                     $uniqueTitles = array_values(array_unique(array_filter($titles, static fn ($value) => $value !== '')));
                     $conflicts[] = count($uniqueTitles) > 1 ? ($code . ' (' . implode(' / ', $uniqueTitles) . ')') : $code;
@@ -148,15 +166,24 @@ class CurriculumManagementController extends Controller
                     continue;
                 }
 
-                $keyPrefix = $prefix;
+                $keyPrefix = $curriculumYear;
                 if ($originalCurriculumKey !== '' && preg_match('/^([^_]+)_.+$/', $originalCurriculumKey, $matches)) {
-                    $keyPrefix = trim((string) ($matches[1] ?? $prefix));
-                } elseif ($curriculumKeyPrefix !== '') {
+                    $originalPrefix = trim((string) ($matches[1] ?? ''));
+                    if ($this->normalizeCurriculumPrefix($originalPrefix) === $curriculumYear) {
+                        $keyPrefix = $originalPrefix;
+                    }
+                } elseif ($curriculumKeyPrefix === $curriculumYear) {
                     $keyPrefix = $curriculumKeyPrefix;
                 }
 
                 $key = $keyPrefix . '_' . $courseCode;
-                $lookupKey = $originalCurriculumKey !== '' ? $originalCurriculumKey : ($originalCourseCode !== '' ? $prefix . $originalCourseCode : $key);
+                $lookupKey = $originalCourseCode !== '' ? $prefix . $originalCourseCode : $key;
+                if ($originalCurriculumKey !== '' && preg_match('/^([^_]+)_.+$/', $originalCurriculumKey, $lookupMatches)) {
+                    $originalLookupPrefix = trim((string) ($lookupMatches[1] ?? ''));
+                    if ($this->normalizeCurriculumPrefix($originalLookupPrefix) === $curriculumYear) {
+                        $lookupKey = $originalCurriculumKey;
+                    }
+                }
                 $hasOriginalIdentity = $originalCurriculumKey !== '' || $originalCourseCode !== '';
                 $creditLec = (int) ($course['credit_units_lec'] ?? 0);
                 $creditLab = (int) ($course['credit_units_lab'] ?? 0);
@@ -353,7 +380,7 @@ class CurriculumManagementController extends Controller
                 return response()->json(['success' => false, 'message' => 'Invalid program'], 422);
             }
 
-            if (!preg_match('/^\d{4}$/', $curriculumYear) || (int) $curriculumYear < 2017 || (int) $curriculumYear > 2099) {
+            if (!preg_match('/^\d{4}$/', $curriculumYear) || (int) $curriculumYear < 2013 || (int) $curriculumYear > 2099) {
                 return response()->json(['success' => false, 'message' => 'Invalid curriculum year'], 422);
             }
 
@@ -763,6 +790,24 @@ class CurriculumManagementController extends Controller
         }
 
         return $code;
+    }
+
+    private function normalizeCurriculumPrefix(string $value): string
+    {
+        $value = strtoupper(trim($value));
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('/^(\d{2})V\d+$/', $value, $matches)) {
+            return '20' . $matches[1];
+        }
+
+        if (preg_match('/^\d{4}$/', $value)) {
+            return $value;
+        }
+
+        return trim($value);
     }
 
     private function curriculumSyncCodeKey(string $value): string
