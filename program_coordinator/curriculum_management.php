@@ -491,18 +491,28 @@ try {
       $canonicalProgramLabel = trim((string)($programs[$coordinatorProgramCode] ?? $coordinatorProgramRaw));
       $candidateProgramLabels = resolveCurriculumProgramLabels($coordinatorProgramCode, $canonicalProgramLabel);
 
-      if (!empty($candidateProgramLabels)) {
-        $syncedCurriculumCatalog = [];
-        $conditions = [];
-        $params = [];
-        $types = '';
+      // Build conditions to match curriculum_courses rows for this coordinator.
+      // We always attempt to query `curriculum_courses` using the program code
+      // and any resolved program labels so that synced edits are preferred.
+      $syncedCurriculumCatalog = [];
+      $conditions = [];
+      $params = [];
+      $types = '';
 
-        foreach ($candidateProgramLabels as $candidateProgramLabel) {
-          $conditions[] = 'UPPER(TRIM(program)) = ?';
-          $params[] = strtoupper(trim((string)$candidateProgramLabel));
-          $types .= 's';
-        }
+      // Prefer matching by normalized program code as a defensive check.
+      if ($coordinatorProgramCode !== '') {
+        $conditions[] = 'UPPER(TRIM(program)) = ?';
+        $params[] = strtoupper(trim((string)$coordinatorProgramCode));
+        $types .= 's';
+      }
 
+      foreach ($candidateProgramLabels as $candidateProgramLabel) {
+        $conditions[] = 'UPPER(TRIM(program)) = ?';
+        $params[] = strtoupper(trim((string)$candidateProgramLabel));
+        $types .= 's';
+      }
+
+      if (!empty($conditions)) {
         $syncedStmt = $conn->prepare(
           "SELECT curriculum_year, year_level, semester, course_code, course_title,
                   credit_units_lec, credit_units_lab, lect_hrs_lec, lect_hrs_lab, pre_requisite
