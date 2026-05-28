@@ -23,7 +23,7 @@ class CurriculumManagementController extends Controller
                 return response()->json(['success' => false, 'message' => 'Missing required fields'], 422);
             }
 
-            $program = trim((string) $input['program']);
+            $program = $this->normalizeProgramCode(trim((string) $input['program']));
             $curriculumYear = trim((string) $input['curriculum_year']);
             $courses = is_array($input['courses']) ? $input['courses'] : [];
             $deletedCourses = is_array($input['deleted_courses'] ?? null) ? $input['deleted_courses'] : [];
@@ -38,9 +38,8 @@ class CurriculumManagementController extends Controller
 
             $prefix = $curriculumYear . '_';
             $canonicalProgramLabel = $this->canonicalProgramLabel($program);
-            if ($canonicalProgramLabel === '') {
-                return response()->json(['success' => false, 'message' => 'Unable to resolve program label for curriculum sync.'], 422);
-            }
+            // Mirror the legacy PHP behavior: when a program is valid but missing from the catalog,
+            // use the program code itself as the sync label instead of failing saves.
 
             DB::statement(
                 "CREATE TABLE IF NOT EXISTS program_curriculum_years (
@@ -390,7 +389,7 @@ class CurriculumManagementController extends Controller
                 return response()->json(['success' => false, 'message' => 'Missing required fields'], 422);
             }
 
-            $program = trim((string) $input['program']);
+            $program = $this->normalizeProgramCode(trim((string) $input['program']));
             $curriculumYear = trim((string) $input['curriculum_year']);
 
             if (!$this->isValidProgram($program)) {
@@ -402,9 +401,7 @@ class CurriculumManagementController extends Controller
             }
 
             $canonicalProgramLabel = $this->canonicalProgramLabel($program);
-            if ($canonicalProgramLabel === '') {
-                return response()->json(['success' => false, 'message' => 'Unable to resolve program label for curriculum deletion.'], 422);
-            }
+            // If the catalog doesn't have a display name, fall back to the code itself.
 
             DB::statement(
                 "CREATE TABLE IF NOT EXISTS program_curriculum_years (
@@ -595,14 +592,167 @@ class CurriculumManagementController extends Controller
 
     private function isValidProgram(string $program): bool
     {
-        return array_key_exists(trim($program), $this->programCatalog());
+        $program = trim($program);
+        if ($program === '') {
+            return false;
+        }
+
+        // Keep parity with the legacy PHP handler: program must look like a code.
+        if (!preg_match('/^[A-Za-z][A-Za-z0-9-]{1,63}$/', $program)) {
+            return false;
+        }
+
+        $normalizedTarget = $this->normalizeProgramCode($program);
+        if ($normalizedTarget === '') {
+            return false;
+        }
+
+        // Fast path: defaults + programs table.
+        if (array_key_exists($program, $this->programCatalog())) {
+            return true;
+        }
+
+        // Accept programs that already exist in program_curriculum_years.
+        if (Schema::hasTable('program_curriculum_years')) {
+            $exists = DB::table('program_curriculum_years')
+                ->whereRaw('UPPER(TRIM(program)) = ?', [strtoupper($program)])
+                ->limit(1)
+                ->exists();
+
+            if ($exists) {
+                return true;
+            }
+        }
+
+        // Accept programs that appear in the legacy cvsucarmona_courses.programs CSV column.
+        // This matches the PHP program catalog loader which derives missing codes from that table.
+        if (Schema::hasTable('cvsucarmona_courses')) {
+            $rows = DB::table('cvsucarmona_courses')
+                ->select(['programs'])
+                ->whereNotNull('programs')
+                ->where('programs', '<>', '')
+                ->distinct()
+                ->cursor();
+
+            foreach ($rows as $row) {
+                $programsCsv = trim((string) ($row->programs ?? ''));
+                if ($programsCsv === '') {
+                    continue;
+                }
+
+                foreach (array_map('trim', explode(',', $programsCsv)) as $token) {
+                    if ($token === '') {
+                        continue;
+                    }
+
+                    $normalizedToken = $this->normalizeProgramCode($token);
+                    if ($normalizedToken !== '' && $normalizedToken === $normalizedTarget) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        logger()->warning('Curriculum save rejected: invalid program', [
+            'program' => $program,
+            'has_programs_table' => Schema::hasTable('programs'),
+            'has_program_curriculum_years' => Schema::hasTable('program_curriculum_years'),
+            'has_legacy_courses' => Schema::hasTable('cvsucarmona_courses'),
+        ]);
+
+        return false;
+    }
+
+    private function normalizeProgramCode(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        $upper = strtoupper($value);
+        $known = [
+            'BSINDT' => 'BSIndT',
+            'BSCPE' => 'BSCpE',
+            'BSIT' => 'BSIT',
+            'BSCS' => 'BSCS',
+            'BSHM' => 'BSHM',
+            'BSBA-HRM' => 'BSBA-HRM',
+            'BSBA-MM' => 'BSBA-MM',
+            'BSED-ENGLISH' => 'BSEd-English',
+            'BSED-SCIENCE' => 'BSEd-Science',
+            'BSED-MATH' => 'BSEd-Math',
+        ];
+
+        if (isset($known[$upper])) {
+            return $known[$upper];
+        }
+
+        if (
+            str_contains($upper, 'BSBA')
+            && (str_contains($upper, 'HUMAN RESOURCE') || str_contains($upper, 'HRM'))
+        ) {
+            return 'BSBA-HRM';
+        }
+
+        if (
+            str_contains($upper, 'BSBA')
+            && (str_contains($upper, 'MARKETING') || preg_match('/\bMM\b/', $upper))
+        ) {
+            return 'BSBA-MM';
+        }
+
+        if (str_contains($upper, 'COMPUTER SCIENCE')) {
+            return 'BSCS';
+        }
+        if (str_contains($upper, 'INFORMATION TECHNOLOGY')) {
+            return 'BSIT';
+        }
+        if (str_contains($upper, 'COMPUTER ENGINEERING')) {
+            return 'BSCpE';
+        }
+        if (str_contains($upper, 'INDUSTRIAL TECHNOLOGY')) {
+            return 'BSIndT';
+        }
+        if (str_contains($upper, 'HOSPITALITY MANAGEMENT')) {
+            return 'BSHM';
+        }
+
+        if (str_contains($upper, 'BUSINESS ADMINISTRATION') && str_contains($upper, 'HUMAN RESOURCE')) {
+            return 'BSBA-HRM';
+        }
+        if (str_contains($upper, 'BUSINESS ADMINISTRATION') && str_contains($upper, 'MARKETING')) {
+            return 'BSBA-MM';
+        }
+
+        if ((str_contains($upper, 'SECONDARY EDUCATION') || str_contains($upper, 'BSED')) && str_contains($upper, 'ENGLISH')) {
+            return 'BSEd-English';
+        }
+        if ((str_contains($upper, 'SECONDARY EDUCATION') || str_contains($upper, 'BSED')) && str_contains($upper, 'SCIENCE')) {
+            return 'BSEd-Science';
+        }
+        if ((str_contains($upper, 'SECONDARY EDUCATION') || str_contains($upper, 'BSED')) && str_contains($upper, 'MATH')) {
+            return 'BSEd-Math';
+        }
+
+        $sanitized = preg_replace('/[^A-Za-z0-9-]+/', '', $value) ?? '';
+        if ($sanitized === '' || !preg_match('/^[A-Za-z][A-Za-z0-9-]{1,63}$/', $sanitized)) {
+            return '';
+        }
+
+        return $sanitized;
     }
 
     private function canonicalProgramLabel(string $program): string
     {
         $catalog = $this->programCatalog();
         $key = trim($program);
-        return $catalog[$key] ?? '';
+        if ($key === '') {
+            return '';
+        }
+
+        // If the catalog doesn't have a display name, fall back to the code itself.
+        return $catalog[$key] ?? $key;
     }
 
     private function programCatalog(): array
