@@ -1402,17 +1402,17 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
         }
 
         .container {
-            margin: 65px 0 15px 250px;
-            width: calc(100vw - 250px);
-            padding: 0 6px;
+            margin: 65px 16px 15px 266px;
+            width: calc(100vw - 282px);
+            padding: 0;
             box-sizing: border-box;
             transform: none;
             transition: margin-left 0.3s ease, width 0.3s ease;
         }
 
         .sidebar.collapsed ~ .container {
-            margin-left: 0;
-            width: 100vw;
+            margin-left: 16px;
+            width: calc(100vw - 32px);
         }
 
         .page-title {
