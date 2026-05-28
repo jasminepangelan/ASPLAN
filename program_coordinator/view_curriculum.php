@@ -233,6 +233,7 @@ if ($errorMessage === '') {
         }
 
         $coursesByTerm[$yearLevel][$semester][] = [
+            'curriculum_key' => (string)$row['curriculumyear_coursecode'],
             'course_code' => $courseCode,
             'course_title' => (string)($row['course_title'] ?? ''),
             'credit_units_lec' => (int)($row['credit_units_lec'] ?? 0),
@@ -508,6 +509,8 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
               <tbody data-year-level="<?= htmlspecialchars($yearLevel) ?>" data-semester="<?= htmlspecialchars($semester) ?>">
                 <?php foreach ($rows as $c): ?>
                   <tr class="course-row"
+                      data-original-curriculum-key="<?= htmlspecialchars($c['curriculum_key'] ?? ($selectedYear . '_' . $c['course_code'])) ?>"
+                      data-curriculum-key-prefix="<?= htmlspecialchars(explode('_', (string)($c['curriculum_key'] ?? ($selectedYear . '_' . $c['course_code'])), 2)[0] ?? $selectedYear) ?>"
                       data-original-code="<?= htmlspecialchars($c['course_code']) ?>"
                       data-original-title="<?= htmlspecialchars($c['course_title']) ?>"
                       data-original-credit-lec="<?= (int)$c['credit_units_lec'] ?>"
@@ -556,6 +559,8 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
 
       const row = document.createElement('tr');
       row.className = 'course-row';
+      row.dataset.originalCurriculumKey = '';
+      row.dataset.curriculumKeyPrefix = selectedYear;
       row.dataset.originalCode = '';
       row.dataset.originalTitle = '';
       row.dataset.originalCreditLec = '';
@@ -598,6 +603,8 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
 
         tbody.querySelectorAll('tr.course-row').forEach((row) => {
           const originalCode = (row.dataset.originalCode || '').trim();
+          const originalCurriculumKey = (row.dataset.originalCurriculumKey || '').trim();
+          const curriculumKeyPrefix = (row.dataset.curriculumKeyPrefix || selectedYear || '').trim();
           const originalTitle = (row.dataset.originalTitle || '').trim();
           const originalCreditLec = parseInt(row.dataset.originalCreditLec || '0', 10) || 0;
           const originalCreditLab = parseInt(row.dataset.originalCreditLab || '0', 10) || 0;
@@ -641,7 +648,9 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
             lect_hrs_lec: hrsLec,
             lect_hrs_lab: hrsLab,
             pre_requisite: prereq,
-            original_course_code: originalCode
+            original_course_code: originalCode,
+            original_curriculum_key: originalCurriculumKey,
+            curriculum_key_prefix: curriculumKeyPrefix
           });
         });
       });
@@ -666,17 +675,24 @@ $programDisplayName = $programNames[$coordinatorProgramCode] ?? $coordinatorProg
           return;
         }
 
-        if (!visibleCodeMap.has(code)) {
-          visibleCodeMap.set(code, []);
+        const keyPrefix = String(row.dataset.curriculumKeyPrefix || selectedYear || '').trim();
+        const codeIdentity = keyPrefix + '_' + code;
+        if (!visibleCodeMap.has(codeIdentity)) {
+          visibleCodeMap.set(codeIdentity, {
+            code: code,
+            titles: []
+          });
         }
-        visibleCodeMap.get(code).push(title);
+        visibleCodeMap.get(codeIdentity).titles.push(title);
       });
 
       const codeMap = new Map();
-      visibleCodeMap.forEach((titles, code) => codeMap.set(code, titles));
+      visibleCodeMap.forEach((entry, codeIdentity) => codeMap.set(codeIdentity, entry));
 
       const duplicates = [];
-      codeMap.forEach((titles, code) => {
+      codeMap.forEach((entry) => {
+        const code = entry.code || '';
+        const titles = entry.titles || [];
         if (titles.length > 1) {
           const uniqueTitles = [...new Set(titles.filter(Boolean))];
           duplicates.push(uniqueTitles.length > 1 ? `${code} (${uniqueTitles.join(' / ')})` : code);

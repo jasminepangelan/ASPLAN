@@ -120,6 +120,7 @@ class ProgramCoordinatorCurriculumViewController extends Controller
                 }
 
                 $coursesByTerm[$yearLevel][$semester][] = [
+                    'curriculum_key' => (string) ($row->curriculumyear_coursecode ?? ''),
                     'course_code' => (string) $courseCode,
                     'course_title' => (string) ($row->course_title ?? ''),
                     'credit_units_lec' => (int) ($row->credit_units_lec ?? 0),
