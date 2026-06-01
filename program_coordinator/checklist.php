@@ -147,11 +147,13 @@ function csChecklistIsApprovedRemark($remark): bool {
         return false;
     }
 
-    if (strpos($normalized, 'APPROVED') !== false) {
+    if (strpos($normalized, 'APPROVE') !== false) {
         return true;
     }
 
     return strpos($normalized, 'CREDITED') !== false;
+}
+
 function csChecklistNormalizeCourseToken($value): string {
   $value = strtoupper(trim((string)$value));
   if ($value === '') {

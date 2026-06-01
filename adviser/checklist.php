@@ -195,7 +195,7 @@ function csChecklistIsApprovedRemark($remark): bool {
     return false;
   }
 
-  if (strpos($normalized, 'APPROVED') !== false) {
+  if (strpos($normalized, 'APPROVE') !== false) {
     return true;
   }
 
