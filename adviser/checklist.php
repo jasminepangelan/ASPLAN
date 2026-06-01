@@ -1500,7 +1500,7 @@ foreach ($all_courses as $csRow) {
             // even when they are outside the current term. Keep prerequisite
             // blocking in place.
             $isRowLocked = $isPrereqBlocked || ($isCurrentTermBlocked && !$courseInRecommendedLoad);
-            $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-term-blocked='" . ($isCurrentTermBlocked ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "' data-course-row-key='" . htmlspecialchars((string)$courseRowKey, ENT_QUOTES, 'UTF-8') . "'";
+            $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-term-blocked='" . ($isCurrentTermBlocked ? '1' : '0') . "' data-recommended-load='" . ($courseInRecommendedLoad ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "' data-course-row-key='" . htmlspecialchars((string)$courseRowKey, ENT_QUOTES, 'UTF-8') . "'";
             $lockTitleAttr = $isRowLocked ? " title='" . htmlspecialchars(implode(' | ', $lockReasons), ENT_QUOTES, 'UTF-8') . "'" : '';
             $disabledAttr = $isRowLocked ? " disabled" . $lockTitleAttr : '';
             $readonlyAttr = $isRowLocked ? " readonly" . $lockTitleAttr : '';
@@ -1798,7 +1798,12 @@ function syncGradeSelectVisualState(select, isPending) {
 }
 
 function isLockedChecklistRow(row) {
-  return !!(row && row.dataset && (row.dataset.prereqBlocked === '1' || row.dataset.termBlocked === '1'));
+  if (!row || !row.dataset) return false;
+  const prereqBlocked = row.dataset.prereqBlocked === '1';
+  const termBlocked = row.dataset.termBlocked === '1';
+  const recommended = row.dataset.recommendedLoad === '1';
+  // Term-locked rows remain editable when they are part of the recommended load
+  return prereqBlocked || (termBlocked && !recommended);
 }
 
 function bindChecklistFieldListeners(root = document) {
