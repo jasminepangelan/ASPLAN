@@ -1508,7 +1508,7 @@ foreach ($all_courses as $csRow) {
 
             // Per-row debug details (visible only for the specified student)
             $debug_info = '';
-            if ((string)$student_id === '220100021') {
+            if (false) {
               $debug_info = "<div style='font-size:10px;color:#666;margin-top:4px;'>";
               $debug_info .= "grades:1st=" . htmlspecialchars((string)$grade1_val) . " 2nd=" . htmlspecialchars((string)$grade2_val) . " 3rd=" . htmlspecialchars((string)$grade3_val) . "; ";
               $debug_info .= "inRecommended=" . ($courseInRecommendedLoad ? '1' : '0') . " show2nd=" . ($show_2nd ? '1' : '0') . " termLocked=" . ($isCurrentTermBlocked ? '1' : '0') . " prereqLocked=" . ($isPrereqBlocked ? '1' : '0');
