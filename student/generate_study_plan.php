@@ -3518,17 +3518,16 @@ class StudyPlanGenerator {
         return true;
     }
 
-    private function doesTermHaveAvailableCourses($year, $semester): bool {
+    private function doesTermHaveSchedulableCourses($year, $semester): bool {
         $available = $this->applyConstraintsForExactTerm($year, $semester, $this->completed_courses, $this->all_courses);
-        foreach ($available as $code => $course) {
-            if (!$this->standingConstraintSatisfied($code, $year, $semester)) {
-                continue;
-            }
-
-            return true;
+        if (empty($available)) {
+            return false;
         }
 
-        return false;
+        $max_units = $this->getMaxUnitsForTerm($this->retention_status, $year, $semester);
+        $scheduled = $this->buildTermPlanFromAvailable($available, $max_units, $year, $this->completed_courses, false, $semester);
+
+        return !empty($scheduled);
     }
 
     private function getOrderedCurriculumTerms() {
@@ -3675,24 +3674,26 @@ class StudyPlanGenerator {
             && !empty($this->semester_grade_history[$termKey]['courses']);
 
         if ($hasApprovedGradesInTerm) {
-            // advance to next term when possible
-            $nextIndex = $firstIncompleteIndex + 1;
-            if ($nextIndex < count($terms)) {
-                $this->debugLog('ADVANCE_TERM: advancing from ' . $termKey . ' to ' . $terms[$nextIndex]['year'] . '|' . $terms[$nextIndex]['semester']);
-                return $terms[$nextIndex];
+            // advance to the next future term that can actually be planned.
+            for ($nextIndex = $firstIncompleteIndex + 1; $nextIndex < count($terms); $nextIndex++) {
+                $nextTerm = $terms[$nextIndex];
+                if ($this->doesTermHaveSchedulableCourses($nextTerm['year'], $nextTerm['semester'])) {
+                    $this->debugLog('ADVANCE_TERM: advancing from ' . $termKey . ' to ' . $nextTerm['year'] . '|' . $nextTerm['semester']);
+                    return $nextTerm;
+                }
             }
-            // no next term defined; return current term (extra-term logic will handle extension)
-            $this->debugLog('ADVANCE_TERM: term ' . $termKey . ' has approved grades but no next curriculum term defined');
+            // no future schedulable term defined; return current term (extra-term logic will handle extension)
+            $this->debugLog('ADVANCE_TERM: term ' . $termKey . ' has approved grades but no future schedulable term defined');
             return $currentTerm;
         }
 
         // If the current unresolved term has no schedulable courses, advance
-        // to the next future term that does have available courses.
-        if (!$this->doesTermHaveAvailableCourses($currentTerm['year'], $currentTerm['semester'])) {
+        // to the next future term that can actually be planned.
+        if (!$this->doesTermHaveSchedulableCourses($currentTerm['year'], $currentTerm['semester'])) {
             for ($nextIndex = $firstIncompleteIndex + 1; $nextIndex < count($terms); $nextIndex++) {
                 $nextTerm = $terms[$nextIndex];
-                if ($this->doesTermHaveAvailableCourses($nextTerm['year'], $nextTerm['semester'])) {
-                    $this->debugLog('ADVANCE_TERM: no available courses in ' . $termKey . '; advancing to ' . $nextTerm['year'] . '|' . $nextTerm['semester']);
+                if ($this->doesTermHaveSchedulableCourses($nextTerm['year'], $nextTerm['semester'])) {
+                    $this->debugLog('ADVANCE_TERM: no schedulable courses in ' . $termKey . '; advancing to ' . $nextTerm['year'] . '|' . $nextTerm['semester']);
                     return $nextTerm;
                 }
             }
