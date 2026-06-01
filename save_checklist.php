@@ -4,6 +4,7 @@ require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/program_shift_service.php';
 require_once __DIR__ . '/includes/checklist_term_lock_service.php';
 require_once __DIR__ . '/includes/laravel_bridge.php';
+require_once __DIR__ . '/student/generate_study_plan.php';
 
 // Disable any output buffering or errors that might corrupt JSON
 error_reporting(0);
@@ -430,6 +431,32 @@ try {
 
         $prereqBlockersByCourse = csStaffChecklistBuildPrereqBlockersLocal($conn, (string)$student_id, (string)$program_view);
         $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, (string)$student_id);
+        // Determine next recommended load course codes so staff can edit term-locked rows
+        $nextRecommendedLoadCourseCodes = [];
+        try {
+            $studentProgramStmt = $conn->prepare('SELECT program FROM student_info WHERE student_number = ? LIMIT 1');
+            if ($studentProgramStmt) {
+                $studentProgramStmt->bind_param('s', $student_id);
+                $studentProgramStmt->execute();
+                $progRes = $studentProgramStmt->get_result();
+                $studentProgram = ($progRes && ($r = $progRes->fetch_assoc())) ? ($r['program'] ?? '') : '';
+                $studentProgramStmt->close();
+            } else {
+                $studentProgram = '';
+            }
+            $generator = new StudyPlanGenerator($student_id, $studentProgram);
+            $optimized = $generator->generateOptimizedPlan();
+            foreach ($optimized as $planTerm) {
+                if (!empty($planTerm['skipped']) || empty($planTerm['courses']) || !is_array($planTerm['courses'])) continue;
+                foreach ($planTerm['courses'] as $planCourse) {
+                    $planCourseCode = csStaffChecklistNormalizeCourseTokenLocal((string)($planCourse['code'] ?? ''));
+                    if ($planCourseCode !== '') $nextRecommendedLoadCourseCodes[$planCourseCode] = true;
+                }
+                break;
+            }
+        } catch (Throwable $e) {
+            // ignore and leave recommended load empty
+        }
         $errors = [];
 
         // Defensive: ensure grades is associative array
@@ -482,7 +509,9 @@ try {
 
             $gradeNorm = trim((string)$grade);
             $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && strtoupper($gradeNorm) !== 'NO GRADE');
-            if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+            $courseNorm = csStaffChecklistNormalizeCourseTokenLocal($course_code);
+            $inRecommended = $courseNorm !== '' && !empty($nextRecommendedLoadCourseCodes[$courseNorm]);
+            if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm) && !$inRecommended) {
                 $errors[] = "Course {$course_code} is outside the student's current term.";
                 continue;
             }
@@ -614,7 +643,9 @@ try {
             || ($fg3Norm !== '' && strtoupper($fg3Norm) !== 'NO GRADE');
 
         $courseRowKey = trim((string)($course_row_keys[$i] ?? ''));
-        if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+        $courseNorm = csStaffChecklistNormalizeCourseTokenLocal($courseCode);
+        $courseInRecommendedLoad = $courseNorm !== '' && !empty($nextRecommendedLoadCourseCodes[$courseNorm]);
+        if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm) && !$courseInRecommendedLoad) {
             $errors[] = "Course {$courseCode} is outside the student's current term.";
             continue;
         }

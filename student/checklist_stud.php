@@ -120,6 +120,8 @@ function resolveProgramAbbreviation($programName) {
   ];
   if (isset($abbrAliases[$normalized])) {
     return $abbrAliases[$normalized];
+  $csChecklistPrereqBlockers = [];
+
   }
 
   if (strpos($normalized, 'BUSINESS ADMINISTRATION') !== false && strpos($normalized, 'MARKETING') !== false) {
@@ -327,8 +329,7 @@ function csChecklistParsePrerequisites($prereq_string): array {
       'GWA',
       'AVERAGE GRADE',
     ] as $fragment) {
-      if (strpos($upper, $fragment) !== false) {
-        return true;
+      return true;
       }
     }
 
@@ -501,6 +502,22 @@ $year_keys = array_keys($year_groups);
 $pages = array_chunk($year_keys, 2);
 $total_pages = count($pages);
 if ($total_pages === 0) $total_pages = 1;
+
+// Precompute next recommended load course codes for student view
+$nextRecommendedLoadCourseCodes = [];
+try {
+  $optimizedPlan = $studyPlanGenerator->generateOptimizedPlan();
+  foreach ($optimizedPlan as $planTerm) {
+    if (!empty($planTerm['skipped']) || empty($planTerm['courses']) || !is_array($planTerm['courses'])) continue;
+    foreach ($planTerm['courses'] as $planCourse) {
+      $code = csChecklistNormalizeCourseToken((string)($planCourse['code'] ?? ''));
+      if ($code !== '') $nextRecommendedLoadCourseCodes[$code] = true;
+    }
+    break;
+  }
+} catch (Throwable $e) {
+  // ignore
+}
 
 $studentShellPayload = htmlspecialchars(json_encode([
     'title' => 'Checklist Workspace',
@@ -1835,8 +1852,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                   ($approvedBy === 'shift_engine') ||
                                   ($submittedBy === 'shift_engine');
                                 $courseTermKey = trim((string)($row['year'] ?? '')) . '|' . trim((string)($row['semester'] ?? ''));
-                                $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === $termLockKey);
-                                $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === $termLockKey);
+                                $courseInRecommendedLoad = !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
+                                $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === $termLockKey || $courseInRecommendedLoad);
+                                $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === $termLockKey || $courseInRecommendedLoad);
 
                                 $courseCodeNorm = csChecklistNormalizeCourseToken($row['course_code'] ?? '');
                                 $courseRowKey = csChecklistBuildRowKey((array)$row);
@@ -1856,7 +1874,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                   ? (" disabled data-prereq-blocked='1' title='" . htmlspecialchars($prereqTooltip, ENT_QUOTES, 'UTF-8') . "'")
                                   : '';
 
-                                echo "<tr{$prereqAttr}>
+                                $recommendedAttr = $courseInRecommendedLoad ? " data-recommended-load='1'" : " data-recommended-load='0'";
+                                echo "<tr{$prereqAttr}{$recommendedAttr}>
                                 <td>{$row['course_code']}</td>
                                 <td>{$row['course_title']}</td>
                                 <td>{$row['credit_unit_lec']}</td>
