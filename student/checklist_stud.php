@@ -1862,8 +1862,10 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 $courseCodeNorm = csChecklistNormalizeCourseToken($row['course_code'] ?? '');
                                 $courseRowKey = csChecklistBuildRowKey((array)$row);
                                 $courseInRecommendedLoad = !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
-                                $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === $termLockKey || $courseInRecommendedLoad);
-                                $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === $termLockKey || $courseInRecommendedLoad);
+                                $hasSavedGrade2 = trim((string)$grade2_val) !== '' || trim((string)$remarks2) !== '';
+                                $hasSavedGrade3 = trim((string)$grade3_val) !== '' || trim((string)$remarks3) !== '';
+                                $show_2nd    = $hasSavedGrade2 || (isFailingGrade($grade1_val) && ($courseTermKey === $termLockKey || $courseInRecommendedLoad));
+                                $show_3rd    = $hasSavedGrade3 || ($show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === $termLockKey || $courseInRecommendedLoad));
                                 $prereqBlockers = $courseRowKey !== '' ? ($csChecklistPrereqBlockers[$courseRowKey] ?? []) : [];
                                 $isPrereqBlocked = !empty($prereqBlockers);
                                 $prereqTooltip = $isPrereqBlocked
