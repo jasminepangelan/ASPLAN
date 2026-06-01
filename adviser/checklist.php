@@ -176,6 +176,10 @@ error_log("Checklist debug student={$student_id} nextRecommended=" . json_encode
 $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, $student_id);
 $currentEnrollmentTermKey = trim((string)($currentEnrollmentTerm['year'] ?? '')) . '|' . trim((string)($currentEnrollmentTerm['semester'] ?? ''));
 $termLockSource = !empty(trim($effectiveTermKey, '|')) ? $effectiveTerm : (!empty(trim($currentEnrollmentTermKey, '|')) ? $currentEnrollmentTerm : null);
+if (!empty($termLockSource) && is_array($termLockSource)) {
+  $termLockSource['year'] = ctlsNormalizeTermYearLabel((string)($termLockSource['year'] ?? ''));
+  $termLockSource['semester'] = ctlsNormalizeTermSemesterLabel((string)($termLockSource['semester'] ?? ''));
+}
 $termLockKey = $termLockSource ? trim((string)($termLockSource['year'] ?? '')) . '|' . trim((string)($termLockSource['semester'] ?? '')) : '';
 
 

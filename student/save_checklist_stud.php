@@ -416,6 +416,12 @@ try {
     $currentEnrollmentTermKey = trim((string)($currentEnrollmentTerm['year'] ?? '')) . '|' . trim((string)($currentEnrollmentTerm['semester'] ?? ''));
     $termLockSource = !empty(trim($currentEnrollmentTermKey, '|')) ? $currentEnrollmentTerm : $effectiveTerm;
 
+    // Ensure termLockSource values are normalized to match checklist row parsing
+    if (!empty($termLockSource) && is_array($termLockSource)) {
+        $termLockSource['year'] = ctlsNormalizeTermYearLabel((string)($termLockSource['year'] ?? ''));
+        $termLockSource['semester'] = ctlsNormalizeTermSemesterLabel((string)($termLockSource['semester'] ?? ''));
+    }
+
     // Build prerequisite blockers based on the student's current/program-view curriculum.
     $prereqBlockersByCourse = [];
     try {
