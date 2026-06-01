@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
+require_once dirname(__DIR__, 5) . '/includes/checklist_term_lock_service.php';
+
 class ChecklistController extends Controller
 {
     public function view(Request $request): JsonResponse
@@ -128,12 +130,13 @@ class ChecklistController extends Controller
         $professors = $this->normalizeAssoc($professors, $courses);
 
         $prereqBlockersByCourse = $this->buildPrereqBlockersForStudent($studentId, $programView);
+        $currentEnrollmentTerm = $this->loadCurrentEnrollmentTerm($studentId);
         $errors = [];
 
         $successful = 0;
         $timestamp = now();
 
-        DB::transaction(function () use ($studentId, $courses, $courseRowKeys, $grades, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$errors): void {
+        DB::transaction(function () use ($studentId, $courses, $courseRowKeys, $grades, $professors, $timestamp, $prereqBlockersByCourse, $currentEnrollmentTerm, &$successful, &$errors): void {
             foreach ($courses as $index => $courseCode) {
                 $courseCode = trim((string) $courseCode);
                 if ($courseCode === '') {
@@ -143,6 +146,10 @@ class ChecklistController extends Controller
                 $gradeNorm = $this->normalizeString($grades[$courseCode] ?? '');
                 $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && $gradeNorm !== 'No Grade');
                 $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+                    $errors[] = "Course {$courseCode} is outside the student's current term.";
+                    continue;
+                }
                 if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
                     $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
                     continue;
@@ -231,12 +238,13 @@ class ChecklistController extends Controller
         $professors = $this->normalizeAssoc($professors, $courses);
 
         $prereqBlockersByCourse = $this->buildPrereqBlockersForStudent($studentId, $programView);
+        $currentEnrollmentTerm = $this->loadCurrentEnrollmentTerm($studentId);
         $errors = [];
 
         $successful = 0;
         $timestamp = now();
 
-        DB::transaction(function () use ($studentId, $courses, $courseRowKeys, $grades, $grades2, $grades3, $remarks, $professors, $timestamp, $prereqBlockersByCourse, &$successful, &$errors): void {
+        DB::transaction(function () use ($studentId, $courses, $courseRowKeys, $grades, $grades2, $grades3, $remarks, $professors, $timestamp, $prereqBlockersByCourse, $currentEnrollmentTerm, &$successful, &$errors): void {
             foreach ($courses as $index => $courseCode) {
                 $courseCode = trim((string) $courseCode);
                 if ($courseCode === '') {
@@ -252,6 +260,10 @@ class ChecklistController extends Controller
                     || ($grade2 !== '' && $grade2 !== 'No Grade')
                     || ($grade3 !== '' && $grade3 !== 'No Grade');
                 $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+                    $errors[] = "Course {$courseCode} is outside the student's current term.";
+                    continue;
+                }
                 if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
                     $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
                     continue;
@@ -698,6 +710,33 @@ class ChecklistController extends Controller
                 : "Successfully saved {$successful} record(s).",
             'errors' => $errors,
         ]);
+    }
+
+    private function loadCurrentEnrollmentTerm(string $studentId): ?array
+    {
+        if (!Schema::hasTable('student_current_enrollments')) {
+            return null;
+        }
+
+        $row = DB::table('student_current_enrollments')
+            ->select(['year_level', 'semester'])
+            ->where('student_id', $studentId)
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        $year = ctlsNormalizeTermYearLabel((string) ($row->year_level ?? ''));
+        $semester = ctlsNormalizeTermSemesterLabel((string) ($row->semester ?? ''));
+        if ($year === '' || $semester === '') {
+            return null;
+        }
+
+        return [
+            'year' => $year,
+            'semester' => $semester,
+        ];
     }
 
     private function normalizeString(mixed $value): string

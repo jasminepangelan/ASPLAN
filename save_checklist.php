@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/program_shift_service.php';
+require_once __DIR__ . '/includes/checklist_term_lock_service.php';
 require_once __DIR__ . '/includes/laravel_bridge.php';
 
 // Disable any output buffering or errors that might corrupt JSON
@@ -261,6 +262,7 @@ function csStaffChecklistBuildPrereqBlockersLocal($conn, string $studentId, stri
 
         foreach ($rowsForPrereq as $r) {
             $codeNorm = csStaffChecklistNormalizeCourseTokenLocal($r['course_code'] ?? '');
+            $courseRowKey = csStaffChecklistBuildRowKeyLocal((array)$r);
             if ($codeNorm === '') {
                 continue;
             }
@@ -277,7 +279,7 @@ function csStaffChecklistBuildPrereqBlockersLocal($conn, string $studentId, stri
                 }
             }
 
-            if (!empty($blockers)) {
+            if (!empty($blockers) && $courseRowKey !== '') {
                 $prereqBlockersByCourse[$courseRowKey] = $blockers;
             }
         }
@@ -427,6 +429,7 @@ try {
         }
 
         $prereqBlockersByCourse = csStaffChecklistBuildPrereqBlockersLocal($conn, (string)$student_id, (string)$program_view);
+        $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, (string)$student_id);
         $errors = [];
 
         // Defensive: ensure grades is associative array
@@ -479,6 +482,10 @@ try {
 
             $gradeNorm = trim((string)$grade);
             $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && strtoupper($gradeNorm) !== 'NO GRADE');
+            if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+                $errors[] = "Course {$course_code} is outside the student's current term.";
+                continue;
+            }
             if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
                 $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
                 continue;
@@ -533,6 +540,7 @@ try {
     }
 
     $prereqBlockersByCourse = csStaffChecklistBuildPrereqBlockersLocal($conn, (string)$student_id, (string)$program_view);
+    $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, (string)$student_id);
     $errors = [];
 
     $stmt = $conn->prepare("
@@ -606,6 +614,10 @@ try {
             || ($fg3Norm !== '' && strtoupper($fg3Norm) !== 'NO GRADE');
 
         $courseRowKey = trim((string)($course_row_keys[$i] ?? ''));
+        if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+            $errors[] = "Course {$courseCode} is outside the student's current term.";
+            continue;
+        }
         if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
             $errors[] = "Prerequisite(s) not cleared for {$courseCode}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
             continue;

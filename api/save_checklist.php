@@ -43,6 +43,7 @@ try {
     $mode = $inputResult['mode'];
     $studentId = $inputResult['student_id'];
     $courses = $inputResult['courses'];
+    $courseRowKeys = $inputResult['course_row_keys'] ?? [];
     $grades = $inputResult['grades'];
     $remarks = $inputResult['evaluator_remarks'];
     $professors = $inputResult['professors'];
@@ -52,6 +53,7 @@ try {
         $bridgePayload = [
             'student_id' => $studentId,
             'courses' => $courses,
+            'course_row_keys' => $courseRowKeys,
             'professor_instructors' => $professors,
         ];
 
@@ -103,7 +105,7 @@ try {
 
     // Process bulk approval
     if ($mode === 'bulk') {
-        $saveResult = csSaveBulkChecklistApprovals($conn, $studentId, $courses, $grades, $professors);
+        $saveResult = csSaveBulkChecklistApprovals($conn, $studentId, $courses, $grades, $professors, $courseRowKeys);
         
         if ($saveResult['success'] || $saveResult['count'] > 0) {
             elsInfo('Bulk checklist approval successful', ['student_id' => $studentId, 'count' => $saveResult['count']], 'checklist_api');
@@ -117,7 +119,7 @@ try {
         }
     } else {
         // Standard save
-        $saveResult = csSaveChecklistRecords($conn, $studentId, $courses, $grades, $remarks, $professors);
+        $saveResult = csSaveChecklistRecords($conn, $studentId, $courses, $grades, $remarks, $professors, $courseRowKeys);
         
         if ($saveResult['success'] || $saveResult['count'] > 0) {
             elsInfo('Checklist save successful', ['student_id' => $studentId, 'count' => $saveResult['count'], 'errors' => count($saveResult['errors'])], 'checklist_api');

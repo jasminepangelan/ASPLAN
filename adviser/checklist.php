@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
+require_once __DIR__ . '/../includes/checklist_term_lock_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
 $csrfToken = getCSRFToken();
@@ -1434,9 +1435,15 @@ foreach ($all_courses as $csRow) {
             $courseCodeNorm = csChecklistNormalizeCourseToken($courseCode);
             $courseRowKey = csChecklistBuildRowKey((array)$row);
             $isPrereqBlocked = ($courseRowKey !== '' && isset($csChecklistPrereqBlockers[$courseRowKey]));
+            $isCurrentTermBlocked = ($effectiveTermKey !== '' && ctlsBuildTermKey((string)($row['year'] ?? ''), (string)($row['semester'] ?? '')) !== ($effectiveTermKey ?? ''));
             $prereqTooltip = '';
+            $lockReasons = [];
             if ($isPrereqBlocked) {
               $prereqTooltip = 'Prerequisite(s) not cleared: ' . implode(', ', (array)$csChecklistPrereqBlockers[$courseRowKey]);
+              $lockReasons[] = $prereqTooltip;
+            }
+            if ($isCurrentTermBlocked) {
+              $lockReasons[] = 'Outside current term: ' . ($effectiveTermKey ?? '');
             }
 
             $grade1_val  = $row['final_grade'] ?? '';
@@ -1459,12 +1466,12 @@ foreach ($all_courses as $csRow) {
                     $remark_opts[] = $existingRemark;
                 }
             }
-            $courseRowKey = csChecklistBuildRowKey((array)$row);
-            $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "' data-course-row-key='" . htmlspecialchars((string)$courseRowKey, ENT_QUOTES, 'UTF-8') . "'";
-            $lockTitleAttr = $isPrereqBlocked ? " title='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "'" : '';
-            $disabledAttr = $isPrereqBlocked ? " disabled" . $lockTitleAttr : '';
-            $readonlyAttr = $isPrereqBlocked ? " readonly" . $lockTitleAttr : '';
-            $approveDisabledAttr = $isPrereqBlocked ? " disabled" . $lockTitleAttr : '';
+            $isRowLocked = $isPrereqBlocked || $isCurrentTermBlocked;
+            $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-term-blocked='" . ($isCurrentTermBlocked ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "' data-course-row-key='" . htmlspecialchars((string)$courseRowKey, ENT_QUOTES, 'UTF-8') . "'";
+            $lockTitleAttr = $isRowLocked ? " title='" . htmlspecialchars(implode(' | ', $lockReasons), ENT_QUOTES, 'UTF-8') . "'" : '';
+            $disabledAttr = $isRowLocked ? " disabled" . $lockTitleAttr : '';
+            $readonlyAttr = $isRowLocked ? " readonly" . $lockTitleAttr : '';
+            $approveDisabledAttr = $isRowLocked ? " disabled" . $lockTitleAttr : '';
 
             echo "<tr data-semester='" . htmlspecialchars((string)$currentYear . '-' . (string)$currentSemester) . "'" . $rowPrereqAttrs . ">
                 <td>" . htmlspecialchars($courseCode) . "</td>
@@ -1575,7 +1582,7 @@ function setSemesterApproved(semesterKey, checked) {
     // Check/uncheck all approve-checkboxes for this semester, but only for rows with grades
     document.querySelectorAll(`tr[data-semester='${semesterKey}'] .approve-checkbox`).forEach(function(cb) {
     const row = cb.closest('tr');
-    if (row && row.dataset && row.dataset.prereqBlocked === '1') {
+        if (isLockedChecklistRow(row)) {
       cb.checked = false;
       return;
     }
@@ -1664,7 +1671,7 @@ document.addEventListener('change', function(e) {
     document.querySelectorAll('[name^="final_grade"]').forEach(function(course) {
         if (!/^final_grade\[/.test(course.name)) return; // skip final_grade_2 and final_grade_3
       const row = course.closest('tr');
-      if (row && row.dataset && row.dataset.prereqBlocked === '1') {
+      if (isLockedChecklistRow(row)) {
         return;
       }
         let courseCode = course.name.match(/\[(.*?)\]/)[1];
@@ -1745,6 +1752,10 @@ function syncGradeSelectVisualState(select, isPending) {
 
     select.classList.toggle('is-pending', !!isPending);
     select.classList.toggle('is-readonly', !!select.disabled);
+}
+
+function isLockedChecklistRow(row) {
+  return !!(row && row.dataset && (row.dataset.prereqBlocked === '1' || row.dataset.termBlocked === '1'));
 }
 
 function bindChecklistFieldListeners(root = document) {

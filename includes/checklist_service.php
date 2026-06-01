@@ -4,6 +4,8 @@
  * Handles student checklist/grade submissions with bulk approval support
  */
 
+require_once __DIR__ . '/checklist_term_lock_service.php';
+
 /**
  * Validate if user has permission to save checklist
  * 
@@ -60,6 +62,7 @@ function csValidateCSRFToken(): array {
  *     'mode' => 'bulk'|'standard'|null,
  *     'student_id' => string,
  *     'courses' => array,
+ *     'course_row_keys' => array|null,
  *     'grades' => array|null,
  *     'evaluator_remarks' => array|null,
  *     'professors' => array|null,
@@ -81,6 +84,7 @@ function csParseChecklistInput(): array {
             'mode' => 'bulk',
             'student_id' => $_POST['student_id'] ?? '',
             'courses' => isset($_POST['courses']) ? json_decode($_POST['courses'], true) : [],
+            'course_row_keys' => isset($_POST['course_row_keys']) ? json_decode($_POST['course_row_keys'], true) : [],
             'grades' => isset($_POST['grades']) ? json_decode($_POST['grades'], true) : [],
             'evaluator_remarks' => null,
             'professors' => isset($_POST['professors']) ? json_decode($_POST['professors'], true) : [],
@@ -104,6 +108,7 @@ function csParseChecklistInput(): array {
                 'mode' => 'bulk',
                 'student_id' => $input['student_id'] ?? '',
                 'courses' => $input['courses'] ?? [],
+                'course_row_keys' => $input['course_row_keys'] ?? [],
                 'grades' => $input['grades'] ?? [],
                 'evaluator_remarks' => null,
                 'professors' => isset($input['professors']) ? $input['professors'] : [],
@@ -117,6 +122,7 @@ function csParseChecklistInput(): array {
         'mode' => 'standard',
         'student_id' => $_POST['student_id'] ?? '',
         'courses' => isset($_POST['courses']) ? json_decode($_POST['courses'], true) : [],
+        'course_row_keys' => isset($_POST['course_row_keys']) ? json_decode($_POST['course_row_keys'], true) : [],
         'grades' => isset($_POST['final_grades']) ? json_decode($_POST['final_grades'], true) : [],
         'evaluator_remarks' => isset($_POST['evaluator_remarks']) ? json_decode($_POST['evaluator_remarks'], true) : [],
         'professors' => isset($_POST['professor_instructors']) ? json_decode($_POST['professor_instructors'], true) : [],
@@ -178,10 +184,12 @@ function csNormalizeArrayData(array $array, array $keys): array {
  * @param array $professors Professors (indexed or associative)
  * @return array ['success' => bool, 'count' => int, 'errors' => array]
  */
-function csSaveBulkChecklistApprovals($conn, string $studentId, array $courses, array $grades, array $professors): array {
+function csSaveBulkChecklistApprovals($conn, string $studentId, array $courses, array $grades, array $professors, array $courseRowKeys = []): array {
     if (!csValidateStudentExists($conn, $studentId)) {
         return ['success' => false, 'count' => 0, 'errors' => ['Student ID does not exist']];
     }
+
+    $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, $studentId);
 
     // Normalize grade and professor arrays
     $grades = csNormalizeArrayData($grades, $courses);
@@ -211,9 +219,15 @@ function csSaveBulkChecklistApprovals($conn, string $studentId, array $courses, 
     $successful = 0;
     $errors = [];
 
-    foreach ($courses as $course_code) {
+    foreach ($courses as $index => $course_code) {
         $grade = isset($grades[$course_code]) ? $grades[$course_code] : '';
         $professor = isset($professors[$course_code]) ? $professors[$course_code] : '';
+        $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+
+        if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+            $errors[] = "Course $course_code is outside the student's current term.";
+            continue;
+        }
         
         $stmt->bind_param('ssss', $studentId, $course_code, $grade, $professor);
         
@@ -244,10 +258,12 @@ function csSaveBulkChecklistApprovals($conn, string $studentId, array $courses, 
  * @param array $professors Professors (indexed or associative)
  * @return array ['success' => bool, 'count' => int, 'errors' => array]
  */
-function csSaveChecklistRecords($conn, string $studentId, array $courses, array $grades, array $remarks, array $professors): array {
+function csSaveChecklistRecords($conn, string $studentId, array $courses, array $grades, array $remarks, array $professors, array $courseRowKeys = []): array {
     if (!csValidateStudentExists($conn, $studentId)) {
         return ['success' => false, 'count' => 0, 'errors' => ['Student ID does not exist']];
     }
+
+    $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, $studentId);
 
     // Validate required data
     if (empty($courses) || empty($grades) || empty($remarks)) {
@@ -301,6 +317,12 @@ function csSaveChecklistRecords($conn, string $studentId, array $courses, array 
 
     for ($i = 0; $i < count($courses); $i++) {
         $professor = isset($professors[$courses[$i]]) ? $professors[$courses[$i]] : '';
+        $courseRowKey = trim((string) ($courseRowKeys[$i] ?? ''));
+
+        if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+            $errors[] = "Course {$courses[$i]} is outside the student's current term.";
+            continue;
+        }
         
         if (!$stmt->bind_param(
             'ssssssssss',
