@@ -1494,8 +1494,10 @@ foreach ($all_courses as $csRow) {
             $courseInRecommendedLoad = !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
             // Debug: log per-course checklist decision for this student
             error_log("Checklist debug student={$student_id} course={$courseCode} norm={$courseCodeNorm} inRecommended=" . ($courseInRecommendedLoad ? '1' : '0') . " failing1=" . (isFailingGrade($grade1_val) ? '1' : '0') . " termLocked=" . ($isCurrentTermBlocked ? '1' : '0') . " prereqLocked=" . ($isPrereqBlocked ? '1' : '0'));
-            $show_2nd    = isFailingGrade($grade1_val) && $courseInRecommendedLoad;
-            $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && $courseInRecommendedLoad;
+            $hasSavedGrade2 = trim((string)$grade2_val) !== '' || trim((string)$remark2_val) !== '';
+            $hasSavedGrade3 = trim((string)$grade3_val) !== '' || trim((string)$remark3_val) !== '';
+            $show_2nd    = $hasSavedGrade2 || (isFailingGrade($grade1_val) && $courseInRecommendedLoad);
+            $show_3rd    = $hasSavedGrade3 || ($show_2nd && isFailingGrade($grade2_val) && $courseInRecommendedLoad);
             $grade_opts  = ['', 'No Grade', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'Passed', 'Failed', 'US', 'S', 'INC', 'DRP'];
             $remark_opts = ['', 'Approved', 'Pending', 'Disapproved'];
             foreach ([$effectiveRemark, $remark1_val, $remark2_val, $remark3_val] as $existingRemark) {
