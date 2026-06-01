@@ -120,8 +120,6 @@ function resolveProgramAbbreviation($programName) {
   ];
   if (isset($abbrAliases[$normalized])) {
     return $abbrAliases[$normalized];
-  $csChecklistPrereqBlockers = [];
-
   }
 
   if (strpos($normalized, 'BUSINESS ADMINISTRATION') !== false && strpos($normalized, 'MARKETING') !== false) {
@@ -312,7 +310,6 @@ function csChecklistParsePrerequisites($prereq_string): array {
     if ($upper === '') {
       return true;
     }
-
     foreach ([
       'YEAR',
       'STANDING',
@@ -329,7 +326,8 @@ function csChecklistParsePrerequisites($prereq_string): array {
       'GWA',
       'AVERAGE GRADE',
     ] as $fragment) {
-      return true;
+      if (strpos($upper, $fragment) !== false) {
+        return true;
       }
     }
 
