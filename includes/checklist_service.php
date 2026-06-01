@@ -283,26 +283,26 @@ function csSaveChecklistRecords($conn, string $studentId, array $courses, array 
             grade_approved, approved_at, approved_by, grade_submitted_at, submitted_by
         )
         VALUES (?, ?, ?, ?, ?,
-            IF(? = 'Approved', 1, 0),
-            IF(? = 'Approved', NOW(), NULL),
-            IF(? = 'Approved', 'adviser', NULL),
-            IF(? = 'Approved', NOW(), NULL),
-            IF(? = 'Approved', 'adviser', NULL)
+            IF(UPPER(TRIM(?)) LIKE '%APPROVE%', 1, 0),
+            IF(UPPER(TRIM(?)) LIKE '%APPROVE%', NOW(), NULL),
+            IF(UPPER(TRIM(?)) LIKE '%APPROVE%', 'adviser', NULL),
+            IF(UPPER(TRIM(?)) LIKE '%APPROVE%', NOW(), NULL),
+            IF(UPPER(TRIM(?)) LIKE '%APPROVE%', 'adviser', NULL)
         )
         ON DUPLICATE KEY UPDATE 
         final_grade = VALUES(final_grade), 
         evaluator_remarks = VALUES(evaluator_remarks),
         professor_instructor = VALUES(professor_instructor),
-        grade_approved = IF(VALUES(evaluator_remarks) = 'Approved', 1, 0),
-        approved_at = IF(VALUES(evaluator_remarks) = 'Approved', NOW(), NULL),
-        approved_by = IF(VALUES(evaluator_remarks) = 'Approved', 'adviser', NULL),
+        grade_approved = IF(UPPER(TRIM(VALUES(evaluator_remarks))) LIKE '%APPROVE%', 1, 0),
+        approved_at = IF(UPPER(TRIM(VALUES(evaluator_remarks))) LIKE '%APPROVE%', NOW(), NULL),
+        approved_by = IF(UPPER(TRIM(VALUES(evaluator_remarks))) LIKE '%APPROVE%', 'adviser', NULL),
         grade_submitted_at = IF(
-            VALUES(evaluator_remarks) = 'Approved' AND grade_submitted_at IS NULL,
+            UPPER(TRIM(VALUES(evaluator_remarks))) LIKE '%APPROVE%' AND grade_submitted_at IS NULL,
             NOW(),
             grade_submitted_at
         ),
         submitted_by = IF(
-            VALUES(evaluator_remarks) = 'Approved' AND (submitted_by IS NULL OR submitted_by = ''),
+            UPPER(TRIM(VALUES(evaluator_remarks))) LIKE '%APPROVE%' AND (submitted_by IS NULL OR submitted_by = ''),
             'adviser',
             submitted_by
         )

@@ -229,7 +229,8 @@ function resolveStudentAttemptRemarkLocal($incomingGrade, $existingGrade, $exist
 
 function isLockedApprovedAttemptLocal($remark): bool
 {
-    return normalizeChecklistValue($remark) === 'Approved';
+    $normalized = strtoupper(trim((string)$remark));
+    return $normalized !== '' && strpos($normalized, 'APPROVE') !== false;
 }
 
 function resolveStudentSubmissionTargetSlotLocal(array $attempts, int $preferredSlot): int

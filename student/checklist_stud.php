@@ -1892,7 +1892,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 <td>{$row['semester']} {$row['year']}</td>
                                 <td><input type='text' name='professor_instructor[{$row['course_code']}]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars($row['professor_instructor']) : "") . "' style='border: none; font-size: 9px; border-bottom: 1px solid #000000; width: 90px; max-width: 100%;' " . ($isCredited ? "readonly" : "") . ($isCredited ? "" : $prereqInputAttrs) . "></td>
                                 <td id='grade1_{$row['course_code']}'>"; // 1st attempt
-                                if ($remarks1 === 'Approved' || $isCredited) {
+                                if (csChecklistIsApprovedRemark($remarks1) || $isCredited) {
                                     echo "<span style='font-size: 11px; color: #000; font-weight: bold;'>{$grade1_val}</span>";
                                 } else {
                                     $ps1 = ($remarks1 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
@@ -1910,7 +1910,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 if ($isCredited) {
                                   echo ($grade2_val !== '' ? "<span style='font-size:11px;color:#000;font-weight:bold;'>{$grade2_val}</span>" : "<span style='color:#ccc;font-size:11px;'>&#8212;</span>");
                                 } elseif ($show_2nd) {
-                                    if ($remarks2 === 'Approved') {
+                                    if (csChecklistIsApprovedRemark($remarks2)) {
                                         echo "<span style='font-size:11px;color:#000;font-weight:bold;'>{$grade2_val}</span>";
                                     } else {
                                         $ps2 = ($remarks2 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
@@ -1931,7 +1931,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 if ($isCredited) {
                                   echo ($grade3_val !== '' ? "<span style='font-size:11px;color:#000;font-weight:bold;'>{$grade3_val}</span>" : "<span style='color:#ccc;font-size:11px;'>&#8212;</span>");
                                 } elseif ($show_3rd) {
-                                    if ($remarks3 === 'Approved') {
+                                    if (csChecklistIsApprovedRemark($remarks3)) {
                                         echo "<span style='font-size:11px;color:#000;font-weight:bold;'>{$grade3_val}</span>";
                                     } else {
                                         $ps3 = ($remarks3 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
@@ -2287,7 +2287,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
             return;
         }
 
-        if (status === 'Approved') {
+        if (typeof status === 'string' && status.toUpperCase().includes('APPROVE')) {
             remarksCell.innerHTML = "<span style='background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;'>Approved</span>";
             return;
         }
@@ -2669,7 +2669,7 @@ function stopChecklistLiveRefresh() {
         // Update 1st attempt grade
         const gradeSelect = document.querySelector(`select[name="final_grade[${course.course_code}]"]`);
         if (gradeSelect) {
-        if (course.evaluator_remarks === 'Approved' || isCredited) {
+        if ((typeof course.evaluator_remarks === 'string' && course.evaluator_remarks.toUpperCase().includes('APPROVE')) || isCredited) {
                 const td = gradeSelect.parentElement;
                 td.innerHTML = `<span style='font-size: 11px; color: #000; font-weight: bold;'>${course.final_grade || ''}</span>`;
             } else {
@@ -2682,7 +2682,7 @@ function stopChecklistLiveRefresh() {
         // Update 2nd attempt grade cell
         const grade2Cell = document.getElementById(`grade2_${course.course_code}`);
         if (grade2Cell) {
-          if (course.evaluator_remarks_2 === 'Approved' || isCredited) {
+          if ((typeof course.evaluator_remarks_2 === 'string' && course.evaluator_remarks_2.toUpperCase().includes('APPROVE')) || isCredited) {
                 grade2Cell.innerHTML = `<span style='font-size:11px;color:#000;font-weight:bold;'>${course.final_grade_2 || ''}</span>`;
             } else {
                 const sel2 = grade2Cell.querySelector('select');
@@ -2699,7 +2699,7 @@ function stopChecklistLiveRefresh() {
         // Update 3rd attempt grade cell
         const grade3Cell = document.getElementById(`grade3_${course.course_code}`);
         if (grade3Cell) {
-          if (course.evaluator_remarks_3 === 'Approved' || isCredited) {
+          if ((typeof course.evaluator_remarks_3 === 'string' && course.evaluator_remarks_3.toUpperCase().includes('APPROVE')) || isCredited) {
                 grade3Cell.innerHTML = `<span style='font-size:11px;color:#000;font-weight:bold;'>${course.final_grade_3 || ''}</span>`;
             } else {
                 const sel3 = grade3Cell.querySelector('select');
@@ -2724,7 +2724,7 @@ function stopChecklistLiveRefresh() {
             remarksElement.textContent = r1 || 'Credited (Shift Equivalency)';
           } else if (anyPending) {
                 remarksElement.innerHTML = "<span style='background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;'>Pending</span>";
-            } else if (r1 === 'Approved') {
+            } else if (typeof r1 === 'string' && r1.toUpperCase().includes('APPROVE')) {
                 remarksElement.innerHTML = "<span style='background: #4CAF50; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;'>Approved</span>";
             } else {
                 remarksElement.textContent = r1;

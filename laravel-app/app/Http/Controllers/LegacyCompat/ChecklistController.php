@@ -276,7 +276,8 @@ class ChecklistController extends Controller
                     ->first();
 
                 $remark = $this->resolveStaffRemarkForSave($remark, $existing?->evaluator_remarks ?? null);
-                $isApproved = ($remark === 'Approved' && $grade !== '' && $grade !== 'No Grade');
+                $normalizedRemark = strtoupper(trim((string) $remark));
+                $isApproved = $normalizedRemark !== '' && strpos($normalizedRemark, 'APPROVE') !== false && $grade !== '' && $grade !== 'No Grade';
 
                 $payload = [
                     'final_grade' => $grade,
@@ -415,11 +416,15 @@ class ChecklistController extends Controller
     private function isApprovedRemarkForPrereq(string $remark): bool
     {
         $normalized = strtoupper(trim($remark));
-        if ($normalized === 'APPROVED') {
+        if ($normalized === '') {
+            return false;
+        }
+
+        if (strpos($normalized, 'APPROVE') !== false) {
             return true;
         }
 
-        return $normalized !== '' && str_contains($normalized, 'CREDITED');
+        return str_contains($normalized, 'CREDITED');
     }
 
     private function normalizeCourseTokenForPrereq(string $value): string
@@ -908,7 +913,12 @@ class ChecklistController extends Controller
 
     private function isLockedApprovedAttempt(mixed $remark): bool
     {
-        return $this->normalizeString($remark) === 'Approved';
+        $normalized = strtoupper(trim((string) $remark));
+        if ($normalized === '') {
+            return false;
+        }
+
+        return strpos($normalized, 'APPROVE') !== false;
     }
 
     private function isCreditedLockedRecord(object|null $record): bool
