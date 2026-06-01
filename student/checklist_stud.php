@@ -263,6 +263,8 @@ function csChecklistIsApprovedRemark($remark): bool {
     }
 
     return strpos($normalized, 'CREDITED') !== false;
+}
+
 function csChecklistNormalizeCourseToken($value): string {
   $value = strtoupper(trim((string)$value));
   if ($value === '') {
