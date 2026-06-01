@@ -5,7 +5,9 @@ ini_set('display_errors', 1);
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/academic_hold_service.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
+require_once __DIR__ . '/../includes/checklist_term_lock_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
+require_once __DIR__ . '/generate_study_plan.php';
 header('Content-Type: application/json');
 
 function csStudChecklistIsApprovedRemarkLocal($remark): bool
@@ -395,6 +397,25 @@ try {
     $professor_instructors = $_POST['professor_instructors'];
     $evaluator_remarks = $_POST['evaluator_remarks'] ?? [];
 
+    $studentProgramLabel = '';
+    $progStmt = $conn->prepare('SELECT program FROM student_info WHERE student_number = ? LIMIT 1');
+    if ($progStmt) {
+        $progStmt->bind_param('s', $student_id);
+        $progStmt->execute();
+        $progResult = $progStmt->get_result();
+        if ($progResult && ($progRow = $progResult->fetch_assoc())) {
+            $studentProgramLabel = trim((string)($progRow['program'] ?? ''));
+        }
+        $progStmt->close();
+    }
+
+    $studyPlanGenerator = new StudyPlanGenerator($student_id, $studentProgramLabel);
+    $effectiveTerm = $studyPlanGenerator->getEffectiveCurrentTerm();
+    $effectiveTermKey = trim((string)($effectiveTerm['year'] ?? '')) . '|' . trim((string)($effectiveTerm['semester'] ?? ''));
+    $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, (string)$student_id);
+    $currentEnrollmentTermKey = trim((string)($currentEnrollmentTerm['year'] ?? '')) . '|' . trim((string)($currentEnrollmentTerm['semester'] ?? ''));
+    $termLockSource = !empty(trim($currentEnrollmentTermKey, '|')) ? $currentEnrollmentTerm : $effectiveTerm;
+
     // Build prerequisite blockers based on the student's current/program-view curriculum.
     $prereqBlockersByCourse = [];
     try {
@@ -442,6 +463,8 @@ try {
                 if ($codeNorm === '') {
                     continue;
                 }
+
+                $courseRowKey = csStudChecklistBuildRowKeyLocal((array)$r);
 
                 $prereqs = csStudChecklistParsePrerequisitesLocal($r['pre_requisite'] ?? '');
                 if (empty($prereqs)) {
@@ -530,6 +553,10 @@ try {
 
         $courseCodeNorm = csStudChecklistNormalizeCourseTokenLocal($course_code);
         $courseRowKey = trim((string)($course_row_keys[$index] ?? ''));
+        if ($courseRowKey !== '' && !empty($termLockSource) && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $termLockSource)) {
+            $errors[] = "Course {$course_code} is outside the student's current study-plan term.";
+            continue;
+        }
         if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
             $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
             continue;

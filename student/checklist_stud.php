@@ -2,8 +2,10 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/academic_hold_service.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
+require_once __DIR__ . '/../includes/checklist_term_lock_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
+require_once __DIR__ . '/generate_study_plan.php';
 
 // Check if the student is logged in or if student_id is provided via URL parameter
 
@@ -154,6 +156,14 @@ $program_abbr = resolveProgramAbbreviation($student_program);
 if ($program_abbr === null) {
   $program_abbr = '';
 }
+
+$studyPlanGenerator = new StudyPlanGenerator($student_id, $student_program);
+$effectiveTerm = $studyPlanGenerator->getEffectiveCurrentTerm();
+$effectiveTermKey = trim((string)($effectiveTerm['year'] ?? '')) . '|' . trim((string)($effectiveTerm['semester'] ?? ''));
+$currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, $student_id);
+$currentEnrollmentTermKey = trim((string)($currentEnrollmentTerm['year'] ?? '')) . '|' . trim((string)($currentEnrollmentTerm['semester'] ?? ''));
+$termLockSource = !empty(trim($currentEnrollmentTermKey, '|')) ? $currentEnrollmentTerm : $effectiveTerm;
+$termLockKey = $termLockSource ? trim((string)($termLockSource['year'] ?? '')) . '|' . trim((string)($termLockSource['semester'] ?? '')) : '';
 
 $available_program_views = [];
 $shiftProgramViews = [];
@@ -1824,8 +1834,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                   (stripos((string)$remarks3, 'credited') !== false) ||
                                   ($approvedBy === 'shift_engine') ||
                                   ($submittedBy === 'shift_engine');
-                                $show_2nd    = isFailingGrade($grade1_val);
-                                $show_3rd    = $show_2nd && isFailingGrade($grade2_val);
+                                $courseTermKey = trim((string)($row['year'] ?? '')) . '|' . trim((string)($row['semester'] ?? ''));
+                                $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === $termLockKey);
+                                $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === $termLockKey);
 
                                 $courseCodeNorm = csChecklistNormalizeCourseToken($row['course_code'] ?? '');
                                 $courseRowKey = csChecklistBuildRowKey((array)$row);
