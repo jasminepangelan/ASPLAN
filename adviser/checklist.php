@@ -169,6 +169,9 @@ foreach ($optimizedPlan as $planTerm) {
   break;
 }
 
+// Debug: log the next recommended load course codes for this student (check Railway logs)
+error_log("Checklist debug student={$student_id} nextRecommended=" . json_encode(array_keys($nextRecommendedLoadCourseCodes)));
+
 // Prefer the study-plan term for row locking; fall back to saved enrollment only if needed.
 $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, $student_id);
 $currentEnrollmentTermKey = trim((string)($currentEnrollmentTerm['year'] ?? '')) . '|' . trim((string)($currentEnrollmentTerm['semester'] ?? ''));
@@ -1481,6 +1484,8 @@ foreach ($all_courses as $csRow) {
                 ? 'Pending'
                 : $remark1_val;
             $courseInRecommendedLoad = !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
+            // Debug: log per-course checklist decision for this student
+            error_log("Checklist debug student={$student_id} course={$courseCode} norm={$courseCodeNorm} inRecommended=" . ($courseInRecommendedLoad ? '1' : '0') . " failing1=" . (isFailingGrade($grade1_val) ? '1' : '0') . " termLocked=" . ($isCurrentTermBlocked ? '1' : '0') . " prereqLocked=" . ($isPrereqBlocked ? '1' : '0'));
             $show_2nd    = isFailingGrade($grade1_val) && $courseInRecommendedLoad;
             $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && $courseInRecommendedLoad;
             $grade_opts  = ['', 'No Grade', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'Passed', 'Failed', 'US', 'S', 'INC', 'DRP'];
@@ -1491,7 +1496,10 @@ foreach ($all_courses as $csRow) {
                     $remark_opts[] = $existingRemark;
                 }
             }
-            $isRowLocked = $isPrereqBlocked || $isCurrentTermBlocked;
+            // Allow courses that are in the next recommended load to be editable
+            // even when they are outside the current term. Keep prerequisite
+            // blocking in place.
+            $isRowLocked = $isPrereqBlocked || ($isCurrentTermBlocked && !$courseInRecommendedLoad);
             $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-term-blocked='" . ($isCurrentTermBlocked ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "' data-course-row-key='" . htmlspecialchars((string)$courseRowKey, ENT_QUOTES, 'UTF-8') . "'";
             $lockTitleAttr = $isRowLocked ? " title='" . htmlspecialchars(implode(' | ', $lockReasons), ENT_QUOTES, 'UTF-8') . "'" : '';
             $disabledAttr = $isRowLocked ? " disabled" . $lockTitleAttr : '';
