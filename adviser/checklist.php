@@ -1502,9 +1502,10 @@ foreach ($all_courses as $csRow) {
             $isRowLocked = $isPrereqBlocked || ($isCurrentTermBlocked && !$courseInRecommendedLoad);
             $rowPrereqAttrs = " data-prereq-blocked='" . ($isPrereqBlocked ? '1' : '0') . "' data-term-blocked='" . ($isCurrentTermBlocked ? '1' : '0') . "' data-recommended-load='" . ($courseInRecommendedLoad ? '1' : '0') . "' data-prereq-tooltip='" . htmlspecialchars((string)$prereqTooltip, ENT_QUOTES, 'UTF-8') . "' data-course-row-key='" . htmlspecialchars((string)$courseRowKey, ENT_QUOTES, 'UTF-8') . "'";
             $lockTitleAttr = $isRowLocked ? " title='" . htmlspecialchars(implode(' | ', $lockReasons), ENT_QUOTES, 'UTF-8') . "'" : '';
-            $disabledAttr = $isRowLocked ? " disabled" . $lockTitleAttr : '';
-            $readonlyAttr = $isRowLocked ? " readonly" . $lockTitleAttr : '';
-            $approveDisabledAttr = $isRowLocked ? " disabled" . $lockTitleAttr : '';
+            $canOverrideLocks = in_array(strtolower((string)($_SESSION['user_type'] ?? '')), ['adviser', 'program_coordinator', 'admin']);
+            $disabledAttr = (!$canOverrideLocks && $isRowLocked) ? " disabled" . $lockTitleAttr : '';
+            $readonlyAttr = (!$canOverrideLocks && $isRowLocked) ? " readonly" . $lockTitleAttr : '';
+            $approveDisabledAttr = (!$canOverrideLocks && $isRowLocked) ? " disabled" . $lockTitleAttr : '';
 
             // Per-row debug details (visible only for the specified student)
             $debug_info = '';
