@@ -149,6 +149,25 @@ $adviserChecklistWorkspacePayload = htmlspecialchars(json_encode([
 $generator = new StudyPlanGenerator($student_id, $student_program);
 $effectiveTerm = $generator->getEffectiveCurrentTerm();
 $effectiveTermKey = trim((string)($effectiveTerm['year'] ?? '')) . '|' . trim((string)($effectiveTerm['semester'] ?? ''));
+$optimizedPlan = $generator->generateOptimizedPlan();
+
+// The checklist unlocks later attempts only for courses that are part of the
+// first recommended load produced by the study-plan generator.
+$nextRecommendedLoadCourseCodes = [];
+foreach ($optimizedPlan as $planTerm) {
+  if (!empty($planTerm['skipped']) || empty($planTerm['courses']) || !is_array($planTerm['courses'])) {
+    continue;
+  }
+
+  foreach ($planTerm['courses'] as $planCourse) {
+    $planCourseCode = csChecklistNormalizeCourseToken((string)($planCourse['code'] ?? ''));
+    if ($planCourseCode !== '') {
+      $nextRecommendedLoadCourseCodes[$planCourseCode] = true;
+    }
+  }
+
+  break;
+}
 
 // Prefer the study-plan term for row locking; fall back to saved enrollment only if needed.
 $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, $student_id);
@@ -1461,9 +1480,9 @@ foreach ($all_courses as $csRow) {
             $effectiveRemark = ($remark1_val === 'Pending' || $remark2_val === 'Pending' || $remark3_val === 'Pending')
                 ? 'Pending'
                 : $remark1_val;
-            $courseTermKey = trim((string)($row['year'] ?? '')) . '|' . trim((string)($row['semester'] ?? ''));
-            $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === $termLockKey);
-            $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === $termLockKey);
+            $courseInRecommendedLoad = !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
+            $show_2nd    = isFailingGrade($grade1_val) && $courseInRecommendedLoad;
+            $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && $courseInRecommendedLoad;
             $grade_opts  = ['', 'No Grade', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'Passed', 'Failed', 'US', 'S', 'INC', 'DRP'];
             $remark_opts = ['', 'Approved', 'Pending', 'Disapproved'];
             foreach ([$effectiveRemark, $remark1_val, $remark2_val, $remark3_val] as $existingRemark) {
