@@ -150,11 +150,11 @@ $generator = new StudyPlanGenerator($student_id, $student_program);
 $effectiveTerm = $generator->getEffectiveCurrentTerm();
 $effectiveTermKey = trim((string)($effectiveTerm['year'] ?? '')) . '|' . trim((string)($effectiveTerm['semester'] ?? ''));
 
-// Prefer the student's saved current enrollment term for row locking.
+// Prefer the study-plan term for row locking; fall back to saved enrollment only if needed.
 $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, $student_id);
 $currentEnrollmentTermKey = trim((string)($currentEnrollmentTerm['year'] ?? '')) . '|' . trim((string)($currentEnrollmentTerm['semester'] ?? ''));
-$termLockSource = !empty(trim($currentEnrollmentTermKey, '|')) ? $currentEnrollmentTerm : $effectiveTerm;
-$termLockKey = trim((string)($termLockSource['year'] ?? '')) . '|' . trim((string)($termLockSource['semester'] ?? ''));
+$termLockSource = !empty(trim($effectiveTermKey, '|')) ? $effectiveTerm : (!empty(trim($currentEnrollmentTermKey, '|')) ? $currentEnrollmentTerm : null);
+$termLockKey = $termLockSource ? trim((string)($termLockSource['year'] ?? '')) . '|' . trim((string)($termLockSource['semester'] ?? '')) : '';
 
 
 // Helper: returns true when a grade is failing and unlocks the next attempt column
