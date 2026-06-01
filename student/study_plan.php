@@ -2293,9 +2293,7 @@ $currentEnrollmentClientPayload = json_encode([
                 foreach ($ay_courses_by_term as $term_key => $term_data) {
                     if (
                         isset($completed_term_keys[$term_key]) ||
-                        isset($future_term_keys[$term_key]) ||
-                        empty($term_data['completed']) ||
-                        empty($term_data['uncomplete'])
+                        isset($future_term_keys[$term_key])
                     ) {
                         continue;
                     }
