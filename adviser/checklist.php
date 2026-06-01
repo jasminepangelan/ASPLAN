@@ -150,6 +150,12 @@ $generator = new StudyPlanGenerator($student_id, $student_program);
 $effectiveTerm = $generator->getEffectiveCurrentTerm();
 $effectiveTermKey = trim((string)($effectiveTerm['year'] ?? '')) . '|' . trim((string)($effectiveTerm['semester'] ?? ''));
 
+// Prefer the student's saved current enrollment term for row locking.
+$currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, $student_id);
+$currentEnrollmentTermKey = trim((string)($currentEnrollmentTerm['year'] ?? '')) . '|' . trim((string)($currentEnrollmentTerm['semester'] ?? ''));
+$termLockSource = !empty(trim($currentEnrollmentTermKey, '|')) ? $currentEnrollmentTerm : $effectiveTerm;
+$termLockKey = trim((string)($termLockSource['year'] ?? '')) . '|' . trim((string)($termLockSource['semester'] ?? ''));
+
 
 // Helper: returns true when a grade is failing and unlocks the next attempt column
 function isFailingGrade($grade) {
@@ -1435,7 +1441,7 @@ foreach ($all_courses as $csRow) {
             $courseCodeNorm = csChecklistNormalizeCourseToken($courseCode);
             $courseRowKey = csChecklistBuildRowKey((array)$row);
             $isPrereqBlocked = ($courseRowKey !== '' && isset($csChecklistPrereqBlockers[$courseRowKey]));
-            $isCurrentTermBlocked = ($effectiveTermKey !== '' && ctlsBuildTermKey((string)($row['year'] ?? ''), (string)($row['semester'] ?? '')) !== ($effectiveTermKey ?? ''));
+            $isCurrentTermBlocked = ($termLockKey !== '' && ctlsBuildTermKey((string)($row['year'] ?? ''), (string)($row['semester'] ?? '')) !== $termLockKey);
             $prereqTooltip = '';
             $lockReasons = [];
             if ($isPrereqBlocked) {
@@ -1443,7 +1449,7 @@ foreach ($all_courses as $csRow) {
               $lockReasons[] = $prereqTooltip;
             }
             if ($isCurrentTermBlocked) {
-              $lockReasons[] = 'Outside current term: ' . ($effectiveTermKey ?? '');
+              $lockReasons[] = 'Outside current term: ' . $termLockKey;
             }
 
             $grade1_val  = $row['final_grade'] ?? '';
@@ -1456,8 +1462,8 @@ foreach ($all_courses as $csRow) {
                 ? 'Pending'
                 : $remark1_val;
             $courseTermKey = trim((string)($row['year'] ?? '')) . '|' . trim((string)($row['semester'] ?? ''));
-            $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === ($effectiveTermKey ?? ''));
-            $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === ($effectiveTermKey ?? ''));
+            $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === $termLockKey);
+            $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === $termLockKey);
             $grade_opts  = ['', 'No Grade', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'Passed', 'Failed', 'US', 'S', 'INC', 'DRP'];
             $remark_opts = ['', 'Approved', 'Pending', 'Disapproved'];
             foreach ([$effectiveRemark, $remark1_val, $remark2_val, $remark3_val] as $existingRemark) {
