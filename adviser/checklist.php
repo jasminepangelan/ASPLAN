@@ -1525,15 +1525,7 @@ foreach ($all_courses as $csRow) {
           <td>" . htmlspecialchars((string)($row['pre_requisite'] ?? '')) . "</td>
           <td>" . htmlspecialchars((string)($row['semester'] ?? '')) . " " . htmlspecialchars((string)($row['year'] ?? '')) . "</td>
         <td><input type='text' name='professor_instructor[" . htmlspecialchars($courseCode) . "]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars((string)$row['professor_instructor']) : "") . "'" . $readonlyAttr . " style='border: none; font-size: 11px; border-bottom: 1px solid #000; width: 108px;'></td>";
-                <td>" . htmlspecialchars($courseCode) . "</td>
-                    <td>" . htmlspecialchars((string)($row['course_title'] ?? '')) . "</td>
-                    <td>" . htmlspecialchars((string)($row['credit_unit_lec'] ?? '')) . "</td>
-                    <td>" . htmlspecialchars((string)($row['credit_unit_lab'] ?? '')) . "</td>
-                    <td>" . htmlspecialchars((string)($row['contact_hrs_lec'] ?? '')) . "</td>
-                    <td>" . htmlspecialchars((string)($row['contact_hrs_lab'] ?? '')) . "</td>
-                    <td>" . htmlspecialchars((string)($row['pre_requisite'] ?? '')) . "</td>
-                    <td>" . htmlspecialchars((string)($row['semester'] ?? '')) . " " . htmlspecialchars((string)($row['year'] ?? '')) . "</td>
-                <td><input type='text' name='professor_instructor[" . htmlspecialchars($courseCode) . "]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars((string)$row['professor_instructor']) : "") . "'" . $readonlyAttr . " style='border: none; font-size: 11px; border-bottom: 1px solid #000; width: 108px;'></td>";
+            
             $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
             echo "<td id='grade1_" . htmlspecialchars($courseCode) . "'><select name='final_grade[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade1Class) . "'" . $disabledAttr . ">";
             foreach ($grade_opts as $g) {
