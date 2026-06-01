@@ -3518,6 +3518,19 @@ class StudyPlanGenerator {
         return true;
     }
 
+    private function doesTermHaveAvailableCourses($year, $semester): bool {
+        $available = $this->applyConstraintsForExactTerm($year, $semester, $this->completed_courses, $this->all_courses);
+        foreach ($available as $code => $course) {
+            if (!$this->standingConstraintSatisfied($code, $year, $semester)) {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
     private function getOrderedCurriculumTerms() {
         $terms = [];
         $seen = [];
@@ -3671,6 +3684,18 @@ class StudyPlanGenerator {
             // no next term defined; return current term (extra-term logic will handle extension)
             $this->debugLog('ADVANCE_TERM: term ' . $termKey . ' has approved grades but no next curriculum term defined');
             return $currentTerm;
+        }
+
+        // If the current unresolved term has no schedulable courses, advance
+        // to the next future term that does have available courses.
+        if (!$this->doesTermHaveAvailableCourses($currentTerm['year'], $currentTerm['semester'])) {
+            for ($nextIndex = $firstIncompleteIndex + 1; $nextIndex < count($terms); $nextIndex++) {
+                $nextTerm = $terms[$nextIndex];
+                if ($this->doesTermHaveAvailableCourses($nextTerm['year'], $nextTerm['semester'])) {
+                    $this->debugLog('ADVANCE_TERM: no available courses in ' . $termKey . '; advancing to ' . $nextTerm['year'] . '|' . $nextTerm['semester']);
+                    return $nextTerm;
+                }
+            }
         }
 
         return $currentTerm;
