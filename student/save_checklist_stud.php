@@ -13,11 +13,15 @@ header('Content-Type: application/json');
 function csStudChecklistIsApprovedRemarkLocal($remark): bool
 {
     $normalized = strtoupper(trim((string) $remark));
-    if ($normalized === 'APPROVED') {
+    if ($normalized === '') {
+        return false;
+    }
+
+    if (strpos($normalized, 'APPROVED') !== false) {
         return true;
     }
 
-    return $normalized !== '' && strpos($normalized, 'CREDITED') !== false;
+    return strpos($normalized, 'CREDITED') !== false;
 }
 
 function csStudChecklistNormalizeCourseTokenLocal($value): string

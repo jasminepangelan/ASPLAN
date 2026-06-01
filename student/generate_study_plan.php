@@ -648,11 +648,15 @@ class StudyPlanGenerator {
 
     private function isApprovedChecklistRemark($remark) {
         $normalized = strtoupper(trim((string)$remark));
-        if ($normalized === 'APPROVED') {
+        if ($normalized === '') {
+            return false;
+        }
+
+        if (strpos($normalized, 'APPROVED') !== false) {
             return true;
         }
 
-        return $normalized !== '' && strpos($normalized, 'CREDITED') !== false;
+        return strpos($normalized, 'CREDITED') !== false;
     }
 
     private function resolveEffectiveChecklistAttempt(array $row, $requiresApproval = true) {
@@ -698,12 +702,21 @@ class StudyPlanGenerator {
         }
 
         if ($requiresApproval && (int)($row['grade_approved'] ?? 0) === 1) {
-            $fallbackGrade = trim((string)($row['final_grade'] ?? ''));
-            if ($fallbackGrade !== '' && strtoupper($fallbackGrade) !== 'NO GRADE') {
+            // If the row is approved by the system flag, use the latest available grade slot.
+            for ($slot = 3; $slot >= 1; $slot--) {
+                if (!isset($attempts[$slot])) {
+                    continue;
+                }
+
+                $grade = $attempts[$slot]['grade'];
+                if ($grade === '' || strtoupper($grade) === 'NO GRADE') {
+                    continue;
+                }
+
                 return [
-                    'slot' => 1,
-                    'grade' => $fallbackGrade,
-                    'remark' => trim((string)($row['evaluator_remarks'] ?? '')),
+                    'slot' => $slot,
+                    'grade' => $grade,
+                    'remark' => $attempts[$slot]['remark'],
                 ];
             }
         }
@@ -749,7 +762,7 @@ class StudyPlanGenerator {
             return true;
         }
 
-        if ((int)($attempt['slot'] ?? 0) === 1 && (int)($row['grade_approved'] ?? 0) === 1) {
+        if ((int)($row['grade_approved'] ?? 0) === 1 && trim((string)($attempt['grade'] ?? '')) !== '' && strtoupper(trim((string)($attempt['grade'] ?? ''))) !== 'NO GRADE') {
             return true;
         }
 

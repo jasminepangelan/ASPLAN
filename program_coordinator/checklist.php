@@ -143,13 +143,15 @@ function isFailingGrade($grade) {
 // Helper: prerequisite gating (same rules as student checklist and study plan generator)
 function csChecklistIsApprovedRemark($remark): bool {
   $normalized = strtoupper(trim((string)$remark));
-  if ($normalized === 'APPROVED') {
-    return true;
-  }
+    if ($normalized === '') {
+        return false;
+    }
 
-  return $normalized !== '' && strpos($normalized, 'CREDITED') !== false;
-}
+    if (strpos($normalized, 'APPROVED') !== false) {
+        return true;
+    }
 
+    return strpos($normalized, 'CREDITED') !== false;
 function csChecklistNormalizeCourseToken($value): string {
   $value = strtoupper(trim((string)$value));
   if ($value === '') {
