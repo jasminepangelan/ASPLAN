@@ -296,12 +296,10 @@ foreach ($studyPlan as $term) {
 }
 
 $partialTerms = [];
-foreach ($ayCoursesByTerm as $termKey => $termData) {
+    foreach ($ayCoursesByTerm as $termKey => $termData) {
     if (
         isset($completedTermKeys[$termKey]) ||
-        isset($futureTermKeys[$termKey]) ||
-        empty($termData['completed']) ||
-        empty($termData['uncomplete'])
+        isset($futureTermKeys[$termKey])
     ) {
         continue;
     }
