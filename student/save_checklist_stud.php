@@ -422,6 +422,29 @@ try {
         $termLockSource['semester'] = ctlsNormalizeTermSemesterLabel((string)($termLockSource['semester'] ?? ''));
     }
 
+    // Courses in the next recommended load can still be edited even if their row term
+    // differs from the student's current enrollment term.
+    $nextRecommendedLoadCourseCodes = [];
+    try {
+        $optimizedPlan = $studyPlanGenerator->generateOptimizedPlan();
+        foreach ($optimizedPlan as $planTerm) {
+            if (!empty($planTerm['skipped']) || empty($planTerm['courses']) || !is_array($planTerm['courses'])) {
+                continue;
+            }
+
+            foreach ($planTerm['courses'] as $planCourse) {
+                $planCourseCode = csStudChecklistNormalizeCourseTokenLocal((string)($planCourse['code'] ?? ''));
+                if ($planCourseCode !== '') {
+                    $nextRecommendedLoadCourseCodes[$planCourseCode] = true;
+                }
+            }
+
+            break;
+        }
+    } catch (Throwable $e) {
+        $nextRecommendedLoadCourseCodes = [];
+    }
+
     // Build prerequisite blockers based on the student's current/program-view curriculum.
     $prereqBlockersByCourse = [];
     try {
@@ -558,8 +581,9 @@ try {
             || ($finalGrade3 !== '' && $finalGrade3 !== 'No Grade');
 
         $courseCodeNorm = csStudChecklistNormalizeCourseTokenLocal($course_code);
+        $courseInRecommendedLoad = $courseCodeNorm !== '' && !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
         $courseRowKey = trim((string)($course_row_keys[$index] ?? ''));
-        if ($courseRowKey !== '' && !empty($termLockSource) && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $termLockSource)) {
+        if ($courseRowKey !== '' && !empty($termLockSource) && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $termLockSource) && !$courseInRecommendedLoad) {
             $errors[] = "Course {$course_code} is outside the student's current study-plan term.";
             continue;
         }
