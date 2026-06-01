@@ -2371,6 +2371,13 @@ $currentEnrollmentClientPayload = json_encode([
                 
                 // Combine: completed first, then partially completed historical terms, then future plan
                 $all_semesters = array_merge($completed_semesters, $partial_semesters, $future_semesters);
+                $effective_term_present = false;
+                foreach ($all_semesters as $semester_item) {
+                    if ((($semester_item['year'] ?? '') . '|' . ($semester_item['semester'] ?? '')) === $effective_current_term_key) {
+                        $effective_term_present = true;
+                        break;
+                    }
+                }
                 
                 // Group into pages (2 semesters per page)
                 $pages = array_chunk($all_semesters, 2);
@@ -2400,6 +2407,8 @@ $currentEnrollmentClientPayload = json_encode([
 
                 <?php 
                 $found_first_future = false;
+                $first_future_shown = false;
+                $next_recommended_highlighted = false;
                 foreach ($pages as $page_index => $page_semesters): 
                 ?>
                 <div class="page-content <?= $page_index === 0 ? 'active' : '' ?>" data-page="<?= $page_index + 1 ?>">
@@ -2603,9 +2612,17 @@ $currentEnrollmentClientPayload = json_encode([
                     </div>
                     <?php else: ?>
                     <?php
-                        // Highlight first future semester as "Next Recommended"
-                        $is_first_future = (!$is_skipped && !isset($first_future_shown));
-                        if ($is_first_future) $first_future_shown = true;
+                        // Highlight the effective current term as next recommended if it appears in the rendered semesters.
+                        $is_first_future = false;
+                        if (!$is_skipped && !$is_completed_term) {
+                            if (!$next_recommended_highlighted && $effective_term_present && $display_term_key === $effective_current_term_key) {
+                                $is_first_future = true;
+                                $next_recommended_highlighted = true;
+                            } elseif (!$effective_term_present && !$first_future_shown) {
+                                $is_first_future = true;
+                                $first_future_shown = true;
+                            }
+                        }
                     ?>
                     <div class="semester-section" style="<?= $is_first_future ? 'border: 3px solid #4CAF50; box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);' : ($is_skipped ? 'border: 2px dashed #f44336; opacity: 0.7;' : '') ?>">
                         <?php if ($is_first_future): ?>
