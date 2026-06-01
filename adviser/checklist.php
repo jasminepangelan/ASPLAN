@@ -7,6 +7,9 @@ require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
 $csrfToken = getCSRFToken();
 
+// Study plan generator is used to determine the student's effective current term
+require_once __DIR__ . '/../student/generate_study_plan.php';
+
 // Check if the adviser is logged in
 if (!isset($_SESSION['id'])) {
     header("Location: login.php");
@@ -140,6 +143,11 @@ $adviserChecklistWorkspacePayload = htmlspecialchars(json_encode([
         'This shell only adds quicker navigation for adviser review work.',
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+// Instantiate study plan generator and compute effective current term key
+$generator = new StudyPlanGenerator($student_id, $student_program);
+$effectiveTerm = $generator->getEffectiveCurrentTerm();
+$effectiveTermKey = trim((string)($effectiveTerm['year'] ?? '')) . '|' . trim((string)($effectiveTerm['semester'] ?? ''));
 
 
 // Helper: returns true when a grade is failing and unlocks the next attempt column
@@ -1440,8 +1448,9 @@ foreach ($all_courses as $csRow) {
             $effectiveRemark = ($remark1_val === 'Pending' || $remark2_val === 'Pending' || $remark3_val === 'Pending')
                 ? 'Pending'
                 : $remark1_val;
-            $show_2nd    = isFailingGrade($grade1_val);
-            $show_3rd    = $show_2nd && isFailingGrade($grade2_val);
+            $courseTermKey = trim((string)($row['year'] ?? '')) . '|' . trim((string)($row['semester'] ?? ''));
+            $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === ($effectiveTermKey ?? ''));
+            $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === ($effectiveTermKey ?? ''));
             $grade_opts  = ['', 'No Grade', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'Passed', 'Failed', 'US', 'S', 'INC', 'DRP'];
             $remark_opts = ['', 'Approved', 'Pending', 'Disapproved'];
             foreach ([$effectiveRemark, $remark1_val, $remark2_val, $remark3_val] as $existingRemark) {
