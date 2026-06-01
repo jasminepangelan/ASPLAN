@@ -1850,12 +1850,11 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                   ($approvedBy === 'shift_engine') ||
                                   ($submittedBy === 'shift_engine');
                                 $courseTermKey = trim((string)($row['year'] ?? '')) . '|' . trim((string)($row['semester'] ?? ''));
+                                $courseCodeNorm = csChecklistNormalizeCourseToken($row['course_code'] ?? '');
+                                $courseRowKey = csChecklistBuildRowKey((array)$row);
                                 $courseInRecommendedLoad = !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
                                 $show_2nd    = isFailingGrade($grade1_val) && ($courseTermKey === $termLockKey || $courseInRecommendedLoad);
                                 $show_3rd    = $show_2nd && isFailingGrade($grade2_val) && ($courseTermKey === $termLockKey || $courseInRecommendedLoad);
-
-                                $courseCodeNorm = csChecklistNormalizeCourseToken($row['course_code'] ?? '');
-                                $courseRowKey = csChecklistBuildRowKey((array)$row);
                                 $prereqBlockers = $courseRowKey !== '' ? ($csChecklistPrereqBlockers[$courseRowKey] ?? []) : [];
                                 $isPrereqBlocked = !empty($prereqBlockers);
                                 $prereqTooltip = $isPrereqBlocked
