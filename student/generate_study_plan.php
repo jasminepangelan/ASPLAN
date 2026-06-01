@@ -2874,8 +2874,20 @@ class StudyPlanGenerator {
 
             // Include backlog courses from prior curriculum terms, but only if
             // their original semester matches the current semester, or if
-            // cross-registration is possible for this semester.
+            // cross-registration is possible for this semester. Additionally,
+            // explicitly avoid carrying failed/back courses from the immediate
+            // previously-submitted term into the next semester when that
+            // previous term already has approved grades (the student effectively
+            // moved on) unless a valid cross-registration offering exists.
             $backlog = $this->applyConstraintsForSimulation(null, $simulated_completed, $simulated_all_courses);
+            // Determine the immediately prior curriculum term (if any)
+            $prior_term = null;
+            if (isset($terms[$i - 1])) {
+                $prior_term = $terms[$i - 1];
+            }
+            $prior_term_key = $prior_term !== null ? ($prior_term['year'] . '|' . $prior_term['semester']) : null;
+            $prior_term_has_approved = $prior_term_key !== null && isset($this->semester_grade_history[$prior_term_key]) && !empty($this->semester_grade_history[$prior_term_key]['courses']);
+
             foreach ($backlog as $code => $course) {
                 $course_term_order = $this->getCurriculumTermOrder($course['year'] ?? '', $course['semester'] ?? '');
                 if ($course_term_order <= 0 || $course_term_order >= $target_term_order) {
@@ -2886,7 +2898,16 @@ class StudyPlanGenerator {
                     continue;
                 }
 
+                // If this backlog course belonged to the immediate prior term
+                // and that prior term already has approved grades, skip it
+                // unless a cross-registration offering exists for the current term.
+                $belongsToPriorTerm = false;
+                if ($prior_term !== null && ($course['year'] ?? '') === $prior_term['year'] && ($course['semester'] ?? '') === $prior_term['semester']) {
+                    $belongsToPriorTerm = true;
+                }
+
                 if (($course['semester'] ?? '') === $term['semester']) {
+                    // same semester label across years is allowed
                     $available[$code] = $course;
                 } else {
                     if (
@@ -2895,7 +2916,19 @@ class StudyPlanGenerator {
                     ) {
                         continue;
                     }
+
                     $cross_course = $this->findCrossRegistrationOffering($code, $term['semester'], $course);
+
+                    // If the course belongs to the just-submitted prior term and
+                    // that prior term has approved grades, do not add it unless
+                    // there is a cross-registration offering for this semester.
+                    if ($belongsToPriorTerm && $prior_term_has_approved && $cross_course === null) {
+                        if ($this->debug_enabled) {
+                            $this->debugLog('BACKLOG_SKIP: ' . $code . ' belongs to prior term ' . $prior_term_key . ' with approved grades; skipping for ' . $term['year'] . '|' . $term['semester']);
+                        }
+                        continue;
+                    }
+
                     // Only cross-register if the course is offered in the current semester by another program
                     if ($cross_course !== null) {
                         // Check prerequisites (case-insensitive)
@@ -3604,7 +3637,30 @@ class StudyPlanGenerator {
             return $terms[count($terms) - 1];
         }
 
-        return $terms[$firstIncompleteIndex];
+        // New behaviour: if the first-incomplete term already has approved
+        // grades (i.e. the student submitted grades and they were counted),
+        // treat that term as submitted and advance the effective current
+        // term to the next curriculum term. This avoids recommending
+        // courses from the *submitted* semester into the immediately
+        // following semester unless cross-registration allows it.
+        $currentTerm = $terms[$firstIncompleteIndex];
+        $termKey = $currentTerm['year'] . '|' . $currentTerm['semester'];
+        $hasApprovedGradesInTerm = isset($this->semester_grade_history[$termKey])
+            && !empty($this->semester_grade_history[$termKey]['courses']);
+
+        if ($hasApprovedGradesInTerm) {
+            // advance to next term when possible
+            $nextIndex = $firstIncompleteIndex + 1;
+            if ($nextIndex < count($terms)) {
+                $this->debugLog('ADVANCE_TERM: advancing from ' . $termKey . ' to ' . $terms[$nextIndex]['year'] . '|' . $terms[$nextIndex]['semester']);
+                return $terms[$nextIndex];
+            }
+            // no next term defined; return current term (extra-term logic will handle extension)
+            $this->debugLog('ADVANCE_TERM: term ' . $termKey . ' has approved grades but no next curriculum term defined');
+            return $currentTerm;
+        }
+
+        return $currentTerm;
     }
 
     public function getEffectiveCurrentTerm() {
