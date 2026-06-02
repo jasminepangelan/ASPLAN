@@ -3125,16 +3125,12 @@ class StudyPlanGenerator {
         $skip_tracker = [];
         $is_first_term = true;
         
-        // Generate plan for remaining terms
+        // Generate plan for remaining terms. The school-wide current semester
+        // selects the starting bucket only; projected completion still needs
+        // to walk through future curriculum offerings so back/failed courses
+        // land in the next matching semester.
         for ($i = $start_index; $i < count($terms); $i++) {
             $term = $terms[$i];
-
-            if ($global_semester !== null) {
-                $term_semester = $this->normalizeCurriculumSemesterLabel($term['semester'] ?? '');
-                if ($term_semester !== $global_semester) {
-                    continue;
-                }
-            }
             
             // RETENTION: Check if this term should be skipped (Disqualification)
             if ($is_first_term && $this->shouldSkipTerm($i, $skip_tracker)) {
@@ -3439,9 +3435,6 @@ class StudyPlanGenerator {
         $extra_term_count = 0;
         $consecutive_empty = 0;
         $sem_cycle = $this->getExtraTermSemesterCycle();
-        if ($global_semester !== null) {
-            $sem_cycle = [$global_semester];
-        }
         $sem_cycle_count = count($sem_cycle);
         while (!empty($remaining) && $extra_term_count < 9 && $consecutive_empty < 3 && $sem_cycle_count > 0) {
             $semester = $sem_cycle[$extra_term_count % $sem_cycle_count];
@@ -4030,14 +4023,13 @@ class StudyPlanGenerator {
     }
 
     /**
-     * Determine the effective current term according to school policy.
+     * Determine the effective current curriculum term according to school policy.
      *
-     * Historically the earliest unresolved curriculum term anchored the
-     * student's current year/semester. Once a term already has approved
-     * checklist grades, though, the student has effectively moved past that
-     * submission window even if some back subjects remain tied to it. In that
-     * case we advance across consecutive approved unresolved terms until we
-     * reach the next real schedulable term.
+     * The earliest unresolved curriculum term gives the student's lowest
+     * outstanding year level, but the active semester should follow the
+     * admin-managed school semester after grades are submitted. Back/failed
+     * courses remain unresolved and are plotted by the planner into the next
+     * same-semester offering that satisfies prerequisite constraints.
      */
     private function determineCurrentTerm() {
         $terms = $this->getOrderedCurriculumTerms();
@@ -4054,10 +4046,16 @@ class StudyPlanGenerator {
             return $terms[count($terms) - 1];
         }
 
-        // Keep the first incomplete term as the anchor so semesters with
-        // unresolved checklist rows are not skipped just because they also
-        // contain approved grades.
         $effectiveIndex = $firstIncompleteIndex;
+        $globalSemester = $this->getGlobalSemesterFilter();
+        if ($globalSemester !== null) {
+            for ($index = $firstIncompleteIndex; $index < count($terms); $index++) {
+                if ($this->normalizeCurriculumSemesterLabel($terms[$index]['semester'] ?? '') === $globalSemester) {
+                    $effectiveIndex = $index;
+                    break;
+                }
+            }
+        }
 
         $currentTerm = $terms[$effectiveIndex];
         $termKey = $currentTerm['year'] . '|' . $currentTerm['semester'];

@@ -776,7 +776,7 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
     ],
     'insights' => [
         ['title' => 'Program', 'value' => (string)$program],
-        ['title' => 'Current year/sem', 'value' => trim((string)($effective_current_term['year'] ?? '') . ' ' . (string)($effective_current_term['semester'] ?? ''))],
+        ['title' => 'Current Curriculum Term under Policy', 'value' => trim((string)($effective_current_term['year'] ?? '') . ' ' . (string)($effective_current_term['semester'] ?? ''))],
         ['title' => 'Projected completion', 'value' => $estimated_graduation ? (string)$estimated_graduation : 'In progress'],
         ['title' => 'Semesters to go', 'value' => (string)$remaining_semesters],
     ],
@@ -2704,12 +2704,12 @@ $currentEnrollmentClientPayload = json_encode([
                         <div style="background: linear-gradient(135deg, #edf7ee, #dbeadf); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2f5d34;">
                             <?= htmlspecialchars($year) ?> - <?= htmlspecialchars($semester) ?>, <?= $school_year ?>
                             <?php if ($is_effective_current_term): ?>
-                                <span style="font-size: 10px; background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;">CURRENT YEAR/SEM</span>
+                                <span style="font-size: 10px; background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;">CURRENT CURRICULUM TERM UNDER POLICY</span>
                             <?php endif; ?>
                         </div>
                         <?php if ($is_effective_current_term): ?>
                         <div style="padding: 8px 12px; font-size: 12px; color: #4e6452; border-bottom: 1px solid #e1ece3;">
-                            This is the student's current year/semester under school policy because it is the earliest required term for remaining courses.
+                            This follows the admin-set current semester after grade submission. Back/failed courses from previous semesters are plotted into the next same-semester offering that satisfies prerequisite constraints.
                         </div>
                         <?php endif; ?>
                         <table class="course-table">
@@ -2829,7 +2829,7 @@ $currentEnrollmentClientPayload = json_encode([
                             <?= htmlspecialchars($term_heading) ?>
                             <?php if ($is_effective_current_term): ?>
                             <span style="font-size: 11px; background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 700;">
-                                CURRENT YEAR/SEM
+                                CURRENT CURRICULUM TERM UNDER POLICY
                             </span>
                             <?php endif; ?>
                             <?php if ($term_max_units < 21): ?>
