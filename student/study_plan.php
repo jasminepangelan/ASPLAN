@@ -2364,11 +2364,15 @@ $currentEnrollmentClientPayload = json_encode([
                     });
                 };
 
+                $sort_terms($completed_semesters);
                 $sort_terms($partial_semesters);
                 $sort_terms($future_semesters);
-                
-                // Combine: completed first, then partially completed historical terms, then future plan
+
+                // Combine everything and keep the final display strictly
+                // chronological so unresolved late-year terms do not jump
+                // ahead of nearer future semesters.
                 $all_semesters = array_merge($completed_semesters, $partial_semesters, $future_semesters);
+                $sort_terms($all_semesters);
                 $effective_term_present = false;
                 foreach ($all_semesters as $semester_item) {
                     if ((($semester_item['year'] ?? '') . '|' . ($semester_item['semester'] ?? '')) === $effective_current_term_key) {

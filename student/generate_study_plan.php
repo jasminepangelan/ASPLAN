@@ -3640,12 +3640,22 @@ class StudyPlanGenerator {
         return !empty($cycle) ? $cycle : ['1st Sem', '2nd Sem', 'Mid Year'];
     }
 
+    private function termHasApprovedGrades($year, $semester): bool {
+        $termKey = $year . '|' . $semester;
+
+        return isset($this->semester_grade_history[$termKey])
+            && !empty($this->semester_grade_history[$termKey]['courses']);
+    }
+
     /**
      * Determine the effective current term according to school policy.
      *
-     * The earliest unresolved curriculum term remains the student's current
-     * year/semester until all required subjects in that term are cleared,
-     * including cases driven by back or failed courses.
+     * Historically the earliest unresolved curriculum term anchored the
+     * student's current year/semester. Once a term already has approved
+     * checklist grades, though, the student has effectively moved past that
+     * submission window even if some back subjects remain tied to it. In that
+     * case we advance across consecutive approved unresolved terms until we
+     * reach the next real schedulable term.
      */
     private function determineCurrentTerm() {
         $terms = $this->getOrderedCurriculumTerms();
@@ -3662,41 +3672,36 @@ class StudyPlanGenerator {
             return $terms[count($terms) - 1];
         }
 
-        // New behaviour: if the first-incomplete term already has approved
-        // grades (i.e. the student submitted grades and they were counted),
-        // treat that term as submitted and advance the effective current
-        // term to the next curriculum term. This avoids recommending
-        // courses from the *submitted* semester into the immediately
-        // following semester unless cross-registration allows it.
-        $currentTerm = $terms[$firstIncompleteIndex];
-        $termKey = $currentTerm['year'] . '|' . $currentTerm['semester'];
-        $hasApprovedGradesInTerm = isset($this->semester_grade_history[$termKey])
-            && !empty($this->semester_grade_history[$termKey]['courses']);
+        // Advance across unresolved terms that already have approved grades.
+        // This keeps historical failed/unresolved terms visible for reference
+        // without treating their already-submitted semester as the next load.
+        $effectiveIndex = $firstIncompleteIndex;
+        while (
+            $effectiveIndex < count($terms)
+            && !$this->isSemesterCompleted($terms[$effectiveIndex]['year'], $terms[$effectiveIndex]['semester'])
+            && $this->termHasApprovedGrades($terms[$effectiveIndex]['year'], $terms[$effectiveIndex]['semester'])
+        ) {
+            $effectiveIndex++;
+        }
 
-        if ($hasApprovedGradesInTerm) {
-            // advance to the next future term that can actually be planned.
-            for ($nextIndex = $firstIncompleteIndex + 1; $nextIndex < count($terms); $nextIndex++) {
+        if ($effectiveIndex >= count($terms)) {
+            $effectiveIndex = count($terms) - 1;
+        }
+
+        $currentTerm = $terms[$effectiveIndex];
+        $termKey = $currentTerm['year'] . '|' . $currentTerm['semester'];
+
+        // If the current unresolved term has no schedulable courses, advance
+        // to the next future term that can actually be planned.
+        if (!$this->doesTermHaveSchedulableCourses($currentTerm['year'], $currentTerm['semester'])) {
+            for ($nextIndex = $effectiveIndex + 1; $nextIndex < count($terms); $nextIndex++) {
                 $nextTerm = $terms[$nextIndex];
                 if ($this->doesTermHaveSchedulableCourses($nextTerm['year'], $nextTerm['semester'])) {
                     $this->debugLog('ADVANCE_TERM: advancing from ' . $termKey . ' to ' . $nextTerm['year'] . '|' . $nextTerm['semester']);
                     return $nextTerm;
                 }
             }
-            // no future schedulable term defined; return current term (extra-term logic will handle extension)
-            $this->debugLog('ADVANCE_TERM: term ' . $termKey . ' has approved grades but no future schedulable term defined');
-            return $currentTerm;
-        }
-
-        // If the current unresolved term has no schedulable courses, advance
-        // to the next future term that can actually be planned.
-        if (!$this->doesTermHaveSchedulableCourses($currentTerm['year'], $currentTerm['semester'])) {
-            for ($nextIndex = $firstIncompleteIndex + 1; $nextIndex < count($terms); $nextIndex++) {
-                $nextTerm = $terms[$nextIndex];
-                if ($this->doesTermHaveSchedulableCourses($nextTerm['year'], $nextTerm['semester'])) {
-                    $this->debugLog('ADVANCE_TERM: no schedulable courses in ' . $termKey . '; advancing to ' . $nextTerm['year'] . '|' . $nextTerm['semester']);
-                    return $nextTerm;
-                }
-            }
+            $this->debugLog('ADVANCE_TERM: no schedulable courses in ' . $termKey . '; no future schedulable term found');
         }
 
         return $currentTerm;
