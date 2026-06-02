@@ -3689,6 +3689,11 @@ class StudyPlanGenerator {
      * earliest possible term satisfying the constraints.
      */
     public function generateBasicPlan() {
+        // Respect global stop conditions (disqualification etc.)
+        if ($this->shouldStopGeneration()) {
+            return [];
+        }
+
         $sim_completed = $this->completed_courses;
         $sim_all = $this->all_courses;
 
@@ -3744,11 +3749,13 @@ class StudyPlanGenerator {
         $scheduled_term = [];
 
         // helper: find earliest term index >= start that can host course
-        $find_term = function($course, $start_idx, $unitsNeeded) use (&$plan, &$term_used_units) {
+        $find_term = function($course, $start_idx, $unitsNeeded, $course_code) use (&$plan, &$term_used_units) {
             $count = count($plan);
             for ($i = $start_idx; $i < $count; $i++) {
                 $t = $plan[$i];
                 if (!$this->isMidYearCourseLockedToTerm($course, $t['year'], $t['semester'])) continue;
+                // enforce standing constraints
+                if (!$this->standingConstraintSatisfied($course_code, $t['year'], $t['semester'])) continue;
                 $cap = isset($t['max_units']) ? (int)$t['max_units'] : $this->getMaxUnitsForTerm('None', $t['year'], $t['semester']);
                 if (($term_used_units[$i] ?? 0) + $unitsNeeded <= $cap) return $i;
             }
@@ -3778,8 +3785,24 @@ class StudyPlanGenerator {
             }
 
             $start_idx = max(0, $max_idx + 1);
-            $place_idx = $find_term($course, $start_idx, $units);
+            $place_idx = $find_term($course, $start_idx, $units, $code);
             if ($place_idx === null) {
+                // attempt cross-registration in existing terms first
+                for ($ti = $start_idx; $ti < count($plan); $ti++) {
+                    $t = $plan[$ti];
+                    $cap = isset($t['max_units']) ? (int)$t['max_units'] : $this->getMaxUnitsForTerm('None', $t['year'], $t['semester']);
+                    if (($term_used_units[$ti] ?? 0) + $units > $cap) continue;
+                    // check if an equivalent offering exists elsewhere for this semester
+                    $cross_course = $this->findCrossRegistrationOffering($code, $t['semester'], $course);
+                    if ($cross_course !== null && $this->prerequisitesSatisfiedForCompletedSet($code, $sim_completed) && $this->standingConstraintSatisfied($code, $t['year'], $t['semester'])) {
+                        // mark as cross-registered offering
+                        $course['cross_registered'] = true;
+                        $course['cross_reg_source_program'] = $cross_course['cross_reg_source_program'] ?? ($cross_course['programs'] ?? '');
+                        $place_idx = $ti;
+                        break;
+                    }
+                }
+
                 // attempt to append extra terms (simple strategy)
                 $extraCycle = $this->getExtraTermSemesterCycle();
                 $extraCount = 0;
