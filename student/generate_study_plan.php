@@ -245,8 +245,12 @@ class StudyPlanGenerator {
         $courseYear = $this->normalizeCurriculumYearLabel($course['year'] ?? '');
         $targetYear = $this->normalizeCurriculumYearLabel($targetYear ?? '');
 
-        return $courseYear === $targetYear
-            && $courseSemester === $targetSemester;
+        $courseYearOrder = $this->yearLabelToOrder($courseYear);
+        $targetYearOrder = $this->yearLabelToOrder($targetYear);
+
+        return $courseSemester === $targetSemester
+            && $courseYearOrder > 0
+            && $targetYearOrder >= $courseYearOrder;
     }
 
     private function registerCurriculumCourseRow(array $row) {
