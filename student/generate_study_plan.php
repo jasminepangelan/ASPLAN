@@ -699,7 +699,7 @@ class StudyPlanGenerator {
             }
 
             $grade = $attempts[$slot]['grade'];
-            if ($grade === '' || strtoupper($grade) === 'NO GRADE') {
+            if ($grade === '') {
                 continue;
             }
 
@@ -837,9 +837,30 @@ class StudyPlanGenerator {
 
         while ($row = $result->fetch_assoc()) {
             $effectiveAttempt = $this->resolveEffectiveChecklistAttempt($row, $has_approval_column);
-            if ($effectiveAttempt === null) {
-                continue;
-            }
+                if ($effectiveAttempt === null) {
+                    // If no effective approved attempt found, but there are recorded
+                    // attempts with explicit 'No Grade', treat this as an incomplete
+                    // attempt so the course is considered a back subject and is
+                    // included in semester history / retention calculations.
+                    $recorded = $this->extractChecklistAttempts($row);
+                    $hasNoGrade = false;
+                    foreach ($recorded as $att) {
+                        if (strtoupper(trim((string)($att['grade'] ?? ''))) === 'NO GRADE') {
+                            $hasNoGrade = true;
+                            break;
+                        }
+                    }
+
+                    if ($hasNoGrade) {
+                        $effectiveAttempt = [
+                            'slot' => 0,
+                            'grade' => 'NO GRADE',
+                            'remark' => ''
+                        ];
+                    } else {
+                        continue;
+                    }
+                }
 
             if ($this->isPassingFinalGrade($effectiveAttempt['grade'] ?? null)) {
                 $this->completed_courses[] = $this->normalizeCourseCode($row['course_code'] ?? '');
@@ -1059,6 +1080,12 @@ class StudyPlanGenerator {
             $is_failed = false;
             
             if ($grade === 'INC') {
+                $this->inc_courses[] = $course_code;
+                $is_failed = true;
+            } elseif (strtoupper((string)$grade) === 'NO GRADE') {
+                // Treat explicit 'No Grade' as an incomplete/back subject so
+                // it is prioritized in the study plan and counted in
+                // retention/back-subject statistics.
                 $this->inc_courses[] = $course_code;
                 $is_failed = true;
             } elseif ($grade === 'DRP' || $grade === 'W') {
