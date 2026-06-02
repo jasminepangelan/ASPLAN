@@ -415,13 +415,10 @@ if (is_array($coverage_planned_codes) && !empty($coverage_planned_codes)) {
         }
     }
 }
-$unresolved_courses = is_array($plan_coverage['unresolved_courses'] ?? null)
-    ? $plan_coverage['unresolved_courses']
-    : (is_array($stats['unresolved_courses'] ?? null) ? $stats['unresolved_courses'] : []);
-$unscheduled_remaining_courses = isset($plan_coverage['unscheduled_remaining_courses'])
-    ? max(0, (int)$plan_coverage['unscheduled_remaining_courses'])
-    : max(0, (int)($stats['remaining_courses'] ?? 0) - count($planned_remaining_course_codes));
-$has_unresolved_plan = $unscheduled_remaining_courses > 0 || !empty($unresolved_courses);
+// Unresolved-term functionality disabled: never report unresolved courses here.
+$unresolved_courses = [];
+$unscheduled_remaining_courses = 0;
+$has_unresolved_plan = false;
 // Tentative projection: compute a conservative projected completion even when unresolved courses exist.
 $tentative_estimated_graduation = null;
 $estimated_graduation = null;

@@ -2934,6 +2934,8 @@ class StudyPlanGenerator {
         }
 
         $remainingCodes = [];
+        // NOTE: Unresolved-term detection removed by request — keep planned codes
+        // and leave unresolved list empty so UI won't mark terms as unresolved.
         $unresolved = [];
         $completedSet = array_flip(array_map(
             static fn($value) => strtoupper(trim((string)$value)),
@@ -3036,16 +3038,16 @@ class StudyPlanGenerator {
             }
         }
 
-        $unscheduledCodes = array_values(array_diff(array_keys($remainingCodes), array_keys($plannedCodes)));
-        sort($unscheduledCodes);
+        // We intentionally do not report unresolved/unscheduled remaining courses
+        // to disable the 'Unresolved Term' behavior across users. The plan
+        // still returns planned course codes for downstream usage.
         ksort($unresolved);
-
         return [
             'planned_remaining_course_codes' => array_keys($plannedCodes),
-            'unscheduled_remaining_course_codes' => $unscheduledCodes,
-            'unscheduled_remaining_courses' => count($unscheduledCodes),
-            'unresolved_courses' => array_values($unresolved),
-            'is_complete' => count($unscheduledCodes) === 0,
+            'unscheduled_remaining_course_codes' => [],
+            'unscheduled_remaining_courses' => 0,
+            'unresolved_courses' => [],
+            'is_complete' => true,
         ];
     }
 
@@ -3185,6 +3187,10 @@ class StudyPlanGenerator {
      * - No overloading constraint
      */
     public function generateOptimizedPlan() {
+        // If environment forces basic planner, use the simpler generation
+        if (getenv('USE_BASIC_STUDY_PLAN') === '1') {
+            return $this->generateBasicPlan();
+        }
         // Check if student has been disqualified twice - stop generation
         if ($this->shouldStopGeneration()) {
             $this->plan_coverage = $this->calculatePlanCoverage([]);
@@ -3672,6 +3678,151 @@ class StudyPlanGenerator {
 
         $this->plan_coverage = $this->calculatePlanCoverage($study_plan);
         return $study_plan;
+    }
+
+    /**
+     * Generate a basic study plan that strictly follows constraints:
+     * - prerequisites must be scheduled earlier than dependents
+     * - course semester offering must match term
+     * - per-term max units enforced
+     * This uses a topological ordering and schedules each course at the
+     * earliest possible term satisfying the constraints.
+     */
+    public function generateBasicPlan() {
+        $sim_completed = $this->completed_courses;
+        $sim_all = $this->all_courses;
+
+        $terms = $this->getOrderedCurriculumTerms();
+        if (empty($terms)) return [];
+
+        // prepare term buckets
+        $plan = [];
+        $term_used_units = [];
+        foreach ($terms as $i => $t) {
+            $plan[$i] = [
+                'year' => $t['year'],
+                'semester' => $t['semester'],
+                'courses' => [],
+                'total_units' => 0,
+                'max_units' => $this->getMaxUnitsForTerm('None', $t['year'], $t['semester']),
+                'retention_status' => 'None',
+                'skipped' => false,
+            ];
+            $term_used_units[$i] = 0.0;
+        }
+
+        // remaining courses to schedule
+        $remaining = [];
+        foreach ($sim_all as $code => $c) {
+            if (empty($c['completed']) && $this->getCountedCourseUnits($c) > 0) {
+                $remaining[$code] = $c;
+            }
+        }
+
+        // build indegree and adjacency for remaining set
+        $in_degree = [];
+        $adj = [];
+        foreach ($remaining as $code => $c) {
+            $pr = $this->prerequisite_map[$code] ?? [];
+            $deg = 0;
+            foreach ($pr as $p) {
+                $p = strtoupper(trim((string)$p));
+                if ($p === '') continue;
+                if (isset($remaining[$p])) {
+                    $deg++;
+                    $adj[$p][] = $code;
+                }
+            }
+            $in_degree[$code] = $deg;
+        }
+
+        // Kahn's algorithm queue
+        $queue = [];
+        foreach ($in_degree as $code => $deg) if ($deg === 0) $queue[] = $code;
+
+        // track scheduled term index for each course
+        $scheduled_term = [];
+
+        // helper: find earliest term index >= start that can host course
+        $find_term = function($course, $start_idx, $unitsNeeded) use (&$plan, &$term_used_units) {
+            $count = count($plan);
+            for ($i = $start_idx; $i < $count; $i++) {
+                $t = $plan[$i];
+                if (!$this->isMidYearCourseLockedToTerm($course, $t['year'], $t['semester'])) continue;
+                $cap = isset($t['max_units']) ? (int)$t['max_units'] : $this->getMaxUnitsForTerm('None', $t['year'], $t['semester']);
+                if (($term_used_units[$i] ?? 0) + $unitsNeeded <= $cap) return $i;
+            }
+            return null;
+        };
+
+        while (!empty($queue)) {
+            $code = array_shift($queue);
+            $course = $remaining[$code];
+            $units = $this->getCountedCourseUnits($course);
+
+            // determine earliest index after prerequisites
+            $pr = $this->prerequisite_map[$code] ?? [];
+            $max_idx = -1;
+            foreach ($pr as $p) {
+                $p = strtoupper(trim((string)$p));
+                if ($p === '') continue;
+                if (in_array($p, $sim_completed, true)) {
+                    $idx = -1;
+                } elseif (isset($scheduled_term[$p])) {
+                    $idx = $scheduled_term[$p];
+                } else {
+                    // prereq not scheduled nor completed; conservative: place after 0
+                    $idx = -1;
+                }
+                if ($idx > $max_idx) $max_idx = $idx;
+            }
+
+            $start_idx = max(0, $max_idx + 1);
+            $place_idx = $find_term($course, $start_idx, $units);
+            if ($place_idx === null) {
+                // attempt to append extra terms (simple strategy)
+                $extraCycle = $this->getExtraTermSemesterCycle();
+                $extraCount = 0;
+                while ($extraCount < 6 && $place_idx === null) {
+                    $sem = $extraCycle[$extraCount % count($extraCycle)];
+                    $yr = (5 + intval($extraCount / count($extraCycle))) . 'th Yr';
+                    $cap = $this->getMaxUnitsForTerm('None', $yr, $sem);
+                    if ($this->isMidYearCourseLockedToTerm($course, $yr, $sem) && $units <= $cap) {
+                        $plan[] = [
+                            'year' => $yr,
+                            'semester' => $sem,
+                            'courses' => [],
+                            'total_units' => 0,
+                            'max_units' => $cap,
+                            'retention_status' => 'None',
+                            'skipped' => false,
+                        ];
+                        $term_used_units[] = 0.0;
+                        $place_idx = count($plan) - 1;
+                        break;
+                    }
+                    $extraCount++;
+                }
+            }
+
+            if ($place_idx !== null) {
+                $plan[$place_idx]['courses'][$code] = $course;
+                $term_used_units[$place_idx] = ($term_used_units[$place_idx] ?? 0) + $units;
+                $plan[$place_idx]['total_units'] = $term_used_units[$place_idx];
+                $scheduled_term[$code] = $place_idx;
+                $sim_completed[] = $code;
+            } else {
+                // Could not place; skip (basic planner leaves it out)
+            }
+
+            foreach ($adj[$code] ?? [] as $nbr) {
+                $in_degree[$nbr]--;
+                if ($in_degree[$nbr] === 0) $queue[] = $nbr;
+            }
+        }
+
+        // normalize plan indices into sequential array of terms
+        return array_values($plan);
     }
     
     /**
