@@ -2631,13 +2631,15 @@ $currentEnrollmentClientPayload = json_encode([
                     <div class="semester-section" style="border: 2px solid #cfe4d2; background: linear-gradient(180deg, #fbfefb 0%, #f6fbf7 100%);">
                         <div style="background: linear-gradient(135deg, #edf7ee, #dbeadf); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2f5d34;">
                             <?= htmlspecialchars($year) ?> - <?= htmlspecialchars($semester) ?>, <?= $school_year ?>
-                            <span style="font-size: 10px; background: <?= $is_effective_current_term ? '#e8f5e9' : '#fff8e1' ?>; color: <?= $is_effective_current_term ? '#2e7d32' : '#8d6e00' ?>; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;"><?= $is_effective_current_term ? 'CURRENT YEAR/SEM' : 'UNRESOLVED TERM' ?></span>
+                            <?php if ($is_effective_current_term): ?>
+                                <span style="font-size: 10px; background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;">CURRENT YEAR/SEM</span>
+                            <?php endif; ?>
                         </div>
+                        <?php if ($is_effective_current_term): ?>
                         <div style="padding: 8px 12px; font-size: 12px; color: #4e6452; border-bottom: 1px solid #e1ece3;">
-                            <?= $is_effective_current_term
-                                ? 'This is the student\'s current year/semester under school policy because it is the earliest unresolved required term.'
-                                : 'This term already has completed courses, but it still has unresolved required subjects, so it stays visible for reference.' ?>
+                            This is the student's current year/semester under school policy because it is the earliest required term for remaining courses.
                         </div>
+                        <?php endif; ?>
                         <table class="course-table">
                             <thead>
                                 <tr>
