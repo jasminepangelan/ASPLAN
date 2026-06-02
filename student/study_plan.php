@@ -190,10 +190,17 @@ if (!empty($academicHold['active'])) {
 $last_planned_term = null;
 $remaining_semesters = 0;
 $planned_remaining_course_codes = [];
+$projection_term_keys = [];
+$completed_projection_term_keys = [];
 foreach ($optimized_plan as $term) {
     if (empty($term['skipped']) && !empty($term['courses'])) {
-        $last_planned_term = $term;
-        $remaining_semesters++;
+        $projection_key = trim((string)($term['year'] ?? '')) . '|' . trim((string)($term['semester'] ?? ''));
+        if ($projection_key !== '' && !isset($projection_term_keys[$projection_key])) {
+            $projection_term_keys[$projection_key] = [
+                'year' => $term['year'] ?? '',
+                'semester' => $term['semester'] ?? '',
+            ];
+        }
 
         foreach (($term['courses'] ?? []) as $course_code => $course) {
             $code = strtoupper(trim((string)($course['code'] ?? $course_code)));
@@ -204,9 +211,50 @@ foreach ($optimized_plan as $term) {
         }
     }
 }
+foreach ($completed_terms as $completed_term) {
+    $completed_key = trim((string)($completed_term['year'] ?? '')) . '|' . trim((string)($completed_term['semester'] ?? ''));
+    if ($completed_key !== '|') {
+        $completed_projection_term_keys[$completed_key] = true;
+    }
+}
+foreach ($ay_courses_by_term as $term_key => $term_data) {
+    if (isset($completed_projection_term_keys[$term_key]) || empty($term_data['uncomplete'])) {
+        continue;
+    }
+
+    $projection_term_keys[$term_key] = [
+        'year' => $term_data['year'] ?? '',
+        'semester' => $term_data['semester'] ?? '',
+    ];
+
+    foreach ((array)($term_data['uncomplete'] ?? []) as $course) {
+        $code = strtoupper(trim((string)($course['code'] ?? '')));
+        $units = (float)($course['units'] ?? 0);
+        if ($code !== '' && $units > 0) {
+            $planned_remaining_course_codes[$code] = true;
+        }
+    }
+}
+uasort($projection_term_keys, static function ($a, $b) {
+    $yearOrder = static function ($year): int {
+        return preg_match('/(\d+)/', (string)$year, $match) ? (int)$match[1] : 999;
+    };
+    $semesterOrder = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3, 'Midyear' => 3, 'Summer' => 3];
+    $ay = $yearOrder($a['year'] ?? '');
+    $by = $yearOrder($b['year'] ?? '');
+    if ($ay !== $by) {
+        return $ay <=> $by;
+    }
+
+    return ($semesterOrder[$a['semester'] ?? ''] ?? 999) <=> ($semesterOrder[$b['semester'] ?? ''] ?? 999);
+});
+$remaining_semesters = count($projection_term_keys);
+if ($remaining_semesters > 0) {
+    $last_planned_term = end($projection_term_keys);
+}
 $plan_coverage = is_array($stats['plan_coverage'] ?? null) ? $stats['plan_coverage'] : [];
 $coverage_planned_codes = $plan_coverage['planned_remaining_course_codes'] ?? ($stats['planned_remaining_course_codes'] ?? []);
-if (is_array($coverage_planned_codes) && !empty($coverage_planned_codes)) {
+if (is_array($coverage_planned_codes) && !empty($coverage_planned_codes) && empty($planned_remaining_course_codes)) {
     $planned_remaining_course_codes = [];
     foreach ($coverage_planned_codes as $coverage_code) {
         $code = strtoupper(trim((string)$coverage_code));
@@ -218,9 +266,7 @@ if (is_array($coverage_planned_codes) && !empty($coverage_planned_codes)) {
 $unresolved_courses = is_array($plan_coverage['unresolved_courses'] ?? null)
     ? $plan_coverage['unresolved_courses']
     : (is_array($stats['unresolved_courses'] ?? null) ? $stats['unresolved_courses'] : []);
-$unscheduled_remaining_courses = isset($plan_coverage['unscheduled_remaining_courses'])
-    ? max(0, (int)$plan_coverage['unscheduled_remaining_courses'])
-    : max(0, (int)($stats['remaining_courses'] ?? 0) - count($planned_remaining_course_codes));
+$unscheduled_remaining_courses = max(0, (int)($stats['remaining_courses'] ?? 0) - count($planned_remaining_course_codes));
 $has_unresolved_plan = $unscheduled_remaining_courses > 0 || !empty($unresolved_courses);
 
 $tentative_estimated_graduation = null;
