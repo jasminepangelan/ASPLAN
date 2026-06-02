@@ -215,7 +215,10 @@ class StudyPlanGenerator {
             for ($ti = $start_idx; $ti < count($terms); $ti++) {
                 $t = $terms[$ti];
                 if (!$this->isMidYearCourseLockedToTerm($course, $t['year'], $t['semester'])) continue;
-                $cap = ($t['max_units'] ?? $this->getMaxUnitsForTerm('None', $t['year'], $t['semester']));
+                $termRetention = $t['retention_status'] ?? 'None';
+                $cap = isset($t['max_units']) && $t['max_units'] !== null
+                    ? (int)$t['max_units']
+                    : $this->getMaxUnitsForTerm($termRetention, $t['year'], $t['semester']);
                 if (($used_units[$ti] ?? 0) + $units <= $cap) {
                     // Place course
                     if (!isset($study_plan[$ti]['courses']) || !is_array($study_plan[$ti]['courses'])) {
