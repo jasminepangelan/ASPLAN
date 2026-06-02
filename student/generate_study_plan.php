@@ -68,6 +68,13 @@ class StudyPlanGenerator {
         'has_active_shift_request' => false,
         'planning_status' => null,
     ];
+    private $plan_coverage = [
+        'planned_remaining_course_codes' => [],
+        'unscheduled_remaining_course_codes' => [],
+        'unscheduled_remaining_courses' => 0,
+        'unresolved_courses' => [],
+        'is_complete' => false,
+    ];
     
     // Map full program names to curriculum program codes
     private static $programCodeMap = [
@@ -2667,6 +2674,119 @@ class StudyPlanGenerator {
         }
     }
 
+    private function calculatePlanCoverage(array $study_plan): array {
+        $plannedCodes = [];
+        $plannedTermOrders = [];
+        foreach ($study_plan as $term) {
+            if (!empty($term['skipped']) || empty($term['courses'])) {
+                continue;
+            }
+
+            $termOrder = $this->getCurriculumTermOrder($term['year'] ?? '', $term['semester'] ?? '');
+            foreach ((array)($term['courses'] ?? []) as $courseCode => $course) {
+                $code = strtoupper(trim((string)($course['code'] ?? $courseCode)));
+                if ($code === '' || $this->getCountedCourseUnits($course) <= 0) {
+                    continue;
+                }
+
+                $plannedCodes[$code] = true;
+                if (!isset($plannedTermOrders[$code]) || $termOrder < $plannedTermOrders[$code]) {
+                    $plannedTermOrders[$code] = $termOrder;
+                }
+            }
+        }
+
+        $remainingCodes = [];
+        $unresolved = [];
+        $completedSet = array_flip(array_map(
+            static fn($value) => strtoupper(trim((string)$value)),
+            $this->completed_courses
+        ));
+
+        foreach ($this->all_courses as $courseCode => $course) {
+            $code = strtoupper(trim((string)($course['code'] ?? $courseCode)));
+            if ($code === '' || $this->getCountedCourseUnits($course) <= 0 || !empty($course['completed'])) {
+                continue;
+            }
+
+            $remainingCodes[$code] = true;
+            if (isset($plannedCodes[$code])) {
+                continue;
+            }
+
+            $blockers = [];
+            $courseTermOrder = $this->getCurriculumTermOrder($course['year'] ?? '', $course['semester'] ?? '');
+            foreach (($this->prerequisite_map[$code] ?? []) as $prereq) {
+                $prereqCode = strtoupper(trim((string)$prereq));
+                if ($prereqCode === '' || isset($completedSet[$prereqCode])) {
+                    continue;
+                }
+
+                if (
+                    isset($plannedTermOrders[$prereqCode])
+                    && (
+                        !$this->isMidYearSemesterLabel($course['semester'] ?? '')
+                        || $plannedTermOrders[$prereqCode] < $courseTermOrder
+                    )
+                ) {
+                    continue;
+                }
+
+                $blockers[] = $prereqCode;
+            }
+
+            $reason = 'Not scheduled in generated plan';
+            if ($this->isMidYearSemesterLabel($course['semester'] ?? '')) {
+                $reason = 'Locked Mid Year/Summer term missed';
+            }
+
+            $unresolved[$code] = [
+                'code' => $code,
+                'title' => (string)($course['title'] ?? ''),
+                'year' => (string)($course['year'] ?? ''),
+                'semester' => $this->normalizeCurriculumSemesterLabel($course['semester'] ?? ''),
+                'reason' => $reason,
+                'blockers' => array_values(array_unique($blockers)),
+            ];
+        }
+
+        foreach ($this->all_courses as $courseCode => $course) {
+            $code = strtoupper(trim((string)($course['code'] ?? $courseCode)));
+            if ($code === '' || isset($unresolved[$code]) || $this->getCountedCourseUnits($course) <= 0 || !empty($course['completed'])) {
+                continue;
+            }
+
+            foreach (($this->prerequisite_map[$code] ?? []) as $prereq) {
+                $prereqCode = strtoupper(trim((string)$prereq));
+                if ($prereqCode === '' || !isset($unresolved[$prereqCode])) {
+                    continue;
+                }
+
+                $unresolved[$code] = [
+                    'code' => $code,
+                    'title' => (string)($course['title'] ?? ''),
+                    'year' => (string)($course['year'] ?? ''),
+                    'semester' => $this->normalizeCurriculumSemesterLabel($course['semester'] ?? ''),
+                    'reason' => 'Blocked by unresolved prerequisite',
+                    'blockers' => [$prereqCode],
+                ];
+                break;
+            }
+        }
+
+        $unscheduledCodes = array_values(array_diff(array_keys($remainingCodes), array_keys($plannedCodes)));
+        sort($unscheduledCodes);
+        ksort($unresolved);
+
+        return [
+            'planned_remaining_course_codes' => array_keys($plannedCodes),
+            'unscheduled_remaining_course_codes' => $unscheduledCodes,
+            'unscheduled_remaining_courses' => count($unscheduledCodes),
+            'unresolved_courses' => array_values($unresolved),
+            'is_complete' => count($unscheduledCodes) === 0,
+        ];
+    }
+
     /**
      * Students who are still following a clean, regular progression should
      * see the curriculum exactly as defined, without greedy reordering,
@@ -2805,11 +2925,14 @@ class StudyPlanGenerator {
     public function generateOptimizedPlan() {
         // Check if student has been disqualified twice - stop generation
         if ($this->shouldStopGeneration()) {
+            $this->plan_coverage = $this->calculatePlanCoverage([]);
             return [];
         }
 
         if ($this->shouldUseExactCurriculumPlan()) {
-            return $this->buildExactCurriculumPlan();
+            $study_plan = $this->buildExactCurriculumPlan();
+            $this->plan_coverage = $this->calculatePlanCoverage($study_plan);
+            return $study_plan;
         }
         
         $study_plan = [];
@@ -2823,6 +2946,7 @@ class StudyPlanGenerator {
 
         $terms = $this->getOrderedCurriculumTerms();
         if (empty($terms)) {
+            $this->plan_coverage = $this->calculatePlanCoverage([]);
             return [];
         }
         
@@ -3278,6 +3402,7 @@ class StudyPlanGenerator {
             $extra_term_count++;
         }
         
+        $this->plan_coverage = $this->calculatePlanCoverage($study_plan);
         return $study_plan;
     }
     
@@ -3783,6 +3908,11 @@ class StudyPlanGenerator {
             'thrice_failed_count' => count($this->thrice_failed_courses),
             'policy_gate' => $this->policy_gate_status,
             'planning_status' => $this->planning_status,
+            'plan_coverage' => $this->plan_coverage,
+            'planned_remaining_course_codes' => $this->plan_coverage['planned_remaining_course_codes'] ?? [],
+            'unscheduled_remaining_course_codes' => $this->plan_coverage['unscheduled_remaining_course_codes'] ?? [],
+            'unscheduled_remaining_courses' => (int)($this->plan_coverage['unscheduled_remaining_courses'] ?? 0),
+            'unresolved_courses' => $this->plan_coverage['unresolved_courses'] ?? [],
         ];
     }
     

@@ -179,12 +179,29 @@ foreach ($optimized_plan as $term) {
         }
     }
 }
-$unscheduled_remaining_courses = max(0, (int)($stats['remaining_courses'] ?? 0) - count($planned_remaining_course_codes));
+$plan_coverage = is_array($stats['plan_coverage'] ?? null) ? $stats['plan_coverage'] : [];
+$coverage_planned_codes = $plan_coverage['planned_remaining_course_codes'] ?? ($stats['planned_remaining_course_codes'] ?? []);
+if (is_array($coverage_planned_codes) && !empty($coverage_planned_codes)) {
+    $planned_remaining_course_codes = [];
+    foreach ($coverage_planned_codes as $coverage_code) {
+        $code = strtoupper(trim((string)$coverage_code));
+        if ($code !== '') {
+            $planned_remaining_course_codes[$code] = true;
+        }
+    }
+}
+$unresolved_courses = is_array($plan_coverage['unresolved_courses'] ?? null)
+    ? $plan_coverage['unresolved_courses']
+    : (is_array($stats['unresolved_courses'] ?? null) ? $stats['unresolved_courses'] : []);
+$unscheduled_remaining_courses = isset($plan_coverage['unscheduled_remaining_courses'])
+    ? max(0, (int)$plan_coverage['unscheduled_remaining_courses'])
+    : max(0, (int)($stats['remaining_courses'] ?? 0) - count($planned_remaining_course_codes));
+$has_unresolved_plan = $unscheduled_remaining_courses > 0 || !empty($unresolved_courses);
 
 $estimated_graduation = null;
 $graduation_school_year = '';
 $is_extended = false;
-if ($last_planned_term && $unscheduled_remaining_courses === 0) {
+if ($last_planned_term && !$has_unresolved_plan) {
     $grad_year_num = intval(preg_replace('/[^0-9]/', '', $last_planned_term['year']));
     $grad_sy_start = $admission_year + ($grad_year_num > 0 ? $grad_year_num - 1 : 0);
     $grad_sy_end = $grad_sy_start + 1;
@@ -2099,6 +2116,32 @@ $currentEnrollmentClientPayload = json_encode([
                 </p>
                 <?php endif; ?>
             </div>
+
+            <?php if ($has_unresolved_plan): ?>
+            <div style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #fff3e0, #ffe0b2); border-left: 4px solid #ef6c00; border-radius: 4px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 18px;">&#9888;&#65039;</span>
+                    <strong style="font-size: 15px; color: #e65100;">Incomplete Study Plan</strong>
+                </div>
+                <p style="margin: 0; font-size: 13px; color: #333;">
+                    The generated plan schedules <strong><?= count($planned_remaining_course_codes) ?></strong> of <strong><?= (int)($stats['remaining_courses'] ?? 0) ?></strong> remaining courses.
+                    <strong><?= $unscheduled_remaining_courses ?> course<?= $unscheduled_remaining_courses === 1 ? '' : 's' ?></strong> remain<?= $unscheduled_remaining_courses === 1 ? 's' : '' ?> unresolved, so projected completion is hidden.
+                </p>
+                <?php if (!empty($unresolved_courses)): ?>
+                <ul style="margin: 8px 0 0 18px; font-size: 13px; color: #333;">
+                    <?php foreach (array_slice($unresolved_courses, 0, 8) as $unresolved): ?>
+                    <li>
+                        <strong><?= htmlspecialchars((string)($unresolved['code'] ?? '')) ?></strong>
+                        <?= htmlspecialchars((string)($unresolved['reason'] ?? 'Unresolved')) ?>
+                        <?php if (!empty($unresolved['blockers']) && is_array($unresolved['blockers'])): ?>
+                            &mdash; blocker<?= count($unresolved['blockers']) === 1 ? '' : 's' ?>: <?= htmlspecialchars(implode(', ', $unresolved['blockers'])) ?>
+                        <?php endif; ?>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
             <?php if (!empty($thrice_failed)): ?>
             <!-- Triple-Failure Alert Banner -->

@@ -524,16 +524,43 @@ usort($displayTerms, function ($a, $b) use ($yearOrder, $semesterOrder) {
 $fullName = trim((string)($student['last_name'] ?? '') . ', ' . (string)($student['first_name'] ?? '') . ' ' . (string)($student['middle_name'] ?? ''));
 $lastPlannedTerm = null;
 $remainingSemesters = 0;
+$plannedRemainingCourseCodes = [];
 foreach ($studyPlan as $term) {
     if (empty($term['skipped']) && !empty($term['courses'])) {
         $lastPlannedTerm = $term;
         $remainingSemesters++;
+
+        foreach (($term['courses'] ?? []) as $courseCode => $course) {
+            $code = strtoupper(trim((string)($course['code'] ?? $courseCode)));
+            $units = (float)($course['units'] ?? 0);
+            if ($code !== '' && $units > 0) {
+                $plannedRemainingCourseCodes[$code] = true;
+            }
+        }
     }
 }
+$planCoverage = is_array($stats['plan_coverage'] ?? null) ? $stats['plan_coverage'] : [];
+$coveragePlannedCodes = $planCoverage['planned_remaining_course_codes'] ?? ($stats['planned_remaining_course_codes'] ?? []);
+if (is_array($coveragePlannedCodes) && !empty($coveragePlannedCodes)) {
+    $plannedRemainingCourseCodes = [];
+    foreach ($coveragePlannedCodes as $coverageCode) {
+        $code = strtoupper(trim((string)$coverageCode));
+        if ($code !== '') {
+            $plannedRemainingCourseCodes[$code] = true;
+        }
+    }
+}
+$unresolvedCourses = is_array($planCoverage['unresolved_courses'] ?? null)
+    ? $planCoverage['unresolved_courses']
+    : (is_array($stats['unresolved_courses'] ?? null) ? $stats['unresolved_courses'] : []);
+$unscheduledRemainingCourses = isset($planCoverage['unscheduled_remaining_courses'])
+    ? max(0, (int)$planCoverage['unscheduled_remaining_courses'])
+    : max(0, (int)($stats['remaining_courses'] ?? 0) - count($plannedRemainingCourseCodes));
+$hasUnresolvedPlan = $unscheduledRemainingCourses > 0 || !empty($unresolvedCourses);
 
 $estimatedGraduation = null;
 $graduationSchoolYear = '';
-if ($lastPlannedTerm) {
+if ($lastPlannedTerm && !$hasUnresolvedPlan) {
     $gradYearNum = (int)preg_replace('/[^0-9]/', '', (string)($lastPlannedTerm['year'] ?? ''));
     $gradSyStart = $admissionYear + ($gradYearNum > 0 ? $gradYearNum - 1 : 0);
     $gradSyEnd = $gradSyStart + 1;
@@ -1444,6 +1471,32 @@ if ($lastPlannedTerm) {
                 </p>
             </div>
 
+            <?php if ($hasUnresolvedPlan): ?>
+            <div style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #fff3e0, #ffe0b2); border-left: 4px solid #ef6c00; border-radius: 4px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 18px;">&#9888;&#65039;</span>
+                    <strong style="font-size: 15px; color: #e65100;">Incomplete Study Plan</strong>
+                </div>
+                <p style="margin: 0; font-size: 13px; color: #333;">
+                    This plan schedules <strong><?= count($plannedRemainingCourseCodes) ?></strong> of <strong><?= (int)($stats['remaining_courses'] ?? 0); ?></strong> remaining courses.
+                    <strong><?= $unscheduledRemainingCourses; ?> course<?= $unscheduledRemainingCourses === 1 ? '' : 's'; ?></strong> remain<?= $unscheduledRemainingCourses === 1 ? 's' : ''; ?> unresolved, so projected completion is hidden.
+                </p>
+                <?php if (!empty($unresolvedCourses)): ?>
+                <ul style="margin: 8px 0 0 18px; font-size: 13px; color: #333;">
+                    <?php foreach (array_slice($unresolvedCourses, 0, 8) as $unresolved): ?>
+                    <li>
+                        <strong><?= htmlspecialchars((string)($unresolved['code'] ?? '')); ?></strong>
+                        <?= htmlspecialchars((string)($unresolved['reason'] ?? 'Unresolved')); ?>
+                        <?php if (!empty($unresolved['blockers']) && is_array($unresolved['blockers'])): ?>
+                            &mdash; blocker<?= count($unresolved['blockers']) === 1 ? '' : 's'; ?>: <?= htmlspecialchars(implode(', ', $unresolved['blockers'])); ?>
+                        <?php endif; ?>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
             <?php if ($remainingSemesters > 0): ?>
             <div style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #e8f5e9, #f1f8e9); border-left: 4px solid #4CAF50; border-radius: 4px;">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -1451,8 +1504,13 @@ if ($lastPlannedTerm) {
                     <strong style="font-size: 15px; color: #2e7d32;">Timeline Optimization Summary</strong>
                 </div>
                 <p style="margin: 0; font-size: 13px; color: #333;">
+                    <?php if ($hasUnresolvedPlan): ?>
+                    This plan currently schedules <strong><?= count($plannedRemainingCourseCodes); ?></strong> of <strong><?= (int)($stats['remaining_courses'] ?? 0); ?></strong> remaining courses.
+                    <strong style="color: #e65100;"><?= $unscheduledRemainingCourses; ?> course<?= $unscheduledRemainingCourses === 1 ? '' : 's'; ?></strong> still need<?= $unscheduledRemainingCourses === 1 ? 's' : ''; ?> adviser review or curriculum action.
+                    <?php else: ?>
                     This plan completes all remaining courses in <strong><?= $remainingSemesters ?> semester<?= $remainingSemesters > 1 ? 's' : '' ?></strong>,
                     keeping the student on track based on the current curriculum and eligible course sequencing.
+                    <?php endif; ?>
                 </p>
                 <?php if ($estimatedGraduation): ?>
                 <p style="margin: 8px 0 0 0; font-size: 13px; color: #206018; font-weight: 600;">

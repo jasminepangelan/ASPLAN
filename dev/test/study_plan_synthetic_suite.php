@@ -472,6 +472,100 @@ $scenarios['midyear_courses_term_locked'] = function () use ($seedStudent, $seed
     return assertScenario(!$scheduledOriginalTerm && !$foundOutsideMidyear && !$foundInLaterMidyear, 'Mid Year courses stay locked to their original year and semester.');
 };
 
+$scenarios['locked_midyear_prereq_delay_marks_plan_incomplete'] = function () use ($seedStudent, $seedProgram) {
+    $generator = makeGenerator($seedStudent, $seedProgram);
+    $termMax = buildTermMaxUnits(21);
+    $termMax['2nd Yr|Mid Year'] = 6;
+
+    seedGenerator($generator, [
+        makeCourse('DCIT 21', '1st Yr', '1st Sem', ['completed' => true]),
+        makeCourse('DCIT 22', '1st Yr', '1st Sem', ['completed' => true]),
+        makeCourse('DCIT 23', '1st Yr', '2nd Sem', ['units' => 3, 'prereqs' => ['DCIT 22'], 'is_failed' => true, 'needs_retake' => true]),
+        makeCourse('ITEC 50', '1st Yr', '2nd Sem', ['units' => 3, 'prereqs' => ['DCIT 21']]),
+        makeCourse('DCIT 50', '2nd Yr', '1st Sem', ['units' => 3, 'prereqs' => ['DCIT 23']]),
+        makeCourse('ITEC 60', '2nd Yr', '2nd Sem', ['units' => 3, 'prereqs' => ['DCIT 50', 'ITEC 50']]),
+        makeCourse('STAT 2', '2nd Yr', 'Mid Year', ['units' => 3]),
+        makeCourse('ITEC 75', '2nd Yr', 'Mid Year', ['units' => 3, 'prereqs' => ['ITEC 60']]),
+        makeCourse('ITEC 85', '3rd Yr', '1st Sem', ['units' => 3, 'prereqs' => ['ITEC 75']]),
+        makeCourse('ITEC 100', '3rd Yr', '2nd Sem', ['units' => 3, 'prereqs' => ['ITEC 85']]),
+        makeCourse('ITEC 116', '4th Yr', '1st Sem', ['units' => 3, 'prereqs' => ['ITEC 75']]),
+        makeCourse('ITEC 200A', '3rd Yr', '2nd Sem', ['units' => 3, 'prereqs' => ['ITEC 85']]),
+        makeCourse('ITEC 200B', '4th Yr', '2nd Sem', ['units' => 3, 'prereqs' => ['ITEC 200A']]),
+        makeCourse('ITEC 199', '4th Yr', '2nd Sem', ['units' => 6, 'prereqs' => ['ITEC 85']]),
+    ], [
+        'completed_courses' => ['DCIT 21', 'DCIT 22'],
+        'failed_courses' => ['DCIT 23'],
+        'term_max_units' => $termMax,
+        'semester_grade_history' => [
+            '1st Yr|2nd Sem' => [
+                'year' => '1st Yr',
+                'semester' => '2nd Sem',
+                'total_subjects' => 2,
+                'failed_subjects' => 1,
+                'courses' => [
+                    ['code' => 'DCIT 23', 'grade' => '5.00', 'failed' => true],
+                    ['code' => 'ITEC 50', 'grade' => '', 'failed' => false],
+                ],
+            ],
+            '2nd Yr|1st Sem' => [
+                'year' => '2nd Yr',
+                'semester' => '1st Sem',
+                'total_subjects' => 1,
+                'failed_subjects' => 0,
+                'courses' => [
+                    ['code' => 'DCIT 50', 'grade' => '', 'failed' => false],
+                ],
+            ],
+        ],
+    ]);
+
+    setGeneratorProperty($generator, 'planning_status', [
+        'is_irregular' => true,
+        'label' => 'Irregular',
+        'reasons' => ['Synthetic BSIT locked-midyear chain'],
+        'has_validated_history' => true,
+    ]);
+
+    $plan = $generator->generateOptimizedPlan();
+    $stats = $generator->getCompletionStats();
+    $coverage = $stats['plan_coverage'] ?? [];
+    $unresolved = [];
+    foreach (($coverage['unresolved_courses'] ?? []) as $course) {
+        $unresolved[(string)($course['code'] ?? '')] = $course;
+    }
+
+    $scheduled = [];
+    $it75LaterMidyear = false;
+    foreach ($plan as $term) {
+        foreach (($term['courses'] ?? []) as $course) {
+            $code = (string)($course['code'] ?? '');
+            $scheduled[$code] = true;
+            if ($code === 'ITEC 75' && (($term['year'] ?? '') !== '2nd Yr' || ($term['semester'] ?? '') !== 'Mid Year')) {
+                $it75LaterMidyear = true;
+            }
+        }
+    }
+
+    $dependentUnresolved = true;
+    foreach (['ITEC 85', 'ITEC 100', 'ITEC 116', 'ITEC 200A', 'ITEC 200B', 'ITEC 199'] as $code) {
+        if (!isset($unresolved[$code])) {
+            $dependentUnresolved = false;
+            break;
+        }
+    }
+
+    $it75Blockers = $unresolved['ITEC 75']['blockers'] ?? [];
+    $ok = !$it75LaterMidyear
+        && !isset($scheduled['ITEC 75'])
+        && isset($unresolved['ITEC 75'])
+        && in_array('ITEC 60', $it75Blockers, true)
+        && $dependentUnresolved
+        && (int)($coverage['unscheduled_remaining_courses'] ?? 0) > 0
+        && empty($coverage['is_complete']);
+
+    return assertScenario($ok, 'Delayed prerequisite leaves locked Mid Year chain unresolved and plan incomplete.');
+};
+
 $scenarios['non_credit_excluded_from_unit_cap'] = function () use ($seedStudent, $seedProgram) {
     $generator = makeGenerator($seedStudent, $seedProgram);
     $termMax = buildTermMaxUnits(21);
