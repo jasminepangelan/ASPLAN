@@ -198,8 +198,44 @@ $unscheduled_remaining_courses = isset($plan_coverage['unscheduled_remaining_cou
     : max(0, (int)($stats['remaining_courses'] ?? 0) - count($planned_remaining_course_codes));
 $has_unresolved_plan = $unscheduled_remaining_courses > 0 || !empty($unresolved_courses);
 
+$tentative_estimated_graduation = null;
 $estimated_graduation = null;
 $graduation_school_year = '';
+if ($has_unresolved_plan && !empty($stats['remaining_courses']) && (int)$stats['remaining_courses'] > 0) {
+    $remaining_courses = (int)$stats['remaining_courses'];
+    $planned_count = count($planned_remaining_course_codes);
+
+    if ($remaining_semesters > 0 && $planned_count > 0) {
+        $avg_courses_per_sem = max(1, (int)ceil($planned_count / max(1, $remaining_semesters)));
+    } elseif (is_array($completed_terms) && count($completed_terms) > 0) {
+        $avg_courses_per_sem = max(1, (int)ceil(((int)($stats['completed_courses'] ?? 0)) / max(1, count($completed_terms))));
+    } else {
+        $avg_courses_per_sem = 4;
+    }
+
+    $semesters_needed = (int)ceil($remaining_courses / max(1, $avg_courses_per_sem));
+
+    $start_term = $last_planned_term ?: ((count($completed_terms) > 0) ? end($completed_terms) : null);
+    if ($start_term) {
+        $start_year = (int)preg_replace('/[^0-9]/', '', (string)($start_term['year'] ?? date('Y')));
+        $start_semester = (string)($start_term['semester'] ?? '1st Sem');
+    } else {
+        $start_year = (int)date('Y');
+        $start_semester = '1st Sem';
+    }
+
+    $semester_index_map = ['1st Sem' => 1, '2nd Sem' => 2, 'Mid Year' => 3];
+    $index_to_semester = [1 => '1st Sem', 2 => '2nd Sem', 3 => 'Mid Year'];
+
+    $start_index = $semester_index_map[$start_semester] ?? 1;
+    $total_index = $start_index + $semesters_needed;
+    $year_increment = (int)floor(($total_index - 1) / 3);
+    $target_index = (($total_index - 1) % 3) + 1;
+    $target_semester = $index_to_semester[$target_index] ?? '1st Sem';
+    $target_year = $start_year + $year_increment;
+
+    $tentative_estimated_graduation = $target_semester . ', ' . $target_year;
+}
 $is_extended = false;
 if ($last_planned_term && !$has_unresolved_plan) {
     $grad_year_num = intval(preg_replace('/[^0-9]/', '', $last_planned_term['year']));
@@ -2062,13 +2098,13 @@ $currentEnrollmentClientPayload = json_encode([
                     <div class="stat-sub">Back Subjects</div>
                 </div>
                 <?php endif; ?>
-                <?php if ($estimated_graduation): ?>
+                <?php if ($estimated_graduation || $tentative_estimated_graduation): ?>
                 <div class="stat-card" data-stat="graduation">
-                    <div class="stat-value compact"><?= htmlspecialchars($estimated_graduation) ?></div>
-                    <?php if (!empty($graduation_school_year)): ?>
+                    <div class="stat-value compact"><?= htmlspecialchars($estimated_graduation ?: $tentative_estimated_graduation) ?></div>
+                    <?php if (!empty($graduation_school_year) && $estimated_graduation): ?>
                     <div class="stat-note"><?= $graduation_school_year ?></div>
                     <?php endif; ?>
-                    <div class="stat-sub">Projected Completion</div>
+                    <div class="stat-sub"><?= $has_unresolved_plan ? 'Projected Completion (Tentative)' : 'Projected Completion' ?></div>
                 </div>
                 <?php endif; ?>
                 <?php if ($remaining_semesters > 0): ?>
@@ -2125,7 +2161,12 @@ $currentEnrollmentClientPayload = json_encode([
                 </div>
                 <p style="margin: 0; font-size: 13px; color: #333;">
                     The generated plan schedules <strong><?= count($planned_remaining_course_codes) ?></strong> of <strong><?= (int)($stats['remaining_courses'] ?? 0) ?></strong> remaining courses.
-                    <strong><?= $unscheduled_remaining_courses ?> course<?= $unscheduled_remaining_courses === 1 ? '' : 's' ?></strong> remain<?= $unscheduled_remaining_courses === 1 ? 's' : '' ?> unresolved, so projected completion is hidden.
+                    <strong><?= $unscheduled_remaining_courses ?> course<?= $unscheduled_remaining_courses === 1 ? '' : 's' ?></strong> remain<?= $unscheduled_remaining_courses === 1 ? 's' : '' ?> unresolved.
+                    <?php if (!empty($tentative_estimated_graduation)): ?>
+                        Tentative projected completion: <strong><?= htmlspecialchars($tentative_estimated_graduation) ?></strong>.
+                    <?php else: ?>
+                        Projected completion is hidden.
+                    <?php endif; ?>
                 </p>
                 <?php if (!empty($unresolved_courses)): ?>
                 <ul style="margin: 8px 0 0 18px; font-size: 13px; color: #333;">
@@ -2202,9 +2243,9 @@ $currentEnrollmentClientPayload = json_encode([
                     and utilizing cross-registration opportunities to compress your remaining <strong><?= $remaining_semesters ?> semester<?= $remaining_semesters > 1 ? 's' : '' ?></strong>.
                     <?php endif; ?>
                 </p>
-                <?php if ($estimated_graduation): ?>
+                <?php if ($estimated_graduation || $tentative_estimated_graduation): ?>
                 <p style="margin: 8px 0 0 0; font-size: 13px; color: #206018; font-weight: 600;">
-                    Projected Completion: <?= htmlspecialchars($estimated_graduation) ?><?= !empty($graduation_school_year) ? ' (' . $graduation_school_year . ')' : '' ?>
+                    <?= $has_unresolved_plan ? 'Tentative Projected Completion:' : 'Projected Completion:' ?> <?= htmlspecialchars($estimated_graduation ?: $tentative_estimated_graduation) ?><?= !empty($graduation_school_year) && $estimated_graduation ? ' (' . $graduation_school_year . ')' : '' ?>
                 </p>
                 <?php endif; ?>
             </div>
