@@ -2504,26 +2504,28 @@ class StudyPlanGenerator {
     
     /**
      * Determine the max units allowed for a term based on curriculum and retention policy
-     * Uses curriculum total units per year/semester as the baseline max.
+     * Uses the school enrollment cap for regular semesters. Mid Year/Summer
+     * keeps the curriculum/reference load because it is a short special term.
      * Retention policy may reduce the limit further.
      */
     private function getMaxUnitsForTerm($retention_status, $year = null, $semester = null) {
-        // Get curriculum-based max units for this term
-        $curriculum_max = 21; // fallback for extra terms beyond curriculum
+        $normalized_semester = $this->normalizeCurriculumSemesterLabel($semester ?? '');
+        $is_midyear = $this->isMidYearSemesterLabel($normalized_semester);
+        $curriculum_max = 21;
         $reference_term = null;
         if ($year !== null && $semester !== null) {
             $key = $year . '|' . $semester;
             $reference_term = $this->getReferenceTermForSemester($semester);
-            if (isset($this->term_max_units[$key])) {
+
+            if ($is_midyear && isset($this->term_max_units[$key])) {
                 $curriculum_max = $this->term_max_units[$key];
-            } else {
-                if ($reference_term !== null && isset($reference_term['max_units'])) {
-                    $curriculum_max = (int)$reference_term['max_units'];
-                }
+            } elseif ($is_midyear && $reference_term !== null && isset($reference_term['max_units'])) {
+                $curriculum_max = (int)$reference_term['max_units'];
             }
 
             if (
-                $reference_term !== null
+                $is_midyear
+                && $reference_term !== null
                 && isset($reference_term['max_units'])
                 && $this->termHasOnlyRetakeCourses($year, $semester)
             ) {
@@ -3299,6 +3301,12 @@ class StudyPlanGenerator {
                 if (!$this->standingConstraintSatisfied($code, $term['year'], $term['semester'])) {
                     unset($available[$code]);
                 }
+                if (
+                    isset($available[$code])
+                    && !$this->satisfiesBackFailedProgressionPolicy($available[$code], $term['year'], $term['semester'], $simulated_all_courses)
+                ) {
+                    unset($available[$code]);
+                }
             }
 
             if ($this->shouldUseFlexibleIrregularFill()) {
@@ -3339,6 +3347,15 @@ class StudyPlanGenerator {
                         continue;
                     }
                     $available[$code] = $course;
+                }
+            }
+
+            foreach (array_keys($available) as $code) {
+                if (
+                    isset($available[$code])
+                    && !$this->satisfiesBackFailedProgressionPolicy($available[$code], $term['year'], $term['semester'], $simulated_all_courses)
+                ) {
+                    unset($available[$code]);
                 }
             }
               
@@ -3455,6 +3472,19 @@ class StudyPlanGenerator {
                     ) {
                         continue;
                     }
+
+                    if (($course['semester'] ?? '') === $semester) {
+                        $available[$code] = $course;
+                        continue;
+                    }
+
+                    $cross_course = $this->findCrossRegistrationOffering($code, $semester, $course);
+                    if ($cross_course === null) {
+                        continue;
+                    }
+
+                    $course['cross_registered'] = true;
+                    $course['cross_reg_source_program'] = $cross_course['cross_reg_source_program'] ?? ($cross_course['programs'] ?? '');
                     $available[$code] = $course;
                 }
             }
@@ -3502,6 +3532,12 @@ class StudyPlanGenerator {
                 if (isset($available[$code]) && !$this->prerequisitesSatisfiedForCompletedSet($code, $simulated_completed)) {
                     unset($available[$code]);
                 }
+                if (
+                    isset($available[$code])
+                    && !$this->satisfiesBackFailedProgressionPolicy($available[$code], $year_label, $semester, $simulated_all_courses)
+                ) {
+                    unset($available[$code]);
+                }
             }
             
             if (empty($available)) {
@@ -3537,7 +3573,7 @@ class StudyPlanGenerator {
                 'year' => $year_label,
                 'semester' => $semester,
                 'courses' => $term_courses,
-                'total_units' => array_sum(array_column($term_courses, 'units')),
+                'total_units' => $this->sumCountedCourseUnits($term_courses),
                 'max_units' => $extra_max_units,
                 'retention_status' => 'None',
                 'retake_count' => $retake_count,
@@ -3711,6 +3747,46 @@ class StudyPlanGenerator {
         }
 
         return true;
+    }
+
+    private function getLowestActiveRetakeTermOrder(array $simulated_all_courses): int {
+        $lowest = 999;
+
+        foreach ($simulated_all_courses as $course) {
+            if (!empty($course['completed']) || empty($course['needs_retake'])) {
+                continue;
+            }
+
+            $order = $this->getCurriculumTermOrder($course['year'] ?? '', $course['semester'] ?? '');
+            if ($order > 0 && $order < $lowest) {
+                $lowest = $order;
+            }
+        }
+
+        return $lowest;
+    }
+
+    private function satisfiesBackFailedProgressionPolicy(array $course, $target_year, $target_semester, array $simulated_all_courses): bool {
+        $lowestRetakeOrder = $this->getLowestActiveRetakeTermOrder($simulated_all_courses);
+        if ($lowestRetakeOrder >= 999) {
+            return true;
+        }
+
+        $courseOrder = $this->getCurriculumTermOrder($course['year'] ?? '', $course['semester'] ?? '');
+        if ($courseOrder <= 0 || $courseOrder >= 999) {
+            return true;
+        }
+
+        if (!empty($course['needs_retake'])) {
+            return $courseOrder <= $lowestRetakeOrder;
+        }
+
+        $isExactAsIsTerm = (($course['year'] ?? '') === $target_year && ($course['semester'] ?? '') === $target_semester);
+        if ($isExactAsIsTerm) {
+            return true;
+        }
+
+        return $courseOrder <= $lowestRetakeOrder;
     }
     
     /**
