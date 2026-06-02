@@ -649,9 +649,11 @@ class StudyPlanGenerator {
             $gradeColumns[] = $prefix . 'final_grade_3';
         }
 
+        // Include rows that have any recorded grade text, including explicit 'No Grade'
+        // so that these checklist rows are considered for back-subject handling.
         $parts = [];
         foreach ($gradeColumns as $column) {
-            $parts[] = "({$column} IS NOT NULL AND TRIM({$column}) != '' AND {$column} != 'No Grade')";
+            $parts[] = "({$column} IS NOT NULL AND TRIM({$column}) != '')";
         }
 
         return '(' . implode(' OR ', $parts) . ')';
