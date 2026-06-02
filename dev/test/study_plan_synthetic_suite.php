@@ -409,7 +409,9 @@ $scenarios['midyear_courses_term_locked'] = function () use ($seedStudent, $seed
 
     $plan = $generator->generateOptimizedPlan();
 
+    $scheduledOriginalTerm = false;
     $foundOutsideMidyear = false;
+    $foundInLaterMidyear = false;
     foreach ($plan as $term) {
         $termSemester = (string)($term['semester'] ?? '');
         $termYear = (string)($term['year'] ?? '');
@@ -423,10 +425,51 @@ $scenarios['midyear_courses_term_locked'] = function () use ($seedStudent, $seed
                 $foundOutsideMidyear = true;
                 break 2;
             }
+
+            $scheduledOriginalTerm = true;
         }
     }
 
-    return assertScenario(!$foundOutsideMidyear, 'Mid Year courses stay locked to their original year and semester.');
+    $laterGenerator = makeGenerator($seedStudent, $seedProgram);
+    seedGenerator($laterGenerator, [
+        makeCourse('MY401', '4th Yr', 'Mid Year', ['units' => 3]),
+    ], [
+        'term_max_units' => $termMax,
+        'semester_grade_history' => [
+            '4th Yr|2nd Sem' => [
+                'year' => '4th Yr',
+                'semester' => '2nd Sem',
+                'total_subjects' => 1,
+                'failed_subjects' => 0,
+                'courses' => [
+                    ['code' => 'FL402', 'grade' => '1.50', 'failed' => false],
+                ],
+            ],
+        ],
+    ]);
+
+    setGeneratorProperty($laterGenerator, 'planning_status', [
+        'is_irregular' => true,
+        'label' => 'Irregular',
+        'reasons' => ['Synthetic seed'],
+        'has_validated_history' => true,
+    ]);
+
+    $laterPlan = $laterGenerator->generateOptimizedPlan();
+    foreach ($laterPlan as $term) {
+        foreach ((array)($term['courses'] ?? []) as $course) {
+            if ((string)($course['code'] ?? '') !== 'MY401') {
+                continue;
+            }
+
+            if ((string)($term['semester'] ?? '') === 'Mid Year' && (string)($term['year'] ?? '') !== '4th Yr') {
+                $foundInLaterMidyear = true;
+                break 2;
+            }
+        }
+    }
+
+    return assertScenario(!$scheduledOriginalTerm && !$foundOutsideMidyear && !$foundInLaterMidyear, 'Mid Year courses stay locked to their original year and semester.');
 };
 
 $scenarios['non_credit_excluded_from_unit_cap'] = function () use ($seedStudent, $seedProgram) {

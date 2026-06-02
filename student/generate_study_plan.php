@@ -250,7 +250,7 @@ class StudyPlanGenerator {
 
         return $courseSemester === $targetSemester
             && $courseYearOrder > 0
-            && $targetYearOrder >= $courseYearOrder;
+            && $targetYearOrder === $courseYearOrder;
     }
 
     private function registerCurriculumCourseRow(array $row) {
