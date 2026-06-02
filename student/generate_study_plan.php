@@ -29,6 +29,7 @@ class StudyPlanGenerator {
     private $dropped_courses = [];       // Courses that were dropped
     private $all_courses = [];
     private $prerequisite_map = [];
+    private $percent_requirement_map = []; // course_code => percent (int)
     private $standing_constraint_map = []; // Year-standing constraints parsed from raw prerequisite text
     private $semester_grade_history = []; // Grade history per semester for retention
     private $retention_status = 'None';  // Current retention status
@@ -322,6 +323,13 @@ class StudyPlanGenerator {
     }
 
     /**
+     * Return the last calculated plan coverage array (for diagnostics)
+     */
+    public function getPlanCoverage() {
+        return is_array($this->plan_coverage) ? $this->plan_coverage : [];
+    }
+
+    /**
      * Look up the student's stored program label.
      */
     public static function lookupStudentProgram($student_id) {
@@ -504,6 +512,7 @@ class StudyPlanGenerator {
         $this->debugLog('ACCEPT course ' . $course_code . ': ' . $year . ' | ' . $semester . ' | units=' . $units . ' | status=' . $status);
 
         $this->prerequisite_map[$course_code] = $this->parsePrerequisites($prerequisite);
+        $this->percent_requirement_map[$course_code] = $this->parsePercentRequirement($prerequisite);
         $this->standing_constraint_map[$course_code] = $this->extractStandingConstraint($prerequisite);
     }
 
@@ -2244,6 +2253,30 @@ class StudyPlanGenerator {
     }
 
     /**
+     * Parse percent-based requirements from a prerequisite string.
+     * Examples: "70% Total Units taken", "70% total units"
+     * Returns integer percent or null when not found.
+     */
+    private function parsePercentRequirement($prereq_string) {
+        $s = trim((string)$prereq_string);
+        if ($s === '') return null;
+
+        // Look for patterns like 70% or 70 %
+        if (preg_match('/(\d{1,3})\s*%\s*(?:of\s*)?(?:total\s+units|total\s+units\s+taken|units)/i', $s, $m)) {
+            $n = (int)$m[1];
+            if ($n >= 0 && $n <= 100) return $n;
+        }
+
+        // Some texts spell out 'percent' (e.g., '70 percent of total units')
+        if (preg_match('/(\d{1,3})\s*(?:percent|pct)\s*(?:of\s*)?(?:total\s+units|units)/i', $s, $m)) {
+            $n = (int)$m[1];
+            if ($n >= 0 && $n <= 100) return $n;
+        }
+
+        return null;
+    }
+
+    /**
      * Extract explicit year-standing constraints from raw prerequisite text.
      * Examples:
      * - "Incoming 4th yr."
@@ -2937,6 +2970,31 @@ class StudyPlanGenerator {
                 }
 
                 $blockers[] = $prereqCode;
+            }
+
+            // Also check percent-based prereq (e.g., "70% Total Units taken")
+            $percent = $this->percent_requirement_map[$code] ?? null;
+            if ($percent !== null && is_numeric($percent)) {
+                $percent = (int)$percent;
+                $completedUnits = 0.0;
+                foreach ($this->completed_courses as $cc) {
+                    $ccNorm = strtoupper(trim((string)$cc));
+                    if ($ccNorm === '') continue;
+                    $cRow = $this->all_courses[$ccNorm] ?? null;
+                    if ($cRow !== null) {
+                        $completedUnits += $this->getCountedCourseUnits($cRow);
+                    }
+                }
+                $totalUnits = 0.0;
+                foreach ($this->all_courses as $r) {
+                    $totalUnits += $this->getCountedCourseUnits($r);
+                }
+                if ($totalUnits > 0) {
+                    $achieved = ($completedUnits / $totalUnits) * 100.0;
+                    if ($achieved < $percent) {
+                        $blockers[] = $percent . '% total units';
+                    }
+                }
             }
 
             $reason = 'Not scheduled in generated plan';
@@ -3725,6 +3783,37 @@ class StudyPlanGenerator {
 
         foreach ($prereqs as $prereq) {
             if (!in_array(strtoupper(trim((string)$prereq)), $normalized_completed, true)) {
+                return false;
+            }
+        }
+
+        // Evaluate percent-based requirements if present (e.g., "70% Total Units taken")
+        $percent = $this->percent_requirement_map[$course_code] ?? null;
+        if ($percent !== null && is_numeric($percent)) {
+            $percent = (int)$percent;
+            // compute completed units from completedSet
+            $completedUnits = 0.0;
+            foreach ($completedSet as $cc) {
+                $ccNorm = strtoupper(trim((string)$cc));
+                if ($ccNorm === '') continue;
+                $cRow = $this->all_courses[$ccNorm] ?? null;
+                if ($cRow !== null) {
+                    $completedUnits += $this->getCountedCourseUnits($cRow);
+                }
+            }
+
+            // compute curriculum total units
+            $totalUnits = 0.0;
+            foreach ($this->all_courses as $r) {
+                $totalUnits += $this->getCountedCourseUnits($r);
+            }
+
+            if ($totalUnits <= 0) {
+                return false; // cannot verify percent requirement
+            }
+
+            $achievedPercent = ($completedUnits / $totalUnits) * 100.0;
+            if ($achievedPercent < $percent) {
                 return false;
             }
         }
