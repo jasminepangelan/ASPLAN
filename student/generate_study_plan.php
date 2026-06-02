@@ -129,6 +129,178 @@ class StudyPlanGenerator {
         }
     }
 
+    /**
+     * Post-process remaining unscheduled courses by attempting to schedule
+     * them using prerequisite chaining across terms. This will place a
+     * prerequisite in an earlier term and its dependent in a later term
+     * when semester offerings and unit limits allow.
+     */
+    private function scheduleRemainingByPrereqChaining(array &$study_plan, array &$simulated_completed, array &$simulated_all_courses) {
+        $remaining_codes = array_keys(array_filter($simulated_all_courses, function($c) { return empty($c['completed']); }));
+        if (empty($remaining_codes)) return;
+
+        // Build term structures with used units
+        $terms = $study_plan;
+        $used_units = [];
+        for ($i = 0; $i < count($terms); $i++) {
+            $t = $terms[$i];
+            $used = 0.0;
+            if (!empty($t['courses']) && is_array($t['courses'])) {
+                foreach ($t['courses'] as $c) {
+                    $used += $this->getCountedCourseUnits($c);
+                }
+            }
+            $used_units[$i] = $used;
+        }
+
+        // Topological order among remaining courses (Kahn's algorithm)
+        $in_degree = [];
+        $adj = [];
+        $remaining_set = array_flip($remaining_codes);
+
+        foreach ($remaining_codes as $code) {
+            $prereqs = $this->prerequisite_map[$code] ?? [];
+            $in = 0;
+            foreach ($prereqs as $p) {
+                $p = strtoupper(trim((string)$p));
+                if ($p === '' ) continue;
+                if (isset($remaining_set[$p])) {
+                    $in++;
+                    $adj[$p][] = $code;
+                }
+            }
+            $in_degree[$code] = $in;
+        }
+
+        $queue = [];
+        foreach ($in_degree as $code => $deg) {
+            if ($deg === 0) $queue[] = $code;
+        }
+
+        $scheduled_term = [];
+        $unresolved = [];
+
+        $max_extra = 6;
+        $extra_added = 0;
+
+        while (!empty($queue)) {
+            $code = array_shift($queue);
+            $course = $simulated_all_courses[$code] ?? null;
+            if ($course === null) {
+                continue;
+            }
+
+            $units = $this->getCountedCourseUnits($course);
+
+            // Determine earliest term index after prerequisites
+            $prereqs = $this->prerequisite_map[$code] ?? [];
+            $max_prereq_term = -1;
+            foreach ($prereqs as $p) {
+                $p = strtoupper(trim((string)$p));
+                if ($p === '') continue;
+                if (in_array($p, $simulated_completed, true)) {
+                    $term_idx = -1;
+                } elseif (isset($scheduled_term[$p])) {
+                    $term_idx = $scheduled_term[$p];
+                } else {
+                    // prereq not completed nor scheduled; treat as unsatisfied
+                    $term_idx = -1;
+                }
+                if ($term_idx > $max_prereq_term) $max_prereq_term = $term_idx;
+            }
+
+            // Search existing terms starting after max_prereq_term
+            $placed = false;
+            $start_idx = max(0, $max_prereq_term + 1);
+            for ($ti = $start_idx; $ti < count($terms); $ti++) {
+                $t = $terms[$ti];
+                if (!$this->isMidYearCourseLockedToTerm($course, $t['year'], $t['semester'])) continue;
+                $cap = ($t['max_units'] ?? $this->getMaxUnitsForTerm('None', $t['year'], $t['semester']));
+                if (($used_units[$ti] ?? 0) + $units <= $cap) {
+                    // Place course
+                    if (!isset($study_plan[$ti]['courses']) || !is_array($study_plan[$ti]['courses'])) {
+                        $study_plan[$ti]['courses'] = [];
+                    }
+                    $study_plan[$ti]['courses'][$code] = $course;
+                    $used_units[$ti] = ($used_units[$ti] ?? 0) + $units;
+                    $study_plan[$ti]['total_units'] = $used_units[$ti];
+                    $simulated_completed[] = $code;
+                    $simulated_all_courses[$code]['completed'] = true;
+                    $scheduled_term[$code] = $ti;
+                    $placed = true;
+                    break;
+                }
+            }
+
+            // If not placed, attempt to append extra terms until capacity/offering found
+            $attempts = 0;
+            while (!$placed && $attempts < $max_extra) {
+                $sem_cycle = $this->getExtraTermSemesterCycle();
+                if (empty($sem_cycle)) break;
+                $semester = $sem_cycle[$extra_added % count($sem_cycle)];
+                $extra_year_num = 5 + intval($extra_added / count($sem_cycle));
+                $year_label = $extra_year_num . 'th Yr';
+                $cap = $this->getMaxUnitsForTerm('None', $year_label, $semester);
+
+                if ($this->isMidYearCourseLockedToTerm($course, $year_label, $semester) && $units <= $cap) {
+                    // add new term to study_plan
+                    $new_term = [
+                        'year' => $year_label,
+                        'semester' => $semester,
+                        'courses' => [$code => $course],
+                        'total_units' => $units,
+                        'max_units' => $cap,
+                        'retention_status' => 'None',
+                        'retake_count' => 0,
+                        'cross_reg_count' => 0,
+                        'forced_add_count' => 0,
+                        'skipped' => false
+                    ];
+                    $study_plan[] = $new_term;
+                    $terms[] = $new_term;
+                    $used_units[] = $units;
+                    $simulated_completed[] = $code;
+                    $simulated_all_courses[$code]['completed'] = true;
+                    $scheduled_term[$code] = count($terms) - 1;
+                    $placed = true;
+                    $extra_added++;
+                    break;
+                }
+
+                $attempts++;
+                $extra_added++;
+            }
+
+            if (!$placed) {
+                $unresolved[] = $code;
+            }
+
+            // reduce indegree for neighbors
+            foreach ($adj[$code] ?? [] as $nbr) {
+                $in_degree[$nbr]--;
+                if ($in_degree[$nbr] === 0) {
+                    $queue[] = $nbr;
+                }
+            }
+        }
+
+        if (!empty($unresolved)) {
+            foreach ($unresolved as $u) {
+                $this->plan_coverage['unresolved_courses'][] = $u;
+            }
+        }
+
+        // update study_plan totals
+        for ($i = 0; $i < count($study_plan); $i++) {
+            $study_plan[$i]['total_units'] = 0;
+            if (!empty($study_plan[$i]['courses']) && is_array($study_plan[$i]['courses'])) {
+                foreach ($study_plan[$i]['courses'] as $c) {
+                    $study_plan[$i]['total_units'] += $this->getCountedCourseUnits($c);
+                }
+            }
+        }
+    }
+
     private function debugLog($message) {
         if (!$this->debug_enabled || $this->debug_log_path === '') {
             return;
@@ -3431,6 +3603,12 @@ class StudyPlanGenerator {
             $extra_term_count++;
         }
         
+        // Post-process: attempt to schedule remaining courses by chaining
+        // prerequisites across terms so a dependent course can be plotted
+        // even if its prereq is not yet cleared, provided the prereq is
+        // scheduled earlier and the dependent is placed on an offering.
+        $this->scheduleRemainingByPrereqChaining($study_plan, $simulated_completed, $simulated_all_courses);
+
         $this->plan_coverage = $this->calculatePlanCoverage($study_plan);
         return $study_plan;
     }
@@ -3816,21 +3994,10 @@ class StudyPlanGenerator {
             return $terms[count($terms) - 1];
         }
 
-        // Advance across unresolved terms that already have approved grades.
-        // This keeps historical failed/unresolved terms visible for reference
-        // without treating their already-submitted semester as the next load.
+        // Keep the first incomplete term as the anchor so semesters with
+        // unresolved checklist rows are not skipped just because they also
+        // contain approved grades.
         $effectiveIndex = $firstIncompleteIndex;
-        while (
-            $effectiveIndex < count($terms)
-            && !$this->isSemesterCompleted($terms[$effectiveIndex]['year'], $terms[$effectiveIndex]['semester'])
-            && $this->termHasApprovedGrades($terms[$effectiveIndex]['year'], $terms[$effectiveIndex]['semester'])
-        ) {
-            $effectiveIndex++;
-        }
-
-        if ($effectiveIndex >= count($terms)) {
-            $effectiveIndex = count($terms) - 1;
-        }
 
         $currentTerm = $terms[$effectiveIndex];
         $termKey = $currentTerm['year'] . '|' . $currentTerm['semester'];
