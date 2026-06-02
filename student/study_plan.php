@@ -2029,7 +2029,7 @@ $currentEnrollmentClientPayload = json_encode([
         <div data-student-shell="<?= $studentShellPayload ?>"></div>
         <div data-student-study-plan-workspace="<?= $studentStudyPlanWorkspacePayload ?>"></div>
         <div class="page-header">
-            <h1>AI-Generated Study Plan</h1>
+            <h1>Automated Study Plan Generator</h1>
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>
         </div>
 
@@ -2278,9 +2278,7 @@ $currentEnrollmentClientPayload = json_encode([
             <!-- Algorithm Info -->
             <div style="margin-top: 15px; padding: 12px; background: rgba(32, 96, 24, 0.05); border-left: 4px solid #4CAF50; border-radius: 4px;">
                 <p style="margin: 0; font-size: 13px; color: #333;">
-                    <strong>Algorithm:</strong> This plan uses <strong>CSP (Constraint Satisfaction Problem)</strong> to validate prerequisites and enforce retention policies, and
-                    <strong>Greedy Algorithm</strong> to optimize course sequencing &mdash; prioritizing back and failed subjects from lower years, 
-                    critical path courses, and cross-registration opportunities.
+                    <strong>Automated Study Plan Generator (CSP + Greedy)</strong>. See the constraints summary in the "How This Plan Was Generated" section.
                 </p>
             </div>
         </div>
@@ -2917,7 +2915,7 @@ $currentEnrollmentClientPayload = json_encode([
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                     <rect x="6" y="14" width="12" height="8"></rect>
                 </svg>
-                Print AI-Generated Study Plan
+                Print Automated Study Plan
             </button>
             <button class="ay-overview-btn" onclick="openAYModal()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2933,14 +2931,21 @@ $currentEnrollmentClientPayload = json_encode([
             <!-- Algorithm Information Footer -->
             <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #f5f5f5, #e0e0e0); border-radius: 8px; text-align: center;">
                 <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #206018;">
-                    How This Plan Was Generated
+                    Automated Study Plan Generator (CSP + Greedy)
                 </p>
-                <p style="margin: 0; font-size: 12px; color: #555; line-height: 1.6;">
-                    This study plan uses <strong>Constraint Satisfaction Problem (CSP)</strong> to enforce prerequisites, retention policy limits, 
-                    and semester constraints, combined with <strong>Greedy Algorithm</strong> to prioritize back and failed subjects from lower years,
-                    critical path courses, and cross-registration opportunities. The system enforces no-overloading limits and adapts
-                    unit caps based on academic standing.
-                </p>
+                <ul style="margin: 0; padding-left: 18px; text-align: left; font-size: 12px; color: #555; line-height: 1.6;">
+                    <li>Back or failed courses are prioritized first, with lower year levels taken before higher year levels.</li>
+                    <li>Prerequisites must be cleared before a course can be scheduled.</li>
+                    <li>Max units are enforced per term using the checklist's curriculum term limits.</li>
+                    <li>Cross-registration is allowed when an equivalent offering exists in another program for the same semester.</li>
+                    <li>Semester offering rules are enforced, so a course is only scheduled in its allowed semester.</li>
+                    <li>Mid-year or summer-only courses are locked to their proper term and are not moved into regular semesters.</li>
+                    <li>Standing rules are enforced, so courses requiring 2nd Year Standing, 3rd Year Standing, or graduating standing stay blocked until that standing is met.</li>
+                    <li>Retention policy is applied, which can reduce load limits or skip terms depending on warning/probation/disqualification status.</li>
+                    <li>If the student is disqualified twice, or if any course has been failed 3 or more times, generation can stop.</li>
+                    <li>No Grade, INC, and dropped entries are treated as back subjects instead of being ignored.</li>
+                    <li>Regular students can follow the exact curriculum sequence instead of the optimized reorder path when they have no active back subjects or irregular constraints.</li>
+                </ul>
                 
                 <!-- Legend -->
                 <div style="display: flex; justify-content: center; gap: 20px; margin-top: 12px; flex-wrap: wrap; font-size: 11px;">

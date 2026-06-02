@@ -1560,10 +1560,22 @@ if ($lastPlannedTerm && !$hasUnresolvedPlan) {
             <?php endif; ?>
 
             <div style="margin-top: 15px; padding: 12px; background: rgba(32, 96, 24, 0.05); border-left: 4px solid #4CAF50; border-radius: 4px;">
-                <p style="margin: 0; font-size: 13px; color: #333;">
-                    <strong>Algorithm:</strong> This plan uses <strong>CSP (Constraint Satisfaction Problem)</strong> to validate prerequisites and enforce retention policies, and
-                    <strong>Greedy Algorithm</strong> to optimize course sequencing.
+                <p style="margin: 0 0 8px 0; font-size: 13px; color: #333;">
+                    <strong>Automated Study Plan Generator (CSP + Greedy)</strong>
                 </p>
+                <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #333; line-height: 1.5;">
+                    <li>Back or failed courses are prioritized first, with lower year levels taken before higher year levels.</li>
+                    <li>Prerequisites must be cleared before a course can be scheduled.</li>
+                    <li>Max units are enforced per term using the checklist's curriculum term limits.</li>
+                    <li>Cross-registration is allowed when an equivalent offering exists in another program for the same semester.</li>
+                    <li>Semester offering rules are enforced, so a course is only scheduled in its allowed semester.</li>
+                    <li>Mid-year or summer-only courses are locked to their proper term and are not moved into regular semesters.</li>
+                    <li>Standing rules are enforced, so courses requiring 2nd Year Standing, 3rd Year Standing, or graduating standing stay blocked until that standing is met.</li>
+                    <li>Retention policy is applied, which can reduce load limits or skip terms depending on warning/probation/disqualification status.</li>
+                    <li>If the student is disqualified twice, or if any course has been failed 3 or more times, generation can stop.</li>
+                    <li>No Grade, INC, and dropped entries are treated as back subjects instead of being ignored.</li>
+                    <li>Regular students can follow the exact curriculum sequence instead of the optimized reorder path when they have no active back subjects or irregular constraints.</li>
+                </ul>
             </div>
         </div>
 
