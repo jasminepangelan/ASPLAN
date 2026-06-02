@@ -177,6 +177,18 @@ $advancedSettings = [
         'default' => '',
         'help' => 'Optional end date/time for student registration window.'
     ],
+    'school_current_semester' => [
+        'label' => 'School Current Semester (Global)',
+        'type' => 'select',
+        'default' => 'None',
+        'options' => [
+            ['value' => 'None', 'label' => 'None (Disable filter)'],
+            ['value' => '1st Sem', 'label' => '1st Sem'],
+            ['value' => '2nd Sem', 'label' => '2nd Sem'],
+            ['value' => 'Mid Year', 'label' => 'Mid Year'],
+        ],
+        'help' => 'Forces study plan generation to use only this semester label across all terms. Mid Year stays fixed to its original checklist position.'
+    ],
 ];
 
 $adminAccount = [
@@ -2981,6 +2993,28 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                             >
                                             Enabled
                                         </label>
+                                    <?php elseif (($meta['type'] ?? 'text') === 'select'): ?>
+                                        <select
+                                            id="<?php echo htmlspecialchars($key); ?>"
+                                            name="<?php echo htmlspecialchars($key); ?>"
+                                        >
+                                            <?php foreach (($meta['options'] ?? []) as $option): ?>
+                                                <?php
+                                                    $optionValue = is_array($option)
+                                                        ? (string)($option['value'] ?? $option['label'] ?? '')
+                                                        : (string)$option;
+                                                    $optionLabel = is_array($option)
+                                                        ? (string)($option['label'] ?? $option['value'] ?? '')
+                                                        : (string)$option;
+                                                ?>
+                                                <option
+                                                    value="<?php echo htmlspecialchars($optionValue); ?>"
+                                                    <?php echo ((string)$advancedSettingValues[$key] === $optionValue) ? 'selected' : ''; ?>
+                                                >
+                                                    <?php echo htmlspecialchars($optionLabel); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
                                     <?php elseif (($meta['type'] ?? 'text') === 'number'): ?>
                                         <input
                                             type="number"

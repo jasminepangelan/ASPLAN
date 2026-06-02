@@ -145,6 +145,31 @@ $ay_courses_by_term = $generator->getAllCoursesGroupedByTerm();
 $current_enrollment_term_map = sceBuildSelectableTermMap($ay_courses_by_term);
 $saved_current_enrollment = sceLoadStudentCurrentEnrollment($conn, (string)$student_id);
 $csrfToken = getCSRFToken();
+$globalSemesterLabel = '';
+if (function_exists('getSystemSetting')) {
+    $globalSemesterRaw = trim((string) getSystemSetting('school_current_semester', ''));
+    if ($globalSemesterRaw !== '') {
+        switch ($globalSemesterRaw) {
+            case 'First Semester':
+                $globalSemesterRaw = '1st Sem';
+                break;
+            case 'Second Semester':
+                $globalSemesterRaw = '2nd Sem';
+                break;
+            case 'Midyear':
+            case 'Mid Year':
+            case 'Summer':
+                $globalSemesterRaw = 'Mid Year';
+                break;
+        }
+        if ($globalSemesterRaw !== ''
+            && strcasecmp($globalSemesterRaw, 'None') !== 0
+            && strcasecmp($globalSemesterRaw, 'All') !== 0
+        ) {
+            $globalSemesterLabel = $globalSemesterRaw;
+        }
+    }
+}
 
 // Get courses failed 3+ times (triggers study plan generation stop)
 $thrice_failed = $generator->getThriceFailedCourses();
@@ -2031,6 +2056,9 @@ $currentEnrollmentClientPayload = json_encode([
         <div class="page-header">
             <h1>Automated Study Plan Generator</h1>
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>
+            <?php if ($globalSemesterLabel !== ''): ?>
+                <p style="margin-top: 6px; font-size: 12px; font-weight: 600; color: #2a7a20;">Global semester filter: <?= htmlspecialchars($globalSemesterLabel) ?> (midyear stays fixed to its original term).</p>
+            <?php endif; ?>
         </div>
 
         <section class="current-enrollment-summary" aria-labelledby="currentEnrollmentSummaryTitle">

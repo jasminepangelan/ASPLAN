@@ -606,6 +606,32 @@ if ($lastPlannedTerm && !$hasUnresolvedPlan) {
 } elseif (!empty($stats['remaining_courses']) && (int)$stats['remaining_courses'] === 0) {
     $estimatedGraduation = 'Completed';
 }
+
+$globalSemesterLabel = '';
+if (function_exists('getSystemSetting')) {
+    $globalSemesterRaw = trim((string) getSystemSetting('school_current_semester', ''));
+    if ($globalSemesterRaw !== '') {
+        switch ($globalSemesterRaw) {
+            case 'First Semester':
+                $globalSemesterRaw = '1st Sem';
+                break;
+            case 'Second Semester':
+                $globalSemesterRaw = '2nd Sem';
+                break;
+            case 'Midyear':
+            case 'Mid Year':
+            case 'Summer':
+                $globalSemesterRaw = 'Mid Year';
+                break;
+        }
+        if ($globalSemesterRaw !== ''
+            && strcasecmp($globalSemesterRaw, 'None') !== 0
+            && strcasecmp($globalSemesterRaw, 'All') !== 0
+        ) {
+            $globalSemesterLabel = $globalSemesterRaw;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1450,6 +1476,9 @@ if ($lastPlannedTerm && !$hasUnresolvedPlan) {
                     Generated: <?= date('H:i:s') ?>
                 </span>
             </h3>
+            <?php if ($globalSemesterLabel !== ''): ?>
+                <div style="margin: 6px 0 12px; font-size: 12px; font-weight: 600; color: #2a7a20;">Global semester filter: <?= htmlspecialchars($globalSemesterLabel) ?> (midyear stays fixed to its original term).</div>
+            <?php endif; ?>
             <div class="academic-stats-grid">
                 <div class="stat-card">
                     <div class="stat-value"><?= htmlspecialchars((string)$stats['completion_percentage']); ?>%</div>

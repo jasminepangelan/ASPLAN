@@ -13,6 +13,30 @@ function aasNormalizeSettingValue(array $meta, string $raw): string {
     if ($meta['type'] === 'boolean') {
         return ($value === '1' || $value === 'true') ? '1' : '0';
     }
+
+    if ($meta['type'] === 'select') {
+        $options = $meta['options'] ?? [];
+        $allowed = [];
+
+        foreach ($options as $option) {
+            if (is_array($option)) {
+                $allowed[] = (string)($option['value'] ?? $option['label'] ?? '');
+            } else {
+                $allowed[] = (string)$option;
+            }
+        }
+
+        $allowed = array_values(array_filter(array_map('trim', $allowed), static fn($item) => $item !== ''));
+        if (!empty($allowed) && !in_array($value, $allowed, true)) {
+            $default = trim((string)($meta['default'] ?? ''));
+            if ($default !== '' && in_array($default, $allowed, true)) {
+                return $default;
+            }
+            return $allowed[0];
+        }
+
+        return $value;
+    }
     
     if ($meta['type'] === 'number') {
         $numValue = is_numeric($value) ? (int)$value : (int)($meta['default'] ?? 0);

@@ -237,6 +237,24 @@ class StudyPlanGenerator {
         }
     }
 
+    private function getGlobalSemesterFilter(): ?string {
+        if (!function_exists('getSystemSetting')) {
+            return null;
+        }
+
+        $raw = trim((string) getSystemSetting('school_current_semester', ''));
+        if ($raw === '') {
+            return null;
+        }
+
+        $normalized = $this->normalizeCurriculumSemesterLabel($raw);
+        if ($normalized === '' || strcasecmp($normalized, 'None') === 0 || strcasecmp($normalized, 'All') === 0) {
+            return null;
+        }
+
+        return $normalized;
+    }
+
     private function isMidYearSemesterLabel($semester): bool {
         $semester = trim((string)$semester);
         if ($semester === '') {
@@ -2615,6 +2633,11 @@ class StudyPlanGenerator {
     }
 
     private function applyNearGraduationForceAdd(&$study_plan, &$simulated_completed, &$simulated_all_courses, $current_term) {
+        $global_semester = $this->getGlobalSemesterFilter();
+        if ($global_semester !== null && $global_semester !== '2nd Sem') {
+            return;
+        }
+
         $remaining = array_filter($simulated_all_courses, function($course) {
             return !$course['completed'];
         });
@@ -3037,6 +3060,7 @@ class StudyPlanGenerator {
         $current_term = $this->determineCurrentTerm();
 
         $terms = $this->getOrderedCurriculumTerms();
+        $global_semester = $this->getGlobalSemesterFilter();
         if (empty($terms)) {
             $this->plan_coverage = $this->calculatePlanCoverage([]);
             return [];
@@ -3045,11 +3069,40 @@ class StudyPlanGenerator {
         // Start from current term
         $start_index = count($terms);
         $found_start_term = false;
+        $current_term_index = null;
         foreach ($terms as $index => $term) {
             if ($term['year'] === $current_term['year'] && $term['semester'] === $current_term['semester']) {
                 $start_index = $index;
+                $current_term_index = $index;
                 $found_start_term = true;
                 break;
+            }
+        }
+        if ($global_semester !== null) {
+            $search_start = ($current_term_index !== null) ? $current_term_index : 0;
+            $global_start_index = null;
+
+            for ($index = $search_start; $index < count($terms); $index++) {
+                $term_semester = $this->normalizeCurriculumSemesterLabel($terms[$index]['semester'] ?? '');
+                if ($term_semester === $global_semester) {
+                    $global_start_index = $index;
+                    break;
+                }
+            }
+
+            if ($global_start_index === null) {
+                for ($index = 0; $index < count($terms); $index++) {
+                    $term_semester = $this->normalizeCurriculumSemesterLabel($terms[$index]['semester'] ?? '');
+                    if ($term_semester === $global_semester) {
+                        $global_start_index = $index;
+                        break;
+                    }
+                }
+            }
+
+            if ($global_start_index !== null) {
+                $start_index = $global_start_index;
+                $found_start_term = true;
             }
         }
         if (!$found_start_term && empty($study_plan)) {
@@ -3073,6 +3126,13 @@ class StudyPlanGenerator {
         // Generate plan for remaining terms
         for ($i = $start_index; $i < count($terms); $i++) {
             $term = $terms[$i];
+
+            if ($global_semester !== null) {
+                $term_semester = $this->normalizeCurriculumSemesterLabel($term['semester'] ?? '');
+                if ($term_semester !== $global_semester) {
+                    continue;
+                }
+            }
             
             // RETENTION: Check if this term should be skipped (Disqualification)
             if ($is_first_term && $this->shouldSkipTerm($i, $skip_tracker)) {
@@ -3362,6 +3422,9 @@ class StudyPlanGenerator {
         $extra_term_count = 0;
         $consecutive_empty = 0;
         $sem_cycle = $this->getExtraTermSemesterCycle();
+        if ($global_semester !== null) {
+            $sem_cycle = [$global_semester];
+        }
         $sem_cycle_count = count($sem_cycle);
         while (!empty($remaining) && $extra_term_count < 9 && $consecutive_empty < 3 && $sem_cycle_count > 0) {
             $semester = $sem_cycle[$extra_term_count % $sem_cycle_count];
