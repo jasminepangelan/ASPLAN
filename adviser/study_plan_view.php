@@ -389,16 +389,26 @@ foreach ($study_plan as $term) {
 
 $last_planned_term = null;
 $remaining_semesters = 0;
+$planned_remaining_course_codes = [];
 foreach ($study_plan as $term) {
     if (empty($term['skipped']) && !empty($term['courses'])) {
         $last_planned_term = $term;
         $remaining_semesters++;
+
+        foreach (($term['courses'] ?? []) as $course_code => $course) {
+            $code = strtoupper(trim((string)($course['code'] ?? $course_code)));
+            $units = (float)($course['units'] ?? 0);
+            if ($code !== '' && $units > 0) {
+                $planned_remaining_course_codes[$code] = true;
+            }
+        }
     }
 }
+$unscheduled_remaining_courses = max(0, (int)($stats['remaining_courses'] ?? 0) - count($planned_remaining_course_codes));
 
 $estimated_graduation = null;
 $graduation_school_year = '';
-if ($last_planned_term) {
+if ($last_planned_term && $unscheduled_remaining_courses === 0) {
     $grad_year_num = (int)preg_replace('/[^0-9]/', '', (string)($last_planned_term['year'] ?? ''));
     $grad_sy_start = $admission_year + ($grad_year_num > 0 ? $grad_year_num - 1 : 0);
     $grad_sy_end = $grad_sy_start + 1;
@@ -1258,8 +1268,13 @@ if ($last_planned_term) {
                         <strong style="font-size: 15px; color: #2e7d32;">Timeline Optimization Summary</strong>
                     </div>
                     <p style="margin: 0; font-size: 13px; color: #333;">
+                        <?php if ($unscheduled_remaining_courses > 0): ?>
+                        This plan currently schedules <strong><?= count($planned_remaining_course_codes) ?></strong> of <strong><?= (int)($stats['remaining_courses'] ?? 0) ?></strong> remaining courses.
+                        <strong style="color: #e65100;"><?= $unscheduled_remaining_courses ?> course<?= $unscheduled_remaining_courses > 1 ? 's' : '' ?></strong> still need<?= $unscheduled_remaining_courses > 1 ? '' : 's' ?> adviser review or an added term.
+                        <?php else: ?>
                         This plan completes all remaining courses in <strong><?= $remaining_semesters ?> semester<?= $remaining_semesters > 1 ? 's' : '' ?></strong>,
                         keeping the student on track based on the current curriculum and eligible course sequencing.
+                        <?php endif; ?>
                     </p>
                     <?php if ($estimated_graduation): ?>
                     <p style="margin: 8px 0 0 0; font-size: 13px; color: #206018; font-weight: 600;">

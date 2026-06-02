@@ -164,17 +164,27 @@ if (!empty($academicHold['active'])) {
 // Calculate estimated completion timeline
 $last_planned_term = null;
 $remaining_semesters = 0;
+$planned_remaining_course_codes = [];
 foreach ($optimized_plan as $term) {
     if (empty($term['skipped']) && !empty($term['courses'])) {
         $last_planned_term = $term;
         $remaining_semesters++;
+
+        foreach (($term['courses'] ?? []) as $course_code => $course) {
+            $code = strtoupper(trim((string)($course['code'] ?? $course_code)));
+            $units = (float)($course['units'] ?? 0);
+            if ($code !== '' && $units > 0) {
+                $planned_remaining_course_codes[$code] = true;
+            }
+        }
     }
 }
+$unscheduled_remaining_courses = max(0, (int)($stats['remaining_courses'] ?? 0) - count($planned_remaining_course_codes));
 
 $estimated_graduation = null;
 $graduation_school_year = '';
 $is_extended = false;
-if ($last_planned_term) {
+if ($last_planned_term && $unscheduled_remaining_courses === 0) {
     $grad_year_num = intval(preg_replace('/[^0-9]/', '', $last_planned_term['year']));
     $grad_sy_start = $admission_year + ($grad_year_num > 0 ? $grad_year_num - 1 : 0);
     $grad_sy_end = $grad_sy_start + 1;
@@ -2133,7 +2143,10 @@ $currentEnrollmentClientPayload = json_encode([
                 <p style="margin: 0; font-size: 13px; color: #333;">
                     <?php
                     $total_program_semesters = count($completed_terms) + $remaining_semesters;
-                    if ($total_program_semesters <= 8): ?>
+                    if ($unscheduled_remaining_courses > 0): ?>
+                    Your optimized plan currently schedules <strong><?= count($planned_remaining_course_codes) ?></strong> of <strong><?= (int)($stats['remaining_courses'] ?? 0) ?></strong> remaining courses.
+                    <strong style="color: #e65100;"><?= $unscheduled_remaining_courses ?> course<?= $unscheduled_remaining_courses > 1 ? 's' : '' ?></strong> still need<?= $unscheduled_remaining_courses > 1 ? '' : 's' ?> adviser review or an added term.
+                    <?php elseif ($total_program_semesters <= 8): ?>
                     Your optimized plan completes all remaining courses in <strong><?= $remaining_semesters ?> semester<?= $remaining_semesters > 1 ? 's' : '' ?></strong>,
                     keeping you <strong style="color: #2e7d32;">on track</strong> to finish within the standard 4-year program duration.
                     The algorithm advances eligible courses from later years and fills each semester to maximize progress.

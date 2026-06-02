@@ -3608,14 +3608,9 @@ class StudyPlanGenerator {
             return ['1st Sem', '2nd Sem', 'Mid Year'];
         }
 
-        $lastYear = (string)($terms[count($terms) - 1]['year'] ?? '');
         $cycle = [];
 
         foreach ($terms as $term) {
-            if ((string)($term['year'] ?? '') !== $lastYear) {
-                continue;
-            }
-
             $semester = trim((string)($term['semester'] ?? ''));
             if ($semester === '' || in_array($semester, $cycle, true)) {
                 continue;
@@ -3624,18 +3619,9 @@ class StudyPlanGenerator {
             $cycle[] = $semester;
         }
 
-        if (!empty($cycle)) {
-            return $cycle;
-        }
-
-        foreach ($terms as $term) {
-            $semester = trim((string)($term['semester'] ?? ''));
-            if ($semester === '' || in_array($semester, $cycle, true)) {
-                continue;
-            }
-
-            $cycle[] = $semester;
-        }
+        usort($cycle, function ($a, $b) {
+            return $this->semesterLabelToOrder($a) <=> $this->semesterLabelToOrder($b);
+        });
 
         return !empty($cycle) ? $cycle : ['1st Sem', '2nd Sem', 'Mid Year'];
     }
