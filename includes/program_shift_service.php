@@ -885,6 +885,7 @@ if (!function_exists('psResolveStudentCurriculumYear')) {
     function psResolveStudentCurriculumYear($conn, $studentId, $programLabel = '', $programKey = '') {
         $studentId = trim((string)$studentId);
         $selectedProgramKey = psNormalizeProgramKey((string)($programKey !== '' ? $programKey : $programLabel));
+        $storedYear = ''; // Initialize at function level so it persists for final check
         if ($studentId !== '' && psTableExists($conn, 'student_info')) {
             $stmt = $conn->prepare("
                 SELECT program, curriculum_year
@@ -967,6 +968,13 @@ if (!function_exists('psResolveStudentCurriculumYear')) {
             }
         }
 
+        // Always honor the student's stored curriculum year, even if not currently verified in DB
+        // This ensures old students are never forced to see new curriculum years
+        if ($storedYear !== '') {
+            return $storedYear;
+        }
+
+        // Only fallback to latest year if student has no stored curriculum year
         return psResolveLatestCurriculumYear($conn, $programLabel, $programKey);
     }
 }
