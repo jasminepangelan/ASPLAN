@@ -1901,8 +1901,41 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .masterlist-modal-table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             font-size: 12px;
+        }
+
+        .masterlist-modal-table th:nth-child(1),
+        .masterlist-modal-table td:nth-child(1) {
+            width: 10%;
+        }
+
+        .masterlist-modal-table th:nth-child(2),
+        .masterlist-modal-table td:nth-child(2),
+        .masterlist-modal-table th:nth-child(3),
+        .masterlist-modal-table td:nth-child(3) {
+            width: 11%;
+        }
+
+        .masterlist-modal-table th:nth-child(4),
+        .masterlist-modal-table td:nth-child(4) {
+            width: 5%;
+        }
+
+        .masterlist-modal-table th:nth-child(5),
+        .masterlist-modal-table td:nth-child(5) {
+            width: 29%;
+        }
+
+        .masterlist-modal-table th:nth-child(6),
+        .masterlist-modal-table td:nth-child(6) {
+            width: 10%;
+        }
+
+        .masterlist-modal-table th:nth-child(7),
+        .masterlist-modal-table td:nth-child(7) {
+            width: 14%;
         }
 
         .masterlist-modal-table th,
@@ -1926,6 +1959,17 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
 
         .masterlist-modal-table tbody tr:nth-child(even) {
             background: #fbfdfb;
+        }
+
+        .masterlist-modal-table .masterlist-program-pill {
+            display: inline-block;
+            max-width: 100%;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            overflow-wrap: anywhere;
+            line-height: 1.35;
+            border-radius: 8px;
         }
 
         .masterlist-modal-empty {
