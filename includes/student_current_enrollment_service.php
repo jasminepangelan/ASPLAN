@@ -1,7 +1,7 @@
 <?php
 
 if (!function_exists('sceEnsureCurrentEnrollmentTables')) {
-    function sceEnsureCurrentEnrollmentTables(mysqli $conn): void
+    function sceEnsureCurrentEnrollmentTables($conn): void
     {
         $conn->query(
             "CREATE TABLE IF NOT EXISTS student_current_enrollments (
@@ -106,7 +106,7 @@ if (!function_exists('sceBuildSelectableTermMap')) {
 }
 
 if (!function_exists('sceLoadStudentCurrentEnrollment')) {
-    function sceLoadStudentCurrentEnrollment(mysqli $conn, string $studentId): ?array
+    function sceLoadStudentCurrentEnrollment($conn, string $studentId): ?array
     {
         sceEnsureCurrentEnrollmentTables($conn);
 
@@ -203,7 +203,7 @@ if (!function_exists('sceBuildSelectableCourseMap')) {
 
 if (!function_exists('sceSaveStudentCurrentEnrollment')) {
     function sceSaveStudentCurrentEnrollment(
-        mysqli $conn,
+        $conn,
         string $studentId,
         string $yearLevel,
         string $semester,
