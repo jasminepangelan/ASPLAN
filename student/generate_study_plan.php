@@ -285,7 +285,7 @@ class StudyPlanGenerator {
 
         return $courseSemester === $targetSemester
             && $courseYearOrder > 0
-            && $targetYearOrder === $courseYearOrder;
+            && $targetYearOrder >= $courseYearOrder;
     }
 
     private function registerCurriculumCourseRow(array $row) {
@@ -2393,7 +2393,7 @@ class StudyPlanGenerator {
                     $gap = $target_term_order - $term_order;
                     $score += !empty($course['needs_retake'])
                         ? max(28, 68 - ($gap * 6))
-                        : max(12, 38 - ($gap * 5));
+                        : max(72, 112 - ($gap * 7));
                 } else {
                     $gap = $term_order - $target_term_order;
                     $score -= min(35, $gap * 10);
@@ -2890,16 +2890,14 @@ class StudyPlanGenerator {
             }
         }
 
-        // We intentionally do not report unresolved/unscheduled remaining courses
-        // to disable the 'Unresolved Term' behavior across users. The plan
-        // still returns planned course codes for downstream usage.
         ksort($unresolved);
+        $unscheduledCodes = array_keys($unresolved);
         return [
             'planned_remaining_course_codes' => array_keys($plannedCodes),
-            'unscheduled_remaining_course_codes' => [],
-            'unscheduled_remaining_courses' => 0,
-            'unresolved_courses' => [],
-            'is_complete' => true,
+            'unscheduled_remaining_course_codes' => $unscheduledCodes,
+            'unscheduled_remaining_courses' => count($unscheduledCodes),
+            'unresolved_courses' => array_values($unresolved),
+            'is_complete' => empty($unscheduledCodes),
         ];
     }
 

@@ -217,21 +217,23 @@ foreach ($completed_terms as $completed_term) {
         $completed_projection_term_keys[$completed_key] = true;
     }
 }
-foreach ($ay_courses_by_term as $term_key => $term_data) {
-    if (isset($completed_projection_term_keys[$term_key]) || empty($term_data['uncomplete'])) {
-        continue;
-    }
+if (empty($optimized_plan)) {
+    foreach ($ay_courses_by_term as $term_key => $term_data) {
+        if (isset($completed_projection_term_keys[$term_key]) || empty($term_data['uncomplete'])) {
+            continue;
+        }
 
-    $projection_term_keys[$term_key] = [
-        'year' => $term_data['year'] ?? '',
-        'semester' => $term_data['semester'] ?? '',
-    ];
+        $projection_term_keys[$term_key] = [
+            'year' => $term_data['year'] ?? '',
+            'semester' => $term_data['semester'] ?? '',
+        ];
 
-    foreach ((array)($term_data['uncomplete'] ?? []) as $course) {
-        $code = strtoupper(trim((string)($course['code'] ?? '')));
-        $units = (float)($course['units'] ?? 0);
-        if ($code !== '' && $units > 0) {
-            $planned_remaining_course_codes[$code] = true;
+        foreach ((array)($term_data['uncomplete'] ?? []) as $course) {
+            $code = strtoupper(trim((string)($course['code'] ?? '')));
+            $units = (float)($course['units'] ?? 0);
+            if ($code !== '' && $units > 0) {
+                $planned_remaining_course_codes[$code] = true;
+            }
         }
     }
 }
