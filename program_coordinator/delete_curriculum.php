@@ -158,11 +158,32 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
 
-    $deleteCurriculumRows = $conn->prepare(
-        'DELETE FROM curriculum_courses WHERE curriculum_year = ? AND UPPER(TRIM(program)) = ?'
-    );
+    $programCandidatesToDelete = [];
+    $programCandidatesToDelete[] = strtoupper(trim($program));
     $canonicalProgramLabelUpper = strtoupper(trim($canonicalProgramLabel));
-    $deleteCurriculumRows->bind_param('is', $curriculumYear, $canonicalProgramLabelUpper);
+    if ($canonicalProgramLabelUpper !== '') {
+        $programCandidatesToDelete[] = $canonicalProgramLabelUpper;
+    }
+    $legacyCanonicalProgram = strtoupper(trim((string)psCanonicalProgramLabel(psNormalizeProgramKey($program))));
+    if ($legacyCanonicalProgram !== '' && $legacyCanonicalProgram !== $canonicalProgramLabelUpper) {
+        $programCandidatesToDelete[] = $legacyCanonicalProgram;
+    }
+    $programCandidatesToDelete = array_values(array_unique(array_filter($programCandidatesToDelete, static fn($value) => $value !== '')));
+
+    if (empty($programCandidatesToDelete)) {
+        throw new RuntimeException('Failed to resolve program labels for curriculum deletion.');
+    }
+
+    $deleteConditions = array_fill(0, count($programCandidatesToDelete), 'UPPER(TRIM(program)) = ?');
+    $deleteSql = 'DELETE FROM curriculum_courses WHERE curriculum_year = ? AND (' . implode(' OR ', $deleteConditions) . ')';
+    $deleteCurriculumRows = $conn->prepare($deleteSql);
+    if (!$deleteCurriculumRows) {
+        throw new RuntimeException('Failed to prepare curriculum cleanup: ' . $conn->error);
+    }
+
+    $deleteTypes = 'i' . str_repeat('s', count($programCandidatesToDelete));
+    $deleteParams = array_merge([(int)$curriculumYear], $programCandidatesToDelete);
+    $deleteCurriculumRows->bind_param($deleteTypes, ...$deleteParams);
     $deleteCurriculumRows->execute();
     $deleteCurriculumRows->close();
 
