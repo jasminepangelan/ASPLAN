@@ -19,6 +19,9 @@ $routeAliases = [
 if (isset($routeAliases[$normalizedPath]) && is_file($routeAliases[$normalizedPath])) {
     $previousCwd = getcwd();
     $aliasTarget = $routeAliases[$normalizedPath];
+    if (function_exists('opcache_invalidate')) {
+        @opcache_invalidate($aliasTarget, true);
+    }
     $_SERVER['SCRIPT_FILENAME'] = $aliasTarget;
     $_SERVER['SCRIPT_NAME'] = $normalizedPath;
     $_SERVER['PHP_SELF'] = $normalizedPath;
@@ -95,6 +98,9 @@ if (is_file($targetPath)) {
 
     if (strtolower((string) pathinfo($targetPath, PATHINFO_EXTENSION)) === 'php') {
         $previousCwd = getcwd();
+        if (function_exists('opcache_invalidate')) {
+            @opcache_invalidate($targetPath, true);
+        }
         $_SERVER['SCRIPT_FILENAME'] = $targetPath;
         $_SERVER['SCRIPT_NAME'] = $normalizedPath;
         $_SERVER['PHP_SELF'] = $normalizedPath;
