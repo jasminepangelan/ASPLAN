@@ -238,21 +238,9 @@ class StudyPlanGenerator {
     }
 
     private function getGlobalSemesterFilter(): ?string {
-        if (!function_exists('getSystemSetting')) {
-            return null;
-        }
-
-        $raw = trim((string) getSystemSetting('school_current_semester', ''));
-        if ($raw === '') {
-            return null;
-        }
-
-        $normalized = $this->normalizeCurriculumSemesterLabel($raw);
-        if ($normalized === '' || strcasecmp($normalized, 'None') === 0 || strcasecmp($normalized, 'All') === 0) {
-            return null;
-        }
-
-        return $normalized;
+        // Global school semester settings may be managed by admin, but they
+        // should not influence student study plan generation.
+        return null;
     }
 
     private function isMidYearSemesterLabel($semester): bool {
