@@ -9,9 +9,6 @@ if (!isset($_SESSION['username']) || (isset($_SESSION['user_type']) && $_SESSION
     exit();
 }
 
-header('Location: index.php');
-exit();
-
 $conn = getDBConnection();
 $username = (string)($_SESSION['username'] ?? '');
 $fullName = (string)($_SESSION['full_name'] ?? $username);

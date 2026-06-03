@@ -9,9 +9,6 @@ if (!isset($_SESSION['student_id'])) {
     exit();
 }
 
-header('Location: home_page_student.php?message=' . urlencode('Program shifting is now handled by the administrator.'));
-exit();
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: program_shift_request.php');
     exit();

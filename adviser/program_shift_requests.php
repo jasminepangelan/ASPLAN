@@ -9,9 +9,6 @@ if (!isset($_SESSION['id'])) {
     exit();
 }
 
-header('Location: index.php');
-exit();
-
 $conn = getDBConnection();
 $adviserId = $_SESSION['id'] ?? null;
 $adviserUsername = (string)($_SESSION['username'] ?? '');
