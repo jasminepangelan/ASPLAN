@@ -1849,7 +1849,7 @@ if (!function_exists('psFetchLatestChecklistGrade')) {
 }
 
 if (!function_exists('psExecuteApprovedShift')) {
-    function psExecuteApprovedShift($conn, array $requestRow, $actorUsername) {
+    function psExecuteApprovedShift($conn, array $requestRow, $actorUsername, $actorRole = 'program_coordinator') {
         $requestId = (int)$requestRow['id'];
         $studentNumber = (string)$requestRow['student_number'];
         $sourceProgram = trim((string)$requestRow['current_program']);
@@ -2025,7 +2025,7 @@ if (!function_exists('psExecuteApprovedShift')) {
             $finalize->close();
         }
 
-        psAddAuditLog($conn, $requestId, 'shift_executed', 'Program shift executed and student program updated.', $actorUsername, 'program_coordinator', [
+        psAddAuditLog($conn, $requestId, 'shift_executed', 'Program shift executed and student program updated.', $actorUsername, $actorRole, [
             'student_number' => $studentNumber,
             'source_program' => $sourceProgram,
             'destination_program' => $destinationProgram,
@@ -2044,7 +2044,7 @@ if (!function_exists('psExecuteApprovedShift')) {
                 'current_enrollment_reset',
                 'Current enrolled courses were cleared after shift execution.',
                 $actorUsername,
-                'program_coordinator',
+                $actorRole,
                 [
                     'student_number' => $studentNumber,
                     'enrollment_rows_deleted' => (int)($currentEnrollmentReset['enrollment_rows_deleted'] ?? 0),
@@ -2054,6 +2054,116 @@ if (!function_exists('psExecuteApprovedShift')) {
         }
 
         return ['ok' => true, 'message' => $executionNote, 'credited_courses' => $credited];
+    }
+}
+
+if (!function_exists('psAdminShiftStudent')) {
+    function psAdminShiftStudent($conn, $studentNumber, $destinationProgram, $actorUsername, $reason = '') {
+        $studentRow = psGetCurrentStudentInfo($conn, $studentNumber);
+        if (!$studentRow) {
+            return ['ok' => false, 'message' => 'Student record not found.'];
+        }
+
+        $studentNumber = trim((string)($studentRow['student_number'] ?? $studentNumber));
+        $sourceProgram = trim((string)($studentRow['program'] ?? ''));
+        $destinationProgram = trim((string)$destinationProgram);
+        $actorUsername = trim((string)$actorUsername);
+        $reason = trim((string)$reason);
+
+        if ($studentNumber === '') {
+            return ['ok' => false, 'message' => 'Student number is missing.'];
+        }
+
+        if ($sourceProgram === '') {
+            return ['ok' => false, 'message' => 'The student current program is not set.'];
+        }
+
+        if ($destinationProgram === '') {
+            return ['ok' => false, 'message' => 'Please select a destination program.'];
+        }
+
+        if (strcasecmp(psNormalizeProgramLabel($sourceProgram), psNormalizeProgramLabel($destinationProgram)) === 0) {
+            return ['ok' => false, 'message' => 'The student is already enrolled in the selected program.'];
+        }
+
+        $destinationCurriculumYear = psResolveLatestCurriculumYear($conn, $destinationProgram);
+        $destinationCourses = psFetchCurriculumCourses($conn, $destinationProgram, $destinationCurriculumYear);
+        if (empty($destinationCourses)) {
+            return ['ok' => false, 'message' => 'Destination program curriculum was not found. Add the curriculum before shifting the student.'];
+        }
+
+        $conn->begin_transaction();
+
+        try {
+            if (psTableExists($conn, 'program_shift_requests')) {
+                $cancelStmt = $conn->prepare(
+                    "UPDATE program_shift_requests
+                     SET status = 'cancelled',
+                         execution_note = CONCAT(COALESCE(execution_note, ''), CASE WHEN execution_note IS NULL OR execution_note = '' THEN '' ELSE ' ' END, 'Cancelled because admin directly shifted the student.'),
+                         updated_at = NOW()
+                     WHERE student_number = ?
+                       AND status IN ('pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator')"
+                );
+                if ($cancelStmt) {
+                    $cancelStmt->bind_param('s', $studentNumber);
+                    $cancelStmt->execute();
+                    $cancelStmt->close();
+                }
+            }
+
+            $requestCode = psGenerateRequestCode();
+            $studentName = psGetStudentDisplayName($studentRow);
+            $adminReason = $reason !== '' ? $reason : 'Direct admin program shift.';
+            $stmt = $conn->prepare(
+                "INSERT INTO program_shift_requests
+                    (request_code, student_number, student_name, current_program, requested_program, reason, status, coordinator_action_by, coordinator_action_name, coordinator_action_at, coordinator_comment)
+                 VALUES (?, ?, ?, ?, ?, ?, 'approved', ?, ?, NOW(), 'Direct admin shift')"
+            );
+            if (!$stmt) {
+                throw new RuntimeException('Unable to create shift record.');
+            }
+
+            $stmt->bind_param('ssssssss', $requestCode, $studentNumber, $studentName, $sourceProgram, $destinationProgram, $adminReason, $actorUsername, $actorUsername);
+            if (!$stmt->execute()) {
+                $stmt->close();
+                throw new RuntimeException('Unable to create shift record.');
+            }
+
+            $requestId = (int)$stmt->insert_id;
+            $stmt->close();
+
+            psAddAuditLog($conn, $requestId, 'admin_shift_started', 'Admin started a direct program shift.', $actorUsername, 'admin', [
+                'student_number' => $studentNumber,
+                'source_program' => $sourceProgram,
+                'destination_program' => $destinationProgram,
+                'reason' => $adminReason,
+            ]);
+
+            $requestRow = [
+                'id' => $requestId,
+                'student_number' => $studentNumber,
+                'student_name' => $studentName,
+                'current_program' => $sourceProgram,
+                'requested_program' => $destinationProgram,
+            ];
+            $executionResult = psExecuteApprovedShift($conn, $requestRow, $actorUsername, 'admin');
+            if (empty($executionResult['ok'])) {
+                throw new RuntimeException((string)($executionResult['message'] ?? 'Unable to execute shift.'));
+            }
+
+            $conn->commit();
+
+            return [
+                'ok' => true,
+                'message' => (string)$executionResult['message'],
+                'request_id' => $requestId,
+                'request_code' => $requestCode,
+                'credited_courses' => (int)($executionResult['credited_courses'] ?? 0),
+            ];
+        } catch (Throwable $e) {
+            $conn->rollback();
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
     }
 }
 

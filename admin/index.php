@@ -518,6 +518,13 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
             <p class="option-caption">Browse student records already saved in the system and move into profile, checklist, or study plan workflows.</p>
           </div>
         </div>
+        <div class="option" onclick="window.location.href='program_shift.php'">
+          <div class="option-icon"><img src="../pix/update.png" alt="Program Shift Icon"></div>
+          <div>
+            <label class="option-title">Program Shift</label>
+            <p class="option-caption">Move a student to another program and automatically credit eligible completed courses into the destination checklist.</p>
+          </div>
+        </div>
         <div class="option" onclick="window.location.href='curriculum_management.php'">
           <div class="option-icon"><img src="../pix/curr.png" alt="Curriculum Management Icon"></div>
           <div>
