@@ -91,8 +91,15 @@ if (!function_exists('ctlsParseChecklistRowKeyTerm')) {
 }
 
 if (!function_exists('ctlsLoadStudentCurrentEnrollmentTerm')) {
-    function ctlsLoadStudentCurrentEnrollmentTerm(mysqli $conn, string $studentId): ?array
+    function ctlsLoadStudentCurrentEnrollmentTerm($conn, string $studentId): ?array
     {
+        // student_current_enrollment_service currently expects mysqli.
+        // When the app is running through PDO fallback, skip this optional
+        // lookup instead of crashing with a TypeError.
+        if (!($conn instanceof mysqli)) {
+            return null;
+        }
+
         if (!function_exists('sceLoadStudentCurrentEnrollment')) {
             return null;
         }
