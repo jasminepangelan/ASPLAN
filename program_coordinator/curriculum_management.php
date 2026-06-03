@@ -2114,20 +2114,32 @@ function deleteCurriculumYear(year) {
         .filter(v => v !== String(year));
     }
 
+    let fallbackYear = '';
+    if (existingCurriculums[selectedProgram] && existingCurriculums[selectedProgram].length > 0) {
+      const remainingYears = [...existingCurriculums[selectedProgram]]
+        .map(y => String(y).trim())
+        .filter(Boolean)
+        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+      fallbackYear = remainingYears.length > 0 ? remainingYears[remainingYears.length - 1] : '';
+    }
+
     if (yearSelect) {
       const option = Array.from(yearSelect.options).find(opt => String(opt.value) === String(year));
       if (option) {
         option.remove();
       }
-      yearSelect.value = '';
+      yearSelect.value = fallbackYear;
     }
 
     if (yearInput && String(yearInput.value || '').trim() === String(year)) {
-      yearInput.value = '';
+      yearInput.value = fallbackYear;
     }
 
-    if (selectedYear === String(year)) {
-      selectedYear = '';
+    if (selectedYear === String(year) || selectedYear === '') {
+      selectedYear = fallbackYear;
+    }
+
+    if (selectedYear === '') {
       loadedChecklistYear = '';
       const checklistArea = document.getElementById('checklistArea');
       const checklistBody = document.getElementById('checklistBody');
@@ -2139,10 +2151,17 @@ function deleteCurriculumYear(year) {
       }
       updateChecklistYearLabel('');
       refreshNoChecklistPlaceholder();
+    } else {
+      updateChecklistYearLabel(selectedYear);
+      if (String(yearInput?.value || '').trim() === selectedYear || String(yearSelect?.value || '').trim() === selectedYear) {
+        if (document.getElementById('checklistArea')?.style.display !== 'none') {
+          viewChecklist();
+        }
+      }
     }
 
     if (viewEditBtn) {
-      viewEditBtn.disabled = true;
+      viewEditBtn.disabled = selectedYear === '';
     }
 
     refreshExistingInfo();
