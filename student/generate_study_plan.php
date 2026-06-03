@@ -191,10 +191,10 @@ class StudyPlanGenerator {
 
         $code = trim((string)$value);
         if ($code === '') {
-            return $valid_prereqs;
-            default:
-                return $value;
+            return '';
         }
+
+        return $code;
     }
 
     private function getGlobalSemesterFilter(): ?string {
