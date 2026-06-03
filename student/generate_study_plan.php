@@ -3101,8 +3101,21 @@ class StudyPlanGenerator {
             }
 
             if ($global_start_index !== null) {
-                $start_index = $global_start_index;
-                $found_start_term = true;
+                // Only apply the global semester start if it does not move the
+                // plan start to an index before the current detected term.
+                // This avoids the school-wide semester setting forcing the
+                // planner into a future-year semester (e.g., 2nd Yr - 2nd Sem)
+                // when the student's effective current term is earlier.
+                if ($current_term_index === null || $global_start_index >= $current_term_index) {
+                    $start_index = $global_start_index;
+                    $found_start_term = true;
+                } else {
+                    // Ignore global semester override because it would move the
+                    // start before the student's current effective term.
+                    if ($this->debug_enabled) {
+                        $this->debugLog('GLOBAL_SEM_OVERRIDE_IGNORED: global index ' . $global_start_index . ' < current index ' . $current_term_index);
+                    }
+                }
             }
         }
         if (!$found_start_term && empty($study_plan)) {
