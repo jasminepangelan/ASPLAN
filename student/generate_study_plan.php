@@ -2915,6 +2915,10 @@ class StudyPlanGenerator {
      * should continue to use the optimization engine.
      */
     private function shouldUseExactCurriculumPlan() {
+        if (!$this->hasValidatedAcademicHistory()) {
+            return true;
+        }
+
         if (!empty($this->policy_gate_status['applies'])) {
             return false;
         }
@@ -2929,10 +2933,6 @@ class StudyPlanGenerator {
 
         if (!empty($this->planning_status['is_irregular'])) {
             return false;
-        }
-
-        if (!$this->hasValidatedAcademicHistory()) {
-            return true;
         }
 
         $active_failed = array_values(array_filter(array_diff($this->failed_courses, $this->completed_courses)));
