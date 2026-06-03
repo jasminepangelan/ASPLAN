@@ -55,11 +55,12 @@ if ($useLaravelBridge) {
     }
 }
 
-$validPrograms = ['BSIndT','BSCpE','BSIT','BSCS','BSHM','BSBA-HRM','BSBA-MM','BSEd-English','BSEd-Science','BSEd-Math'];
-if (!in_array($program, $validPrograms, true)) {
+$normalizedProgramKey = strtoupper(trim((string)psNormalizeProgramKey($program)));
+if ($normalizedProgramKey === '') {
     echo json_encode(['success' => false, 'message' => 'Invalid program']);
     exit();
 }
+$program = $normalizedProgramKey;
 
 if (!preg_match('/^\d{4}$/', $curriculumYear) || (int)$curriculumYear < 2017 || (int)$curriculumYear > 2099) {
     echo json_encode(['success' => false, 'message' => 'Invalid curriculum year']);
@@ -94,7 +95,14 @@ try {
         }
 
         $progs = array_map('trim', explode(',', (string)$row['programs']));
-        if (!in_array($program, $progs, true)) {
+        $rowMatched = false;
+        foreach ($progs as $programToken) {
+            if (strtoupper(trim((string)psNormalizeProgramKey($programToken))) === $program) {
+                $rowMatched = true;
+                break;
+            }
+        }
+        if (!$rowMatched) {
             continue;
         }
 
@@ -105,7 +113,7 @@ try {
             $stmt->close();
         } else {
             $progs = array_values(array_filter($progs, function ($p) use ($program) {
-                return $p !== $program;
+                return strtoupper(trim((string)psNormalizeProgramKey($p))) !== $program;
             }));
             $newPrograms = implode(', ', $progs);
             $stmt = $conn->prepare('UPDATE cvsucarmona_courses SET programs = ? WHERE curriculumyear_coursecode = ?');
@@ -129,8 +137,12 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
 
-    $deletePrograms = array_values(array_unique([$program, $canonicalProgramLabel]));
-    foreach ($deletePrograms as $deleteProgram) {
+    $programCandidatesToDelete = psResolveChecklistProgramLabels($canonicalProgramLabel, $program);
+    $programCandidatesToDelete[] = $program;
+    $programCandidatesToDelete[] = strtoupper(trim($canonicalProgramLabel));
+    $programCandidatesToDelete = array_values(array_unique(array_filter($programCandidatesToDelete, static fn($value) => $value !== '')));
+
+    foreach ($programCandidatesToDelete as $deleteProgram) {
         $deleteYearStmt = $conn->prepare('DELETE FROM program_curriculum_years WHERE program = ? AND curriculum_year = ?');
         $deleteYearStmt->bind_param('ss', $deleteProgram, $curriculumYear);
         $deleteYearStmt->execute();
@@ -158,16 +170,9 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
 
-    $programCandidatesToDelete = [];
-    $programCandidatesToDelete[] = strtoupper(trim($program));
-    $canonicalProgramLabelUpper = strtoupper(trim($canonicalProgramLabel));
-    if ($canonicalProgramLabelUpper !== '') {
-        $programCandidatesToDelete[] = $canonicalProgramLabelUpper;
-    }
-    $legacyCanonicalProgram = strtoupper(trim((string)psCanonicalProgramLabel(psNormalizeProgramKey($program))));
-    if ($legacyCanonicalProgram !== '' && $legacyCanonicalProgram !== $canonicalProgramLabelUpper) {
-        $programCandidatesToDelete[] = $legacyCanonicalProgram;
-    }
+    $programCandidatesToDelete = psResolveChecklistProgramLabels($canonicalProgramLabel, $program);
+    $programCandidatesToDelete[] = $program;
+    $programCandidatesToDelete[] = strtoupper(trim($canonicalProgramLabel));
     $programCandidatesToDelete = array_values(array_unique(array_filter($programCandidatesToDelete, static fn($value) => $value !== '')));
 
     if (empty($programCandidatesToDelete)) {
