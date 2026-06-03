@@ -1004,6 +1004,13 @@ if (!empty($programOptions)) {
       margin-top: 6px;
       line-height: 1.4;
     }
+
+    .delete-hint {
+      color: var(--pc-muted);
+      font-size: 12px;
+      margin-top: 4px;
+      font-style: italic;
+    }
     
     .btn {
       padding: 10px 16px;
@@ -1333,7 +1340,7 @@ if (!empty($programOptions)) {
             <div class="form-group">
               <label for="curriculumYearSelect">Curriculum Year</label>
               <div class="year-select-row">
-                <select id="curriculumYearSelect">
+                <select id="curriculumYearSelect" title="Right-click the selected curriculum year to delete it.">
                   <option value="">-- Select Curriculum Year --</option>
                   <?php foreach ($availableCurriculumYears as $year): ?>
                     <option value="<?= htmlspecialchars($year) ?>">
@@ -1344,6 +1351,7 @@ if (!empty($programOptions)) {
                 <button type="button" id="viewEditBtn" class="btn btn-view" onclick="viewChecklist()" disabled>View / Edit</button>
               </div>
               <div class="existing-info" id="existingInfo"></div>
+              <div class="delete-hint">Right-click the selected curriculum year to delete it for the active program.</div>
               <?php if ($programConfigNotice !== ''): ?>
                 <div class="existing-info" style="color:#c0392b;"><?= htmlspecialchars($programConfigNotice) ?></div>
               <?php endif; ?>
@@ -1509,7 +1517,7 @@ window.addEventListener('DOMContentLoaded', function() {
     });
 
     // Right-click on the dropdown deletes the currently selected curriculum year.
-    yearSelect.addEventListener('contextmenu', function(e) {
+    function handleCurriculumYearDeleteContextMenu(e) {
       e.preventDefault();
 
       const chosenYear = String(yearSelect.value || '').trim();
@@ -1529,7 +1537,14 @@ window.addEventListener('DOMContentLoaded', function() {
       }
 
       deleteCurriculumYear(chosenYear);
-    });
+    }
+
+    yearSelect.addEventListener('contextmenu', handleCurriculumYearDeleteContextMenu);
+
+    const yearSelectRow = document.querySelector('.year-select-row');
+    if (yearSelectRow) {
+      yearSelectRow.addEventListener('contextmenu', handleCurriculumYearDeleteContextMenu);
+    }
   }
 });
 
