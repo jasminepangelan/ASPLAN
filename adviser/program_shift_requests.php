@@ -4,8 +4,14 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
+$headerAlreadySent = headers_sent();
 if (!isset($_SESSION['id'])) {
     header('Location: login.php');
+    exit();
+}
+
+if (!$headerAlreadySent) {
+    header('Location: index.php?message=' . urlencode('Program shift requests have been disabled for advisers.'));
     exit();
 }
 
