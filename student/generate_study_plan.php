@@ -4053,7 +4053,16 @@ class StudyPlanGenerator {
 
         $minimumCurrentIndex = $firstIncompleteIndex;
         if ($latestSubmittedIndex >= 0) {
-            $minimumCurrentIndex = max($minimumCurrentIndex, min($latestSubmittedIndex + 1, count($terms) - 1));
+            // Only allow advancing the effective term based on submitted grades
+            // when those submitted grades are for the same or a later term than
+            // the first incomplete curriculum term. This prevents an erroneous
+            // jump when there are approved grades that are mis-mapped to a
+            // later curriculum term (e.g., transfer/credited rows or data
+            // issues). In that case we keep the planner anchored to the
+            // earliest incomplete term.
+            if ($latestSubmittedIndex >= $firstIncompleteIndex) {
+                $minimumCurrentIndex = max($minimumCurrentIndex, min($latestSubmittedIndex + 1, count($terms) - 1));
+            }
         }
 
         $effectiveIndex = $minimumCurrentIndex;
