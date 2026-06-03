@@ -191,47 +191,7 @@ class StudyPlanGenerator {
 
         $code = trim((string)$value);
         if ($code === '') {
-            return '';
-        }
-
-        foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
-            if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
-                return trim(substr($code, 0, -strlen($suffix)));
-            }
-        }
-
-        return $code;
-    }
-
-    private function normalizeCurriculumYearLabel($value) {
-        $value = trim((string)$value);
-
-        switch ($value) {
-            case 'First Year':
-                return '1st Yr';
-            case 'Second Year':
-                return '2nd Yr';
-            case 'Third Year':
-                return '3rd Yr';
-            case 'Fourth Year':
-                return '4th Yr';
-            default:
-                return $value;
-        }
-    }
-
-    private function normalizeCurriculumSemesterLabel($value) {
-        $value = trim((string)$value);
-
-        switch ($value) {
-            case 'First Semester':
-                return '1st Sem';
-            case 'Second Semester':
-                return '2nd Sem';
-            case 'Midyear':
-            case 'Mid Year':
-            case 'Summer':
-                return 'Mid Year';
+            return $valid_prereqs;
             default:
                 return $value;
         }
