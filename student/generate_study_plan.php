@@ -4046,10 +4046,22 @@ class StudyPlanGenerator {
             return $terms[count($terms) - 1];
         }
 
-        $effectiveIndex = $firstIncompleteIndex;
+        $latestSubmittedIndex = -1;
+        foreach ($terms as $index => $term) {
+            if ($this->termHasApprovedGrades($term['year'], $term['semester'])) {
+                $latestSubmittedIndex = max($latestSubmittedIndex, $index);
+            }
+        }
+
+        $minimumCurrentIndex = $firstIncompleteIndex;
+        if ($latestSubmittedIndex >= 0) {
+            $minimumCurrentIndex = max($minimumCurrentIndex, min($latestSubmittedIndex + 1, count($terms) - 1));
+        }
+
+        $effectiveIndex = $minimumCurrentIndex;
         $globalSemester = $this->getGlobalSemesterFilter();
         if ($globalSemester !== null) {
-            for ($index = $firstIncompleteIndex; $index < count($terms); $index++) {
+            for ($index = $minimumCurrentIndex; $index < count($terms); $index++) {
                 if ($this->normalizeCurriculumSemesterLabel($terms[$index]['semester'] ?? '') === $globalSemester) {
                     $effectiveIndex = $index;
                     break;
