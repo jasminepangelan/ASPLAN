@@ -194,11 +194,65 @@ class StudyPlanGenerator {
             return '';
         }
 
+        foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
+            if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
+                return trim(substr($code, 0, -strlen($suffix)));
+            }
+        }
+
         return $code;
     }
 
+    private function normalizeCurriculumYearLabel($value) {
+        $value = trim((string)$value);
+
+        switch ($value) {
+            case 'First Year':
+                return '1st Yr';
+            case 'Second Year':
+                return '2nd Yr';
+            case 'Third Year':
+                return '3rd Yr';
+            case 'Fourth Year':
+                return '4th Yr';
+            default:
+                return $value;
+        }
+    }
+
+    private function normalizeCurriculumSemesterLabel($value) {
+        $value = trim((string)$value);
+
+        switch ($value) {
+            case 'First Semester':
+                return '1st Sem';
+            case 'Second Semester':
+                return '2nd Sem';
+            case 'Midyear':
+            case 'Mid Year':
+            case 'Summer':
+                return 'Mid Year';
+            default:
+                return $value;
+        }
+    }
+
     private function getGlobalSemesterFilter(): ?string {
-        return null;
+        if (!function_exists('getSystemSetting')) {
+            return null;
+        }
+
+        $raw = trim((string) getSystemSetting('school_current_semester', ''));
+        if ($raw === '') {
+            return null;
+        }
+
+        $normalized = $this->normalizeCurriculumSemesterLabel($raw);
+        if ($normalized === '' || strcasecmp($normalized, 'None') === 0 || strcasecmp($normalized, 'All') === 0) {
+            return null;
+        }
+
+        return $normalized;
     }
 
     private function isMidYearSemesterLabel($semester): bool {
@@ -2581,6 +2635,11 @@ class StudyPlanGenerator {
     }
 
     private function applyNearGraduationForceAdd(&$study_plan, &$simulated_completed, &$simulated_all_courses, $current_term) {
+        $global_semester = $this->getGlobalSemesterFilter();
+        if ($global_semester !== null && $global_semester !== '2nd Sem') {
+            return;
+        }
+
         $remaining = array_filter($simulated_all_courses, function($course) {
             return !$course['completed'];
         });
@@ -3001,6 +3060,7 @@ class StudyPlanGenerator {
         $current_term = $this->determineCurrentTerm();
 
         $terms = $this->getOrderedCurriculumTerms();
+        $global_semester = $this->getGlobalSemesterFilter();
         if (empty($terms)) {
             $this->plan_coverage = $this->calculatePlanCoverage([]);
             return [];
@@ -3030,6 +3090,34 @@ class StudyPlanGenerator {
                 }
             }
 
+            if ($global_start_index === null) {
+                for ($index = 0; $index < count($terms); $index++) {
+                    $term_semester = $this->normalizeCurriculumSemesterLabel($terms[$index]['semester'] ?? '');
+                    if ($term_semester === $global_semester) {
+                        $global_start_index = $index;
+                        break;
+                    }
+                }
+            }
+
+            if ($global_start_index !== null) {
+                $start_index = $global_start_index;
+                $found_start_term = true;
+            }
+        }
+        if (!$found_start_term && empty($study_plan)) {
+            $start_index = count($terms);
+        }
+        
+        $initial_year = $terms[$start_index]['year'] ?? ($current_term['year'] ?? '1st Yr');
+        $initial_semester = $terms[$start_index]['semester'] ?? ($current_term['semester'] ?? '1st Sem');
+
+        // Retention policy: Determine initial retention status
+        $initial_max = $this->getMaxUnitsForTerm($this->retention_status, $initial_year, $initial_semester);
+        $retention_limited = (
+            $this->retention_status !== 'None'
+            && $this->retention_status !== ''
+            && $initial_max < ($this->term_max_units[$initial_year . '|' . $initial_semester] ?? 21)
         );
         $retention_terms_remaining = $retention_limited ? 2 : 0;
         $skip_tracker = [];
@@ -3933,8 +4021,8 @@ class StudyPlanGenerator {
     }
 
     /**
-         * Determine the effective planning term.
-     */
+     * Determine the effective current curriculum term according to school policy.
+     *
      * The earliest unresolved curriculum term gives the student's lowest
      * outstanding year level, but the active semester should follow the
      * admin-managed school semester after grades are submitted. Back/failed
@@ -3969,6 +4057,15 @@ class StudyPlanGenerator {
         }
 
         $effectiveIndex = $minimumCurrentIndex;
+        $globalSemester = $this->getGlobalSemesterFilter();
+        if ($globalSemester !== null) {
+            for ($index = $minimumCurrentIndex; $index < count($terms); $index++) {
+                if ($this->normalizeCurriculumSemesterLabel($terms[$index]['semester'] ?? '') === $globalSemester) {
+                    $effectiveIndex = $index;
+                    break;
+                }
+            }
+        }
 
         $currentTerm = $terms[$effectiveIndex];
         $termKey = $currentTerm['year'] . '|' . $currentTerm['semester'];
