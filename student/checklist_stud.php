@@ -140,11 +140,11 @@ function resolveProgramAbbreviation($programName) {
     'Bachelor of Science in Information Technology' => 'BSIT',
     'Bachelor of Secondary Education major in English' => 'BSEd-English',
     'Bachelor of Secondary Education major Math' => 'BSEd-Math',
-        'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
-        'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
-}
+    'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
+    'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
+  ];
 
-$program_abbr = resolveProgramAbbreviation($student_program);
+  $program_abbr = resolveProgramAbbreviation($student_program);
 if ($program_abbr === null) {
   $program_abbr = '';
 }
