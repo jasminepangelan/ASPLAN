@@ -693,6 +693,13 @@ if (!function_exists('psResolveProgramTokens')) {
     }
 }
 
+if (!function_exists('psIsBsedMathProgram')) {
+    function psIsBsedMathProgram($programLabel, $programKey = '') {
+        $keySource = trim((string)$programKey) !== '' ? $programKey : $programLabel;
+        return strtoupper(psNormalizeProgramKey((string)$keySource)) === 'BSED-MATH';
+    }
+}
+
 if (!function_exists('psNormalizeCurriculumYear')) {
     function psNormalizeCurriculumYear($value) {
         $value = trim((string)$value);
@@ -843,6 +850,10 @@ if (!function_exists('psResolveLatestCurriculumYear')) {
             }
         }
 
+        if (psIsBsedMathProgram($programLabel, $programKey)) {
+            return '';
+        }
+
         if (!psTableExists($conn, 'cvsucarmona_courses')) {
             return '';
         }
@@ -936,6 +947,10 @@ if (!function_exists('psResolveStudentCurriculumYear')) {
                                     return $storedYear;
                                 }
                             }
+                        }
+
+                        if (psIsBsedMathProgram($programLabel, $programKey)) {
+                            return psResolveLatestCurriculumYear($conn, $programLabel, $programKey);
                         }
 
                         $tokens = psResolveProgramTokens($programKey !== '' ? $programKey : $programLabel);
@@ -1154,6 +1169,10 @@ if (!function_exists('psFetchChecklistCourses')) {
                     return psNormalizeCourseRows($rows);
                 }
             }
+        }
+
+        if (psIsBsedMathProgram($programLabel, $programKey)) {
+            return [];
         }
 
         if (!psTableExists($conn, 'cvsucarmona_courses')) {

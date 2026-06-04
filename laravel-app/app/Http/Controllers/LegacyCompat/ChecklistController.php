@@ -1119,6 +1119,12 @@ class ChecklistController extends Controller
         return array_keys($tokens);
     }
 
+    private function isBsedMathProgram(string $programLabel, string $programKey = ''): bool
+    {
+        $keySource = trim($programKey) !== '' ? $programKey : $this->resolveProgramAbbreviation($programLabel);
+        return strtoupper(trim($keySource)) === 'BSED-MATH';
+    }
+
     private function normalizeCurriculumYear(string $value): string
     {
         $value = trim($value);
@@ -1156,6 +1162,10 @@ class ChecklistController extends Controller
             if ($year !== '') {
                 return $year;
             }
+        }
+
+        if ($this->isBsedMathProgram($programLabel, $programKey)) {
+            return '';
         }
 
         if (!Schema::hasTable('cvsucarmona_courses')) {
@@ -1216,6 +1226,10 @@ class ChecklistController extends Controller
                         return $storedCurriculumYear;
                     }
                 }
+            }
+
+            if ($this->isBsedMathProgram($programLabel, $programKey)) {
+                return $this->latestCurriculumYear($programLabel, $programKey);
             }
 
             $tokens = $this->resolveProgramTokens($programKey !== '' ? $programKey : $programLabel);
@@ -1385,6 +1399,10 @@ class ChecklistController extends Controller
             if (!empty($courses)) {
                 return $this->normalizeCourseRows($courses);
             }
+        }
+
+        if ($this->isBsedMathProgram($programLabel, $programKey)) {
+            return [];
         }
 
         if (!Schema::hasTable('cvsucarmona_courses')) {
