@@ -1194,7 +1194,41 @@ class ChecklistController extends Controller
         }
 
         if ($storedCurriculumYear !== '') {
-            return $storedCurriculumYear;
+            if (Schema::hasTable('curriculum_courses')) {
+                $programLabels = $this->resolveChecklistProgramLabels($programLabel, $programKey);
+                if (!empty($programLabels)) {
+                    $query = DB::table('curriculum_courses')
+                        ->where('curriculum_year', $storedCurriculumYear);
+
+                    $query->where(function ($subQuery) use ($programLabels) {
+                        foreach ($programLabels as $index => $candidateLabel) {
+                            if ($index === 0) {
+                                $subQuery->whereRaw('UPPER(TRIM(program)) = ?', [strtoupper(trim($candidateLabel))]);
+                            } else {
+                                $subQuery->orWhereRaw('UPPER(TRIM(program)) = ?', [strtoupper(trim($candidateLabel))]);
+                            }
+                        }
+                    });
+
+                    if ($query->exists()) {
+                        return $storedCurriculumYear;
+                    }
+                }
+            }
+
+            $tokens = $this->resolveProgramTokens($programKey !== '' ? $programKey : $programLabel);
+            if (!empty($tokens) && Schema::hasTable('cvsucarmona_courses')) {
+                $query = DB::table('cvsucarmona_courses')
+                    ->whereRaw('TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, "_", 1)) = ?', [$storedCurriculumYear]);
+
+                foreach ($tokens as $token) {
+                    $query->whereRaw('FIND_IN_SET(?, REPLACE(UPPER(programs), " ", "")) > 0', [$token]);
+                }
+
+                if ($query->exists()) {
+                    return $storedCurriculumYear;
+                }
+            }
         }
 
         return $this->latestCurriculumYear($programLabel, $programKey);

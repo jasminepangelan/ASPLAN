@@ -1046,7 +1046,37 @@ class ProgramShiftController extends Controller
             }
 
             if ($storedYear !== '') {
-                return $storedYear;
+                $checkProgramLabel = $programLabel;
+                if ($checkProgramLabel === '' && $storedProgramKey !== '') {
+                    $checkProgramLabel = $this->canonicalProgramLabel($storedProgramKey);
+                }
+
+                if ($checkProgramLabel !== '') {
+                    $normalizedProgram = strtoupper(trim($this->normalizeProgramLabel($checkProgramLabel)));
+                    if (Schema::hasTable('curriculum_courses')) {
+                        $exists = DB::table('curriculum_courses')
+                            ->whereRaw('UPPER(TRIM(program)) = ?', [$normalizedProgram])
+                            ->where('curriculum_year', $storedYear)
+                            ->exists();
+                        if ($exists) {
+                            return $storedYear;
+                        }
+                    }
+
+                    if (Schema::hasTable('cvsucarmona_courses')) {
+                        $tokens = $this->resolveProgramTokens($checkProgramLabel);
+                        if (!empty($tokens)) {
+                            $query = DB::table('cvsucarmona_courses')
+                                ->whereRaw('TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, "_", 1)) = ?', [$storedYear]);
+                            foreach ($tokens as $token) {
+                                $query->whereRaw('FIND_IN_SET(?, REPLACE(UPPER(programs), " ", "")) > 0', [$token]);
+                            }
+                            if ($query->exists()) {
+                                return $storedYear;
+                            }
+                        }
+                    }
+                }
             }
         } catch (Throwable $e) {
             return $this->latestCurriculumYear($programLabel);

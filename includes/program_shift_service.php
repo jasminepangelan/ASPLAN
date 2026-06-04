@@ -968,13 +968,9 @@ if (!function_exists('psResolveStudentCurriculumYear')) {
             }
         }
 
-        // Always honor the student's stored curriculum year, even if not currently verified in DB
-        // This ensures old students are never forced to see new curriculum years
-        if ($storedYear !== '') {
-            return $storedYear;
-        }
-
-        // Only fallback to latest year if student has no stored curriculum year
+        // Only honor the student's stored curriculum year when it still exists in the
+        // current curriculum data set. If the stored year was deleted, fall back to the
+        // latest available curriculum year for the program.
         return psResolveLatestCurriculumYear($conn, $programLabel, $programKey);
     }
 }
