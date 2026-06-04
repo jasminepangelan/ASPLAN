@@ -747,7 +747,7 @@ if (!function_exists('psResolveChecklistProgramLabels')) {
             'BSINDT' => 'BS Industrial Technology',
             'BSIT' => 'BS Information Technology',
             'BSED-ENGLISH' => 'BSEd Major in English',
-            'BSED-MATH' => 'BSEd Major in Math',
+            'BSED-MATH' => 'BSEd Major in Mathematics',
             'BSED-SCIENCE' => 'BSEd Major in Science',
         ];
         $codeLabelMap = [
@@ -791,9 +791,11 @@ if (!function_exists('psResolveChecklistProgramLabels')) {
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATH') {
                 $candidates['Bachelor of Secondary Education Major in Mathematics'] = true;
                 $candidates['BSEd Major in Math'] = true;
+                $candidates['BSEd Major in Mathematics'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS') {
                 $candidates['Bachelor of Secondary Education major in Math'] = true;
                 $candidates['BSEd Major in Math'] = true;
+                $candidates['BSEd Major in Mathematics'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN COMPUTER SCIENCE') {
                 $candidates['BS Computer Science'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY') {
