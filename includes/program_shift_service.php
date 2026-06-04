@@ -1209,8 +1209,8 @@ if (!function_exists('psFetchChecklistCourses')) {
                 AND sc.student_id = ?
             WHERE (" . implode(' OR ', $conditions) . ")" . $curriculumYearClause . "
             ORDER BY
-                FIELD(year, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                FIELD(TRIM(c.year_level), 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                FIELD(TRIM(c.semester), 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
                 c.curriculumyear_coursecode
         ";
 
