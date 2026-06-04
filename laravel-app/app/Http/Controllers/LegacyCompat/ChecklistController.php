@@ -1440,8 +1440,8 @@ class ChecklistController extends Controller
                 AND sc.student_id = ?
             WHERE (' . implode(' OR ', $conditions) . ')' . $curriculumYearClause . '
             ORDER BY
-                FIELD(course_year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                FIELD(course_semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                FIELD(course_year_level, \'First Year\', \'Second Year\', \'Third Year\', \'Fourth Year\'),
+                FIELD(course_semester, \'First Semester\', \'Second Semester\', \'Mid Year\', \'Midyear\', \'Summer\'),
                 curriculumyear_coursecode
         ';
 
@@ -1527,4 +1527,3 @@ class ChecklistController extends Controller
         return $code;
     }
 }
-

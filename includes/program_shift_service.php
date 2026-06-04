@@ -1194,6 +1194,8 @@ if (!function_exists('psFetchChecklistCourses')) {
                 TRIM(IFNULL(c.pre_requisite, 'NONE')) AS pre_requisite,
                 TRIM(c.year_level) AS year,
                 TRIM(c.semester) AS semester,
+                TRIM(c.year_level) AS course_year_level,
+                TRIM(c.semester) AS course_semester,
                 TRIM(c.curriculumyear_coursecode) AS curriculumyear_coursecode,
                 sc.final_grade,
                 sc.evaluator_remarks,
@@ -1210,8 +1212,8 @@ if (!function_exists('psFetchChecklistCourses')) {
                 AND sc.student_id = ?
             WHERE (" . implode(' OR ', $conditions) . ")" . $curriculumYearClause . "
             ORDER BY
-                FIELD(year, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                FIELD(course_year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                FIELD(course_semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
                 curriculumyear_coursecode
         ";
 

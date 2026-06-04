@@ -1250,20 +1250,20 @@ class StudyPlanGenerator {
                     " . ($curriculumHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
                     pre_requisite,
                     program AS programs,
-                    CASE year_level
+                    CASE curriculum_courses.year_level
                         WHEN 'First Year' THEN '1st Yr'
                         WHEN 'Second Year' THEN '2nd Yr'
                         WHEN 'Third Year' THEN '3rd Yr'
                         WHEN 'Fourth Year' THEN '4th Yr'
-                        ELSE year_level
+                        ELSE curriculum_courses.year_level
                     END AS year,
-                    CASE semester
+                    CASE curriculum_courses.semester
                         WHEN 'First Semester' THEN '1st Sem'
                         WHEN 'Second Semester' THEN '2nd Sem'
                         WHEN 'Mid Year' THEN 'Mid Year'
                         WHEN 'Midyear' THEN 'Mid Year'
                         WHEN 'Summer' THEN 'Mid Year'
-                        ELSE semester
+                        ELSE curriculum_courses.semester
                     END AS semester
                 FROM curriculum_courses
                 WHERE NOT {$condition['sql']}
@@ -1272,8 +1272,8 @@ class StudyPlanGenerator {
                 AND course_title != ''
                 AND (credit_units_lec > 0 OR credit_units_lab > 0)
                 ORDER BY
-                    FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                    FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                    FIELD(curriculum_courses.year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                    FIELD(curriculum_courses.semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
                     id
             ";
             $stmt = $this->conn->prepare($sql);
@@ -1293,20 +1293,20 @@ class StudyPlanGenerator {
                     " . ($legacyHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
                     pre_requisite,
                     programs,
-                    CASE year_level
+                    CASE cvsucarmona_courses.year_level
                         WHEN 'First Year' THEN '1st Yr'
                         WHEN 'Second Year' THEN '2nd Yr'
                         WHEN 'Third Year' THEN '3rd Yr'
                         WHEN 'Fourth Year' THEN '4th Yr'
-                        ELSE year_level
+                        ELSE cvsucarmona_courses.year_level
                     END AS year,
-                    CASE semester
+                    CASE cvsucarmona_courses.semester
                         WHEN 'First Semester' THEN '1st Sem'
                         WHEN 'Second Semester' THEN '2nd Sem'
                         WHEN 'Mid Year' THEN 'Mid Year'
                         WHEN 'Midyear' THEN 'Mid Year'
                         WHEN 'Summer' THEN 'Mid Year'
-                        ELSE semester
+                        ELSE cvsucarmona_courses.semester
                     END AS semester
                 FROM cvsucarmona_courses
                 WHERE NOT {$condition['sql']}
@@ -1315,8 +1315,8 @@ class StudyPlanGenerator {
                 AND course_title != ''
                 AND (credit_units_lec > 0 OR credit_units_lab > 0)
                 ORDER BY
-                    FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                    FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                    FIELD(cvsucarmona_courses.year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                    FIELD(cvsucarmona_courses.semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
                     curriculumyear_coursecode
             ";
             $stmt = $this->conn->prepare($sql);
@@ -1446,20 +1446,20 @@ class StudyPlanGenerator {
                         " . ($curriculumHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
                         " . ($curriculumHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
                         pre_requisite,
-                        CASE year_level
+                        CASE curriculum_courses.year_level
                             WHEN 'First Year' THEN '1st Yr'
                             WHEN 'Second Year' THEN '2nd Yr'
                             WHEN 'Third Year' THEN '3rd Yr'
                             WHEN 'Fourth Year' THEN '4th Yr'
-                            ELSE year_level
+                            ELSE curriculum_courses.year_level
                         END AS year,
-                        CASE semester
+                        CASE curriculum_courses.semester
                             WHEN 'First Semester' THEN '1st Sem'
                             WHEN 'Second Semester' THEN '2nd Sem'
                             WHEN 'Mid Year' THEN 'Mid Year'
                             WHEN 'Midyear' THEN 'Mid Year'
                             WHEN 'Summer' THEN 'Mid Year'
-                            ELSE semester
+                            ELSE curriculum_courses.semester
                         END AS semester
                     FROM curriculum_courses
                     WHERE {$condition['sql']}
@@ -1468,8 +1468,8 @@ class StudyPlanGenerator {
                     AND course_title != ''
                     AND (credit_units_lec > 0 OR credit_units_lab > 0)
                     ORDER BY 
-                        FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                        FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                        FIELD(curriculum_courses.year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                        FIELD(curriculum_courses.semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
                         IFNULL(curriculum_year, 0),
                         id
                 ";
@@ -1489,20 +1489,20 @@ class StudyPlanGenerator {
                         " . ($legacyHasLecHours ? 'lect_hrs_lec' : '0') . " AS lect_hrs_lec,
                         " . ($legacyHasLabHours ? 'lect_hrs_lab' : '0') . " AS lect_hrs_lab,
                         pre_requisite,
-                        CASE year_level
+                        CASE cvsucarmona_courses.year_level
                             WHEN 'First Year' THEN '1st Yr'
                             WHEN 'Second Year' THEN '2nd Yr'
                             WHEN 'Third Year' THEN '3rd Yr'
                             WHEN 'Fourth Year' THEN '4th Yr'
-                            ELSE year_level
+                            ELSE cvsucarmona_courses.year_level
                         END AS year,
-                        CASE semester
+                        CASE cvsucarmona_courses.semester
                             WHEN 'First Semester' THEN '1st Sem'
                             WHEN 'Second Semester' THEN '2nd Sem'
                             WHEN 'Mid Year' THEN 'Mid Year'
                             WHEN 'Midyear' THEN 'Mid Year'
                             WHEN 'Summer' THEN 'Mid Year'
-                            ELSE semester
+                            ELSE cvsucarmona_courses.semester
                         END AS semester
                     FROM cvsucarmona_courses
                     WHERE {$condition['sql']}
@@ -1511,8 +1511,8 @@ class StudyPlanGenerator {
                     AND course_title != ''
                     AND (credit_units_lec > 0 OR credit_units_lab > 0)
                     ORDER BY 
-                        FIELD(year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
-                        FIELD(semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                        FIELD(cvsucarmona_courses.year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                        FIELD(cvsucarmona_courses.semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
                         curriculumyear_coursecode
                 ";
                 $stmt = $this->conn->prepare($sql);
