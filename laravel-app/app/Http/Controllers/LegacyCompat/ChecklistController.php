@@ -1049,9 +1049,24 @@ class ChecklistController extends Controller
             'BSED-MATH' => 'BSEd Major in Math',
             'BSED-SCIENCE' => 'BSEd Major in Science',
         ];
+        $codeLabelMap = [
+            'BSBA-MM' => 'BSBA-MM',
+            'BSBA-HRM' => 'BSBA-HRM',
+            'BSCPE' => 'BSCpE',
+            'BSCS' => 'BSCS',
+            'BSHM' => 'BSHM',
+            'BSINDT' => 'BSIndT',
+            'BSIT' => 'BSIT',
+            'BSED-ENGLISH' => 'BSEd-English',
+            'BSED-MATH' => 'BSEd-Math',
+            'BSED-SCIENCE' => 'BSEd-Science',
+        ];
         $normalizedProgramKey = strtoupper(trim($programKey !== '' ? $programKey : $this->resolveProgramAbbreviation($programLabel)));
         $values = [
             trim($programLabel),
+            trim($programKey),
+            $codeLabelMap[$normalizedProgramKey] ?? '',
+            $normalizedProgramKey,
             $this->canonicalProgramLabel($programKey),
             $this->canonicalProgramLabel($this->resolveProgramAbbreviation($programLabel)),
             $shortLabelMap[$normalizedProgramKey] ?? '',

@@ -750,9 +750,24 @@ if (!function_exists('psResolveChecklistProgramLabels')) {
             'BSED-MATH' => 'BSEd Major in Math',
             'BSED-SCIENCE' => 'BSEd Major in Science',
         ];
+        $codeLabelMap = [
+            'BSBA-MM' => 'BSBA-MM',
+            'BSBA-HRM' => 'BSBA-HRM',
+            'BSCPE' => 'BSCpE',
+            'BSCS' => 'BSCS',
+            'BSHM' => 'BSHM',
+            'BSINDT' => 'BSIndT',
+            'BSIT' => 'BSIT',
+            'BSED-ENGLISH' => 'BSEd-English',
+            'BSED-MATH' => 'BSEd-Math',
+            'BSED-SCIENCE' => 'BSEd-Science',
+        ];
         $normalizedProgramKey = strtoupper(trim((string)psNormalizeProgramKey((string)$programKey)));
         $values = [
             trim((string)$programLabel),
+            trim((string)$programKey),
+            $codeLabelMap[$normalizedProgramKey] ?? '',
+            $normalizedProgramKey,
             psCanonicalProgramLabel($programKey),
             psCanonicalProgramLabel(psNormalizeProgramKey((string)$programLabel)),
             $shortLabelMap[$normalizedProgramKey] ?? '',
