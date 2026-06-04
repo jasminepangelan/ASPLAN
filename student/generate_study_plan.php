@@ -91,6 +91,7 @@ class StudyPlanGenerator {
         'Bachelor of Secondary Education major in English' => 'BSEd-English',
         'Bachelor of Secondary Education Major in English' => 'BSEd-English',
         'Bachelor of Secondary Education major Math' => 'BSEd-Math',
+        'Bachelor of Secondary Education Major in Math' => 'BSEd-Math',
         'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
         'Bachelor of Secondary Education major in Science' => 'BSEd-Science',
         'Bachelor of Secondary Education Major in Science' => 'BSEd-Science',

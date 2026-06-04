@@ -114,16 +114,8 @@ function resolveProgramAbbreviation($programName) {
     'Bachelor of Science in Information Technology' => 'BSIT',
     'Bachelor of Secondary Education major in English' => 'BSEd-English',
     'Bachelor of Secondary Education major Math' => 'BSEd-Math',
-    'Bachelor of Secondary Education major in Science' => 'BSEd-Science',
-  ];
-
-  foreach ($programMap as $label => $abbr) {
-    if (normalizeProgramLabel($label) === $normalized) {
-      return $abbr;
-    }
-  }
-
-  return null;
+        'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
+        'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
 }
 
 $program_abbr = resolveProgramAbbreviation($student_program_normalized);
