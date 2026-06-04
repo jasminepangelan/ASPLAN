@@ -121,7 +121,7 @@ class ProgramCoordinatorConnectionController extends Controller
             'Bachelor of Science in Business Administration - Major in Marketing Management',
             'Bachelor of Science in Business Administration - Major in Human Resource Management',
             'Bachelor of Secondary Education major in English',
-            'Bachelor of Secondary Education major Math',
+            'Bachelor of Secondary Education major in Math',
             'Bachelor of Secondary Education major in Science',
         ];
 
@@ -137,3 +137,4 @@ class ProgramCoordinatorConnectionController extends Controller
         return array_values(array_unique($programs));
     }
 }
+

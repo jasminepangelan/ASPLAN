@@ -90,7 +90,7 @@ class StudyPlanGenerator {
         'Bachelor of Science in Business Administration Major in Human Resource Management' => 'BSBA-HRM',
         'Bachelor of Secondary Education major in English' => 'BSEd-English',
         'Bachelor of Secondary Education Major in English' => 'BSEd-English',
-        'Bachelor of Secondary Education major Math' => 'BSEd-Math',
+        'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
         'Bachelor of Secondary Education Major in Math' => 'BSEd-Math',
         'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
         'Bachelor of Secondary Education major in Science' => 'BSEd-Science',
@@ -4405,3 +4405,4 @@ class StudyPlanGenerator {
         }
     }
 }
+

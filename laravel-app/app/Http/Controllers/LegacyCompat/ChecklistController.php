@@ -996,7 +996,7 @@ class ChecklistController extends Controller
             'Bachelor of Science in Industrial Technology' => 'BSIndT',
             'Bachelor of Science in Information Technology' => 'BSIT',
             'Bachelor of Secondary Education major in English' => 'BSEd-English',
-            'Bachelor of Secondary Education major Math' => 'BSEd-Math',
+            'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
             'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
             'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
             'Bachelor of Secondary Education major in Science' => 'BSEd-Science',
@@ -1076,7 +1076,7 @@ class ChecklistController extends Controller
                 $candidates['Bachelor of Secondary Education Major in Mathematics'] = true;
                 $candidates['BSEd Major in Math'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS') {
-                $candidates['Bachelor of Secondary Education major Math'] = true;
+                $candidates['Bachelor of Secondary Education major in Math'] = true;
                 $candidates['BSEd Major in Math'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN COMPUTER SCIENCE') {
                 $candidates['BS Computer Science'] = true;
@@ -1525,3 +1525,4 @@ class ChecklistController extends Controller
         return $code;
     }
 }
+

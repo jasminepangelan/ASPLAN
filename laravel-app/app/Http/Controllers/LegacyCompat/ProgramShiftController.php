@@ -958,7 +958,7 @@ class ProgramShiftController extends Controller
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN BUSINESS ADMINISTRATION MAJOR IN HUMAN RESOURCE MANAGEMENT') {
                 $candidates['Bachelor of Science in Business Administration - Major in Human Resource Management'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS') {
-                $candidates['Bachelor of Secondary Education major Math'] = true;
+                $candidates['Bachelor of Secondary Education major in Math'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATH') {
                 $candidates['Bachelor of Secondary Education Major in Mathematics'] = true;
             }
@@ -1929,3 +1929,4 @@ class ProgramShiftController extends Controller
         ], $extra), $status);
     }
 }
+

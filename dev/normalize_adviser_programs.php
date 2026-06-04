@@ -59,10 +59,10 @@ $programNormalizationMap = [
     'BS ED' => 'Bachelor of Secondary Education major in English',
     'BS-ED' => 'Bachelor of Secondary Education major in English',
     'BSEd-English' => 'Bachelor of Secondary Education major in English',
-    'BSEd-Math' => 'Bachelor of Secondary Education major Math',
+    'BSEd-Math' => 'Bachelor of Secondary Education major in Math',
     'BSEd-Science' => 'Bachelor of Secondary Education major in Science',
     'BSED-ENGLISH' => 'Bachelor of Secondary Education major in English',
-    'BSED-MATH' => 'Bachelor of Secondary Education major Math',
+    'BSED-MATH' => 'Bachelor of Secondary Education major in Math',
     'BSED-SCIENCE' => 'Bachelor of Secondary Education major in Science',
 ];
 
@@ -147,3 +147,4 @@ try {
 
 ob_end_flush();
 ?>
+

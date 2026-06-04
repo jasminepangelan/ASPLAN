@@ -770,7 +770,7 @@ if (!function_exists('psResolveChecklistProgramLabels')) {
                 $candidates['Bachelor of Secondary Education Major in Mathematics'] = true;
                 $candidates['BSEd Major in Math'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS') {
-                $candidates['Bachelor of Secondary Education major Math'] = true;
+                $candidates['Bachelor of Secondary Education major in Math'] = true;
                 $candidates['BSEd Major in Math'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN COMPUTER SCIENCE') {
                 $candidates['BS Computer Science'] = true;
@@ -2537,3 +2537,4 @@ if (!function_exists('psGetCoordinatorShiftSummary')) {
         return $summary;
     }
 }
+
