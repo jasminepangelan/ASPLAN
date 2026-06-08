@@ -712,8 +712,16 @@ if (!$bridgeLoaded) {
 
     <div class="content" id="mainContent">
         <div class="page-card">
-            <h2>Student Directory</h2>
-            <p class="subtitle">Program scope: <?php echo !empty($coordinatorPrograms) ? htmlspecialchars(implode(', ', $coordinatorPrograms)) : 'Not configured'; ?></p>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div>
+                    <h2 style="margin:0">Student Directory</h2>
+                    <p class="subtitle" style="margin:4px 0 0">Program scope: <?php echo !empty($coordinatorPrograms) ? htmlspecialchars(implode(', ', $coordinatorPrograms)) : 'Not configured'; ?></p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="button" id="exportCsvBtn" class="btn-profile" style="min-width:140px;padding:8px 12px;">Export CSV</button>
+                    <button type="button" id="exportPdfBtn" class="btn-profile" style="min-width:140px;padding:8px 12px;">Export PDF</button>
+                </div>
+            </div>
         </div>
 
         <div class="page-card">
@@ -865,6 +873,35 @@ if (!$bridgeLoaded) {
                     searchTimeout = setTimeout(function() {
                         document.getElementById('filterForm').submit();
                     }, 500);
+                });
+            }
+
+            // Export buttons wiring
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const exportPdfBtn = document.getElementById('exportPdfBtn');
+            function buildReportUrl(params) {
+                const url = new URL(window.location.origin + '/program_coordinator/student_report.php');
+                Object.keys(params).forEach(k => {
+                    if (params[k] !== '') url.searchParams.set(k, params[k]);
+                });
+                return url.toString();
+            }
+
+            if (exportCsvBtn) {
+                exportCsvBtn.addEventListener('click', function() {
+                    const s = (document.getElementById('searchInput') || {}).value || '';
+                    const b = (document.getElementById('batchFilter') || {}).value || '';
+                    const url = buildReportUrl({search: s, batch: b, export: 'csv'});
+                    window.open(url, '_blank');
+                });
+            }
+
+            if (exportPdfBtn) {
+                exportPdfBtn.addEventListener('click', function() {
+                    const s = (document.getElementById('searchInput') || {}).value || '';
+                    const b = (document.getElementById('batchFilter') || {}).value || '';
+                    const url = buildReportUrl({search: s, batch: b});
+                    window.open(url, '_blank');
                 });
             }
         });
