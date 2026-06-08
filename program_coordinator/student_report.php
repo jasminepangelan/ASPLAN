@@ -284,7 +284,7 @@ function buildCoordinatorReportRows(mysqli $db, array $coordinatorProgramKeys, s
     }
 
     $existingIds = array_keys($rows);
-    $masterQuery = "SELECT student_number, last_name, first_name, middle_name, program, year_level, reg_status
+    $masterQuery = "SELECT student_number, last_name, first_name, middle_initial, program
                     FROM student_masterlist
                     WHERE TRIM(program) IS NOT NULL";
     $params = [];
@@ -295,7 +295,7 @@ function buildCoordinatorReportRows(mysqli $db, array $coordinatorProgramKeys, s
         $types .= 's';
     }
     if ($search !== '') {
-        $masterQuery .= " AND (student_number LIKE ? OR last_name LIKE ? OR first_name LIKE ? OR middle_name LIKE ? OR program LIKE ? )";
+        $masterQuery .= " AND (student_number LIKE ? OR last_name LIKE ? OR first_name LIKE ? OR middle_initial LIKE ? OR program LIKE ? )";
         $like = '%' . $search . '%';
         array_push($params, $like, $like, $like, $like, $like);
         $types .= 'sssss';
@@ -324,14 +324,14 @@ function buildCoordinatorReportRows(mysqli $db, array $coordinatorProgramKeys, s
                     'student_number' => $id,
                     'last_name' => trim((string)($row['last_name'] ?? '')),
                     'first_name' => trim((string)($row['first_name'] ?? '')),
-                    'middle_name' => trim((string)($row['middle_name'] ?? '')),
+                    'middle_name' => trim((string)($row['middle_initial'] ?? '')),
                     'program' => $program,
                     'batch' => substr($id, 0, 4),
                     'account_status' => 'No account',
                     'masterlist_only' => 'Yes',
                     'classification' => '',
-                    'reg_status' => trim((string)($row['reg_status'] ?? '')),
-                    'year_level' => trim((string)($row['year_level'] ?? '')),
+                    'reg_status' => '',
+                    'year_level' => '',
                     'general_weighted_average' => '',
                     'failed_courses' => 0,
                     'total_courses' => 0,
