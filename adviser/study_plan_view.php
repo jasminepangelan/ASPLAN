@@ -1743,7 +1743,7 @@ if (function_exists('getSystemSetting')) {
 
         function applyCourseAddedButtonState(buttonEl, isAdded) {
             buttonEl.dataset.added = isAdded ? '1' : '0';
-            buttonEl.textContent = isAdded ? 'Added' : 'To be added';
+            buttonEl.textContent = isAdded ? 'Added' : 'Prioritize';
             buttonEl.classList.toggle('plan-tag-added', isAdded);
             buttonEl.classList.toggle('plan-tag-to-add', !isAdded);
         }

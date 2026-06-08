@@ -2915,7 +2915,7 @@ $currentEnrollmentClientPayload = json_encode([
                                                     class="plan-tag <?= $is_added_confirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
                                                     data-added="<?= $is_added_confirmed ? '1' : '0' ?>"
                                                     onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['course_code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)$year, ENT_QUOTES); ?>', '<?= htmlspecialchars((string)$semester, ENT_QUOTES); ?>')"
-                                                ><?= $is_added_confirmed ? 'ADDED' : 'TO BE ADDED' ?></button>
+                                                ><?= $is_added_confirmed ? 'ADDED' : 'PRIORITIZE' ?></button>
                                                 <?php endif; ?>
                                                 <?php if ($is_forced_added): ?><span class="plan-tag plan-tag-forced">FORCED</span><?php endif; ?>
                                             </div>
@@ -3280,7 +3280,7 @@ $currentEnrollmentClientPayload = json_encode([
 
         function applyCourseAddedButtonState(buttonEl, isAdded) {
             buttonEl.dataset.added = isAdded ? '1' : '0';
-            buttonEl.textContent = isAdded ? 'ADDED' : 'TO BE ADDED';
+            buttonEl.textContent = isAdded ? 'ADDED' : 'PRIORITIZE';
             buttonEl.classList.toggle('plan-tag-added', isAdded);
             buttonEl.classList.toggle('plan-tag-to-add', !isAdded);
         }

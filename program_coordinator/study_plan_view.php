@@ -1762,7 +1762,7 @@ if (function_exists('getSystemSetting')) {
                                                                 class="plan-tag <?= $isAddedConfirmed ? 'plan-tag-added' : 'plan-tag-to-add' ?> plan-tag-button"
                                                                 data-added="<?= $isAddedConfirmed ? '1' : '0' ?>"
                                                                 onclick="toggleCourseAdded(this, '<?= htmlspecialchars((string)($course['code'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['year'] ?? ''), ENT_QUOTES); ?>', '<?= htmlspecialchars((string)($term['semester'] ?? ''), ENT_QUOTES); ?>')"
-                                                            ><?= $isAddedConfirmed ? 'Added' : 'To be added' ?></button>
+                                                            ><?= $isAddedConfirmed ? 'Added' : 'Prioritize' ?></button>
                                                         <?php endif; ?>
                                                         <?php if (!empty($course['moved_override'])): ?><span class="plan-tag plan-tag-moved">Moved</span><?php endif; ?>
                                                     </div>
@@ -1929,7 +1929,7 @@ if (function_exists('getSystemSetting')) {
 
         function applyCourseAddedButtonState(buttonEl, isAdded) {
             buttonEl.dataset.added = isAdded ? '1' : '0';
-            buttonEl.textContent = isAdded ? 'Added' : 'To be added';
+            buttonEl.textContent = isAdded ? 'Added' : 'Prioritize';
             buttonEl.classList.toggle('plan-tag-added', isAdded);
             buttonEl.classList.toggle('plan-tag-to-add', !isAdded);
         }
