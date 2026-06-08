@@ -535,7 +535,7 @@ if (!$bridgeLoaded) {
         <li><a href="pending_accounts.php"><img src="../pix/pending.png" alt="Pending"> Pending Accounts</a></li>
         <li><a href="checklist_eval.php"><img src="../pix/checklist.png" alt="Student List"> List of Students</a></li>
         <li><a href="study_plan_list.php"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan List</a></li>
-        <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift"> Program Shift Requests</a></li>
+        <!-- Program Shift Requests removed from adviser UI -->
       </div>
       
       <div class="menu-group">
@@ -588,13 +588,7 @@ if (!$bridgeLoaded) {
             <p class="option-caption">Browse student study plans and review progression using a more polished dashboard entry point.</p>
           </div>
         </div>
-        <div class="option" onclick="window.location.href='program_shift_requests.php'">
-          <div class="option-icon"><img src="../pix/update.png" alt="Program Shift Requests Icon"></div>
-          <div>
-            <label class="option-title">Program Shift Requests</label>
-            <p class="option-caption">Handle shift endorsements and pass qualified requests forward with the same focused workflow style.</p>
-          </div>
-        </div>
+        <!-- Program Shift quick-action removed -->
         </div>
       </div>
     </div>

@@ -703,7 +703,7 @@ closeDBConnection($conn);
                 <li><a href="curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum"> Curriculum Management</a></li>
                 <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers"> Adviser Management</a></li>
                 <li><a href="list_of_students.php" class="active"><img src="../pix/checklist.png" alt="Students"> List of Students</a></li>
-                <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift"> Program Shift Requests</a></li>
+                <!-- Program Shift Requests removed from coordinator UI -->
                 <li><a href="profile.php"><img src="../pix/account.png" alt="Profile"> Update Profile</a></li>
             </div>
 

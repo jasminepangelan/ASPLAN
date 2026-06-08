@@ -469,31 +469,6 @@ if ($last_planned_term && !$has_unresolved_plan) {
     $estimated_graduation = 'Completed';
 }
 
-$globalSemesterLabel = '';
-if (function_exists('getSystemSetting')) {
-    $globalSemesterRaw = trim((string) getSystemSetting('school_current_semester', ''));
-    if ($globalSemesterRaw !== '') {
-        switch ($globalSemesterRaw) {
-            case 'First Semester':
-                $globalSemesterRaw = '1st Sem';
-                break;
-            case 'Second Semester':
-                $globalSemesterRaw = '2nd Sem';
-                break;
-            case 'Midyear':
-            case 'Mid Year':
-            case 'Summer':
-                $globalSemesterRaw = 'Mid Year';
-                break;
-        }
-        if ($globalSemesterRaw !== ''
-            && strcasecmp($globalSemesterRaw, 'None') !== 0
-            && strcasecmp($globalSemesterRaw, 'All') !== 0
-        ) {
-            $globalSemesterLabel = $globalSemesterRaw;
-        }
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1258,7 +1233,7 @@ if (function_exists('getSystemSetting')) {
                 <li><a href="pending_accounts.php"><img src="../pix/pending.png" alt="Pending"> Pending Accounts</a></li>
                 <li><a href="checklist_eval.php"><img src="../pix/checklist.png" alt="Student List"> List of Students</a></li>
                 <li><a href="study_plan_list.php" class="active"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan List</a></li>
-                <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift"> Program Shift Requests</a></li>
+                <!-- Program Shift Requests removed from adviser UI -->
             </div>
             <div class="menu-group">
                 <div class="menu-group-title">Account</div>
@@ -1280,9 +1255,6 @@ if (function_exists('getSystemSetting')) {
                         Generated: <?= date('H:i:s') ?>
                     </span>
                 </h3>
-                <?php if ($globalSemesterLabel !== ''): ?>
-                    <div style="margin: 6px 0 12px; font-size: 12px; font-weight: 600; color: #2a7a20;">Global semester filter: <?= htmlspecialchars($globalSemesterLabel) ?> (midyear stays fixed to its original term).</div>
-                <?php endif; ?>
                 <div class="academic-stats-grid">
                     <div class="stat-card">
                         <div class="stat-value"><?= htmlspecialchars((string)$stats['completion_percentage']) ?>%</div>

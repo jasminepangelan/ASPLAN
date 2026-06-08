@@ -4,8 +4,15 @@ require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
+$headerAlreadySent = headers_sent();
+$username = (string)($_SESSION['username'] ?? '');
 if (!isset($_SESSION['username']) || (isset($_SESSION['user_type']) && $_SESSION['user_type'] !== 'program_coordinator')) {
     header('Location: ../index.html');
+    exit();
+}
+
+if (!$headerAlreadySent) {
+    header('Location: index.php?message=' . urlencode('Program shift requests have been disabled for program coordinators.'));
     exit();
 }
 

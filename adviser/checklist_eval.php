@@ -1020,7 +1020,7 @@ if (!$bridgeLoaded && !empty($batches)) {
                 <li><a href="pending_accounts.php"><img src="../pix/pending.png" alt="Pending"> Pending Accounts</a></li>
                 <li><a href="#" class="active"><img src="../pix/checklist.png" alt="Student List"> List of Students</a></li>
                 <li><a href="study_plan_list.php"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan List</a></li>
-                <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift"> Program Shift Requests</a></li>
+                <!-- Program Shift Requests removed from adviser UI -->
             </div>
             
             <div class="menu-group">

@@ -145,31 +145,6 @@ $ay_courses_by_term = $generator->getAllCoursesGroupedByTerm();
 $current_enrollment_term_map = sceBuildSelectableTermMap($ay_courses_by_term);
 $saved_current_enrollment = sceLoadStudentCurrentEnrollment($conn, (string)$student_id);
 $csrfToken = getCSRFToken();
-$globalSemesterLabel = '';
-if (function_exists('getSystemSetting')) {
-    $globalSemesterRaw = trim((string) getSystemSetting('school_current_semester', ''));
-    if ($globalSemesterRaw !== '') {
-        switch ($globalSemesterRaw) {
-            case 'First Semester':
-                $globalSemesterRaw = '1st Sem';
-                break;
-            case 'Second Semester':
-                $globalSemesterRaw = '2nd Sem';
-                break;
-            case 'Midyear':
-            case 'Mid Year':
-            case 'Summer':
-                $globalSemesterRaw = 'Mid Year';
-                break;
-        }
-        if ($globalSemesterRaw !== ''
-            && strcasecmp($globalSemesterRaw, 'None') !== 0
-            && strcasecmp($globalSemesterRaw, 'All') !== 0
-        ) {
-            $globalSemesterLabel = $globalSemesterRaw;
-        }
-    }
-}
 
 // Get courses failed 3+ times (triggers study plan generation stop)
 $thrice_failed = $generator->getThriceFailedCourses();
@@ -778,7 +753,6 @@ $studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
     ],
     'insights' => [
         ['title' => 'Program', 'value' => (string)$program],
-        ['title' => 'Current Curriculum Term under Policy', 'value' => trim((string)($effective_current_term['year'] ?? '') . ' ' . (string)($effective_current_term['semester'] ?? ''))],
         ['title' => 'Projected completion', 'value' => $estimated_graduation ? (string)$estimated_graduation : 'In progress'],
         ['title' => 'Semesters to go', 'value' => (string)$remaining_semesters],
     ],
@@ -2086,7 +2060,6 @@ $currentEnrollmentClientPayload = json_encode([
                 <div class="menu-group-title">Academic</div>
                 <li><a href="checklist_stud.php"><img src="../pix/update.png" alt="Checklist"> Update Checklist</a></li>
                 <li><a href="study_plan.php" class="active"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan</a></li>
-                <li><a href="program_shift_request.php"><img src="../pix/checklist.png" alt="Program Shift"> Program Shift</a></li>
             </div>
             
             <div class="menu-group">
@@ -2104,9 +2077,6 @@ $currentEnrollmentClientPayload = json_encode([
         <div class="page-header">
             <h1>Automated Study Plan Generator</h1>
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>
-            <?php if ($globalSemesterLabel !== ''): ?>
-                <p style="margin-top: 6px; font-size: 12px; font-weight: 600; color: #2a7a20;">Global semester filter: <?= htmlspecialchars($globalSemesterLabel) ?> (midyear stays fixed to its original term).</p>
-            <?php endif; ?>
         </div>
 
         <section class="current-enrollment-summary" aria-labelledby="currentEnrollmentSummaryTitle">
@@ -2705,15 +2675,7 @@ $currentEnrollmentClientPayload = json_encode([
                     <div class="semester-section" style="border: 2px solid #cfe4d2; background: linear-gradient(180deg, #fbfefb 0%, #f6fbf7 100%);">
                         <div style="background: linear-gradient(135deg, #edf7ee, #dbeadf); padding: 8px; text-align: center; font-weight: 700; font-size: 13px; color: #2f5d34;">
                             <?= htmlspecialchars($year) ?> - <?= htmlspecialchars($semester) ?>, <?= $school_year ?>
-                            <?php if ($is_effective_current_term): ?>
-                                <span style="font-size: 10px; background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 700;">CURRENT CURRICULUM TERM UNDER POLICY</span>
-                            <?php endif; ?>
                         </div>
-                        <?php if ($is_effective_current_term): ?>
-                        <div style="padding: 8px 12px; font-size: 12px; color: #4e6452; border-bottom: 1px solid #e1ece3;">
-                            This follows the admin-set current semester after grade submission. Back/failed courses from previous semesters are plotted into the next same-semester offering that satisfies prerequisite constraints.
-                        </div>
-                        <?php endif; ?>
                         <table class="course-table">
                             <thead>
                                 <tr>
@@ -2829,11 +2791,6 @@ $currentEnrollmentClientPayload = json_encode([
                         ?>
                         <div class="semester-header">
                             <?= htmlspecialchars($term_heading) ?>
-                            <?php if ($is_effective_current_term): ?>
-                            <span style="font-size: 11px; background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 700;">
-                                CURRENT CURRICULUM TERM UNDER POLICY
-                            </span>
-                            <?php endif; ?>
                             <?php if ($term_max_units < 21): ?>
                             <span style="font-size: 11px; background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600;">
                                 Max <?= $term_max_units ?> units (<?= $term_retention ?>)

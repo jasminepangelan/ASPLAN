@@ -139,7 +139,9 @@ function resolveProgramAbbreviation($programName) {
     'Bachelor of Science in Industrial Technology' => 'BSIndT',
     'Bachelor of Science in Information Technology' => 'BSIT',
     'Bachelor of Secondary Education major in English' => 'BSEd-English',
-    'Bachelor of Secondary Education major Math' => 'BSEd-Math',
+    'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
+    'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
+    'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
     'Bachelor of Secondary Education major in Science' => 'BSEd-Science',
   ];
 
@@ -149,7 +151,7 @@ function resolveProgramAbbreviation($programName) {
     }
   }
 
-  return null;
+  return '';
 }
 
 $program_abbr = resolveProgramAbbreviation($student_program);
@@ -1718,7 +1720,6 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         <div class="menu-group-title">Academic</div>
         <li><a href="#" class="active"><img src="../pix/update.png" alt="Checklist"> Update Checklist</a></li>
         <li><a href="study_plan.php"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan</a></li>
-        <li><a href="program_shift_request.php"><img src="../pix/checklist.png" alt="Program Shift"> Program Shift</a></li>
       </div>
       
       <div class="menu-group">
@@ -2971,4 +2972,5 @@ window.addEventListener('focus', function() {
     </script>
 </body>
 </html>
+
 

@@ -7,14 +7,21 @@
 if (!function_exists('spsUploadErrorMessage')) {
     function spsUploadErrorMessage(int $errorCode): string
     {
-        return match ($errorCode) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Picture file is too large (max 5MB).',
-            UPLOAD_ERR_PARTIAL => 'The picture upload was interrupted. Please try again.',
-            UPLOAD_ERR_NO_TMP_DIR => 'Upload failed because the temporary upload directory is missing.',
-            UPLOAD_ERR_CANT_WRITE => 'Upload failed because the server could not write the file.',
-            UPLOAD_ERR_EXTENSION => 'Upload was blocked by a server extension.',
-            default => 'No file uploaded',
-        };
+        switch ($errorCode) {
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                return 'Picture file is too large (max 5MB).';
+            case UPLOAD_ERR_PARTIAL:
+                return 'The picture upload was interrupted. Please try again.';
+            case UPLOAD_ERR_NO_TMP_DIR:
+                return 'Upload failed because the temporary upload directory is missing.';
+            case UPLOAD_ERR_CANT_WRITE:
+                return 'Upload failed because the server could not write the file.';
+            case UPLOAD_ERR_EXTENSION:
+                return 'Upload was blocked by a server extension.';
+            default:
+                return 'No file uploaded';
+        }
     }
 }
 

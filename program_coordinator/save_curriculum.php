@@ -122,7 +122,14 @@ $conn->begin_transaction();
 
 try {
     $programCatalog = pcLoadProgramCatalog($conn, true);
-    $canonicalProgramLabel = (string) ($programCatalog[$program] ?? psCanonicalProgramLabel(psNormalizeProgramKey($program)));
+        // Always use the catalog label to ensure consistency with curriculum view queries
+        if (!isset($programCatalog[$program])) {
+            // If program code not in catalog, try normalizing it first
+            $normalizedProgram = pcNormalizeProgramCode($program);
+            $canonicalProgramLabel = (string) ($programCatalog[$normalizedProgram] ?? $program);
+        } else {
+            $canonicalProgramLabel = (string)$programCatalog[$program];
+        }
     if ($canonicalProgramLabel === '') {
         throw new RuntimeException('Unable to resolve program label for curriculum sync.');
     }

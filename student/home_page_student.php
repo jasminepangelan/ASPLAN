@@ -634,7 +634,6 @@ if (!$bridgeLoaded) {
         <div class="menu-group-title">Academic</div>
         <li><a href="checklist_stud.php"><img src="../pix/update.png" alt="Checklist"> Update Checklist</a></li>
         <li><a href="study_plan.php"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan</a></li>
-        <li><a href="program_shift_request.php"><img src="../pix/checklist.png" alt="Program Shift"> Program Shift</a></li>
       </div>
       
       <div class="menu-group">
@@ -673,7 +672,7 @@ if (!$bridgeLoaded) {
         <div class="section-head">
           <div>
             <h2 class="section-title">Quick Access</h2>
-            <p class="section-subtitle">Jump into the four core student tools with a cleaner, more focused launch area built for everyday use.</p>
+            <p class="section-subtitle">Jump into the core student tools with a cleaner, more focused launch area built for everyday use.</p>
           </div>
         </div>
         <div class="quick-actions-grid">
@@ -694,16 +693,6 @@ if (!$bridgeLoaded) {
             <div>
               <label class="option-title">Study Plan</label>
               <p class="option-caption">Review your generated academic path, remaining semesters, and course sequence with clearer guidance.</p>
-            </div>
-          </div>
-
-          <div class="option-container" onclick="window.location.href='program_shift_request.php'">
-            <div class="option-icon">
-              <img src="../pix/checklist.png" alt="Program Shift Icon">
-            </div>
-            <div>
-              <label class="option-title">Program Shift</label>
-              <p class="option-caption">Track request status, review approvals, and prepare a well-supported shift request when needed.</p>
             </div>
           </div>
 

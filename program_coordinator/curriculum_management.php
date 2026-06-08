@@ -1004,6 +1004,13 @@ if (!empty($programOptions)) {
       margin-top: 6px;
       line-height: 1.4;
     }
+
+    .delete-hint {
+      color: var(--pc-muted);
+      font-size: 12px;
+      margin-top: 4px;
+      font-style: italic;
+    }
     
     .btn {
       padding: 10px 16px;
@@ -1276,7 +1283,7 @@ if (!empty($programOptions)) {
               <li><a href="curriculum_management.php" class="active"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
               <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
               <li><a href="list_of_students.php"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
-              <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift" style="filter: brightness(0) invert(1);"> Program Shift Requests</a></li>
+              <!-- Program Shift Requests removed from coordinator UI -->
               <li><a href="profile.php"><img src="../pix/account.png" alt="Profile" style="filter: brightness(0) invert(1);"> Update Profile</a></li>
             </div>
 
@@ -1333,7 +1340,7 @@ if (!empty($programOptions)) {
             <div class="form-group">
               <label for="curriculumYearSelect">Curriculum Year</label>
               <div class="year-select-row">
-                <select id="curriculumYearSelect">
+                <select id="curriculumYearSelect" title="Right-click the selected curriculum year to delete it.">
                   <option value="">-- Select Curriculum Year --</option>
                   <?php foreach ($availableCurriculumYears as $year): ?>
                     <option value="<?= htmlspecialchars($year) ?>">
@@ -1344,6 +1351,7 @@ if (!empty($programOptions)) {
                 <button type="button" id="viewEditBtn" class="btn btn-view" onclick="viewChecklist()" disabled>View / Edit</button>
               </div>
               <div class="existing-info" id="existingInfo"></div>
+              <div class="delete-hint">Right-click the selected curriculum year to delete it for the active program.</div>
               <?php if ($programConfigNotice !== ''): ?>
                 <div class="existing-info" style="color:#c0392b;"><?= htmlspecialchars($programConfigNotice) ?></div>
               <?php endif; ?>
@@ -1509,7 +1517,7 @@ window.addEventListener('DOMContentLoaded', function() {
     });
 
     // Right-click on the dropdown deletes the currently selected curriculum year.
-    yearSelect.addEventListener('contextmenu', function(e) {
+    function handleCurriculumYearDeleteContextMenu(e) {
       e.preventDefault();
 
       const chosenYear = String(yearSelect.value || '').trim();
@@ -1529,7 +1537,14 @@ window.addEventListener('DOMContentLoaded', function() {
       }
 
       deleteCurriculumYear(chosenYear);
-    });
+    }
+
+    yearSelect.addEventListener('contextmenu', handleCurriculumYearDeleteContextMenu);
+
+    const yearSelectRow = document.querySelector('.year-select-row');
+    if (yearSelectRow) {
+      yearSelectRow.addEventListener('contextmenu', handleCurriculumYearDeleteContextMenu);
+    }
   }
 });
 
@@ -2099,20 +2114,32 @@ function deleteCurriculumYear(year) {
         .filter(v => v !== String(year));
     }
 
+    let fallbackYear = '';
+    if (existingCurriculums[selectedProgram] && existingCurriculums[selectedProgram].length > 0) {
+      const remainingYears = [...existingCurriculums[selectedProgram]]
+        .map(y => String(y).trim())
+        .filter(Boolean)
+        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+      fallbackYear = remainingYears.length > 0 ? remainingYears[remainingYears.length - 1] : '';
+    }
+
     if (yearSelect) {
       const option = Array.from(yearSelect.options).find(opt => String(opt.value) === String(year));
       if (option) {
         option.remove();
       }
-      yearSelect.value = '';
+      yearSelect.value = fallbackYear;
     }
 
     if (yearInput && String(yearInput.value || '').trim() === String(year)) {
-      yearInput.value = '';
+      yearInput.value = fallbackYear;
     }
 
-    if (selectedYear === String(year)) {
-      selectedYear = '';
+    if (selectedYear === String(year) || selectedYear === '') {
+      selectedYear = fallbackYear;
+    }
+
+    if (selectedYear === '') {
       loadedChecklistYear = '';
       const checklistArea = document.getElementById('checklistArea');
       const checklistBody = document.getElementById('checklistBody');
@@ -2124,10 +2151,17 @@ function deleteCurriculumYear(year) {
       }
       updateChecklistYearLabel('');
       refreshNoChecklistPlaceholder();
+    } else {
+      updateChecklistYearLabel(selectedYear);
+      if (String(yearInput?.value || '').trim() === selectedYear || String(yearSelect?.value || '').trim() === selectedYear) {
+        if (document.getElementById('checklistArea')?.style.display !== 'none') {
+          viewChecklist();
+        }
+      }
     }
 
     if (viewEditBtn) {
-      viewEditBtn.disabled = true;
+      viewEditBtn.disabled = selectedYear === '';
     }
 
     refreshExistingInfo();

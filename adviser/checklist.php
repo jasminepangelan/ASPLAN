@@ -100,7 +100,9 @@ function resolveProgramAbbreviation($programName) {
     'Bachelor of Science in Industrial Technology' => 'BSIndT',
     'Bachelor of Science in Information Technology' => 'BSIT',
     'Bachelor of Secondary Education major in English' => 'BSEd-English',
-    'Bachelor of Secondary Education major Math' => 'BSEd-Math',
+    'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
+    'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
+    'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
     'Bachelor of Secondary Education major in Science' => 'BSEd-Science',
   ];
 
@@ -110,7 +112,7 @@ function resolveProgramAbbreviation($programName) {
     }
   }
 
-  return null;
+  return '';
 }
 
 $program_abbr = resolveProgramAbbreviation($student_program_normalized);
@@ -1375,7 +1377,7 @@ foreach ($all_courses as $csRow) {
         <li><a href="pending_accounts.php"><img src="../pix/pending.png" alt="Pending"> Pending Accounts</a></li>
         <li><a href="checklist_eval.php"><img src="../pix/checklist.png" alt="Student List"> List of Students</a></li>
         <li><a href="study_plan_list.php"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan List</a></li>
-        <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift"> Program Shift Requests</a></li>
+        <!-- Program Shift Requests removed from adviser UI -->
 
       </div>
       
@@ -2124,4 +2126,5 @@ window.addEventListener('afterprint', function() {
 </script>
 </body>
 </html>
+
 

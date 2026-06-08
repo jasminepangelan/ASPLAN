@@ -996,7 +996,9 @@ class ChecklistController extends Controller
             'Bachelor of Science in Industrial Technology' => 'BSIndT',
             'Bachelor of Science in Information Technology' => 'BSIT',
             'Bachelor of Secondary Education major in English' => 'BSEd-English',
-            'Bachelor of Secondary Education major Math' => 'BSEd-Math',
+            'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
+            'Bachelor of Secondary Education major in Math' => 'BSEd-Math',
+            'Bachelor of Secondary Education Major in Mathematics' => 'BSEd-Math',
             'Bachelor of Secondary Education major in Science' => 'BSEd-Science',
         ];
 
@@ -1044,12 +1046,27 @@ class ChecklistController extends Controller
             'BSINDT' => 'BS Industrial Technology',
             'BSIT' => 'BS Information Technology',
             'BSED-ENGLISH' => 'BSEd Major in English',
-            'BSED-MATH' => 'BSEd Major in Math',
+            'BSED-MATH' => 'BSEd Major in Mathematics',
             'BSED-SCIENCE' => 'BSEd Major in Science',
+        ];
+        $codeLabelMap = [
+            'BSBA-MM' => 'BSBA-MM',
+            'BSBA-HRM' => 'BSBA-HRM',
+            'BSCPE' => 'BSCpE',
+            'BSCS' => 'BSCS',
+            'BSHM' => 'BSHM',
+            'BSINDT' => 'BSIndT',
+            'BSIT' => 'BSIT',
+            'BSED-ENGLISH' => 'BSEd-English',
+            'BSED-MATH' => 'BSEd-Math',
+            'BSED-SCIENCE' => 'BSEd-Science',
         ];
         $normalizedProgramKey = strtoupper(trim($programKey !== '' ? $programKey : $this->resolveProgramAbbreviation($programLabel)));
         $values = [
             trim($programLabel),
+            trim($programKey),
+            $codeLabelMap[$normalizedProgramKey] ?? '',
+            $normalizedProgramKey,
             $this->canonicalProgramLabel($programKey),
             $this->canonicalProgramLabel($this->resolveProgramAbbreviation($programLabel)),
             $shortLabelMap[$normalizedProgramKey] ?? '',
@@ -1073,9 +1090,11 @@ class ChecklistController extends Controller
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATH') {
                 $candidates['Bachelor of Secondary Education Major in Mathematics'] = true;
                 $candidates['BSEd Major in Math'] = true;
+                $candidates['BSEd Major in Mathematics'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS') {
-                $candidates['Bachelor of Secondary Education major Math'] = true;
+                $candidates['Bachelor of Secondary Education major in Math'] = true;
                 $candidates['BSEd Major in Math'] = true;
+                $candidates['BSEd Major in Mathematics'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN COMPUTER SCIENCE') {
                 $candidates['BS Computer Science'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY') {
@@ -1117,6 +1136,12 @@ class ChecklistController extends Controller
         return array_keys($tokens);
     }
 
+    private function isBsedMathProgram(string $programLabel, string $programKey = ''): bool
+    {
+        $keySource = trim($programKey) !== '' ? $programKey : $this->resolveProgramAbbreviation($programLabel);
+        return strtoupper(trim($keySource)) === 'BSED-MATH';
+    }
+
     private function normalizeCurriculumYear(string $value): string
     {
         $value = trim($value);
@@ -1154,6 +1179,10 @@ class ChecklistController extends Controller
             if ($year !== '') {
                 return $year;
             }
+        }
+
+        if ($this->isBsedMathProgram($programLabel, $programKey)) {
+            return '';
         }
 
         if (!Schema::hasTable('cvsucarmona_courses')) {
@@ -1194,7 +1223,45 @@ class ChecklistController extends Controller
         }
 
         if ($storedCurriculumYear !== '') {
-            return $storedCurriculumYear;
+            if (Schema::hasTable('curriculum_courses')) {
+                $programLabels = $this->resolveChecklistProgramLabels($programLabel, $programKey);
+                if (!empty($programLabels)) {
+                    $query = DB::table('curriculum_courses')
+                        ->where('curriculum_year', $storedCurriculumYear);
+
+                    $query->where(function ($subQuery) use ($programLabels) {
+                        foreach ($programLabels as $index => $candidateLabel) {
+                            if ($index === 0) {
+                                $subQuery->whereRaw('UPPER(TRIM(program)) = ?', [strtoupper(trim($candidateLabel))]);
+                            } else {
+                                $subQuery->orWhereRaw('UPPER(TRIM(program)) = ?', [strtoupper(trim($candidateLabel))]);
+                            }
+                        }
+                    });
+
+                    if ($query->exists()) {
+                        return $storedCurriculumYear;
+                    }
+                }
+            }
+
+            if ($this->isBsedMathProgram($programLabel, $programKey)) {
+                return $this->latestCurriculumYear($programLabel, $programKey);
+            }
+
+            $tokens = $this->resolveProgramTokens($programKey !== '' ? $programKey : $programLabel);
+            if (!empty($tokens) && Schema::hasTable('cvsucarmona_courses')) {
+                $query = DB::table('cvsucarmona_courses')
+                    ->whereRaw('TRIM(SUBSTRING_INDEX(curriculumyear_coursecode, "_", 1)) = ?', [$storedCurriculumYear]);
+
+                foreach ($tokens as $token) {
+                    $query->whereRaw('FIND_IN_SET(?, REPLACE(UPPER(programs), " ", "")) > 0', [$token]);
+                }
+
+                if ($query->exists()) {
+                    return $storedCurriculumYear;
+                }
+            }
         }
 
         return $this->latestCurriculumYear($programLabel, $programKey);
@@ -1351,6 +1418,10 @@ class ChecklistController extends Controller
             }
         }
 
+        if ($this->isBsedMathProgram($programLabel, $programKey)) {
+            return [];
+        }
+
         if (!Schema::hasTable('cvsucarmona_courses')) {
             return [];
         }
@@ -1386,6 +1457,9 @@ class ChecklistController extends Controller
                 TRIM(IFNULL(c.pre_requisite, "NONE")) AS pre_requisite,
                 TRIM(c.year_level) AS year,
                 TRIM(c.semester) AS semester,
+                TRIM(c.year_level) AS course_year_level,
+                TRIM(c.semester) AS course_semester,
+                TRIM(c.curriculumyear_coursecode) AS curriculumyear_coursecode,
                 sc.final_grade,
                 sc.evaluator_remarks,
                 sc.professor_instructor,
@@ -1401,22 +1475,9 @@ class ChecklistController extends Controller
                 AND sc.student_id = ?
             WHERE (' . implode(' OR ', $conditions) . ')' . $curriculumYearClause . '
             ORDER BY
-                CASE UPPER(TRIM(c.year_level))
-                    WHEN "FIRST YEAR" THEN 1
-                    WHEN "SECOND YEAR" THEN 2
-                    WHEN "THIRD YEAR" THEN 3
-                    WHEN "FOURTH YEAR" THEN 4
-                    ELSE 99
-                END,
-                CASE UPPER(TRIM(c.semester))
-                    WHEN "FIRST SEMESTER" THEN 1
-                    WHEN "SECOND SEMESTER" THEN 2
-                    WHEN "MID YEAR" THEN 3
-                    WHEN "MIDYEAR" THEN 3
-                    WHEN "SUMMER" THEN 3
-                    ELSE 99
-                END,
-                c.curriculumyear_coursecode
+                FIELD(course_year_level, \'First Year\', \'Second Year\', \'Third Year\', \'Fourth Year\'),
+                FIELD(course_semester, \'First Semester\', \'Second Semester\', \'Mid Year\', \'Midyear\', \'Summer\'),
+                curriculumyear_coursecode
         ';
 
         $rows = DB::select($sql, $bindings);

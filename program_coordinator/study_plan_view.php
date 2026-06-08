@@ -607,31 +607,6 @@ if ($lastPlannedTerm && !$hasUnresolvedPlan) {
     $estimatedGraduation = 'Completed';
 }
 
-$globalSemesterLabel = '';
-if (function_exists('getSystemSetting')) {
-    $globalSemesterRaw = trim((string) getSystemSetting('school_current_semester', ''));
-    if ($globalSemesterRaw !== '') {
-        switch ($globalSemesterRaw) {
-            case 'First Semester':
-                $globalSemesterRaw = '1st Sem';
-                break;
-            case 'Second Semester':
-                $globalSemesterRaw = '2nd Sem';
-                break;
-            case 'Midyear':
-            case 'Mid Year':
-            case 'Summer':
-                $globalSemesterRaw = 'Mid Year';
-                break;
-        }
-        if ($globalSemesterRaw !== ''
-            && strcasecmp($globalSemesterRaw, 'None') !== 0
-            && strcasecmp($globalSemesterRaw, 'All') !== 0
-        ) {
-            $globalSemesterLabel = $globalSemesterRaw;
-        }
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1453,7 +1428,7 @@ if (function_exists('getSystemSetting')) {
                     <li><a href="curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
                     <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
                     <li><a href="<?= htmlspecialchars($listStudentsHref) ?>" class="active"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
-                    <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift" style="filter: brightness(0) invert(1);"> Program Shift Requests</a></li>
+                    <!-- Program Shift Requests removed from coordinator UI -->
                     <li><a href="profile.php"><img src="../pix/account.png" alt="Profile" style="filter: brightness(0) invert(1);"> Update Profile</a></li>
                 </div>
                 <div class="menu-group">
@@ -1476,9 +1451,6 @@ if (function_exists('getSystemSetting')) {
                     Generated: <?= date('H:i:s') ?>
                 </span>
             </h3>
-            <?php if ($globalSemesterLabel !== ''): ?>
-                <div style="margin: 6px 0 12px; font-size: 12px; font-weight: 600; color: #2a7a20;">Global semester filter: <?= htmlspecialchars($globalSemesterLabel) ?> (midyear stays fixed to its original term).</div>
-            <?php endif; ?>
             <div class="academic-stats-grid">
                 <div class="stat-card">
                     <div class="stat-value"><?= htmlspecialchars((string)$stats['completion_percentage']); ?>%</div>

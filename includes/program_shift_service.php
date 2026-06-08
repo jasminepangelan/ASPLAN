@@ -693,6 +693,13 @@ if (!function_exists('psResolveProgramTokens')) {
     }
 }
 
+if (!function_exists('psIsBsedMathProgram')) {
+    function psIsBsedMathProgram($programLabel, $programKey = '') {
+        $keySource = trim((string)$programKey) !== '' ? $programKey : $programLabel;
+        return strtoupper(psNormalizeProgramKey((string)$keySource)) === 'BSED-MATH';
+    }
+}
+
 if (!function_exists('psNormalizeCurriculumYear')) {
     function psNormalizeCurriculumYear($value) {
         $value = trim((string)$value);
@@ -740,12 +747,27 @@ if (!function_exists('psResolveChecklistProgramLabels')) {
             'BSINDT' => 'BS Industrial Technology',
             'BSIT' => 'BS Information Technology',
             'BSED-ENGLISH' => 'BSEd Major in English',
-            'BSED-MATH' => 'BSEd Major in Math',
+            'BSED-MATH' => 'BSEd Major in Mathematics',
             'BSED-SCIENCE' => 'BSEd Major in Science',
+        ];
+        $codeLabelMap = [
+            'BSBA-MM' => 'BSBA-MM',
+            'BSBA-HRM' => 'BSBA-HRM',
+            'BSCPE' => 'BSCpE',
+            'BSCS' => 'BSCS',
+            'BSHM' => 'BSHM',
+            'BSINDT' => 'BSIndT',
+            'BSIT' => 'BSIT',
+            'BSED-ENGLISH' => 'BSEd-English',
+            'BSED-MATH' => 'BSEd-Math',
+            'BSED-SCIENCE' => 'BSEd-Science',
         ];
         $normalizedProgramKey = strtoupper(trim((string)psNormalizeProgramKey((string)$programKey)));
         $values = [
             trim((string)$programLabel),
+            trim((string)$programKey),
+            $codeLabelMap[$normalizedProgramKey] ?? '',
+            $normalizedProgramKey,
             psCanonicalProgramLabel($programKey),
             psCanonicalProgramLabel(psNormalizeProgramKey((string)$programLabel)),
             $shortLabelMap[$normalizedProgramKey] ?? '',
@@ -769,9 +791,11 @@ if (!function_exists('psResolveChecklistProgramLabels')) {
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATH') {
                 $candidates['Bachelor of Secondary Education Major in Mathematics'] = true;
                 $candidates['BSEd Major in Math'] = true;
+                $candidates['BSEd Major in Mathematics'] = true;
             } elseif ($normalized === 'BACHELOR OF SECONDARY EDUCATION MAJOR IN MATHEMATICS') {
-                $candidates['Bachelor of Secondary Education major Math'] = true;
+                $candidates['Bachelor of Secondary Education major in Math'] = true;
                 $candidates['BSEd Major in Math'] = true;
+                $candidates['BSEd Major in Mathematics'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN COMPUTER SCIENCE') {
                 $candidates['BS Computer Science'] = true;
             } elseif ($normalized === 'BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY') {
@@ -843,6 +867,10 @@ if (!function_exists('psResolveLatestCurriculumYear')) {
             }
         }
 
+        if (psIsBsedMathProgram($programLabel, $programKey)) {
+            return '';
+        }
+
         if (!psTableExists($conn, 'cvsucarmona_courses')) {
             return '';
         }
@@ -885,6 +913,7 @@ if (!function_exists('psResolveStudentCurriculumYear')) {
     function psResolveStudentCurriculumYear($conn, $studentId, $programLabel = '', $programKey = '') {
         $studentId = trim((string)$studentId);
         $selectedProgramKey = psNormalizeProgramKey((string)($programKey !== '' ? $programKey : $programLabel));
+        $storedYear = ''; // Initialize at function level so it persists for final check
         if ($studentId !== '' && psTableExists($conn, 'student_info')) {
             $stmt = $conn->prepare("
                 SELECT program, curriculum_year
@@ -937,6 +966,10 @@ if (!function_exists('psResolveStudentCurriculumYear')) {
                             }
                         }
 
+                        if (psIsBsedMathProgram($programLabel, $programKey)) {
+                            return psResolveLatestCurriculumYear($conn, $programLabel, $programKey);
+                        }
+
                         $tokens = psResolveProgramTokens($programKey !== '' ? $programKey : $programLabel);
                         if (psTableExists($conn, 'cvsucarmona_courses') && !empty($tokens)) {
                             $conditions = [];
@@ -967,6 +1000,9 @@ if (!function_exists('psResolveStudentCurriculumYear')) {
             }
         }
 
+        // Only honor the student's stored curriculum year when it still exists in the
+        // current curriculum data set. If the stored year was deleted, fall back to the
+        // latest available curriculum year for the program.
         return psResolveLatestCurriculumYear($conn, $programLabel, $programKey);
     }
 }
@@ -1152,6 +1188,10 @@ if (!function_exists('psFetchChecklistCourses')) {
             }
         }
 
+        if (psIsBsedMathProgram($programLabel, $programKey)) {
+            return [];
+        }
+
         if (!psTableExists($conn, 'cvsucarmona_courses')) {
             return [];
         }
@@ -1190,6 +1230,9 @@ if (!function_exists('psFetchChecklistCourses')) {
                 TRIM(IFNULL(c.pre_requisite, 'NONE')) AS pre_requisite,
                 TRIM(c.year_level) AS year,
                 TRIM(c.semester) AS semester,
+                TRIM(c.year_level) AS course_year_level,
+                TRIM(c.semester) AS course_semester,
+                TRIM(c.curriculumyear_coursecode) AS curriculumyear_coursecode,
                 sc.final_grade,
                 sc.evaluator_remarks,
                 sc.professor_instructor,
@@ -1205,22 +1248,9 @@ if (!function_exists('psFetchChecklistCourses')) {
                 AND sc.student_id = ?
             WHERE (" . implode(' OR ', $conditions) . ")" . $curriculumYearClause . "
             ORDER BY
-                CASE UPPER(TRIM(c.year_level))
-                    WHEN 'FIRST YEAR' THEN 1
-                    WHEN 'SECOND YEAR' THEN 2
-                    WHEN 'THIRD YEAR' THEN 3
-                    WHEN 'FOURTH YEAR' THEN 4
-                    ELSE 99
-                END,
-                CASE UPPER(TRIM(c.semester))
-                    WHEN 'FIRST SEMESTER' THEN 1
-                    WHEN 'SECOND SEMESTER' THEN 2
-                    WHEN 'MID YEAR' THEN 3
-                    WHEN 'MIDYEAR' THEN 3
-                    WHEN 'SUMMER' THEN 3
-                    ELSE 99
-                END,
-                c.curriculumyear_coursecode
+                FIELD(course_year_level, 'First Year', 'Second Year', 'Third Year', 'Fourth Year'),
+                FIELD(course_semester, 'First Semester', 'Second Semester', 'Mid Year', 'Midyear', 'Summer'),
+                curriculumyear_coursecode
         ";
 
         $stmt = $conn->prepare($sql);
@@ -1849,7 +1879,7 @@ if (!function_exists('psFetchLatestChecklistGrade')) {
 }
 
 if (!function_exists('psExecuteApprovedShift')) {
-    function psExecuteApprovedShift($conn, array $requestRow, $actorUsername) {
+    function psExecuteApprovedShift($conn, array $requestRow, $actorUsername, $actorRole = 'program_coordinator') {
         $requestId = (int)$requestRow['id'];
         $studentNumber = (string)$requestRow['student_number'];
         $sourceProgram = trim((string)$requestRow['current_program']);
@@ -2025,7 +2055,7 @@ if (!function_exists('psExecuteApprovedShift')) {
             $finalize->close();
         }
 
-        psAddAuditLog($conn, $requestId, 'shift_executed', 'Program shift executed and student program updated.', $actorUsername, 'program_coordinator', [
+        psAddAuditLog($conn, $requestId, 'shift_executed', 'Program shift executed and student program updated.', $actorUsername, $actorRole, [
             'student_number' => $studentNumber,
             'source_program' => $sourceProgram,
             'destination_program' => $destinationProgram,
@@ -2044,7 +2074,7 @@ if (!function_exists('psExecuteApprovedShift')) {
                 'current_enrollment_reset',
                 'Current enrolled courses were cleared after shift execution.',
                 $actorUsername,
-                'program_coordinator',
+                $actorRole,
                 [
                     'student_number' => $studentNumber,
                     'enrollment_rows_deleted' => (int)($currentEnrollmentReset['enrollment_rows_deleted'] ?? 0),
@@ -2054,6 +2084,116 @@ if (!function_exists('psExecuteApprovedShift')) {
         }
 
         return ['ok' => true, 'message' => $executionNote, 'credited_courses' => $credited];
+    }
+}
+
+if (!function_exists('psAdminShiftStudent')) {
+    function psAdminShiftStudent($conn, $studentNumber, $destinationProgram, $actorUsername, $reason = '') {
+        $studentRow = psGetCurrentStudentInfo($conn, $studentNumber);
+        if (!$studentRow) {
+            return ['ok' => false, 'message' => 'Student record not found.'];
+        }
+
+        $studentNumber = trim((string)($studentRow['student_number'] ?? $studentNumber));
+        $sourceProgram = trim((string)($studentRow['program'] ?? ''));
+        $destinationProgram = trim((string)$destinationProgram);
+        $actorUsername = trim((string)$actorUsername);
+        $reason = trim((string)$reason);
+
+        if ($studentNumber === '') {
+            return ['ok' => false, 'message' => 'Student number is missing.'];
+        }
+
+        if ($sourceProgram === '') {
+            return ['ok' => false, 'message' => 'The student current program is not set.'];
+        }
+
+        if ($destinationProgram === '') {
+            return ['ok' => false, 'message' => 'Please select a destination program.'];
+        }
+
+        if (strcasecmp(psNormalizeProgramLabel($sourceProgram), psNormalizeProgramLabel($destinationProgram)) === 0) {
+            return ['ok' => false, 'message' => 'The student is already enrolled in the selected program.'];
+        }
+
+        $destinationCurriculumYear = psResolveLatestCurriculumYear($conn, $destinationProgram);
+        $destinationCourses = psFetchCurriculumCourses($conn, $destinationProgram, $destinationCurriculumYear);
+        if (empty($destinationCourses)) {
+            return ['ok' => false, 'message' => 'Destination program curriculum was not found. Add the curriculum before shifting the student.'];
+        }
+
+        $conn->begin_transaction();
+
+        try {
+            if (psTableExists($conn, 'program_shift_requests')) {
+                $cancelStmt = $conn->prepare(
+                    "UPDATE program_shift_requests
+                     SET status = 'cancelled',
+                         execution_note = CONCAT(COALESCE(execution_note, ''), CASE WHEN execution_note IS NULL OR execution_note = '' THEN '' ELSE ' ' END, 'Cancelled because admin directly shifted the student.'),
+                         updated_at = NOW()
+                     WHERE student_number = ?
+                       AND status IN ('pending_current_coordinator', 'pending_destination_coordinator', 'pending_coordinator')"
+                );
+                if ($cancelStmt) {
+                    $cancelStmt->bind_param('s', $studentNumber);
+                    $cancelStmt->execute();
+                    $cancelStmt->close();
+                }
+            }
+
+            $requestCode = psGenerateRequestCode();
+            $studentName = psGetStudentDisplayName($studentRow);
+            $adminReason = $reason !== '' ? $reason : 'Direct admin program shift.';
+            $stmt = $conn->prepare(
+                "INSERT INTO program_shift_requests
+                    (request_code, student_number, student_name, current_program, requested_program, reason, status, coordinator_action_by, coordinator_action_name, coordinator_action_at, coordinator_comment)
+                 VALUES (?, ?, ?, ?, ?, ?, 'approved', ?, ?, NOW(), 'Direct admin shift')"
+            );
+            if (!$stmt) {
+                throw new RuntimeException('Unable to create shift record.');
+            }
+
+            $stmt->bind_param('ssssssss', $requestCode, $studentNumber, $studentName, $sourceProgram, $destinationProgram, $adminReason, $actorUsername, $actorUsername);
+            if (!$stmt->execute()) {
+                $stmt->close();
+                throw new RuntimeException('Unable to create shift record.');
+            }
+
+            $requestId = (int)$stmt->insert_id;
+            $stmt->close();
+
+            psAddAuditLog($conn, $requestId, 'admin_shift_started', 'Admin started a direct program shift.', $actorUsername, 'admin', [
+                'student_number' => $studentNumber,
+                'source_program' => $sourceProgram,
+                'destination_program' => $destinationProgram,
+                'reason' => $adminReason,
+            ]);
+
+            $requestRow = [
+                'id' => $requestId,
+                'student_number' => $studentNumber,
+                'student_name' => $studentName,
+                'current_program' => $sourceProgram,
+                'requested_program' => $destinationProgram,
+            ];
+            $executionResult = psExecuteApprovedShift($conn, $requestRow, $actorUsername, 'admin');
+            if (empty($executionResult['ok'])) {
+                throw new RuntimeException((string)($executionResult['message'] ?? 'Unable to execute shift.'));
+            }
+
+            $conn->commit();
+
+            return [
+                'ok' => true,
+                'message' => (string)$executionResult['message'],
+                'request_id' => $requestId,
+                'request_code' => $requestCode,
+                'credited_courses' => (int)($executionResult['credited_courses'] ?? 0),
+            ];
+        } catch (Throwable $e) {
+            $conn->rollback();
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
     }
 }
 
@@ -2435,3 +2575,4 @@ if (!function_exists('psGetCoordinatorShiftSummary')) {
         return $summary;
     }
 }
+

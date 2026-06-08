@@ -444,7 +444,7 @@ if (!$bridgeLoaded) {
                 <li><a href="curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
                 <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
                 <li><a href="list_of_students.php"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
-              <li><a href="program_shift_requests.php"><img src="../pix/update.png" alt="Program Shift" style="filter: brightness(0) invert(1);"> Program Shift Requests</a></li>
+              <!-- Program Shift Requests removed from coordinator UI -->
                 <li><a href="profile.php"><img src="../pix/account.png" alt="Profile" style="filter: brightness(0) invert(1);"> Update Profile</a></li>
             </div>
 
@@ -500,13 +500,7 @@ if (!$bridgeLoaded) {
           </div>
         </div>
 
-        <div class="option" onclick="window.location.href='program_shift_requests.php'">
-          <div class="option-icon"><img src="../pix/update.png" alt="Program Shift Requests"></div>
-          <div>
-            <label class="option-title">Program Shift Requests</label>
-            <p class="option-caption">Handle destination-program decisions and final approvals with a clearer dashboard workflow.</p>
-          </div>
-        </div>
+        <!-- Program Shift quick-action removed -->
 
         <div class="option" onclick="window.location.href='profile.php'">
           <div class="option-icon"><img src="../pix/account.png" alt="Update Profile"></div>

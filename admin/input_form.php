@@ -501,7 +501,7 @@
                         <label class="program-checkbox-item"><input type="checkbox" name="program[]" value="Bachelor of Science in Business Administration - Major in Marketing Management"> Bachelor of Science in Business Administration - Major in Marketing Management</label>
                         <label class="program-checkbox-item"><input type="checkbox" name="program[]" value="Bachelor of Science in Business Administration - Major in Human Resource Management"> Bachelor of Science in Business Administration - Major in Human Resource Management</label>
                         <label class="program-checkbox-item"><input type="checkbox" name="program[]" value="Bachelor of Secondary Education major in English"> Bachelor of Secondary Education major in English</label>
-                        <label class="program-checkbox-item"><input type="checkbox" name="program[]" value="Bachelor of Secondary Education major Math"> Bachelor of Secondary Education major Math</label>
+                        <label class="program-checkbox-item"><input type="checkbox" name="program[]" value="Bachelor of Secondary Education major in Math"> Bachelor of Secondary Education major in Math</label>
                         <label class="program-checkbox-item"><input type="checkbox" name="program[]" value="Bachelor of Secondary Education major in Science"> Bachelor of Secondary Education major in Science</label>
                     </div>
                     <div class="program-help">Select one or more programs.</div>
@@ -659,6 +659,7 @@
 
 </body>
 </html>
+
 
 
 

@@ -177,18 +177,6 @@ $advancedSettings = [
         'default' => '',
         'help' => 'Optional end date/time for student registration window.'
     ],
-    'school_current_semester' => [
-        'label' => 'School Current Semester (Global)',
-        'type' => 'select',
-        'default' => 'None',
-        'options' => [
-            ['value' => 'None', 'label' => 'None (Disable filter)'],
-            ['value' => '1st Sem', 'label' => '1st Sem'],
-            ['value' => '2nd Sem', 'label' => '2nd Sem'],
-            ['value' => 'Mid Year', 'label' => 'Mid Year'],
-        ],
-        'help' => 'Forces study plan generation to use only this semester label across all terms. Mid Year stays fixed to its original checklist position.'
-    ],
 ];
 
 $adminAccount = [

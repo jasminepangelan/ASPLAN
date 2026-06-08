@@ -10,6 +10,9 @@ if (!isset($_SESSION['student_id'])) {
     exit();
 }
 
+header('Location: home_page_student.php?message=' . urlencode('Program shifting is no longer available for students.'));
+exit();
+
 $conn = getDBConnection();
 try {
     psAssertProgramShiftSchemaReady($conn);
@@ -777,7 +780,6 @@ closeDBConnection($conn);
                 <div class="menu-group-title">Academic</div>
                 <li><a href="checklist_stud.php"><img src="../pix/update.png" alt="Checklist"> Update Checklist</a></li>
                 <li><a href="study_plan.php"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan</a></li>
-                <li><a href="program_shift_request.php" class="active"><img src="../pix/checklist.png" alt="Program Shift"> Program Shift</a></li>
             </div>
             <div class="menu-group">
                 <div class="menu-group-title">Account</div>
