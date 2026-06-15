@@ -198,18 +198,24 @@ function findFirstTerm(array $plan): ?array
     return $plan[0];
 }
 
-$conn = getDBConnection();
-$seedQuery = $conn->query("SELECT student_number, program FROM student_info ORDER BY student_number ASC LIMIT 1");
-$seedRow = $seedQuery ? $seedQuery->fetch_assoc() : null;
-closeDBConnection($conn);
+// Support a DB-free mode for local synthetic runs. Set NO_DB=1 to use simulated seed values.
+if (getenv('NO_DB') === '1') {
+    $seedStudent = 'SIMULATED_STUDENT';
+    $seedProgram = 'SIMULATED_PROGRAM';
+} else {
+    $conn = getDBConnection();
+    $seedQuery = $conn->query("SELECT student_number, program FROM student_info ORDER BY student_number ASC LIMIT 1");
+    $seedRow = $seedQuery ? $seedQuery->fetch_assoc() : null;
+    closeDBConnection($conn);
 
-if (!$seedRow) {
-    echo "No student records found. Cannot run synthetic suite.\n";
-    exit(1);
+    if (!$seedRow) {
+        echo "No student records found. Cannot run synthetic suite.\n";
+        exit(1);
+    }
+
+    $seedStudent = (string) ($seedRow['student_number'] ?? '');
+    $seedProgram = (string) ($seedRow['program'] ?? '');
 }
-
-$seedStudent = (string) ($seedRow['student_number'] ?? '');
-$seedProgram = (string) ($seedRow['program'] ?? '');
 
 $scenarios = [];
 
