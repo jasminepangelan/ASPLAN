@@ -178,7 +178,7 @@ try {
         }
     }
     if (!function_exists('pcSaveFindLegacyCurriculumKey')) {
-        function pcSaveFindLegacyCurriculumKey(mysqli $conn, string $program, string $curriculumYear, string $courseCode): string {
+        function pcSaveFindLegacyCurriculumKey($conn, string $program, string $curriculumYear, string $courseCode): string {
             $courseCode = pcSaveNormalizeEditableCourseCode($courseCode);
             $curriculumYear = pcSaveNormalizeCurriculumYearToken($curriculumYear);
             if ($courseCode === '' || $curriculumYear === '') {
@@ -897,7 +897,11 @@ try {
         : 'Curriculum year saved successfully. You can add courses later.';
     echo json_encode(['success' => true, 'message' => $message, 'inserted' => $changed]);
 } catch (Throwable $e) {
-    $conn->rollback();
+    try {
+        $conn->rollback();
+    } catch (Throwable $rollbackError) {
+        error_log('Curriculum save rollback failed: ' . $rollbackError->getMessage());
+    }
     echo json_encode(['success' => false, 'message' => 'Failed to save curriculum: ' . $e->getMessage()]);
 }
 
