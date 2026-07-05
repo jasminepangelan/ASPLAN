@@ -128,7 +128,7 @@ function pcNormalizeProgramCode(string $value): string
     return $sanitized;
 }
 
-function pcEnsureProgramCatalogTable(mysqli $conn): void
+function pcEnsureProgramCatalogTable($conn): void
 {
     $tableExists = $conn->query("SHOW TABLES LIKE 'programs'");
     if (!$tableExists || $tableExists->num_rows === 0) {
@@ -192,7 +192,7 @@ function pcEnsureProgramCatalogTable(mysqli $conn): void
     }
 }
 
-function pcLoadProgramCatalog(mysqli $conn, bool $mergeDefaults = true): array
+function pcLoadProgramCatalog($conn, bool $mergeDefaults = true): array
 {
     pcEnsureProgramCatalogTable($conn);
 
@@ -242,7 +242,7 @@ function pcLoadProgramCatalog(mysqli $conn, bool $mergeDefaults = true): array
     return $catalog;
 }
 
-function pcSaveProgramCatalogEntry(mysqli $conn, string $code, string $name): array
+function pcSaveProgramCatalogEntry($conn, string $code, string $name): array
 {
     pcEnsureProgramCatalogTable($conn);
 
