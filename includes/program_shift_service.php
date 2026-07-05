@@ -1293,6 +1293,29 @@ if (!function_exists('psFetchCurriculumCourses')) {
         // Preferred schema.
         if (psTableExists($conn, 'curriculum_courses')) {
             $rows = [];
+            $programLabels = psResolveChecklistProgramLabels($programLabel);
+            if (empty($programLabels)) {
+                $programLabels = [trim((string)$programLabel)];
+            }
+
+            $conditions = [];
+            $params = [];
+            $types = '';
+            foreach ($programLabels as $candidateLabel) {
+                $candidateLabel = strtoupper(trim((string)$candidateLabel));
+                if ($candidateLabel === '') {
+                    continue;
+                }
+
+                $conditions[] = 'UPPER(TRIM(program)) = ?';
+                $params[] = $candidateLabel;
+                $types .= 's';
+            }
+
+            if (empty($conditions)) {
+                return [];
+            }
+
             $sql =
                 "SELECT
                     TRIM(course_code) AS course_code,
@@ -1302,29 +1325,26 @@ if (!function_exists('psFetchCurriculumCourses')) {
                     IFNULL(lect_hrs_lec, 0) AS lect_hrs_lec,
                     IFNULL(lect_hrs_lab, 0) AS lect_hrs_lab
                  FROM curriculum_courses
-                 WHERE TRIM(program) = ?";
+                 WHERE (" . implode(' OR ', $conditions) . ")";
             if ($curriculumYear !== '') {
                 $sql .= " AND curriculum_year = ?";
+                $params[] = $curriculumYear;
+                $types .= 's';
             }
             $stmt = $conn->prepare($sql);
-            if (!$stmt) {
-                return [];
+            if ($stmt) {
+                $stmt->bind_param($types, ...$params);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($result && ($row = $result->fetch_assoc())) {
+                    $rows[] = $row;
+                }
+                $stmt->close();
             }
 
-            $programLabel = trim((string)$programLabel);
-            if ($curriculumYear !== '') {
-                $stmt->bind_param('ss', $programLabel, $curriculumYear);
-            } else {
-                $stmt->bind_param('s', $programLabel);
+            if (!empty($rows)) {
+                return psNormalizeCourseRows($rows);
             }
-            $stmt->execute();
-            $result = $stmt->get_result();
-            while ($result && ($row = $result->fetch_assoc())) {
-                $rows[] = $row;
-            }
-            $stmt->close();
-
-            return psNormalizeCourseRows($rows);
         }
 
         // Fallback schema used by curriculum management.
