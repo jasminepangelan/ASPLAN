@@ -1137,25 +1137,24 @@ if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
 
     if (!$bridgeLoaded) {
         try {
-        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
-        $conn = new PDO($dsn, DB_USER, DB_PASS);
-        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $conn = createPdoFallbackConnection();
 
-        $result = amLoadAdviserManagementData($conn, $selectedProgram);
-        $selectedProgram = (string)$result['selectedProgram'];
-        $availablePrograms = (array)$result['availablePrograms'];
-        $batches = (array)$result['batches'];
-        $advisers = (array)$result['advisers'];
-        $batchAssignments = (array)$result['batchAssignments'];
-        $usedBatchFallback = (bool)$result['usedBatchFallback'];
+            $result = amLoadAdviserManagementData($conn, $selectedProgram);
+            $selectedProgram = (string)$result['selectedProgram'];
+            $availablePrograms = (array)$result['availablePrograms'];
+            $batches = (array)$result['batches'];
+            $advisers = (array)$result['advisers'];
+            $batchAssignments = (array)$result['batchAssignments'];
+            $usedBatchFallback = (bool)$result['usedBatchFallback'];
+            $dbError = '';
 
-        if (isset($_GET['debug'])) {
-            echo amBuildDebugHtml($conn, $selectedProgram, $availablePrograms, $advisers, $batches);
+            if (isset($_GET['debug'])) {
+                echo amBuildDebugHtml($conn, $selectedProgram, $availablePrograms, $advisers, $batches);
+            }
+        } catch (Throwable $e) {
+            error_log('Adviser management DB error: ' . $e->getMessage());
+            $dbError = 'Database error. Please try again later.';
         }
-    } catch (PDOException $e) {
-        error_log('Adviser management DB error: ' . $e->getMessage());
-        $dbError = 'Database error. Please try again later.';
-    }
     }
     ?>
 
