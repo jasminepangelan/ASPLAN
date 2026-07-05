@@ -11,5 +11,7 @@ if ($studentId === '') {
     die('Invalid student ID.');
 }
 
-header('Location: ../student/study_plan.php?admin_view=1&student_id=' . urlencode($studentId));
-exit();
+define('ASPLAN_ADMIN_STUDY_PLAN_VIEW', true);
+$adminStudyPlanStudentId = $studentId;
+
+require __DIR__ . '/../student/study_plan.php';

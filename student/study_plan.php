@@ -22,10 +22,15 @@ require_once __DIR__ . '/../includes/vite_legacy.php';
 // Check if the user is logged in. Admins may open the exact student study-plan
 // renderer for a selected student so the admin POV matches the student POV.
 $is_admin_reference_view = (isset($_SESSION['admin_id']) || isset($_SESSION['admin_username']))
-    && isset($_GET['admin_view'])
-    && $_GET['admin_view'] === '1'
-    && isset($_GET['student_id'])
-    && trim((string)$_GET['student_id']) !== '';
+    && (
+        (defined('ASPLAN_ADMIN_STUDY_PLAN_VIEW') && ASPLAN_ADMIN_STUDY_PLAN_VIEW)
+        || (
+            isset($_GET['admin_view'])
+            && $_GET['admin_view'] === '1'
+            && isset($_GET['student_id'])
+            && trim((string)$_GET['student_id']) !== ''
+        )
+    );
 
 if (!isset($_SESSION['student_id']) && !$is_admin_reference_view) {
     header("Location: ../index.php");
@@ -37,7 +42,7 @@ $conn = getDBConnection();
 
 // Fetch current student data from database using session student_id or admin-selected student_id.
 $student_id = $is_admin_reference_view
-    ? trim((string)$_GET['student_id'])
+    ? trim((string)($adminStudyPlanStudentId ?? $_GET['student_id'] ?? ''))
     : (string)$_SESSION['student_id'];
 $last_name = $is_admin_reference_view ? '' : htmlspecialchars($_SESSION['last_name'] ?? '');
 $first_name = $is_admin_reference_view ? '' : htmlspecialchars($_SESSION['first_name'] ?? '');
