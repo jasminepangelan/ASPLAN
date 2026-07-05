@@ -19,8 +19,15 @@ require_once __DIR__ . '/../includes/student_current_enrollment_service.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
 
-// Check if the user is logged in
-if (!isset($_SESSION['student_id'])) {
+// Check if the user is logged in. Admins may open the exact student study-plan
+// renderer for a selected student so the admin POV matches the student POV.
+$is_admin_reference_view = (isset($_SESSION['admin_id']) || isset($_SESSION['admin_username']))
+    && isset($_GET['admin_view'])
+    && $_GET['admin_view'] === '1'
+    && isset($_GET['student_id'])
+    && trim((string)$_GET['student_id']) !== '';
+
+if (!isset($_SESSION['student_id']) && !$is_admin_reference_view) {
     header("Location: ../index.php");
     exit();
 }
@@ -28,12 +35,16 @@ if (!isset($_SESSION['student_id'])) {
 // Get database connection
 $conn = getDBConnection();
 
-// Fetch current student data from database using session student_id
-$student_id = $_SESSION['student_id'];
-$last_name = htmlspecialchars($_SESSION['last_name'] ?? '');
-$first_name = htmlspecialchars($_SESSION['first_name'] ?? '');
-$middle_name = htmlspecialchars($_SESSION['middle_name'] ?? '');
-$picture = resolveScopedPictureSrc($_SESSION['picture'] ?? '', '../', 'pix/anonymous.jpg');
+// Fetch current student data from database using session student_id or admin-selected student_id.
+$student_id = $is_admin_reference_view
+    ? trim((string)$_GET['student_id'])
+    : (string)$_SESSION['student_id'];
+$last_name = $is_admin_reference_view ? '' : htmlspecialchars($_SESSION['last_name'] ?? '');
+$first_name = $is_admin_reference_view ? '' : htmlspecialchars($_SESSION['first_name'] ?? '');
+$middle_name = $is_admin_reference_view ? '' : htmlspecialchars($_SESSION['middle_name'] ?? '');
+$picture = $is_admin_reference_view
+    ? resolveScopedPictureSrc('', '../', 'pix/anonymous.jpg')
+    : resolveScopedPictureSrc($_SESSION['picture'] ?? '', '../', 'pix/anonymous.jpg');
 $admission_year = null;
 $program = $_SESSION['program'] ?? '';
 $curriculum_year = $_SESSION['curriculum_year'] ?? '';
@@ -99,9 +110,12 @@ if (empty($program)) {
     $program = 'Bachelor of Science in Computer Science';
 }
 
-// Keep session program aligned with latest student program from DB/bridge.
-$_SESSION['program'] = $program;
-$_SESSION['curriculum_year'] = $curriculum_year;
+// Keep the student's own session aligned with latest student program from DB/bridge.
+// Admin reference view must not overwrite the admin session with student data.
+if (!$is_admin_reference_view) {
+    $_SESSION['program'] = $program;
+    $_SESSION['curriculum_year'] = $curriculum_year;
+}
 
 // ====================================
 // CSP + GREEDY ALGORITHM IMPLEMENTATION

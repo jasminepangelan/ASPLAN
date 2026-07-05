@@ -6,4 +6,10 @@ if (!isset($_SESSION['admin_id']) && !isset($_SESSION['admin_username'])) {
     exit();
 }
 
-require __DIR__ . '/../program_coordinator/study_plan_view.php';
+$studentId = isset($_GET['student_id']) ? trim((string)$_GET['student_id']) : '';
+if ($studentId === '') {
+    die('Invalid student ID.');
+}
+
+header('Location: ../student/study_plan.php?admin_view=1&student_id=' . urlencode($studentId));
+exit();
