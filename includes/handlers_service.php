@@ -101,6 +101,10 @@ function hsValidateEmail(string $email, string $fieldName = 'Email'): array {
  * Validate that a database username doesn't already exist
  */
 function hsValidateUniqueUsername($conn, string $username, string $table, string $idField = 'id'): array {
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $table) || !preg_match('/^[A-Za-z0-9_]+$/', $idField)) {
+        return ['valid' => false, 'message' => 'Invalid database table or column.'];
+    }
+
     if ($conn instanceof mysqli) {
         $stmt = $conn->prepare("SELECT $idField FROM $table WHERE username = ? LIMIT 1");
         $stmt->bind_param("s", $username);
@@ -112,6 +116,16 @@ function hsValidateUniqueUsername($conn, string $username, string $table, string
         $stmt = $conn->prepare("SELECT $idField FROM $table WHERE username = ? LIMIT 1");
         $stmt->execute([$username]);
         $exists = $stmt->rowCount() > 0;
+    } elseif (is_object($conn) && method_exists($conn, 'prepare')) {
+        $stmt = $conn->prepare("SELECT $idField FROM $table WHERE username = ? LIMIT 1");
+        if (!$stmt) {
+            return ['valid' => false, 'message' => 'Unable to check username availability.'];
+        }
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $exists = $result && $result->num_rows > 0;
+        $stmt->close();
     } else {
         return ['valid' => false, 'message' => 'Invalid database connection type.'];
     }
@@ -153,6 +167,17 @@ function hsResolveTableVariant($conn, string $singularName): ?string {
         if (in_array($pluralName, $tables, true)) {
             return $pluralName;
         }
+    } elseif (is_object($conn) && method_exists($conn, 'query')) {
+        $result = $conn->query("SHOW TABLES LIKE '$singularName'");
+        if ($result && $result->num_rows > 0) {
+            return $singularName;
+        }
+
+        $pluralName = $singularName . 's';
+        $result = $conn->query("SHOW TABLES LIKE '$pluralName'");
+        if ($result && $result->num_rows > 0) {
+            return $pluralName;
+        }
     }
 
     return null;
@@ -173,6 +198,9 @@ function hsTableExists($conn, string $table): bool {
         } elseif ($conn instanceof PDO) {
             $result = $conn->query("SHOW TABLES LIKE '$table'");
             return $result && $result->rowCount() > 0;
+        } elseif (is_object($conn) && method_exists($conn, 'query')) {
+            $result = $conn->query("SHOW TABLES LIKE '$table'");
+            return $result && $result->num_rows > 0;
         }
     } catch (Throwable $e) {
         return false;
@@ -200,6 +228,9 @@ function hsTableHasColumn($conn, string $table, string $column): bool {
         } elseif ($conn instanceof PDO) {
             $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
             return $result && $result->rowCount() > 0;
+        } elseif (is_object($conn) && method_exists($conn, 'query')) {
+            $result = $conn->query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+            return $result && $result->num_rows > 0;
         }
     } catch (Throwable $e) {
         return false;

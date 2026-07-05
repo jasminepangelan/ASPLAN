@@ -14,7 +14,7 @@ if (!isset($_SESSION['admin_id'])) {
 $csrfToken = getCSRFToken();
 
 if (!function_exists('avDeleteAdviserBatchLinks')) {
-    function avDeleteAdviserBatchLinks(mysqli $conn, int $adviserId): void
+    function avDeleteAdviserBatchLinks($conn, int $adviserId): void
     {
         $columnChecks = [];
         $columnResult = $conn->query("SHOW COLUMNS FROM adviser_batch");
@@ -83,7 +83,7 @@ if (!function_exists('avNormalizeSelectedPrograms')) {
 }
 
 if (!function_exists('avDeleteCoordinatorVerificationRecord')) {
-    function avDeleteCoordinatorVerificationRecord(mysqli $conn, string $username): void
+    function avDeleteCoordinatorVerificationRecord($conn, string $username): void
     {
         if (!hsTableHasColumn($conn, 'program_coordinator_email_verifications', 'username')) {
             return;
@@ -99,7 +99,7 @@ if (!function_exists('avDeleteCoordinatorVerificationRecord')) {
 }
 
 if (!function_exists('avRenameCoordinatorVerificationRecord')) {
-    function avRenameCoordinatorVerificationRecord(mysqli $conn, string $oldUsername, string $newUsername): void
+    function avRenameCoordinatorVerificationRecord($conn, string $oldUsername, string $newUsername): void
     {
         if ($oldUsername === $newUsername || !hsTableHasColumn($conn, 'program_coordinator_email_verifications', 'username')) {
             return;

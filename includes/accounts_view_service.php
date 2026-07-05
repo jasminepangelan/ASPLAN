@@ -12,7 +12,7 @@ function avsNormalizePageWindow($offset, $records_per_page): array
     return [$offset, $records_per_page];
 }
 
-function avsExecutePagedAccountQuery(mysqli $conn, string $table, array $columns, array $searchColumns, string $search, int $offset, int $records_per_page, string $orderBy = 'last_name ASC, first_name ASC'): array
+function avsExecutePagedAccountQuery($conn, string $table, array $columns, array $searchColumns, string $search, int $offset, int $records_per_page, string $orderBy = 'last_name ASC, first_name ASC'): array
 {
     [$offset, $records_per_page] = avsNormalizePageWindow($offset, $records_per_page);
     $tableSafe = trim($table);
