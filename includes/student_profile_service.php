@@ -131,7 +131,7 @@ if (!function_exists('spsStudentInfoHasColumn')) {
         if (is_object($conn) && method_exists($conn, 'query')) {
             $safeColumn = $conn->real_escape_string($column);
             $result = $conn->query("SHOW COLUMNS FROM `student_info` LIKE '{$safeColumn}'");
-            return $result instanceof mysqli_result && $result->num_rows > 0;
+            return $result && (int)($result->num_rows ?? 0) > 0;
         }
 
         return false;
