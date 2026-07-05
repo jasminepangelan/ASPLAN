@@ -79,11 +79,11 @@ if (!function_exists('parseDatabaseUrlFallback')) {
         }
 
         return [
-            'host' => $parts['host'] ?? '',
+            'host' => isset($parts['host']) ? rawurldecode((string) $parts['host']) : '',
             'port' => isset($parts['port']) ? (string) $parts['port'] : '',
-            'user' => $parts['user'] ?? '',
-            'pass' => $parts['pass'] ?? '',
-            'name' => isset($parts['path']) ? ltrim((string) $parts['path'], '/') : '',
+            'user' => isset($parts['user']) ? rawurldecode((string) $parts['user']) : '',
+            'pass' => isset($parts['pass']) ? rawurldecode((string) $parts['pass']) : '',
+            'name' => isset($parts['path']) ? rawurldecode(ltrim((string) $parts['path'], '/')) : '',
         ];
     }
 }

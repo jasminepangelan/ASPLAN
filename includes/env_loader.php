@@ -35,7 +35,26 @@ function loadEnvFile() {
                 $value = substr($value, 1, -1);
             }
             
-            // Set environment variable
+            // Do not override variables injected by the hosting environment.
+            // Railway service variables must win over any committed/local .env file.
+            $existingValue = getenv($key);
+            if ($existingValue !== false && $existingValue !== '') {
+                if (!isset($_ENV[$key]) || $_ENV[$key] === '') {
+                    $_ENV[$key] = $existingValue;
+                }
+                continue;
+            }
+
+            if (isset($_ENV[$key]) && $_ENV[$key] !== '') {
+                continue;
+            }
+
+            if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') {
+                $_ENV[$key] = $_SERVER[$key];
+                continue;
+            }
+
+            // Set environment variable only as a local-development fallback.
             putenv("$key=$value");
             $_ENV[$key] = $value;
         }
