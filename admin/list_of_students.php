@@ -314,9 +314,9 @@ try {
 }
         
         .container {
-            width: min(1500px, calc(100% - 30px));
+            width: min(1500px, calc(100vw - 280px));
             max-width: 1500px;
-            margin: 25px auto 30px auto;
+            margin: 25px 20px 30px 250px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 12px;
@@ -324,11 +324,12 @@ try {
             padding: 25px;
             position: relative;
             transition: all 0.3s ease;
-            transform: translateX(125px);
         }
 
         .container.expanded {
-            transform: translateX(0);
+            width: min(1500px, calc(100vw - 30px));
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .container::before {
@@ -802,7 +803,8 @@ try {
             .container {
                 margin: 20px 10px;
                 padding: 15px;
-                transform: none;
+                width: calc(100% - 20px);
+                max-width: none;
             }
             
             .main-header {
@@ -946,7 +948,8 @@ try {
             .container {
                 margin: 15px 5px;
                 padding: 12px;
-                transform: none;
+                width: calc(100% - 10px);
+                max-width: none;
             }
             
             .page-header h1 {
