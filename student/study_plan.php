@@ -803,6 +803,14 @@ $currentEnrollmentClientPayload = json_encode([
     }, array_values($current_enrollment_term_map))),
     'savedEnrollment' => $saved_current_enrollment,
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+$studyPlanPageTitle = $is_admin_reference_view ? 'Study Plan - Admin' : 'Study Plan - Student';
+$studyPlanPanelTitle = $is_admin_reference_view ? 'Admin Panel' : 'Student Panel';
+$studyPlanHeaderName = $is_admin_reference_view
+    ? trim((string)($_SESSION['admin_full_name'] ?? $_SESSION['admin_username'] ?? $_SESSION['admin_id'] ?? 'Admin'))
+    : trim($last_name . ', ' . $first_name . (!empty($middle_name) ? ' ' . $middle_name : ''));
+$studyPlanHeaderRole = $is_admin_reference_view ? 'Admin' : 'Student';
+$studyPlanHeaderImage = $is_admin_reference_view ? '../img/cav.png' : $picture;
 ?>
 
 <!DOCTYPE html>
@@ -813,9 +821,11 @@ $currentEnrollmentClientPayload = json_encode([
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Study Plan - Student</title>
+    <title><?= htmlspecialchars($studyPlanPageTitle) ?></title>
     <link rel="icon" type="image/png" href="../img/cav.png">
-    <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-study-plan-workspace.jsx']) ?>
+    <?php if (!$is_admin_reference_view): ?>
+        <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-study-plan-workspace.jsx']) ?>
+    <?php endif; ?>
     <style>
         * {
             margin: 0;
@@ -2059,17 +2069,35 @@ $currentEnrollmentClientPayload = json_encode([
             <span style="color: #d9e441; font-weight: 800;">ASPLAN</span>
         </div>
         <div class="student-info">
-            <img src="<?= $picture ?>" alt="Profile Picture">
-            <span><?= $last_name . ', ' . $first_name . (!empty($middle_name) ? ' ' . $middle_name : '') ?> | Student</span>
+            <img src="<?= htmlspecialchars($studyPlanHeaderImage) ?>" alt="Profile Picture">
+            <span><?= htmlspecialchars($studyPlanHeaderName) ?> | <?= htmlspecialchars($studyPlanHeaderRole) ?></span>
         </div>
     </div>
 
     <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h3>Student Panel</h3>
+            <h3><?= htmlspecialchars($studyPlanPanelTitle) ?></h3>
         </div>
         <ul class="sidebar-menu">
+            <?php if ($is_admin_reference_view): ?>
+            <div class="menu-group">
+                <div class="menu-group-title">Dashboard</div>
+                <li><a href="index.php"><img src="../pix/home1.png" alt="Home" style="filter: brightness(0) invert(1);"> Admin Home</a></li>
+                <li><a href="list_of_students.php"><img src="../pix/checklist.png" alt="Students"> Registered Students</a></li>
+            </div>
+
+            <div class="menu-group">
+                <div class="menu-group-title">Student Record</div>
+                <li><a href="account_management.php?student_id=<?= urlencode((string)$student_id) ?>"><img src="../pix/account.png" alt="Profile"> Profile</a></li>
+                <li><a href="study_plan_view.php?student_id=<?= urlencode((string)$student_id) ?>" class="active"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan</a></li>
+            </div>
+
+            <div class="menu-group">
+                <div class="menu-group-title">Account</div>
+                <li><a href="logout.php"><img src="../pix/singout.png" alt="Sign Out"> Sign Out</a></li>
+            </div>
+            <?php else: ?>
             <div class="menu-group">
                 <div class="menu-group-title">Dashboard</div>
                 <li><a href="home_page_student.php"><img src="../pix/home1.png" alt="Home" style="filter: brightness(0) invert(1);"> Home</a></li>
@@ -2086,13 +2114,16 @@ $currentEnrollmentClientPayload = json_encode([
                 <li><a href="acc_mng.php"><img src="../pix/account.png" alt="Profile"> Update Profile</a></li>
                 <li><a href="../auth/signout.php"><img src="../pix/singout.png" alt="Sign Out"> Sign Out</a></li>
             </div>
+            <?php endif; ?>
         </ul>
     </div>
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
+        <?php if (!$is_admin_reference_view): ?>
         <div data-student-shell="<?= $studentShellPayload ?>"></div>
         <div data-student-study-plan-workspace="<?= $studentStudyPlanWorkspacePayload ?>"></div>
+        <?php endif; ?>
         <div class="page-header">
             <h1>Automated Study Plan Generator</h1>
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>
