@@ -162,6 +162,11 @@ if (!class_exists('LegacyDbResult')) {
             $this->num_rows = 0;
             $this->index = 0;
         }
+
+        public function close()
+        {
+            $this->free();
+        }
     }
 }
 
