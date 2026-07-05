@@ -379,7 +379,24 @@ if (!function_exists('createPdoFallbackConnection')) {
 
     function createPdoFallbackConnection()
     {
-        return createPdoConnectionFromConfig(DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS);
+        $publicConfig = railwayPublicDatabaseConfig();
+
+        try {
+            return createPdoConnectionFromConfig(DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS);
+        } catch (Throwable $e) {
+            if (!empty($publicConfig)) {
+                error_log('Database private PDO connection failed; using MYSQL_PUBLIC_URL fallback: ' . $e->getMessage());
+                return createPdoConnectionFromConfig(
+                    $publicConfig['host'],
+                    (int) $publicConfig['port'],
+                    $publicConfig['name'],
+                    $publicConfig['user'],
+                    $publicConfig['pass'] ?? ''
+                );
+            }
+
+            throw $e;
+        }
     }
 }
 
