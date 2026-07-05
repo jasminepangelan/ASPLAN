@@ -66,9 +66,8 @@ if (!function_exists('firstEnvValue')) {
 }
 
 if (!function_exists('parseDatabaseUrlFallback')) {
-    function parseDatabaseUrlFallback()
+    function parseDatabaseUrlValue($url)
     {
-        $url = firstEnvValue(['DATABASE_URL', 'MYSQL_URL', 'MYSQL_PUBLIC_URL'], '');
         if ($url === '') {
             return [];
         }
@@ -85,6 +84,33 @@ if (!function_exists('parseDatabaseUrlFallback')) {
             'pass' => isset($parts['pass']) ? rawurldecode((string) $parts['pass']) : '',
             'name' => isset($parts['path']) ? rawurldecode(ltrim((string) $parts['path'], '/')) : '',
         ];
+    }
+
+    function parseDatabaseUrlFallback()
+    {
+        return parseDatabaseUrlValue(firstEnvValue(['DATABASE_URL', 'MYSQL_URL', 'MYSQL_PUBLIC_URL'], ''));
+    }
+}
+
+if (!function_exists('railwayPublicDatabaseConfig')) {
+    function railwayPublicDatabaseConfig()
+    {
+        $publicUrl = firstEnvValue(['MYSQL_PUBLIC_URL'], '');
+        if ($publicUrl === '') {
+            return [];
+        }
+
+        $config = parseDatabaseUrlValue($publicUrl);
+        if (
+            empty($config['host']) ||
+            empty($config['port']) ||
+            empty($config['user']) ||
+            empty($config['name'])
+        ) {
+            return [];
+        }
+
+        return $config;
     }
 }
 
@@ -339,16 +365,21 @@ if (!class_exists('LegacyDbConnection')) {
 }
 
 if (!function_exists('createPdoFallbackConnection')) {
-    function createPdoFallbackConnection()
+    function createPdoConnectionFromConfig($host, $port, $database, $user, $password)
     {
-        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', DB_HOST, DB_PORT, DB_NAME);
-        $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $host, (int) $port, $database);
+        $pdo = new PDO($dsn, $user, $password, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => true,
         ]);
 
         return new LegacyDbConnection($pdo);
+    }
+
+    function createPdoFallbackConnection()
+    {
+        return createPdoConnectionFromConfig(DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS);
     }
 }
 
@@ -357,6 +388,8 @@ if (!function_exists('createPdoFallbackConnection')) {
  * @return mysqli Database connection object
  */
 function getDBConnection() {
+    $publicConfig = railwayPublicDatabaseConfig();
+
     try {
         if (class_exists('mysqli')) {
             $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
@@ -367,10 +400,43 @@ function getDBConnection() {
             }
 
             error_log("MySQLi connection failed, falling back to PDO: " . $conn->connect_error . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
+
+            if (!empty($publicConfig)) {
+                $publicConn = @new mysqli(
+                    $publicConfig['host'],
+                    $publicConfig['user'],
+                    $publicConfig['pass'] ?? '',
+                    $publicConfig['name'],
+                    (int) $publicConfig['port']
+                );
+
+                if (!$publicConn->connect_error) {
+                    error_log('Database private connection failed; using MYSQL_PUBLIC_URL fallback.');
+                    $publicConn->set_charset("utf8mb4");
+                    return $publicConn;
+                }
+
+                error_log("MYSQL_PUBLIC_URL MySQLi fallback failed: " . $publicConn->connect_error . ' (host=' . $publicConfig['host'] . ', port=' . $publicConfig['port'] . ', db=' . $publicConfig['name'] . ', user=' . $publicConfig['user'] . ')');
+            }
         }
 
         return createPdoFallbackConnection();
     } catch (Throwable $e) {
+        if (!empty($publicConfig)) {
+            try {
+                error_log('Database private/PDO connection failed; trying MYSQL_PUBLIC_URL fallback: ' . $e->getMessage());
+                return createPdoConnectionFromConfig(
+                    $publicConfig['host'],
+                    (int) $publicConfig['port'],
+                    $publicConfig['name'],
+                    $publicConfig['user'],
+                    $publicConfig['pass'] ?? ''
+                );
+            } catch (Throwable $fallbackError) {
+                error_log("MYSQL_PUBLIC_URL PDO fallback failed: " . $fallbackError->getMessage() . ' (host=' . $publicConfig['host'] . ', port=' . $publicConfig['port'] . ', db=' . $publicConfig['name'] . ', user=' . $publicConfig['user'] . ')');
+            }
+        }
+
         error_log("Database connection failed: " . $e->getMessage() . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
         die(json_encode([
             'status' => 'error', 
