@@ -118,8 +118,6 @@ if (!preg_match('/^\d{4}$/', (string)$curriculum_year) || $curriculum_year < 201
 
 $prefix = $curriculum_year . '_';
 
-$conn->begin_transaction();
-
 try {
     $programCatalog = pcLoadProgramCatalog($conn, true);
         // Always use the catalog label to ensure consistency with curriculum view queries
@@ -134,7 +132,6 @@ try {
         throw new RuntimeException('Unable to resolve program label for curriculum sync.');
     }
 
-    // Persist program + curriculum-year pair even when there are no courses yet.
     $conn->query(
         "CREATE TABLE IF NOT EXISTS program_curriculum_years (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -145,6 +142,29 @@ try {
             UNIQUE KEY uniq_program_year (program, curriculum_year)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
+
+    $conn->query(
+        "CREATE TABLE IF NOT EXISTS curriculum_courses (
+            id INT(11) NOT NULL AUTO_INCREMENT,
+            curriculum_year INT(4) NOT NULL,
+            program VARCHAR(255) NOT NULL,
+            year_level VARCHAR(50) NOT NULL,
+            semester VARCHAR(50) NOT NULL,
+            course_code VARCHAR(20) NOT NULL,
+            course_title VARCHAR(255) NOT NULL,
+            credit_units_lec INT(2) DEFAULT 0,
+            credit_units_lab INT(2) DEFAULT 0,
+            lect_hrs_lec INT(2) DEFAULT 0,
+            lect_hrs_lab INT(2) DEFAULT 0,
+            pre_requisite VARCHAR(255) DEFAULT 'NONE',
+            PRIMARY KEY (id),
+            KEY curriculum_year (curriculum_year),
+            KEY program (program),
+            KEY course_code (course_code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    );
+
+    $transactionStarted = (bool)$conn->begin_transaction();
 
     $yearStmt = $conn->prepare(
         "INSERT INTO program_curriculum_years (program, curriculum_year)
@@ -220,7 +240,10 @@ try {
 
     if (!empty($conflicts)) {
         echo json_encode(['success' => false, 'message' => 'Conflicting course codes found: ' . implode(', ', $conflicts)]);
-        $conn->rollback();
+        if (!empty($transactionStarted)) {
+            $conn->rollback();
+            $transactionStarted = false;
+        }
         closeDBConnection($conn);
         exit();
     }
@@ -251,7 +274,10 @@ try {
 
     if (!empty($existingDuplicates)) {
         echo json_encode(['success' => false, 'message' => 'Database integrity error: Duplicate course codes already exist: ' . implode(', ', array_values(array_unique($existingDuplicates))) . '. Please contact support to fix these duplicates before proceeding.']);
-        $conn->rollback();
+        if (!empty($transactionStarted)) {
+            $conn->rollback();
+            $transactionStarted = false;
+        }
         closeDBConnection($conn);
         exit();
     }
@@ -684,27 +710,6 @@ try {
         throw new RuntimeException('Duplicate course codes detected for this curriculum year: ' . implode(', ', array_values(array_unique($duplicateCodes))));
     }
 
-    $conn->query(
-        "CREATE TABLE IF NOT EXISTS curriculum_courses (
-            id INT(11) NOT NULL AUTO_INCREMENT,
-            curriculum_year INT(4) NOT NULL,
-            program VARCHAR(255) NOT NULL,
-            year_level VARCHAR(50) NOT NULL,
-            semester VARCHAR(50) NOT NULL,
-            course_code VARCHAR(20) NOT NULL,
-            course_title VARCHAR(255) NOT NULL,
-            credit_units_lec INT(2) DEFAULT 0,
-            credit_units_lab INT(2) DEFAULT 0,
-            lect_hrs_lec INT(2) DEFAULT 0,
-            lect_hrs_lab INT(2) DEFAULT 0,
-            pre_requisite VARCHAR(255) DEFAULT 'NONE',
-            PRIMARY KEY (id),
-            KEY curriculum_year (curriculum_year),
-            KEY program (program),
-            KEY course_code (course_code)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-    );
-
     $canonicalProgramLabelUpper = strtoupper(trim($canonicalProgramLabel));
     $curriculumRowsByCode = [];
     $existingCurriculumRows = [];
@@ -891,16 +896,21 @@ try {
         $syncStmt->close();
     }
 
-    $conn->commit();
+    if (!empty($transactionStarted)) {
+        $conn->commit();
+        $transactionStarted = false;
+    }
     $message = $changed > 0
         ? 'Curriculum changes saved successfully.'
         : 'Curriculum year saved successfully. You can add courses later.';
     echo json_encode(['success' => true, 'message' => $message, 'inserted' => $changed]);
 } catch (Throwable $e) {
-    try {
-        $conn->rollback();
-    } catch (Throwable $rollbackError) {
-        error_log('Curriculum save rollback failed: ' . $rollbackError->getMessage());
+    if (!empty($transactionStarted)) {
+        try {
+            $conn->rollback();
+        } catch (Throwable $rollbackError) {
+            error_log('Curriculum save rollback failed: ' . $rollbackError->getMessage());
+        }
     }
     echo json_encode(['success' => false, 'message' => 'Failed to save curriculum: ' . $e->getMessage()]);
 }
