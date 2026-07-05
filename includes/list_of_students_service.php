@@ -4,7 +4,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 
-function losPrepareFilters(mysqli $conn, string $search, string $selectedProgram, string $selectedBatch): array
+function losPrepareFilters($conn, string $search, string $selectedProgram, string $selectedBatch): array
 {
     $whereParts = [];
     $params = [];
