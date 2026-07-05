@@ -69,7 +69,7 @@ $registration_classification = in_array($registration_classification_raw, ['Old'
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pre - Enrollment Assessment</title>
+  <title>Edit Student Profile</title>
   <link rel="icon" type="image/png" href="../img/cav.png">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
   <style>
