@@ -630,7 +630,19 @@ if (!function_exists('psNormalizeCourseCode')) {
             return '';
         }
 
-        $suffixes = [' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'];
+        $suffixes = [
+            ' CpE-IndT-IT',
+            ' CPE-INDT-IT',
+            ' CS-IndT-IT',
+            ' CS-INDT-IT',
+            ' CS-IT',
+            ' CpE',
+            ' CPE',
+            ' IndT',
+            ' INDT',
+            ' CS',
+            ' IT',
+        ];
         foreach ($suffixes as $suffix) {
             if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
                 return trim(substr($code, 0, -strlen($suffix)));

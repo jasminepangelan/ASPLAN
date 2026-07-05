@@ -32,6 +32,7 @@ function csStudChecklistNormalizeCourseTokenLocal($value): string
     }
 
     $value = preg_replace('/\s+/', ' ', $value);
+    $value = preg_replace('/\s+(?:CPE|CPE|CPe|CpE|CS|INDT|IndT|IT)(?:-(?:CPE|CPE|CPe|CpE|CS|INDT|IndT|IT))+$/i', '', $value);
     $value = preg_replace('/^([A-Z]{2,})(\d+[A-Z]*)$/', '$1 $2', $value);
     $value = preg_replace('/^([A-Z]{2,}(?:\s+[A-Z]{1,})?)[\s-]+(\d+[A-Z]*)$/', '$1 $2', $value);
     return trim((string) $value);
