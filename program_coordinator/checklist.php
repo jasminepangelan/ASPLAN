@@ -29,9 +29,9 @@ if ($isAdmin) {
 
 $roleLabel = $isAdmin ? 'Admin' : 'Program Coordinator';
 $panelTitle = $isAdmin ? 'Admin Panel' : 'Program Coordinator Panel';
-$dashboardHref = $isAdmin ? '../admin/index.php' : 'index.php';
-$listStudentsHref = $isAdmin ? '../admin/list_of_students.php' : 'list_of_students.php';
-$logoutHref = $isAdmin ? '../admin/logout.php' : 'logout.php';
+$dashboardHref = 'index.php';
+$listStudentsHref = 'list_of_students.php';
+$logoutHref = 'logout.php';
 
 // Database connection
 $conn = getDBConnection();
@@ -1309,39 +1309,40 @@ foreach ($checklistRows as $csRow) {
     <div class="admin-info"><?= $coordinatorName; ?> | <?= $roleLabel; ?></div>
   </div>
 
-  <!-- Sidebar Navigation -->
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <h3><?= htmlspecialchars($panelTitle) ?></h3>
+  <?php if ($isAdmin): ?>
+    <?php
+      $activeAdminPage = 'list_of_students';
+      $adminSidebarCollapsed = false;
+      require __DIR__ . '/../includes/admin_sidebar.php';
+    ?>
+  <?php else: ?>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h3><?= htmlspecialchars($panelTitle) ?></h3>
+      </div>
+      <ul class="sidebar-menu">
+        <div class="menu-group">
+          <div class="menu-group-title">Dashboard</div>
+          <li><a href="<?= htmlspecialchars($dashboardHref) ?>"><img src="../pix/home1.png" alt="Dashboard" style="filter: brightness(0) invert(1);"> Dashboard</a></li>
+        </div>
+
+        <div class="menu-group">
+          <div class="menu-group-title">Modules</div>
+          <li><a href="curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
+          <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
+          <li><a href="<?= htmlspecialchars($listStudentsHref) ?>" class="active"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
+          <!-- Program Shift Requests removed from coordinator UI -->
+          <li><a href="profile.php"><img src="../pix/account.png" alt="Profile" style="filter: brightness(0) invert(1);"> Update Profile</a></li>
+        </div>
+
+        <div class="menu-group">
+          <div class="menu-group-title">Account</div>
+          <li><a href="<?= htmlspecialchars($logoutHref) ?>"><img src="../pix/singout.png" alt="Sign Out" style="filter: brightness(0) invert(1);"> Sign Out</a></li>
+        </div>
+      </ul>
     </div>
-    <ul class="sidebar-menu">
-      <div class="menu-group">
-        <div class="menu-group-title">Dashboard</div>
-        <li><a href="<?= htmlspecialchars($dashboardHref) ?>"><img src="../pix/home1.png" alt="Dashboard" style="filter: brightness(0) invert(1);"> Dashboard</a></li>
-      </div>
-      
-      <div class="menu-group">
-        <div class="menu-group-title">Modules</div>
-        <?php if ($isAdmin): ?>
-        <li><a href="../program_coordinator/curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
-        <li><a href="../admin/account_module.php"><img src="../pix/account.png" alt="User Management" style="filter: brightness(0) invert(1);"> User Management</a></li>
-        <li><a href="<?= htmlspecialchars($listStudentsHref) ?>" class="active"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
-        <!-- Program Shift Requests removed from coordinator UI -->
-        <?php else: ?>
-        <li><a href="curriculum_management.php"><img src="../pix/curr.png" alt="Curriculum" style="filter: brightness(0) invert(1);"> Curriculum Management</a></li>
-        <li><a href="adviser_management.php"><img src="../pix/account.png" alt="Advisers" style="filter: brightness(0) invert(1);"> Adviser Management</a></li>
-        <li><a href="<?= htmlspecialchars($listStudentsHref) ?>" class="active"><img src="../pix/checklist.png" alt="Students" style="filter: brightness(0) invert(1);"> List of Students</a></li>
-        <!-- Program Shift Requests removed from coordinator UI -->
-        <li><a href="profile.php"><img src="../pix/account.png" alt="Profile" style="filter: brightness(0) invert(1);"> Update Profile</a></li>
-        <?php endif; ?>
-      </div>
-      
-      <div class="menu-group">
-        <div class="menu-group-title">Account</div>
-        <li><a href="<?= htmlspecialchars($logoutHref) ?>"><img src="../pix/singout.png" alt="Sign Out" style="filter: brightness(0) invert(1);"> Sign Out</a></li>
-      </div>
-    </ul>
-  </div>
+  <?php endif; ?>
 
   <!-- Main Content -->
   <div class="main-content">

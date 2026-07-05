@@ -1212,7 +1212,7 @@ try {
                                     <td data-label="Actions">
                                         <div class="actions-wrap">
                                             <a href="account_management.php?student_id=<?php echo urlencode($row['student_number']); ?>" class="action-btn profile-btn">Profile</a>
-                                            <a href="../program_coordinator/checklist.php?student_id=<?php echo urlencode($row['student_number']); ?>" class="action-btn secondary">Checklist</a>
+                                            <a href="checklist.php?student_id=<?php echo urlencode($row['student_number']); ?>" class="action-btn secondary">Checklist</a>
                                             <a href="study_plan_view.php?student_id=<?php echo urlencode($row['student_number']); ?>" class="action-btn tertiary">Study Plan</a>
                                         </div>
                                     </td>
