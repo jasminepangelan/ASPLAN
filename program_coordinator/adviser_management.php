@@ -1380,6 +1380,19 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
         return array_values(array_keys($keys));
     }
 
+    function openCoordinatorAdviserManagementPdo(): PDO {
+        $connection = createPdoFallbackConnection();
+        if ($connection instanceof LegacyDbConnection) {
+            return $connection->getPdo();
+        }
+
+        if ($connection instanceof PDO) {
+            return $connection;
+        }
+
+        throw new RuntimeException('Unable to open PDO database connection.');
+    }
+
     function resolveScopedSelectedProgram($requestedProgram, array $allowedPrograms) {
         if (empty($allowedPrograms)) {
             return '';
@@ -1431,82 +1444,80 @@ $coordinator_name = isset($_SESSION['full_name']) ? htmlspecialchars((string)$_S
 
     if (!$bridgeLoaded) {
         try {
-        $pdoHost = strtolower($host) === 'localhost' ? '127.0.0.1' : $host;
-        $conn = new PDO("mysql:host={$pdoHost};port={$port};dbname={$db};charset=utf8mb4", $user, $pass);
-        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $conn = openCoordinatorAdviserManagementPdo();
 
-        $coordinatorPrograms = resolveCoordinatorProgramKeys($conn, (string)$_SESSION['username']);
-        $selectedProgram = resolveScopedSelectedProgram((string)($_GET['program'] ?? ''), $coordinatorPrograms);
-        foreach ($coordinatorPrograms as $programKey) {
-            $availablePrograms[$programKey] = getProgramLabelFromKey($programKey);
-        }
+            $coordinatorPrograms = resolveCoordinatorProgramKeys($conn, (string)$_SESSION['username']);
+            $selectedProgram = resolveScopedSelectedProgram((string)($_GET['program'] ?? ''), $coordinatorPrograms);
+            foreach ($coordinatorPrograms as $programKey) {
+                $availablePrograms[$programKey] = getProgramLabelFromKey($programKey);
+            }
 
-        if ($selectedProgram !== '') {
-            $batchQuery = "SELECT DISTINCT LEFT(student_number, 4) as batch, TRIM(program) AS program
-                           FROM student_info
-                           WHERE student_number IS NOT NULL
-                             AND student_number != ''
-                           ORDER BY batch DESC";
-            $batchStmt = $conn->prepare($batchQuery);
-            $batchStmt->execute();
-            while ($batchRow = $batchStmt->fetch(PDO::FETCH_ASSOC)) {
-                if (normalizeProgramKey($batchRow['program']) === $selectedProgram) {
-                    $batches[] = $batchRow['batch'];
+            if ($selectedProgram !== '') {
+                $batchQuery = "SELECT DISTINCT LEFT(student_number, 4) as batch, TRIM(program) AS program
+                               FROM student_info
+                               WHERE student_number IS NOT NULL
+                                 AND student_number != ''
+                               ORDER BY batch DESC";
+                $batchStmt = $conn->prepare($batchQuery);
+                $batchStmt->execute();
+                while ($batchRow = $batchStmt->fetch(PDO::FETCH_ASSOC)) {
+                    if (normalizeProgramKey($batchRow['program']) === $selectedProgram) {
+                        $batches[] = $batchRow['batch'];
+                    }
+                }
+
+                // Prevent duplicate batch rows when multiple program label variants
+                // normalize to the same selected program.
+                if (!empty($batches)) {
+                    $batches = array_values(array_unique($batches, SORT_STRING));
+                    rsort($batches, SORT_STRING);
+                }
+
+            }
+
+            // Filter advisers by selected program using PHP normalization
+            $adviserQuery = "SELECT id, CONCAT(first_name, ' ', last_name) as full_name, username, TRIM(program) AS program
+                             FROM adviser
+                             WHERE program IS NOT NULL AND TRIM(program) != ''
+                             ORDER BY first_name, last_name";
+            $adviserStmt = $conn->prepare($adviserQuery);
+            $adviserStmt->execute();
+            while ($adviserRow = $adviserStmt->fetch(PDO::FETCH_ASSOC)) {
+                if ($selectedProgram === '' || normalizeProgramKey($adviserRow['program']) === $selectedProgram) {
+                    $advisers[] = [
+                        'id' => $adviserRow['id'],
+                        'full_name' => $adviserRow['full_name'],
+                        'username' => $adviserRow['username'],
+                        'program_key' => normalizeProgramKey($adviserRow['program'])
+                    ];
                 }
             }
 
-            // Prevent duplicate batch rows when multiple program label variants
-            // normalize to the same selected program.
-            if (!empty($batches)) {
-                $batches = array_values(array_unique($batches, SORT_STRING));
-                rsort($batches, SORT_STRING);
-            }
+            $assignmentQuery = "SELECT ab.batch, a.username, CONCAT(a.first_name, ' ', a.last_name) as full_name, TRIM(a.program) AS program
+                                FROM adviser_batch ab
+                                INNER JOIN adviser a ON ab.adviser_id = a.id";
+            $assignmentQuery .= " ORDER BY ab.batch DESC";
+            $assignmentStmt = $conn->prepare($assignmentQuery);
+            $assignmentStmt->execute();
 
-        }
+            while ($row = $assignmentStmt->fetch(PDO::FETCH_ASSOC)) {
+                if ($selectedProgram !== '' && normalizeProgramKey($row['program']) !== $selectedProgram) {
+                    continue;
+                }
 
-        // Filter advisers by selected program using PHP normalization
-        $adviserQuery = "SELECT id, CONCAT(first_name, ' ', last_name) as full_name, username, TRIM(program) AS program
-                         FROM adviser 
-                         WHERE program IS NOT NULL AND TRIM(program) != ''
-                         ORDER BY first_name, last_name";
-        $adviserStmt = $conn->prepare($adviserQuery);
-        $adviserStmt->execute();
-        while ($adviserRow = $adviserStmt->fetch(PDO::FETCH_ASSOC)) {
-            if ($selectedProgram === '' || normalizeProgramKey($adviserRow['program']) === $selectedProgram) {
-                $advisers[] = [
-                    'id' => $adviserRow['id'],
-                    'full_name' => $adviserRow['full_name'],
-                    'username' => $adviserRow['username'],
-                    'program_key' => normalizeProgramKey($adviserRow['program'])
+                $batch = (string)$row['batch'];
+                if (!isset($batchAssignments[$batch])) {
+                    $batchAssignments[$batch] = [];
+                }
+
+                $batchAssignments[$batch][] = [
+                    'username' => $row['username'],
+                    'full_name' => htmlspecialchars($row['full_name'])
                 ];
             }
+        } catch (Throwable $e) {
+            $dbError = "Database error: " . htmlspecialchars($e->getMessage());
         }
-
-        $assignmentQuery = "SELECT ab.batch, a.username, CONCAT(a.first_name, ' ', a.last_name) as full_name, TRIM(a.program) AS program
-                            FROM adviser_batch ab
-                            INNER JOIN adviser a ON ab.adviser_id = a.id";
-        $assignmentQuery .= " ORDER BY ab.batch DESC";
-        $assignmentStmt = $conn->prepare($assignmentQuery);
-        $assignmentStmt->execute();
-
-        while ($row = $assignmentStmt->fetch(PDO::FETCH_ASSOC)) {
-            if ($selectedProgram !== '' && normalizeProgramKey($row['program']) !== $selectedProgram) {
-                continue;
-            }
-
-            $batch = (string)$row['batch'];
-            if (!isset($batchAssignments[$batch])) {
-                $batchAssignments[$batch] = [];
-            }
-
-            $batchAssignments[$batch][] = [
-                'username' => $row['username'],
-                'full_name' => htmlspecialchars($row['full_name'])
-            ];
-        }
-    } catch (PDOException $e) {
-        $dbError = "Database error: " . htmlspecialchars($e->getMessage());
-    }
     }
     ?>
 
