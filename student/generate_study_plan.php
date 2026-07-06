@@ -464,7 +464,7 @@ class StudyPlanGenerator {
         $tableSafe = str_replace('`', '``', $table);
         $columnSafe = str_replace(['`', "'"], ['', "''"], $column);
         $result = $this->conn->query("SHOW COLUMNS FROM `{$tableSafe}` LIKE '{$columnSafe}'");
-        $exists = ($result instanceof mysqli_result) && $result->num_rows > 0;
+        $exists = $result && isset($result->num_rows) && (int)$result->num_rows > 0;
         if ($result instanceof mysqli_result) {
             $result->close();
         }

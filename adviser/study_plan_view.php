@@ -81,6 +81,19 @@ function aspvIsNonCreditStudyPlanCourse(array $course): bool
         || strpos($courseTitle, 'NON CREDIT') !== false;
 }
 
+function aspvGetCountedStudyPlanUnits(array $course): float
+{
+    if (aspvIsNonCreditStudyPlanCourse($course)) {
+        return 0.0;
+    }
+
+    if (isset($course['units'])) {
+        return (float)($course['units'] ?? 0);
+    }
+
+    return (float)($course['credit_unit_lec'] ?? 0) + (float)($course['credit_unit_lab'] ?? 0);
+}
+
 function aspvFormatStudyPlanMeasure($value): string
 {
     $number = (float)($value ?? 0);
@@ -364,7 +377,9 @@ if ($admission_year === null) {
 $full_name = trim(($student['last_name'] ?? '') . ', ' . ($student['first_name'] ?? '') . ' ' . ($student['middle_name'] ?? ''));
 
 $display_terms = [];
+$completed_term_keys = [];
 foreach ($completed_terms as $term) {
+    $completed_term_keys[((string)($term['year'] ?? '')) . '|' . ((string)($term['semester'] ?? ''))] = true;
     $display_terms[] = [
         'year' => $term['year'],
         'semester' => $term['semester'],
@@ -376,7 +391,9 @@ foreach ($completed_terms as $term) {
     ];
 }
 
+$future_term_keys = [];
 foreach ($study_plan as $term) {
+    $future_term_keys[((string)($term['year'] ?? '')) . '|' . ((string)($term['semester'] ?? ''))] = true;
     $display_terms[] = [
         'year' => $term['year'] ?? '',
         'semester' => $term['semester'] ?? '',
@@ -389,6 +406,88 @@ foreach ($study_plan as $term) {
         'is_completed_term' => false,
     ];
 }
+
+$partial_terms = [];
+foreach ($ay_courses_by_term as $term_key => $term_data) {
+    if (isset($completed_term_keys[$term_key]) || isset($future_term_keys[$term_key])) {
+        continue;
+    }
+
+    $courses = [];
+    foreach (($term_data['completed'] ?? []) as $course) {
+        $courses[] = [
+            'code' => $course['code'] ?? '',
+            'title' => $course['title'] ?? '',
+            'units' => $course['units'] ?? 0,
+            'credit_unit_lec' => $course['credit_unit_lec'] ?? $course['units'] ?? 0,
+            'credit_unit_lab' => $course['credit_unit_lab'] ?? 0,
+            'lect_hrs_lec' => $course['lect_hrs_lec'] ?? 0,
+            'lect_hrs_lab' => $course['lect_hrs_lab'] ?? 0,
+            'prerequisite' => $course['prerequisite'] ?? 'None',
+            'status' => 'Passed',
+            'status_variant' => 'passed',
+            'grade' => $course['grade'] ?? '',
+        ];
+    }
+
+    foreach (($term_data['uncomplete'] ?? []) as $course) {
+        $reason = trim((string)($course['reason'] ?? 'Not Yet Taken'));
+        $courses[] = [
+            'code' => $course['code'] ?? '',
+            'title' => $course['title'] ?? '',
+            'units' => $course['units'] ?? 0,
+            'credit_unit_lec' => $course['credit_unit_lec'] ?? $course['units'] ?? 0,
+            'credit_unit_lab' => $course['credit_unit_lab'] ?? 0,
+            'lect_hrs_lec' => $course['lect_hrs_lec'] ?? 0,
+            'lect_hrs_lab' => $course['lect_hrs_lab'] ?? 0,
+            'prerequisite' => $course['prerequisite'] ?? 'None',
+            'status' => $reason,
+            'status_variant' => strtolower(str_replace(' ', '-', $reason)),
+            'grade' => $course['grade'] ?? '',
+        ];
+    }
+
+    if (empty($courses)) {
+        continue;
+    }
+
+    $partial_terms[] = [
+        'year' => (string)($term_data['year'] ?? ''),
+        'semester' => (string)($term_data['semester'] ?? ''),
+        'courses' => $courses,
+        'total_units' => (float) array_reduce($courses, static function ($carry, $course) {
+            return $carry + aspvGetCountedStudyPlanUnits((array)$course);
+        }, 0),
+        'max_units' => null,
+        'retention_status' => 'None',
+        'skipped' => false,
+        'skip_reason' => '',
+        'is_completed_term' => false,
+        'is_partial_term' => true,
+    ];
+}
+
+if (!empty($partial_terms)) {
+    $display_terms = array_merge($display_terms, $partial_terms);
+}
+
+usort($display_terms, static function (array $left, array $right): int {
+    [$left_year, $left_semester] = aspvDisplayTermOrder((string)($left['year'] ?? ''), (string)($left['semester'] ?? ''));
+    [$right_year, $right_semester] = aspvDisplayTermOrder((string)($right['year'] ?? ''), (string)($right['semester'] ?? ''));
+
+    if ($left_year !== $right_year) {
+        return $left_year <=> $right_year;
+    }
+
+    if ($left_semester !== $right_semester) {
+        return $left_semester <=> $right_semester;
+    }
+
+    $left_weight = !empty($left['is_completed_term']) ? 0 : (!empty($left['is_partial_term']) ? 1 : 2);
+    $right_weight = !empty($right['is_completed_term']) ? 0 : (!empty($right['is_partial_term']) ? 1 : 2);
+
+    return $left_weight <=> $right_weight;
+});
 
 $last_planned_term = null;
 $remaining_semesters = 0;
