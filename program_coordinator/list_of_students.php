@@ -108,7 +108,7 @@ function normalizeBatchPrefix($batchRaw) {
     return '';
 }
 
-function resolveCoordinatorProgramKeys(mysqli $conn, $username) {
+function resolveCoordinatorProgramKeys($conn, $username) {
     $username = trim((string)$username);
     if ($username === '') {
         return [];
@@ -161,7 +161,7 @@ function resolveCoordinatorProgramKeys(mysqli $conn, $username) {
     return [];
 }
 
-function loadCoordinatorCandidateRows(mysqli $conn, string $search, string $selectedBatch): array
+function loadCoordinatorCandidateRows($conn, string $search, string $selectedBatch): array
 {
     $whereParts = ["TRIM(program) IS NOT NULL"];
     $params = [];
@@ -271,7 +271,9 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
 
 if (!$bridgeLoaded) {
     $conn = getDBConnection();
-    $conn->set_charset('utf8mb4');
+    if (method_exists($conn, 'set_charset')) {
+        $conn->set_charset('utf8mb4');
+    }
     $coordinatorPrograms = resolveCoordinatorProgramKeys($conn, $_SESSION['username'] ?? '');
     $allScopedRows = [];
     if (!empty($coordinatorPrograms)) {
