@@ -107,8 +107,50 @@ if (!function_exists('amExpandProgramScopeKeys')) {
     }
 }
 
+if (!function_exists('amFetchAssocRows')) {
+    function amFetchAssocRows($conn, string $sql): array
+    {
+        $result = $conn->query($sql);
+        if (!$result) {
+            return [];
+        }
+
+        if ($result instanceof PDOStatement) {
+            return $result->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        $rows = [];
+        if (method_exists($result, 'fetch_assoc')) {
+            while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+            }
+            return $rows;
+        }
+
+        if (method_exists($result, 'fetch')) {
+            while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
+    }
+}
+
+if (!function_exists('amFetchColumnValues')) {
+    function amFetchColumnValues($conn, string $sql, string $column): array
+    {
+        $values = [];
+        foreach (amFetchAssocRows($conn, $sql) as $row) {
+            $values[] = $row[$column] ?? null;
+        }
+
+        return $values;
+    }
+}
+
 if (!function_exists('amLoadAdviserManagementData')) {
-    function amLoadAdviserManagementData(PDO $conn, string $selectedProgram): array
+    function amLoadAdviserManagementData($conn, string $selectedProgram): array
     {
         $availablePrograms = [];
         $batches = [];
@@ -121,9 +163,7 @@ if (!function_exists('amLoadAdviserManagementData')) {
                          WHERE program IS NOT NULL
                            AND TRIM(program) != ''
                          ORDER BY program ASC";
-        $programStmt = $conn->prepare($programQuery);
-        $programStmt->execute();
-        $rawPrograms = $programStmt->fetchAll(PDO::FETCH_COLUMN);
+        $rawPrograms = amFetchColumnValues($conn, $programQuery, 'program');
 
         $availableProgramMap = [];
         foreach ($rawPrograms as $rawProgram) {
@@ -159,9 +199,7 @@ if (!function_exists('amLoadAdviserManagementData')) {
                            WHERE student_number IS NOT NULL
                              AND student_number != ''
                            ORDER BY batch DESC";
-            $batchStmt = $conn->prepare($batchQuery);
-            $batchStmt->execute();
-            while ($batchRow = $batchStmt->fetch(PDO::FETCH_ASSOC)) {
+            foreach (amFetchAssocRows($conn, $batchQuery) as $batchRow) {
                 if (in_array(amNormalizeProgramKey((string)$batchRow['program']), $scopedProgramKeys, true)) {
                     $batches[] = $batchRow['batch'];
                 }
@@ -178,9 +216,7 @@ if (!function_exists('amLoadAdviserManagementData')) {
                                        WHERE student_number IS NOT NULL
                                          AND student_number != ''
                                        ORDER BY batch DESC";
-                $fallbackBatchStmt = $conn->prepare($fallbackBatchQuery);
-                $fallbackBatchStmt->execute();
-                while ($fallbackRow = $fallbackBatchStmt->fetch(PDO::FETCH_ASSOC)) {
+                foreach (amFetchAssocRows($conn, $fallbackBatchQuery) as $fallbackRow) {
                     $batches[] = $fallbackRow['batch'];
                 }
                 if (!empty($batches)) {
@@ -195,9 +231,7 @@ if (!function_exists('amLoadAdviserManagementData')) {
                          FROM adviser
                          WHERE program IS NOT NULL AND TRIM(program) != ''
                          ORDER BY first_name, last_name";
-        $adviserStmt = $conn->prepare($adviserQuery);
-        $adviserStmt->execute();
-        while ($adviserRow = $adviserStmt->fetch(PDO::FETCH_ASSOC)) {
+        foreach (amFetchAssocRows($conn, $adviserQuery) as $adviserRow) {
             if ($selectedProgram === '' || in_array(amNormalizeProgramKey((string)$adviserRow['program']), $scopedProgramKeys, true)) {
                 $advisers[] = [
                     'id' => $adviserRow['id'],
@@ -212,10 +246,8 @@ if (!function_exists('amLoadAdviserManagementData')) {
                             FROM adviser_batch ab
                             INNER JOIN adviser a ON ab.adviser_id = a.id
                             ORDER BY ab.batch DESC";
-        $assignmentStmt = $conn->prepare($assignmentQuery);
-        $assignmentStmt->execute();
 
-        while ($row = $assignmentStmt->fetch(PDO::FETCH_ASSOC)) {
+        foreach (amFetchAssocRows($conn, $assignmentQuery) as $row) {
             if ($selectedProgram !== '' && !in_array(amNormalizeProgramKey((string)$row['program']), $scopedProgramKeys, true)) {
                 continue;
             }
@@ -243,7 +275,7 @@ if (!function_exists('amLoadAdviserManagementData')) {
 }
 
 if (!function_exists('amBuildDebugHtml')) {
-    function amBuildDebugHtml(PDO $conn, string $selectedProgram, array $availablePrograms, array $advisers, array $batches): string
+    function amBuildDebugHtml($conn, string $selectedProgram, array $availablePrograms, array $advisers, array $batches): string
     {
         $html = '<div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; margin: 20px; border-radius: 8px; font-family: monospace; font-size: 12px;">';
         $html .= '<h3>DEBUG INFO</h3>';
@@ -255,8 +287,7 @@ if (!function_exists('amBuildDebugHtml')) {
         }
 
         $html .= '<strong>Raw Adviser Programs:</strong><br>';
-        $debugStmt = $conn->query("SELECT DISTINCT TRIM(program) as prog FROM adviser WHERE program IS NOT NULL ORDER BY prog");
-        while ($row = $debugStmt->fetch(PDO::FETCH_ASSOC)) {
+        foreach (amFetchAssocRows($conn, "SELECT DISTINCT TRIM(program) as prog FROM adviser WHERE program IS NOT NULL ORDER BY prog") as $row) {
             $norm = amNormalizeProgramKey((string)$row['prog']);
             $html .= '&nbsp;&nbsp;' . htmlspecialchars((string)$row['prog']) . ' -> normalized: ' . htmlspecialchars($norm) . '<br>';
         }
