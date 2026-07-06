@@ -130,7 +130,24 @@ function normalizeCurriculumYear(string $value): string {
 }
 
 function normalizeDisplayCourseCode(string $value): string {
-  return preg_replace('/\s+/', ' ', trim($value)) ?: '';
+  $code = preg_replace('/\s+/', ' ', trim($value)) ?: '';
+  if ($code === '') {
+    return '';
+  }
+
+  if (function_exists('psNormalizeCourseCode')) {
+    $code = psNormalizeCourseCode($code);
+  }
+
+  // Legacy curriculum keys sometimes append program sharing markers to the
+  // actual course code, e.g. "GNED 05 CS-IndT-IT" or "DCIT 22 IT".
+  $code = preg_replace(
+    '/\s+(?:CPE|CPe|CpE|CS|INDT|IndT|IT)(?:-(?:CPE|CPe|CpE|CS|INDT|IndT|IT|I|IND))*$/i',
+    '',
+    trim((string)$code)
+  );
+
+  return preg_replace('/\s+/', ' ', trim((string)$code)) ?: '';
 }
 
 function splitProgramTokens(string $value): array {
