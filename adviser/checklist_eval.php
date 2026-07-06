@@ -5,7 +5,10 @@ session_start();
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
-function aceLoadStudentsFromAssignedScope(mysqli $conn, array $batches, ?string $adviserProgram, string $search, int $recordsPerPage, int $currentPage): array
+/**
+ * @param mysqli|LegacyDbConnection $conn
+ */
+function aceLoadStudentsFromAssignedScope($conn, array $batches, ?string $adviserProgram, string $search, int $recordsPerPage, int $currentPage): array
 {
     $recordsPerPage = max(1, $recordsPerPage);
     $currentPage = max(1, $currentPage);

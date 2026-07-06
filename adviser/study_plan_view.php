@@ -6,7 +6,10 @@ require_once __DIR__ . '/../student/generate_study_plan.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/study_plan_course_addition_service.php';
 
-function aspvLoadStudentWithinAdviserScope(mysqli $conn, string $studentId, string $adviserProgram, array $batches): ?array
+/**
+ * @param mysqli|LegacyDbConnection $conn
+ */
+function aspvLoadStudentWithinAdviserScope($conn, string $studentId, string $adviserProgram, array $batches): ?array
 {
     if (trim($studentId) === '' || trim($adviserProgram) === '' || empty($batches)) {
         return null;
