@@ -6,6 +6,84 @@ require_once __DIR__ . '/../student/generate_study_plan.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/study_plan_course_addition_service.php';
 
+if (!isset($_SESSION['id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$adviserStudyPlanStudentId = trim((string)($_GET['student_id'] ?? ''));
+if ($adviserStudyPlanStudentId === '') {
+    die('Invalid student ID.');
+}
+
+$adviserStudyPlanConn = getDBConnection();
+if (method_exists($adviserStudyPlanConn, 'set_charset')) {
+    $adviserStudyPlanConn->set_charset('utf8mb4');
+}
+
+$adviserStudyPlanProgram = '';
+$adviserStudyPlanAdviserId = (int)$_SESSION['id'];
+$adviserStudyPlanAdviserStmt = $adviserStudyPlanConn->prepare('SELECT program FROM adviser WHERE id = ? LIMIT 1');
+if ($adviserStudyPlanAdviserStmt) {
+    $adviserStudyPlanAdviserStmt->bind_param('i', $adviserStudyPlanAdviserId);
+    $adviserStudyPlanAdviserStmt->execute();
+    $adviserStudyPlanAdviserResult = $adviserStudyPlanAdviserStmt->get_result();
+    $adviserStudyPlanAdviserRow = $adviserStudyPlanAdviserResult ? $adviserStudyPlanAdviserResult->fetch_assoc() : null;
+    $adviserStudyPlanProgram = trim((string)($adviserStudyPlanAdviserRow['program'] ?? ''));
+    $adviserStudyPlanAdviserStmt->close();
+}
+
+$adviserStudyPlanBatches = [];
+$adviserStudyPlanBatchStmt = $adviserStudyPlanConn->prepare('SELECT batch FROM adviser_batch WHERE adviser_id = ? ORDER BY batch ASC');
+if ($adviserStudyPlanBatchStmt) {
+    $adviserStudyPlanBatchStmt->bind_param('i', $adviserStudyPlanAdviserId);
+    $adviserStudyPlanBatchStmt->execute();
+    $adviserStudyPlanBatchResult = $adviserStudyPlanBatchStmt->get_result();
+    while ($adviserStudyPlanBatchResult && ($adviserStudyPlanBatchRow = $adviserStudyPlanBatchResult->fetch_assoc())) {
+        $adviserStudyPlanBatch = trim((string)($adviserStudyPlanBatchRow['batch'] ?? ''));
+        if ($adviserStudyPlanBatch !== '') {
+            $adviserStudyPlanBatches[] = $adviserStudyPlanBatch;
+        }
+    }
+    $adviserStudyPlanBatchStmt->close();
+}
+
+if ($adviserStudyPlanProgram === '' || empty($adviserStudyPlanBatches)) {
+    closeDBConnection($adviserStudyPlanConn);
+    die('Access denied. Adviser batch/program assignment is missing.');
+}
+
+$adviserStudyPlanBatchPlaceholders = implode(',', array_fill(0, count($adviserStudyPlanBatches), '?'));
+$adviserStudyPlanStudentStmt = $adviserStudyPlanConn->prepare(
+    "SELECT student_number
+     FROM student_info
+     WHERE student_number = ?
+       AND program = ?
+       AND LEFT(student_number, 4) IN ($adviserStudyPlanBatchPlaceholders)
+     LIMIT 1"
+);
+if (!$adviserStudyPlanStudentStmt) {
+    closeDBConnection($adviserStudyPlanConn);
+    die('Unable to verify adviser access.');
+}
+
+$adviserStudyPlanParams = array_merge([$adviserStudyPlanStudentId, $adviserStudyPlanProgram], $adviserStudyPlanBatches);
+$adviserStudyPlanTypes = 'ss' . str_repeat('s', count($adviserStudyPlanBatches));
+$adviserStudyPlanStudentStmt->bind_param($adviserStudyPlanTypes, ...$adviserStudyPlanParams);
+$adviserStudyPlanStudentStmt->execute();
+$adviserStudyPlanStudentResult = $adviserStudyPlanStudentStmt->get_result();
+$adviserStudyPlanAllowed = $adviserStudyPlanStudentResult && (int)($adviserStudyPlanStudentResult->num_rows ?? 0) > 0;
+$adviserStudyPlanStudentStmt->close();
+closeDBConnection($adviserStudyPlanConn);
+
+if (!$adviserStudyPlanAllowed) {
+    die('Access denied. Student is not in your assigned batch/program.');
+}
+
+define('ASPLAN_ADVISER_STUDY_PLAN_VIEW', true);
+require __DIR__ . '/../student/study_plan.php';
+exit;
+
 /**
  * @param mysqli|LegacyDbConnection $conn
  */

@@ -31,8 +31,12 @@ $is_admin_reference_view = (isset($_SESSION['admin_id']) || isset($_SESSION['adm
             && trim((string)$_GET['student_id']) !== ''
         )
     );
+$is_adviser_reference_view = isset($_SESSION['id'])
+    && defined('ASPLAN_ADVISER_STUDY_PLAN_VIEW')
+    && ASPLAN_ADVISER_STUDY_PLAN_VIEW;
+$is_study_plan_reference_view = $is_admin_reference_view || $is_adviser_reference_view;
 
-if (!isset($_SESSION['student_id']) && !$is_admin_reference_view) {
+if (!isset($_SESSION['student_id']) && !$is_study_plan_reference_view) {
     header("Location: ../index.php");
     exit();
 }
@@ -43,11 +47,13 @@ $conn = getDBConnection();
 // Fetch current student data from database using session student_id or admin-selected student_id.
 $student_id = $is_admin_reference_view
     ? trim((string)($adminStudyPlanStudentId ?? $_GET['student_id'] ?? ''))
-    : (string)$_SESSION['student_id'];
-$last_name = $is_admin_reference_view ? '' : htmlspecialchars($_SESSION['last_name'] ?? '');
-$first_name = $is_admin_reference_view ? '' : htmlspecialchars($_SESSION['first_name'] ?? '');
-$middle_name = $is_admin_reference_view ? '' : htmlspecialchars($_SESSION['middle_name'] ?? '');
-$picture = $is_admin_reference_view
+    : ($is_adviser_reference_view
+        ? trim((string)($adviserStudyPlanStudentId ?? $_GET['student_id'] ?? ''))
+        : (string)$_SESSION['student_id']);
+$last_name = $is_study_plan_reference_view ? '' : htmlspecialchars($_SESSION['last_name'] ?? '');
+$first_name = $is_study_plan_reference_view ? '' : htmlspecialchars($_SESSION['first_name'] ?? '');
+$middle_name = $is_study_plan_reference_view ? '' : htmlspecialchars($_SESSION['middle_name'] ?? '');
+$picture = $is_study_plan_reference_view
     ? resolveScopedPictureSrc('', '../', 'pix/anonymous.jpg')
     : resolveScopedPictureSrc($_SESSION['picture'] ?? '', '../', 'pix/anonymous.jpg');
 $admission_year = null;
@@ -116,8 +122,8 @@ if (empty($program)) {
 }
 
 // Keep the student's own session aligned with latest student program from DB/bridge.
-// Admin reference view must not overwrite the admin session with student data.
-if (!$is_admin_reference_view) {
+// Reference views must not overwrite the actor session with student data.
+if (!$is_study_plan_reference_view) {
     $_SESSION['program'] = $program;
     $_SESSION['curriculum_year'] = $curriculum_year;
 }
@@ -804,14 +810,22 @@ $currentEnrollmentClientPayload = json_encode([
     'savedEnrollment' => $saved_current_enrollment,
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-$studyPlanPageTitle = $is_admin_reference_view ? 'Study Plan - Admin' : 'Study Plan - Student';
-$studyPlanPanelTitle = $is_admin_reference_view ? 'Admin Panel' : 'Student Panel';
+$studyPlanPageTitle = $is_admin_reference_view
+    ? 'Study Plan - Admin'
+    : ($is_adviser_reference_view ? 'Study Plan - Adviser' : 'Study Plan - Student');
+$studyPlanPanelTitle = $is_admin_reference_view
+    ? 'Admin Panel'
+    : ($is_adviser_reference_view ? 'Adviser Panel' : 'Student Panel');
 $studyPlanHeaderName = $is_admin_reference_view
     ? trim((string)($_SESSION['admin_full_name'] ?? $_SESSION['admin_username'] ?? $_SESSION['admin_id'] ?? 'Admin'))
-    : trim($last_name . ', ' . $first_name . (!empty($middle_name) ? ' ' . $middle_name : ''));
-$studyPlanHeaderRole = $is_admin_reference_view ? 'Admin' : 'Student';
-$studyPlanHeaderImage = $is_admin_reference_view ? '../img/cav.png' : $picture;
-$studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHeaderName . ' | ' . $studyPlanHeaderRole;
+    : ($is_adviser_reference_view
+        ? trim((string)($_SESSION['full_name'] ?? $_SESSION['username'] ?? $_SESSION['id'] ?? 'Adviser'))
+        : trim($last_name . ', ' . $first_name . (!empty($middle_name) ? ' ' . $middle_name : '')));
+$studyPlanHeaderRole = $is_admin_reference_view ? 'Admin' : ($is_adviser_reference_view ? 'Adviser' : 'Student');
+$studyPlanHeaderImage = $is_study_plan_reference_view ? '../img/cav.png' : $picture;
+$studyPlanHeaderLabel = $is_admin_reference_view
+    ? 'Admin Panel'
+    : ($is_adviser_reference_view ? $studyPlanHeaderName . ' | Adviser' : $studyPlanHeaderName . ' | ' . $studyPlanHeaderRole);
 ?>
 
 <!DOCTYPE html>
@@ -824,7 +838,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
     <meta http-equiv="Expires" content="0">
     <title><?= htmlspecialchars($studyPlanPageTitle) ?></title>
     <link rel="icon" type="image/png" href="../img/cav.png">
-    <?php if (!$is_admin_reference_view): ?>
+    <?php if (!$is_study_plan_reference_view): ?>
         <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-study-plan-workspace.jsx']) ?>
     <?php endif; ?>
     <style>
@@ -2051,7 +2065,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
             transform: translateY(-1px);
         }
 
-        <?php if ($is_admin_reference_view): ?>
+        <?php if ($is_study_plan_reference_view): ?>
         body {
             padding-top: 45px;
         }
@@ -2182,7 +2196,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
             <img src="../img/cav.png" alt="CvSU Logo" style="height: 32px; width: auto; margin-right: 12px; cursor: pointer;" onclick="toggleSidebar()">
             <span style="color: #d9e441; font-weight: 800;">ASPLAN</span>
         </div>
-        <?php if ($is_admin_reference_view): ?>
+        <?php if ($is_study_plan_reference_view): ?>
             <div class="admin-info"><?= htmlspecialchars($studyPlanHeaderLabel) ?></div>
         <?php else: ?>
             <div class="student-info">
@@ -2198,6 +2212,29 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
         $adminSidebarCollapsed = false;
         require __DIR__ . '/../includes/admin_sidebar.php';
         ?>
+    <?php elseif ($is_adviser_reference_view): ?>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3><?= htmlspecialchars($studyPlanPanelTitle) ?></h3>
+        </div>
+        <ul class="sidebar-menu">
+            <div class="menu-group">
+                <div class="menu-group-title">Dashboard</div>
+                <li><a href="index.php"><img src="../pix/home1.png" alt="Home"> Home</a></li>
+            </div>
+
+            <div class="menu-group">
+                <div class="menu-group-title">Students</div>
+                <li><a href="checklist_eval.php"><img src="../pix/checklist.png" alt="Student List"> Student List</a></li>
+                <li><a href="study_plan_list.php" class="active"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan List</a></li>
+            </div>
+
+            <div class="menu-group">
+                <div class="menu-group-title">Account</div>
+                <li><a href="logout.php"><img src="../pix/singout.png" alt="Sign Out"> Sign Out</a></li>
+            </div>
+        </ul>
+    </div>
     <?php else: ?>
     <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
@@ -2227,7 +2264,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
-        <?php if (!$is_admin_reference_view): ?>
+        <?php if (!$is_study_plan_reference_view): ?>
         <div data-student-shell="<?= $studentShellPayload ?>"></div>
         <div data-student-study-plan-workspace="<?= $studentStudyPlanWorkspacePayload ?>"></div>
         <?php endif; ?>
@@ -2236,6 +2273,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>
         </div>
 
+        <?php if (!$is_study_plan_reference_view): ?>
         <section class="current-enrollment-summary" aria-labelledby="currentEnrollmentSummaryTitle">
             <div class="current-enrollment-summary__header">
                 <div>
@@ -2255,6 +2293,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
             </div>
             <div class="current-enrollment-summary__courses" id="currentEnrollmentSummaryCourses"></div>
         </section>
+        <?php endif; ?>
 
         <?php if (!empty($academicHold['active'])): ?>
         <div style="margin: 0 0 16px; padding: 15px 18px; background: linear-gradient(135deg, #fff4f4, #ffe0e0); border-left: 5px solid #b71c1c; border-radius: 10px; color: #5f1d1d; box-shadow: 0 3px 14px rgba(183, 28, 28, 0.12);">
@@ -3156,6 +3195,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
         </div>
     </div>
 
+    <?php if (!$is_study_plan_reference_view): ?>
     <div id="current-enrollment-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="current-enrollment-modal-title">
         <div id="current-enrollment-modal">
             <div class="current-enrollment-modal__header">
@@ -3227,6 +3267,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHea
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- ===== A.Y. Course Overview Modal ===== -->
     <div id="ay-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="ay-modal-title">
