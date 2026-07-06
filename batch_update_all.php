@@ -221,6 +221,19 @@ function resolveCoordinatorProgramKey(PDO $conn, $username) {
     return '';
 }
 
+function openBatchUpdatePdo(): PDO {
+    $connection = createPdoFallbackConnection();
+    if ($connection instanceof LegacyDbConnection) {
+        return $connection->getPdo();
+    }
+
+    if ($connection instanceof PDO) {
+        return $connection;
+    }
+
+    throw new RuntimeException('Unable to open PDO database connection.');
+}
+
 $selectedProgram = isset($_POST['selected_program']) ? normalizeProgramKey((string)$_POST['selected_program']) : '';
 $redirectTarget = resolveRedirectTarget($_POST['redirect_to'] ?? '');
 $programQuery = $selectedProgram !== '' ? '&program=' . urlencode($selectedProgram) : '';
@@ -256,12 +269,7 @@ if (!is_array($assignments) || empty($assignments)) {
 }
 
 try {
-    $conn = new PDO(
-        'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
-        DB_USER,
-        DB_PASS,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
+    $conn = openBatchUpdatePdo();
 
     if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'program_coordinator') {
         $redirectTarget = 'program_coordinator/adviser_management.php';
@@ -349,7 +357,7 @@ try {
     $message = "Updated {$updatedBatches} batch(es) with {$totalAssignments} adviser assignment(s).";
     header('Location: ' . $redirectTarget . '?message=' . urlencode($message) . $programQuery);
     exit();
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }

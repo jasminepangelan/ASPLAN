@@ -215,6 +215,19 @@ function resolveCoordinatorProgramKey(PDO $conn, $username) {
     return '';
 }
 
+function openBatchUpdatePdo(): PDO {
+    $connection = createPdoFallbackConnection();
+    if ($connection instanceof LegacyDbConnection) {
+        return $connection->getPdo();
+    }
+
+    if ($connection instanceof PDO) {
+        return $connection;
+    }
+
+    throw new RuntimeException('Unable to open PDO database connection.');
+}
+
 $redirectTarget = resolveRedirectTarget($_POST['redirect_to'] ?? '');
 
 if (getenv('USE_LARAVEL_BRIDGE') === '1') {
@@ -242,8 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['batch'])) {
 }
 
 try {
-    $conn = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $conn = openBatchUpdatePdo();
 
     $batch = trim($_POST['batch']);
     $selectedProgram = isset($_POST['selected_program']) ? normalizeProgramKey((string)$_POST['selected_program']) : '';
@@ -331,7 +343,7 @@ try {
 
     header("Location: {$redirectTarget}?error=" . urlencode("Invalid request.") . $programQuery);
     exit();
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     error_log("batch_update error: " . $e->getMessage());
     if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'program_coordinator') {
         $redirectTarget = 'program_coordinator/adviser_management.php';
