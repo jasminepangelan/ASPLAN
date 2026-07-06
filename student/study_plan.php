@@ -811,6 +811,7 @@ $studyPlanHeaderName = $is_admin_reference_view
     : trim($last_name . ', ' . $first_name . (!empty($middle_name) ? ' ' . $middle_name : ''));
 $studyPlanHeaderRole = $is_admin_reference_view ? 'Admin' : 'Student';
 $studyPlanHeaderImage = $is_admin_reference_view ? '../img/cav.png' : $picture;
+$studyPlanHeaderLabel = $is_admin_reference_view ? 'Admin Panel' : $studyPlanHeaderName . ' | ' . $studyPlanHeaderRole;
 ?>
 
 <!DOCTYPE html>
@@ -2049,6 +2050,119 @@ $studyPlanHeaderImage = $is_admin_reference_view ? '../img/cav.png' : $picture;
             background: linear-gradient(135deg, #0d47a1, #1565C0);
             transform: translateY(-1px);
         }
+
+        <?php if ($is_admin_reference_view): ?>
+        body {
+            padding-top: 45px;
+        }
+
+        .title-bar {
+            width: 100%;
+            height: 45px;
+            padding: 6px 15px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .admin-info,
+        .student-info {
+            font-size: 15px;
+            font-weight: 600;
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            line-height: 1.2;
+            white-space: nowrap;
+            letter-spacing: 0;
+        }
+
+        .student-info img {
+            display: none;
+        }
+
+        .sidebar {
+            height: calc(100vh - 45px);
+            top: 45px;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-250px);
+        }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            text-align: center;
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 6px 0;
+            margin: 0;
+        }
+
+        .sidebar-menu a {
+            gap: 12px;
+            padding: 10px 20px;
+            color: #ffffff;
+            line-height: 1.2;
+            font-size: 15px;
+            border-left: 4px solid transparent;
+            transition: all 0.25s ease;
+        }
+
+        .sidebar-menu a:hover {
+            background: rgba(255, 255, 255, 0.10);
+            padding-left: 25px;
+            border-left-color: #4CAF50;
+        }
+
+        .sidebar-menu a.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-left-color: #4CAF50;
+        }
+
+        .sidebar-menu img {
+            margin-right: 0;
+            flex: 0 0 20px;
+            filter: brightness(0) invert(1);
+        }
+
+        .menu-group {
+            margin: 8px 0;
+        }
+
+        .menu-group-title {
+            padding: 6px 20px 2px 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            line-height: 1.2;
+            letter-spacing: 1px;
+        }
+
+        .main-content {
+            min-height: calc(100vh - 45px);
+        }
+        <?php endif; ?>
+
         @media (max-width: 600px) {
             .ay-term-body {
                 grid-template-columns: 1fr;
@@ -2068,36 +2182,29 @@ $studyPlanHeaderImage = $is_admin_reference_view ? '../img/cav.png' : $picture;
             <img src="../img/cav.png" alt="CvSU Logo" style="height: 32px; width: auto; margin-right: 12px; cursor: pointer;" onclick="toggleSidebar()">
             <span style="color: #d9e441; font-weight: 800;">ASPLAN</span>
         </div>
-        <div class="student-info">
-            <img src="<?= htmlspecialchars($studyPlanHeaderImage) ?>" alt="Profile Picture">
-            <span><?= htmlspecialchars($studyPlanHeaderName) ?> | <?= htmlspecialchars($studyPlanHeaderRole) ?></span>
-        </div>
+        <?php if ($is_admin_reference_view): ?>
+            <div class="admin-info"><?= htmlspecialchars($studyPlanHeaderLabel) ?></div>
+        <?php else: ?>
+            <div class="student-info">
+                <img src="<?= htmlspecialchars($studyPlanHeaderImage) ?>" alt="Profile Picture">
+                <span><?= htmlspecialchars($studyPlanHeaderLabel) ?></span>
+            </div>
+        <?php endif; ?>
     </div>
 
+    <?php if ($is_admin_reference_view): ?>
+        <?php
+        $activeAdminPage = 'list_of_students';
+        $adminSidebarCollapsed = false;
+        require __DIR__ . '/../includes/admin_sidebar.php';
+        ?>
+    <?php else: ?>
     <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h3><?= htmlspecialchars($studyPlanPanelTitle) ?></h3>
         </div>
         <ul class="sidebar-menu">
-            <?php if ($is_admin_reference_view): ?>
-            <div class="menu-group">
-                <div class="menu-group-title">Dashboard</div>
-                <li><a href="index.php"><img src="../pix/home1.png" alt="Home" style="filter: brightness(0) invert(1);"> Admin Home</a></li>
-                <li><a href="list_of_students.php"><img src="../pix/checklist.png" alt="Students"> Registered Students</a></li>
-            </div>
-
-            <div class="menu-group">
-                <div class="menu-group-title">Student Record</div>
-                <li><a href="account_management.php?student_id=<?= urlencode((string)$student_id) ?>"><img src="../pix/account.png" alt="Profile"> Profile</a></li>
-                <li><a href="study_plan_view.php?student_id=<?= urlencode((string)$student_id) ?>" class="active"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan</a></li>
-            </div>
-
-            <div class="menu-group">
-                <div class="menu-group-title">Account</div>
-                <li><a href="logout.php"><img src="../pix/singout.png" alt="Sign Out"> Sign Out</a></li>
-            </div>
-            <?php else: ?>
             <div class="menu-group">
                 <div class="menu-group-title">Dashboard</div>
                 <li><a href="home_page_student.php"><img src="../pix/home1.png" alt="Home" style="filter: brightness(0) invert(1);"> Home</a></li>
@@ -2114,9 +2221,9 @@ $studyPlanHeaderImage = $is_admin_reference_view ? '../img/cav.png' : $picture;
                 <li><a href="acc_mng.php"><img src="../pix/account.png" alt="Profile"> Update Profile</a></li>
                 <li><a href="../auth/signout.php"><img src="../pix/singout.png" alt="Sign Out"> Sign Out</a></li>
             </div>
-            <?php endif; ?>
         </ul>
     </div>
+    <?php endif; ?>
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
