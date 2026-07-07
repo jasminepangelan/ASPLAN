@@ -4,6 +4,11 @@ session_start();
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
+
 /**
  * @param mysqli|LegacyDbConnection $conn
  */
@@ -17,7 +22,13 @@ function asplLoadScopedStudyPlanStudents($conn, array $batches, string $adviserP
     }
 
     $batchPlaceholders = implode(',', array_fill(0, count($batches), '?'));
-    $whereParts = ["LEFT(student_number, 4) IN ($batchPlaceholders)", 'program = ?'];
+    $whereParts = [
+        "LEFT(student_number, 4) IN ($batchPlaceholders)",
+        'program = ?',
+        "student_number IS NOT NULL",
+        "TRIM(student_number) != ''",
+        "LOWER(COALESCE(status, '')) NOT IN ('archived', 'deleted', 'rejected')",
+    ];
     $params = array_values($batches);
     $params[] = $adviserProgram;
     $types = str_repeat('s', count($batches)) . 's';
