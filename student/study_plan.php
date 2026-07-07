@@ -2220,12 +2220,13 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         <ul class="sidebar-menu">
             <div class="menu-group">
                 <div class="menu-group-title">Dashboard</div>
-                <li><a href="index.php"><img src="../pix/home1.png" alt="Home"> Home</a></li>
+                <li><a href="index.php"><img src="../pix/home1.png" alt="Dashboard" style="filter: brightness(0) invert(1);"> Dashboard</a></li>
             </div>
 
             <div class="menu-group">
-                <div class="menu-group-title">Students</div>
-                <li><a href="checklist_eval.php"><img src="../pix/checklist.png" alt="Student List"> Student List</a></li>
+                <div class="menu-group-title">Student Management</div>
+                <li><a href="pending_accounts.php"><img src="../pix/pending.png" alt="Pending"> Pending Accounts</a></li>
+                <li><a href="checklist_eval.php"><img src="../pix/checklist.png" alt="Student List"> List of Students</a></li>
                 <li><a href="study_plan_list.php" class="active"><img src="../pix/studyplan.png" alt="Study Plan"> Study Plan List</a></li>
             </div>
 
