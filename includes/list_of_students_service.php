@@ -4,9 +4,16 @@
 
 require_once __DIR__ . '/../config/database.php';
 
+function losActiveStudentCondition(): string
+{
+    return "student_number IS NOT NULL
+        AND TRIM(student_number) != ''
+        AND LOWER(COALESCE(status, '')) NOT IN ('archived', 'deleted', 'rejected')";
+}
+
 function losPrepareFilters($conn, string $search, string $selectedProgram, string $selectedBatch): array
 {
-    $whereParts = [];
+    $whereParts = [losActiveStudentCondition()];
     $params = [];
     $types = '';
 
@@ -44,7 +51,8 @@ function losGetAvailablePrograms()
 {
     $conn = getDBConnection();
     $programs = [];
-    $programResult = $conn->query("SELECT DISTINCT TRIM(program) AS program FROM student_info WHERE program IS NOT NULL AND TRIM(program) != '' ORDER BY program ASC");
+    $activeCondition = losActiveStudentCondition();
+    $programResult = $conn->query("SELECT DISTINCT TRIM(program) AS program FROM student_info WHERE $activeCondition AND program IS NOT NULL AND TRIM(program) != '' ORDER BY program ASC");
     if ($programResult && method_exists($programResult, 'fetch_assoc')) {
         while ($programRow = $programResult->fetch_assoc()) {
             $programs[] = $programRow['program'];
@@ -62,7 +70,8 @@ function losGetAvailableBatches($selectedProgram)
 {
     $conn = getDBConnection();
     $batches = [];
-    $batchStmt = $conn->prepare("SELECT DISTINCT LEFT(student_number, 4) AS batch FROM student_info WHERE TRIM(program) = ? AND student_number IS NOT NULL AND student_number != '' ORDER BY batch DESC");
+    $activeCondition = losActiveStudentCondition();
+    $batchStmt = $conn->prepare("SELECT DISTINCT LEFT(student_number, 4) AS batch FROM student_info WHERE $activeCondition AND TRIM(program) = ? ORDER BY batch DESC");
     if (!$batchStmt) {
         closeDBConnection($conn);
         return $batches;

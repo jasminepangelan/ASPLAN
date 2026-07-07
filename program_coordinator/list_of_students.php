@@ -2,6 +2,11 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
+
 if (!isset($_SESSION['username']) || (isset($_SESSION['user_type']) && $_SESSION['user_type'] !== 'program_coordinator')) {
     header('Location: ../index.html');
     exit();
@@ -163,7 +168,12 @@ function resolveCoordinatorProgramKeys($conn, $username) {
 
 function loadCoordinatorCandidateRows($conn, string $search, string $selectedBatch): array
 {
-    $whereParts = ["TRIM(program) IS NOT NULL"];
+    $whereParts = [
+        "TRIM(program) IS NOT NULL",
+        "student_number IS NOT NULL",
+        "TRIM(student_number) != ''",
+        "LOWER(COALESCE(status, '')) NOT IN ('archived', 'deleted', 'rejected')",
+    ];
     $params = [];
     $types = '';
 

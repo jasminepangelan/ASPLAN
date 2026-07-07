@@ -3,6 +3,11 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/list_of_students_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Only allow admin
 if (!isset($_SESSION['admin_id'])) {
     header("Location: login.php");
