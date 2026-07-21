@@ -119,11 +119,11 @@ $parsedDatabaseUrl = parseDatabaseUrlFallback();
 // Database credentials - loaded from environment variables.
 // Railway always exposes MYSQL* variables on the database service, so we
 // fall back to those automatically when custom DB_* variables are missing.
-define('DB_HOST', firstEnvValue(['DB_HOST', 'MYSQLHOST'], $parsedDatabaseUrl['host'] ?? 'localhost'));
-define('DB_PORT', (int) firstEnvValue(['DB_PORT', 'MYSQLPORT'], $parsedDatabaseUrl['port'] ?? '3306'));
-define('DB_USER', firstEnvValue(['DB_USER', 'DB_USERNAME', 'MYSQLUSER'], $parsedDatabaseUrl['user'] ?? 'root'));
-define('DB_PASS', firstEnvValue(['DB_PASS', 'DB_PASSWORD', 'MYSQLPASSWORD'], $parsedDatabaseUrl['pass'] ?? ''));
-define('DB_NAME', firstEnvValue(['DB_NAME', 'DB_DATABASE', 'MYSQLDATABASE'], $parsedDatabaseUrl['name'] ?? 'osas_db'));
+define('DB_HOST', firstEnvValue(['MYSQLHOST', 'DB_HOST'], $parsedDatabaseUrl['host'] ?? 'localhost'));
+define('DB_PORT', (int) firstEnvValue(['MYSQLPORT', 'DB_PORT'], $parsedDatabaseUrl['port'] ?? '3306'));
+define('DB_USER', firstEnvValue(['MYSQLUSER', 'DB_USER', 'DB_USERNAME'], $parsedDatabaseUrl['user'] ?? 'root'));
+define('DB_PASS', firstEnvValue(['MYSQLPASSWORD', 'DB_PASS', 'DB_PASSWORD'], $parsedDatabaseUrl['pass'] ?? ''));
+define('DB_NAME', firstEnvValue(['MYSQLDATABASE', 'DB_NAME', 'DB_DATABASE'], $parsedDatabaseUrl['name'] ?? 'osas_db'));
 
 if (!defined('MYSQLI_ASSOC')) {
     define('MYSQLI_ASSOC', 1);
@@ -462,7 +462,7 @@ function getDBConnection() {
         error_log("Database connection failed: " . $e->getMessage() . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
         die(json_encode([
             'status' => 'error', 
-            'message' => 'DB Error: ' . $e->getMessage() . ' (Host: ' . DB_HOST . ', Port: ' . DB_PORT . ', DB: ' . DB_NAME . ', User: ' . DB_USER . ')'
+            'message' => 'Database connection failed. Please try again later.'
         ]));
     }
 }
