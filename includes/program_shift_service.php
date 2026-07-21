@@ -645,11 +645,11 @@ if (!function_exists('psNormalizeCourseCode')) {
         ];
         foreach ($suffixes as $suffix) {
             if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
-                return trim(substr($code, 0, -strlen($suffix)));
+                return strtoupper(trim(substr($code, 0, -strlen($suffix))));
             }
         }
 
-        return $code;
+        return strtoupper($code);
     }
 }
 

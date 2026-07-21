@@ -197,11 +197,11 @@ class StudyPlanGenerator {
 
         foreach ([' CS-IT', ' CpE', ' CPE', ' IndT', ' INDT', ' CS', ' IT'] as $suffix) {
             if (strlen($code) > strlen($suffix) && strcasecmp(substr($code, -strlen($suffix)), $suffix) === 0) {
-                return trim(substr($code, 0, -strlen($suffix)));
+                return strtoupper(trim(substr($code, 0, -strlen($suffix))));
             }
         }
 
-        return $code;
+        return strtoupper($code);
     }
 
     private function normalizeCurriculumYearLabel($value) {
