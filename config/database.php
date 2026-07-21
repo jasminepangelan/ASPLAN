@@ -462,7 +462,7 @@ function getDBConnection() {
         error_log("Database connection failed: " . $e->getMessage() . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
         die(json_encode([
             'status' => 'error', 
-            'message' => 'Database connection failed. Please try again later.'
+            'message' => 'DB Error: ' . $e->getMessage() . ' (Host: ' . DB_HOST . ', Port: ' . DB_PORT . ', DB: ' . DB_NAME . ', User: ' . DB_USER . ')'
         ]));
     }
 }
