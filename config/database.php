@@ -459,7 +459,10 @@ function getDBConnection() {
             }
         }
 
-        error_log("Database connection failed: " . $e->getMessage() . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ')');
+        $errorDetails = "Database connection failed: " . $e->getMessage() . ' (host=' . DB_HOST . ', port=' . DB_PORT . ', db=' . DB_NAME . ', user=' . DB_USER . ")\n";
+        $errorDetails .= "DB_HOST env: " . getenv('DB_HOST') . " | \$_SERVER['DB_HOST']: " . ($_SERVER['DB_HOST'] ?? 'NOT SET') . "\n";
+        file_put_contents(__DIR__ . '/../db_error_log_custom.txt', $errorDetails, FILE_APPEND);
+        error_log($errorDetails);
         die(json_encode([
             'status' => 'error', 
             'message' => 'Database connection failed. Please try again later.'
