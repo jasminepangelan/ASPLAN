@@ -116,14 +116,14 @@ if (!function_exists('railwayPublicDatabaseConfig')) {
 
 $parsedDatabaseUrl = parseDatabaseUrlFallback();
 
-$publicConfig = railwayPublicDatabaseConfig();
-$usePublic = !empty($publicConfig);
-
-define('DB_HOST', $usePublic ? $publicConfig['host'] : firstEnvValue(['MYSQLHOST', 'DB_HOST'], $parsedDatabaseUrl['host'] ?? 'localhost'));
-define('DB_PORT', (int) ($usePublic ? $publicConfig['port'] : firstEnvValue(['MYSQLPORT', 'DB_PORT'], $parsedDatabaseUrl['port'] ?? '3306')));
-define('DB_USER', $usePublic ? $publicConfig['user'] : firstEnvValue(['MYSQLUSER', 'DB_USER', 'DB_USERNAME'], $parsedDatabaseUrl['user'] ?? 'root'));
-define('DB_PASS', $usePublic ? $publicConfig['pass'] : firstEnvValue(['MYSQLPASSWORD', 'DB_PASS', 'DB_PASSWORD'], $parsedDatabaseUrl['pass'] ?? ''));
-define('DB_NAME', $usePublic ? $publicConfig['name'] : firstEnvValue(['MYSQLDATABASE', 'DB_NAME', 'DB_DATABASE'], $parsedDatabaseUrl['name'] ?? 'osas_db'));
+// Database credentials - loaded from environment variables.
+// Railway always exposes MYSQL* variables on the database service, so we
+// fall back to those automatically when custom DB_* variables are missing.
+define('DB_HOST', firstEnvValue(['MYSQLHOST', 'DB_HOST'], $parsedDatabaseUrl['host'] ?? 'localhost'));
+define('DB_PORT', (int) firstEnvValue(['MYSQLPORT', 'DB_PORT'], $parsedDatabaseUrl['port'] ?? '3306'));
+define('DB_USER', firstEnvValue(['MYSQLUSER', 'DB_USER', 'DB_USERNAME'], $parsedDatabaseUrl['user'] ?? 'root'));
+define('DB_PASS', firstEnvValue(['MYSQLPASSWORD', 'DB_PASS', 'DB_PASSWORD'], $parsedDatabaseUrl['pass'] ?? ''));
+define('DB_NAME', firstEnvValue(['MYSQLDATABASE', 'DB_NAME', 'DB_DATABASE'], $parsedDatabaseUrl['name'] ?? 'osas_db'));
 
 if (!defined('MYSQLI_ASSOC')) {
     define('MYSQLI_ASSOC', 1);
