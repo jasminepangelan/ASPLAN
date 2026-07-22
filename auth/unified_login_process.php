@@ -330,6 +330,14 @@ try {
 
     switch ($userType) {
         case 'student':
+            require_once __DIR__ . '/../includes/security_policy.php';
+            if (isStudentLoginDisabled($conn)) {
+                sendJsonResponse([
+                    'status' => 'error',
+                    'message' => 'Student logins are currently disabled by the administrator.',
+                ]);
+            }
+
             if (!smlStudentHasSystemAccess($conn, (string) ($userData['student_id'] ?? ''))) {
                 sendJsonResponse([
                     'status' => 'error',

@@ -72,6 +72,18 @@ class AuthController extends Controller
             }
 
             if ($user['type'] === 'student') {
+                $loginDisabled = DB::table('system_settings')
+                    ->where('setting_name', 'disable_student_logins')
+                    ->orderBy('id', 'desc')
+                    ->value('setting_value');
+                    
+                if ($loginDisabled === '1' || strtolower((string)$loginDisabled) === 'true') {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Student logins are currently disabled by the administrator.',
+                    ], 403);
+                }
+
                 if (!$this->studentHasMasterlistAccess((string) ($user['student_id'] ?? ''))) {
                     return response()->json([
                         'status' => 'error',

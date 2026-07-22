@@ -71,6 +71,12 @@ if (!function_exists('isRegistrationDisabled')) {
     }
 }
 
+if (!function_exists('isStudentLoginDisabled')) {
+    function isStudentLoginDisabled($conn) {
+        return policySettingBool($conn, 'disable_student_logins', false);
+    }
+}
+
 if (!function_exists('parsePolicyDateTime')) {
     function parsePolicyDateTime($raw) {
         $value = trim((string)$raw);

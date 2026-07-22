@@ -157,6 +157,12 @@ $advancedSettings = [
         'default' => 0,
         'help' => 'Can be checked by registration flow to pause new signups.'
     ],
+    'disable_student_logins' => [
+        'label' => 'Temporarily Disable Student Logins',
+        'type' => 'boolean',
+        'default' => 0,
+        'help' => 'When checked, students will be unable to log into the system.'
+    ],
     'default_records_per_page' => [
         'label' => 'Default Records Per Page',
         'type' => 'number',
