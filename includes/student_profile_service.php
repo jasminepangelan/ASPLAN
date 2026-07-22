@@ -102,6 +102,7 @@ define('SPS_ALLOWED_FIELDS', [
 
 // Field mapping from POST to database columns
 define('SPS_FIELD_MAP', [
+    'student_id' => 'student_number',
     'last_name' => 'last_name',
     'first_name' => 'first_name',
     'middle_name' => 'middle_name',
@@ -177,6 +178,16 @@ function spsValidateProfileUpdate($conn, array $formData): array {
     $errors = [];
     $allowedClassifications = ['Regular', 'Irregular', 'Transferee'];
     $allowedRegistrationClassifications = ['Old', 'New', 'Transferee'];
+
+    // Check student_id if provided
+    if (isset($formData['student_id']) && !empty($formData['student_id'])) {
+        $studentId = trim($formData['student_id']);
+        if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $studentId)) {
+            $errors[] = 'Invalid student ID format.';
+        } else {
+            $validatedFields['student_id'] = htmlspecialchars($studentId);
+        }
+    }
 
     // Check email if provided
     if (isset($formData['email']) && !empty($formData['email'])) {
@@ -299,6 +310,19 @@ function spsUpdateStudentProfile($conn, string $studentId, array $fields): array
 
     if (!$stmt->execute()) {
         return ['success' => false, 'error' => 'Update failed: ' . $stmt->error];
+    }
+
+    // Check if student_number was one of the fields updated
+    if (array_key_exists('student_id', $fields)) {
+        $newStudentNumber = $fields['student_id'];
+        if ($newStudentNumber !== $studentId) {
+            $updateMasterlistSql = "UPDATE student_masterlist SET student_number = ? WHERE student_number = ?";
+            $masterlistStmt = $conn->prepare($updateMasterlistSql);
+            if ($masterlistStmt) {
+                $masterlistStmt->bind_param('ss', $newStudentNumber, $studentId);
+                $masterlistStmt->execute();
+            }
+        }
     }
 
     return ['success' => true, 'error' => null];

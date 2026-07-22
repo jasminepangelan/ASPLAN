@@ -678,7 +678,8 @@ $registration_classification = in_array($registration_classification_raw, ['Old'
         <div class="details">
           <div class="field">
             <label for="student_id">Student Number</label>
-            <input id="student_id" name="student_id" type="text" value="<?= $student_id ?>" readonly>
+            <input id="student_id" name="student_id" type="text" value="<?= $student_id ?>">
+            <input type="hidden" name="original_student_id" value="<?= $student_id ?>">
           </div>
           <div class="field">
             <label for="last_name">Last Name</label>

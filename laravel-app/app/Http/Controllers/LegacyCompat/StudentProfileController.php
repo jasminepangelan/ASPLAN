@@ -101,7 +101,9 @@ class StudentProfileController extends Controller
                 ], 403);
             }
 
-            $studentId = trim((string) $request->input('student_id', ''));
+            $requestedStudentId = trim((string) $request->input('student_id', ''));
+            $originalStudentId = trim((string) $request->input('original_student_id', ''));
+            $studentId = $originalStudentId !== '' ? $originalStudentId : $requestedStudentId;
             $context = trim((string) $request->input('profile_context', 'student'));
             if (!in_array($context, ['student', 'admin', 'adviser', 'program_coordinator'], true)) {
                 $context = 'student';
@@ -176,6 +178,15 @@ class StudentProfileController extends Controller
                     DB::table('student_info')
                         ->where('student_number', $studentId)
                         ->update($dbFields);
+                        
+                    if (array_key_exists('student_number', $dbFields)) {
+                        $newStudentNumber = $dbFields['student_number'];
+                        if ($newStudentNumber !== $studentId) {
+                            DB::table('student_masterlist')
+                                ->where('student_number', $studentId)
+                                ->update(['student_number' => $newStudentNumber]);
+                        }
+                    }
                 }
             }
 
@@ -238,6 +249,15 @@ class StudentProfileController extends Controller
                 $errors[] = 'Email domain is not allowed for student accounts.';
             } else {
                 $fields['email'] = htmlspecialchars($email);
+            }
+        }
+        
+        $newStudentId = trim((string) $request->input('student_id', ''));
+        if ($newStudentId !== '') {
+            if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $newStudentId)) {
+                $errors[] = 'Invalid student ID format.';
+            } else {
+                $fields['student_id'] = htmlspecialchars($newStudentId);
             }
         }
 
@@ -308,6 +328,7 @@ class StudentProfileController extends Controller
     private function mapFieldsToDatabase(array $fields): array
     {
         $map = [
+            'student_id' => 'student_number',
             'last_name' => 'last_name',
             'first_name' => 'first_name',
             'middle_name' => 'middle_name',

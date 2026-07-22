@@ -26,6 +26,8 @@ try {
     $isAdmin = isset($_SESSION['admin_id']) || isset($_SESSION['admin_username']);
     $sessionStudentId = trim((string) ($_SESSION['student_id'] ?? $_SESSION['student_number'] ?? ''));
     $requestedStudentId = trim((string) ($_POST['student_id'] ?? ''));
+    $originalStudentId = trim((string) ($_POST['original_student_id'] ?? ''));
+    $targetStudentId = $originalStudentId !== '' ? $originalStudentId : $requestedStudentId;
     $studentProtectedFields = [
         'last_name',
         'first_name',
@@ -36,6 +38,7 @@ try {
         'admission_date',
         'stud_classification',
         'registration_classification',
+        'student_id',
     ];
 
     if (!$isAdmin && $sessionStudentId === '') {
@@ -46,25 +49,25 @@ try {
     }
 
     if ($isAdmin) {
-        if ($requestedStudentId === '') {
+        if ($targetStudentId === '') {
             elsWarning('Admin profile update: no student ID provided', [], 'student_profile');
             echo json_encode(['success' => false, 'message' => 'No student ID provided']);
             exit;
         }
 
-        if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $requestedStudentId)) {
-            elsWarning('Admin profile update: invalid student ID format', ['student_id' => $requestedStudentId], 'student_profile');
+        if (!preg_match('/^[A-Za-z0-9\-]{1,30}$/', $targetStudentId)) {
+            elsWarning('Admin profile update: invalid student ID format', ['student_id' => $targetStudentId], 'student_profile');
             echo json_encode(['success' => false, 'message' => 'Invalid student ID provided.']);
             exit;
         }
 
-        $student_id = $requestedStudentId;
+        $student_id = $targetStudentId;
         $profileContext = 'admin';
     } else {
-        if ($requestedStudentId !== '' && !hash_equals($sessionStudentId, $requestedStudentId)) {
+        if ($targetStudentId !== '' && !hash_equals($sessionStudentId, $targetStudentId)) {
             elsWarning(
                 'Student profile update blocked due to mismatched student ID',
-                ['session_student_id' => $sessionStudentId, 'posted_student_id' => $requestedStudentId],
+                ['session_student_id' => $sessionStudentId, 'posted_student_id' => $targetStudentId],
                 'student_profile'
             );
             http_response_code(403);
@@ -114,7 +117,9 @@ try {
 
     if ($useLaravelBridge && $student_id !== '' && !$hasPictureUpload) {
         $formFields = $_POST;
-        $formFields['student_id'] = $student_id;
+        // $_POST['student_id'] already has the new ID.
+        // We ensure original_student_id is sent as well.
+        $formFields['original_student_id'] = $student_id;
         $formFields['profile_context'] = $profileContext;
         $formFields['bridge_authorized'] = true;
 
