@@ -332,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $parsedMasterlist = smlParseCsvUpload((string) ($csvFile['tmp_name'] ?? ''));
                 if (!empty($parsedMasterlist['success'])) {
-                    $saveMasterlist = smlReplaceProgramMasterlist(
+                    $saveMasterlist = smlAppendProgramMasterlist(
                         $conn,
                         $selectedMasterlistProgram,
                         (array) ($parsedMasterlist['rows'] ?? []),

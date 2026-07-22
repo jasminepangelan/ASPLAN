@@ -588,8 +588,8 @@ if (!function_exists('smlParseCsvUpload')) {
     }
 }
 
-if (!function_exists('smlReplaceProgramMasterlist')) {
-    function smlReplaceProgramMasterlist(PDO $conn, string $program, array $rows, string $sourceFilename, string $adminId): array
+if (!function_exists('smlAppendProgramMasterlist')) {
+    function smlAppendProgramMasterlist(PDO $conn, string $program, array $rows, string $sourceFilename, string $adminId): array
     {
         smlEnsureMasterlistTable($conn);
 
@@ -604,8 +604,6 @@ if (!function_exists('smlReplaceProgramMasterlist')) {
 
         $conn->beginTransaction();
         try {
-            $deleteStmt = $conn->prepare('DELETE FROM student_masterlist WHERE program = ?');
-            $deleteStmt->execute([$program]);
 
             $insertStmt = $conn->prepare("
                 INSERT INTO student_masterlist (student_number, last_name, first_name, middle_initial, program, source_filename, uploaded_by, uploaded_at)
