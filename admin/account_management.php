@@ -802,7 +802,8 @@ $registration_classification = in_array($registration_classification_raw, ['Old'
     }
     function closeSuccessModal() {
       document.getElementById('successModal').style.display = 'none';
-      location.reload();
+      const newStudentId = document.getElementById('student_id').value;
+      window.location.href = 'account_management.php?student_id=' + encodeURIComponent(newStudentId);
     }
     function saveStudentChanges() {
       const form = document.getElementById('edit-student-form');
