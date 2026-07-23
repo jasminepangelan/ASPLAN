@@ -433,12 +433,12 @@ try {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            margin: -8px 0 16px;
-            padding: 12px;
+            gap: 20px;
+            margin: 15px 0 25px;
+            padding: 20px;
             background: #f8fbf7;
             border: 1px solid #dce8d9;
-            border-radius: 10px;
+            border-radius: 12px;
             flex-wrap: wrap;
         }
 
@@ -458,11 +458,11 @@ try {
         }
 
         .filter-form select {
-            padding: 8px 10px;
+            padding: 10px 14px;
             border: 1px solid #cddccc;
             border-radius: 8px;
             font-size: 13px;
-            min-width: 220px;
+            min-width: 240px;
             background: #fff;
         }
 
@@ -479,14 +479,15 @@ try {
         
         .table-container {
             background: #fff;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.06);
             border: 1px solid #e0e0e0;
+            margin-bottom: 30px;
         }
         
         .table-scroll {
-            max-height: 450px;
+            max-height: 550px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #206018 #f1f1f1;
@@ -659,11 +660,11 @@ try {
         
         .stats-card {
             background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
             text-align: center;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 3px 15px rgba(0,0,0,0.04);
             border: 1px solid #e9ecef;
         }
         
