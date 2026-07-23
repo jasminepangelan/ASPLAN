@@ -2131,43 +2131,28 @@ if (!$bridgeLoaded) {
                 menuDeleteStudent.addEventListener('click', function() {
                     if (!targetStudentId) return;
                     
-                    Swal.fire({
-                        title: 'Are you absolutely sure?',
-                        text: "This will permanently delete the student and ALL associated data (grades, enrollments, checklists, etc). This cannot be undone!",
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#d33',
-                        cancelButtonColor: '#3085d6',
-                        confirmButtonText: 'Yes, delete permanently!'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            // Send delete request
-                            fetch('delete_student.php', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded',
-                                },
-                                body: 'student_id=' + encodeURIComponent(targetStudentId)
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    Swal.fire(
-                                        'Deleted!',
-                                        'The student has been permanently deleted.',
-                                        'success'
-                                    ).then(() => {
-                                        window.location.reload();
-                                    });
-                                } else {
-                                    Swal.fire('Error', data.error || 'An error occurred.', 'error');
-                                }
-                            })
-                            .catch(err => {
-                                Swal.fire('Error', 'Network error occurred.', 'error');
-                            });
-                        }
-                    });
+                    if (confirm("Are you absolutely sure?\n\nThis will permanently delete the student and ALL associated data (grades, enrollments, checklists, etc). This cannot be undone!")) {
+                        // Send delete request
+                        fetch('delete_student.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: 'student_id=' + encodeURIComponent(targetStudentId)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('The student has been permanently deleted.');
+                                window.location.reload();
+                            } else {
+                                alert('Error: ' + (data.error || 'An error occurred.'));
+                            }
+                        })
+                        .catch(err => {
+                            alert('Network error occurred.');
+                        });
+                    }
                 });
             }
         });
