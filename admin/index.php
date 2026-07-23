@@ -167,7 +167,6 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
 
     /* Main content styling */
     .main-content {
-      margin-top: 45px;
       margin-left: 250px;
       min-height: calc(100vh - 45px);
       background-color: #f5f5f5;
