@@ -509,9 +509,9 @@ function srsCreateStudentAccount($conn, array $formData, string $hashedPassword,
         $status = srsIsAutoApprovalEnabled($conn) ? 'approved' : 'pending';
         
         $student_id = $formData['student_id'];
-        $last_name = $formData['last_name'];
-        $first_name = $formData['first_name'];
-        $middle_name = !empty($formData['middle_name']) ? $formData['middle_name'] : null;
+        $last_name = ucwords(strtolower($formData['last_name']));
+        $first_name = ucwords(strtolower($formData['first_name']));
+        $middle_name = !empty($formData['middle_name']) ? ucwords(strtolower($formData['middle_name'])) : null;
         $email = $formData['email'];
         $contact_no = $formData['contact_no'];
         $address = $formData['address'] ?? '';

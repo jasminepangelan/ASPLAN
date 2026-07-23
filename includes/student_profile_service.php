@@ -223,7 +223,11 @@ function spsValidateProfileUpdate($conn, array $formData): array {
     $textFields = ['last_name', 'first_name', 'middle_name', 'address', 'admission_date'];
     foreach ($textFields as $field) {
         if (isset($formData[$field]) && $formData[$field] !== '') {
-            $validatedFields[$field] = htmlspecialchars(trim($formData[$field]));
+            $val = trim($formData[$field]);
+            if (in_array($field, ['last_name', 'first_name', 'middle_name'])) {
+                $val = ucwords(strtolower($val));
+            }
+            $validatedFields[$field] = htmlspecialchars($val);
         }
     }
 

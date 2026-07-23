@@ -621,9 +621,9 @@ if (!function_exists('smlAppendProgramMasterlist')) {
             foreach ($rows as $row) {
                 $insertStmt->execute([
                     trim((string) ($row['student_number'] ?? '')),
-                    trim((string) ($row['last_name'] ?? '')),
-                    trim((string) ($row['first_name'] ?? '')),
-                    trim((string) ($row['middle_initial'] ?? '')),
+                    ucwords(strtolower(trim((string) ($row['last_name'] ?? '')))),
+                    ucwords(strtolower(trim((string) ($row['first_name'] ?? '')))),
+                    ucwords(strtolower(trim((string) ($row['middle_initial'] ?? '')))),
                     $program,
                     substr($sourceFilename, 0, 255),
                     substr($adminId, 0, 120),
