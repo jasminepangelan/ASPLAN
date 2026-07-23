@@ -75,6 +75,7 @@ closeDBConnection($conn);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Program Shift</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
         * { box-sizing: border-box; }
         body {
@@ -258,6 +259,32 @@ closeDBConnection($conn);
             cursor: pointer;
             box-shadow: 0 10px 22px rgba(31,122,47,0.22);
         }
+        .form-panel .field select, .form-panel .field textarea {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 15px;
+            border: 1px solid #c8d2cc;
+            border-radius: 8px;
+            background: #fff;
+            color: #172033;
+            transition: all 0.2s ease;
+        }
+
+        /* Select2 specific overrides to match your theme */
+        .select2-container .select2-selection--single {
+            height: 44px;
+            border: 1px solid #c8d2cc;
+            border-radius: 8px;
+            padding: 7px 4px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 42px;
+        }
+        .select2-container--default .select2-selection--single:focus,
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #3b8e40;
+            box-shadow: 0 0 0 3px rgba(59, 142, 64, 0.12);
+        }
         .student-meta {
             margin-top: 12px;
             padding: 12px;
@@ -392,6 +419,25 @@ closeDBConnection($conn);
             if (field) {
                 field.addEventListener('change', updateStudentMeta);
             }
+        });
+    </script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#student_number').select2({
+                placeholder: "Select student...",
+                allowClear: true,
+                width: '100%'
+            });
+            $('#destination_program').select2({
+                placeholder: "Select destination program...",
+                allowClear: true,
+                width: '100%'
+            });
+            $('#student_number').on('change', function() {
+                updateStudentMeta();
+            });
         });
     </script>
 </body>
