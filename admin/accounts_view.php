@@ -656,6 +656,17 @@ if (getenv('USE_LARAVEL_BRIDGE') === '1') {
     }
 }
 
+    // Retrieve unique programs for batch archive
+    $batchProgramConn = getDBConnection();
+    $distinctPrograms = [];
+    $programRes = $batchProgramConn->query("SELECT DISTINCT program FROM student_info WHERE program IS NOT NULL AND program != '' ORDER BY program ASC");
+    if ($programRes) {
+        while ($pRow = $programRes->fetch_assoc()) {
+            $distinctPrograms[] = $pRow['program'];
+        }
+    }
+    closeDBConnection($batchProgramConn);
+
 if (!$bridgeLoaded) {
     if ($type === 'students') {
         $title = 'Student Accounts';
@@ -1764,6 +1775,14 @@ if (!$bridgeLoaded) {
                     <button type="button" class="modal-close" id="closeBatchArchiveModal" aria-label="Close modal">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <select id="batchProgramSelect" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                            <option value="">-- Select Program --</option>
+                            <?php foreach ($distinctPrograms as $prog): ?>
+                                <option value="<?= htmlspecialchars($prog) ?>"><?= htmlspecialchars($prog) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <div class="form-group" style="display: flex; gap: 10px; align-items: center;">
                         <input type="text" id="batchPrefixInput" class="form-control" placeholder="Enter batch prefix (e.g., 2401)" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
                         <button type="button" class="btn btn-search" id="fetchBatchBtn" style="padding: 10px 15px;">Fetch Students</button>
@@ -2256,11 +2275,13 @@ if (!$bridgeLoaded) {
         const fetchBatchBtn = document.getElementById('fetchBatchBtn');
         const confirmBatchArchiveBtn = document.getElementById('confirmBatchArchiveBtn');
         const batchPrefixInput = document.getElementById('batchPrefixInput');
+        const batchProgramSelect = document.getElementById('batchProgramSelect');
         const batchArchiveResults = document.getElementById('batchArchiveResults');
 
         function openBatchArchiveModal() {
             if (batchArchiveModal) {
                 batchPrefixInput.value = '';
+                if (batchProgramSelect) batchProgramSelect.value = '';
                 batchArchiveResults.style.display = 'none';
                 batchArchiveResults.innerHTML = '';
                 confirmBatchArchiveBtn.style.display = 'none';
@@ -2291,15 +2312,24 @@ if (!$bridgeLoaded) {
         if (fetchBatchBtn) {
             fetchBatchBtn.addEventListener('click', function() {
                 const prefix = batchPrefixInput.value.trim();
+                const program = batchProgramSelect ? batchProgramSelect.value : '';
+
+                if (!program) {
+                    alert('Please select a program first.');
+                    return;
+                }
+                
                 if (!prefix) {
-                    alert('Please enter a batch prefix first.');
+                    alert('Please enter a batch prefix.');
                     return;
                 }
 
                 fetchBatchBtn.innerText = 'Fetching...';
                 fetchBatchBtn.disabled = true;
 
-                fetch('api_get_batch_students.php?prefix=' + encodeURIComponent(prefix))
+                const url = 'api_get_batch_students.php?prefix=' + encodeURIComponent(prefix) + '&program=' + encodeURIComponent(program);
+
+                fetch(url)
                     .then(res => res.json())
                     .then(data => {
                         fetchBatchBtn.innerText = 'Fetch Students';
