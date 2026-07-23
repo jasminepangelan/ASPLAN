@@ -319,9 +319,9 @@ try {
 }
         
         .container {
-            width: min(1500px, calc(100vw - 280px));
+            width: min(1500px, calc(100vw - 310px));
             max-width: 1500px;
-            margin: 25px 20px 30px 250px;
+            margin: 25px 20px 30px 280px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 12px;
