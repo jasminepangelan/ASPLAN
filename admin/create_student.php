@@ -82,27 +82,152 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         /* Header styling */
-        .header {
-            background: linear-gradient(135deg, #206018 0%, #2e7d32 100%);
-            color: #fff;
-            padding: 6px 15px;
-            text-align: left;
-            font-size: 18px;
-            font-weight: 800;
+        .main-header {
             width: 100%;
+            background: linear-gradient(135deg, #206018 0%, #2d7a2d 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 15px;
+            height: 45px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             position: fixed;
             top: 0;
             left: 0;
+            right: 0;
             z-index: 1000;
-            box-shadow: 0 4px 20px rgba(32, 96, 24, 0.3);
+        }
+
+        .main-header > div:first-child {
             display: flex;
             align-items: center;
         }
-        
-        .header img {
+
+        .main-header img {
             height: 32px;
-            width: auto;
-            margin-right: 12px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .main-header span {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+        }
+
+        .admin-info {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 5px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .menu-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .menu-toggle:hover {
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        .sidebar {
+            width: 250px;
+            height: calc(100vh - 45px);
+            background: linear-gradient(135deg, #1a4f16 0%, #2d8f22 100%);
+            color: white;
+            position: fixed;
+            left: 0;
+            top: 45px;
+            padding: 20px 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-250px);
+        }
+
+        .sidebar-header {
+            padding: 15px 20px;
+            text-align: center;
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 5px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 6px 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            margin: 0;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            color: #ffffff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 15px;
+            line-height: 1.2;
+        }
+
+        .sidebar-menu a:hover {
+            background: rgba(255, 255, 255, 0.10);
+            padding-left: 25px;
+            border-left-color: #4CAF50;
+        }
+
+        .sidebar-menu a.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-left-color: #4CAF50;
+        }
+
+        .sidebar-menu img {
+            width: 20px;
+            height: 20px;
+            margin-right: 0;
+            flex: 0 0 20px;
+            filter: brightness(0) invert(1);
+        }
+
+        .menu-group {
+            margin: 8px 0;
+        }
+
+        .menu-group-title {
+            padding: 6px 20px 2px 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            line-height: 1.2;
+            letter-spacing: 1px;
         }
 
         .main-content {
@@ -111,6 +236,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: center;
             align-items: flex-start;
             min-height: 100vh;
+            margin-left: 250px;
+            width: calc(100% - 250px);
+            transition: margin-left 0.3s ease, width 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+            width: 100%;
         }
         
         .form-container {
@@ -214,12 +348,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-    <div class="header">
-        <img src="../img/cav.png" alt="Logo">
-        <span style="color: #d9e441; margin-right: 15px;">ASPLAN</span> Admin Panel
+    <div class="main-header">
+        <div>
+            <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">&#9776;</button>
+            <img src="../img/cav.png" alt="Logo" onclick="toggleSidebar()">
+            <span style="color: #d9e441;">ASPLAN</span>
+        </div>
+        <div class="admin-info">Admin Panel</div>
     </div>
 
-    <div class="main-content">
+    <?php
+    $activeAdminPage = 'account_module';
+    $adminSidebarCollapsed = false;
+    require __DIR__ . '/../includes/admin_sidebar.php';
+    ?>
+
+    <div class="main-content" id="mainContent">
         <div class="form-container">
             <h2>Create Student Account</h2>
             
@@ -256,6 +400,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+        }
+
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const logo = document.querySelector('.main-header img');
+
+            if (window.innerWidth <= 768 &&
+                sidebar && !sidebar.contains(event.target) &&
+                (!logo || !logo.contains(event.target))) {
+                sidebar.classList.add('collapsed');
+                const mainContent = document.getElementById('mainContent');
+                if (mainContent) {
+                    mainContent.classList.add('expanded');
+                }
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+            } else {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+            }
+        });
+
+        window.addEventListener('resize', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+
+            if (window.innerWidth > 768) {
+                sidebar.classList.remove('collapsed');
+                mainContent.classList.remove('expanded');
+            } else {
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+            }
+        });
+    </script>
     <?php if ($success): ?>
     <script>
         Swal.fire({
