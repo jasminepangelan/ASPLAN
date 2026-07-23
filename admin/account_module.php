@@ -354,6 +354,12 @@ if (!isset($_SESSION['admin_id'])) {
 
         <div class="cards">
             <div class="card">
+                <h3>Create Student Account</h3>
+                <p>Create a new student account using just their basic details.</p>
+                <a href="create_student.php" style="background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);">Open Student Account Form</a>
+            </div>
+
+            <div class="card">
                 <h3>Create Program Coordinator Account</h3>
                 <p>Create a new program coordinator account and assign program details.</p>
                 <a href="input_form.php">Open Program Coordinator Form</a>
