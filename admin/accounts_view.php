@@ -1397,7 +1397,7 @@ if (!$bridgeLoaded) {
                 <tbody>
                     <?php if (count($rows) > 0): ?>
                         <?php foreach ($rows as $r): ?>
-                            <tr>
+                            <tr <?php if ($type === 'students') echo 'class="student-row" data-id="' . htmlspecialchars((string)($r[0] ?? '')) . '"'; ?>>
                                 <?php foreach ($r as $index => $cell): ?>
                                     <?php if ($type === 'students' && $index === 6): ?>
                                         <td>
@@ -1730,6 +1730,41 @@ if (!$bridgeLoaded) {
         </div>
     <?php endif; ?>
 
+<!-- Custom Context Menu for Student Rows -->
+<div id="studentContextMenu" class="custom-context-menu" style="display: none;">
+    <ul>
+        <li id="menuDeleteStudent"><i class="fas fa-trash-alt"></i> Delete Permanently</li>
+    </ul>
+</div>
+
+<style>
+.custom-context-menu {
+    position: absolute;
+    z-index: 10000;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    min-width: 150px;
+}
+.custom-context-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 5px 0;
+}
+.custom-context-menu li {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #dc3545;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.custom-context-menu li:hover {
+    background-color: #f8f9fa;
+}
+</style>
     <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -2063,13 +2098,81 @@ if (!$bridgeLoaded) {
                 }
             });
         }
+        document.addEventListener('DOMContentLoaded', function() {
+            const contextMenu = document.getElementById('studentContextMenu');
+            let targetStudentId = null;
+
+            // Hide context menu when clicking anywhere
+            document.addEventListener('click', function(e) {
+                if (contextMenu && contextMenu.style.display === 'block') {
+                    contextMenu.style.display = 'none';
+                }
+            });
+
+            // Handle right click on student rows
+            const studentRows = document.querySelectorAll('.student-row');
+            studentRows.forEach(row => {
+                row.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    targetStudentId = this.getAttribute('data-id');
+                    
+                    // Position the menu
+                    if (contextMenu) {
+                        contextMenu.style.display = 'block';
+                        contextMenu.style.left = e.pageX + 'px';
+                        contextMenu.style.top = e.pageY + 'px';
+                    }
+                });
+            });
+
+            // Handle delete action
+            const menuDeleteStudent = document.getElementById('menuDeleteStudent');
+            if (menuDeleteStudent) {
+                menuDeleteStudent.addEventListener('click', function() {
+                    if (!targetStudentId) return;
+                    
+                    Swal.fire({
+                        title: 'Are you absolutely sure?',
+                        text: "This will permanently delete the student and ALL associated data (grades, enrollments, checklists, etc). This cannot be undone!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, delete permanently!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Send delete request
+                            fetch('delete_student.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: 'student_id=' + encodeURIComponent(targetStudentId)
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    Swal.fire(
+                                        'Deleted!',
+                                        'The student has been permanently deleted.',
+                                        'success'
+                                    ).then(() => {
+                                        window.location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Error', data.error || 'An error occurred.', 'error');
+                                }
+                            })
+                            .catch(err => {
+                                Swal.fire('Error', 'Network error occurred.', 'error');
+                            });
+                        }
+                    });
+                });
+            }
+        });
     </script>
 </body>
-</html>
-
-
-
-
 
 
 
