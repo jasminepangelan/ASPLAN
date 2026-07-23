@@ -167,8 +167,9 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
 
     /* Main content styling */
     .main-content {
+      margin-top: 45px;
       margin-left: 250px;
-      min-height: calc(100vh - 46px);
+      min-height: calc(100vh - 45px);
       background-color: #f5f5f5;
       width: calc(100vw - 250px);
       overflow-x: hidden;
@@ -191,8 +192,8 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
     }
 
     .page-header {
-      padding: 4px 2px 0;
-      margin: 0 0 12px;
+      padding: 0;
+      margin: 0 0 10px;
     }
 
     .page-header h1 {
@@ -484,10 +485,10 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
 
   <!-- Main Content -->
   <div class="main-content">
-    <div class="page-header">
-      <h1>Admin Dashboard</h1>
-    </div>
     <div class="content">
+      <div class="page-header">
+        <h1>Admin Dashboard</h1>
+      </div>
       <div class="message-container">
         <span class="message-icon">i</span>
         <span class="message-copy">
