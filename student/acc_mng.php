@@ -1373,11 +1373,9 @@ $csrfToken = getCSRFToken();
           <label for="contact_no">Contact Number</label>
           <div class="field-input-row">
             <input id="contact_no" type="text" value="<?= $contact_no ?>" disabled>
-            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('contact_no')" aria-label="Edit contact number">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
-            <?php endif; ?>
           </div>
           <div class="field-note">Enter a reachable number in case the school needs to contact you.</div>
         </div>
@@ -1390,16 +1388,14 @@ $csrfToken = getCSRFToken();
           <label for="address">Address</label>
           <div class="field-input-row">
             <input id="address" type="text" value="<?= $address ?>" disabled>
-            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('address')" aria-label="Edit address">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
-            <?php endif; ?>
           </div>
           <div class="field-note">Keep your current residence updated for student communications.</div>
         </div>
       </div>
-      <div class="actions">
+      <div class="buttons" id="student-profile-actions">
         <button onclick="saveChanges()">SAVE CHANGES</button>
         <button type="button" onclick="window.history.back();" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">BACK</button>
       </div>
