@@ -356,6 +356,12 @@
                         messageDiv.style.color = 'red';
                         messageDiv.style.display = 'none';
                         isStudentIdValid = true;
+                        
+                        if (data.record) {
+                            lastNameInput.value = data.record.last_name || '';
+                            firstNameInput.value = data.record.first_name || '';
+                            middleNameInput.value = data.record.middle_initial || '';
+                        }
                     }
                 })
                 .catch(error => {

@@ -49,6 +49,7 @@ if ($useLaravelBridge) {
             echo json_encode([
                 'exists' => (bool) $decoded['exists'],
                 'allowed' => (bool) ($decoded['allowed'] ?? true),
+                'record' => $decoded['record'] ?? null,
                 'message' => (string) ($decoded['message'] ?? ''),
             ]);
             exit;
@@ -68,6 +69,7 @@ $masterlistGate = smlStudentIdAllowedForRegistration($conn, $studentId);
 echo json_encode([
     'exists' => false,
     'allowed' => (bool) $masterlistGate['allowed'],
+    'record' => $masterlistGate['record'] ?? null,
     'message' => !$masterlistGate['allowed']
         ? (string) ($masterlistGate['message'] ?? '')
         : (string) ($availability['message'] ?? ''),
