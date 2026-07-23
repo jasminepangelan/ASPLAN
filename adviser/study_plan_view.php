@@ -1390,6 +1390,19 @@ if ($last_planned_term && !$has_unresolved_plan) {
             }
         }
     </style>
+    <script>
+        const originalPrint = window.print;
+        window.print = function() {
+            const origTitle = document.title;
+            const studentNo = "<?= addslashes(htmlspecialchars($student['student_number'] ?? '')) ?>";
+            const lastName = "<?= addslashes(htmlspecialchars(str_replace(' ', '', $student['last_name'] ?? ''))) ?>";
+            if (studentNo && lastName) {
+                document.title = studentNo + '_' + lastName;
+            }
+            originalPrint.apply(window);
+            document.title = origTitle;
+        };
+    </script>
 </head>
 <body>
     <div class="header">

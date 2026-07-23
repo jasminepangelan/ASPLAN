@@ -2187,6 +2187,19 @@ $studyPlanHeaderLabel = $is_admin_reference_view
             }
         }
     </style>
+    <script>
+        const originalPrint = window.print;
+        window.print = function() {
+            const origTitle = document.title;
+            const studentNo = "<?= addslashes(htmlspecialchars($student_id ?? '')) ?>";
+            const lastName = "<?= addslashes(htmlspecialchars(str_replace(' ', '', $last_name ?? ''))) ?>";
+            if (studentNo && lastName) {
+                document.title = studentNo + '_' + lastName;
+            }
+            originalPrint.apply(window);
+            document.title = origTitle;
+        };
+    </script>
 </head>
 <body>
     <!-- Title Bar -->
