@@ -1821,7 +1821,8 @@ $studyPlanHeaderLabel = $is_admin_reference_view
             .print-button,
             .page-header,
             .pagination-controls,
-            .completed-divider {
+            .completed-divider,
+            .sp-info {
                 display: none !important;
             }
 

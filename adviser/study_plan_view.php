@@ -1366,7 +1366,8 @@ if ($last_planned_term && !$has_unresolved_plan) {
             .sidebar,
             .btn-back,
             .ay-overview-wrap,
-            #ay-modal-overlay {
+            #ay-modal-overlay,
+            .sp-info {
                 display: none !important;
             }
             .main-content {

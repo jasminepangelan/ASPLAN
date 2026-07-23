@@ -1370,7 +1370,8 @@ if ($lastPlannedTerm && !$hasUnresolvedPlan) {
             .sidebar,
             .btn-back,
             .ay-overview-wrap,
-            #ay-modal-overlay {
+            #ay-modal-overlay,
+            .sp-info {
                 display: none !important;
             }
             .main-content {
