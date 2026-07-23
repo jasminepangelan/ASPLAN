@@ -275,10 +275,24 @@ closeDBConnection($conn);
             height: 44px;
             border: 1px solid #c8d2cc;
             border-radius: 8px;
-            padding: 7px 4px;
+            padding: 5px 8px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 32px;
+            color: #172033;
+            padding-right: 30px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: 42px;
+            right: 8px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__clear {
+            height: 42px;
+            line-height: 32px;
+            margin-right: 15px;
         }
         .select2-container--default .select2-selection--single:focus,
         .select2-container--default.select2-container--focus .select2-selection--single {
