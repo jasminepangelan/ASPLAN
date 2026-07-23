@@ -1730,6 +1730,28 @@ if (!$bridgeLoaded) {
         </div>
     <?php endif; ?>
 
+        <div class="modal-overlay" id="studentDeleteModal" aria-hidden="true">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="studentDeleteTitle">
+                <div class="confirm-shell">
+                    <div class="confirm-icon">!</div>
+                    <div class="confirm-copy">
+                        <div class="confirm-kicker">Delete Student Account</div>
+                        <div class="confirm-title" id="studentDeleteTitle">Are you absolutely sure?</div>
+                        <div class="confirm-message" id="studentDeleteMessage">
+                            This will permanently delete the student and ALL associated data (grades, enrollments, checklists, etc).
+                        </div>
+                        <div class="confirm-detail" style="color: #d33; font-weight: bold;">
+                            This action cannot be undone!
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="modal-btn cancel" id="cancelStudentDelete">Cancel</button>
+                        <button type="button" class="modal-btn danger" id="confirmStudentDelete">Yes, Delete Permanently</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 <!-- Custom Context Menu for Student Rows -->
 <div id="studentContextMenu" class="custom-context-menu" style="display: none;">
     <ul>
@@ -2127,32 +2149,75 @@ if (!$bridgeLoaded) {
 
             // Handle delete action
             const menuDeleteStudent = document.getElementById('menuDeleteStudent');
+            const studentDeleteModal = document.getElementById('studentDeleteModal');
+            const cancelStudentDelete = document.getElementById('cancelStudentDelete');
+            const confirmStudentDelete = document.getElementById('confirmStudentDelete');
+            
+            function setStudentDeleteModalOpen(isOpen) {
+                if (!studentDeleteModal) return;
+                if (isOpen) {
+                    studentDeleteModal.style.display = 'flex';
+                    studentDeleteModal.classList.add('open');
+                    studentDeleteModal.setAttribute('aria-hidden', 'false');
+                } else {
+                    studentDeleteModal.style.display = 'none';
+                    studentDeleteModal.classList.remove('open');
+                    studentDeleteModal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            if (cancelStudentDelete) {
+                cancelStudentDelete.addEventListener('click', function() {
+                    setStudentDeleteModalOpen(false);
+                });
+            }
+
+            if (studentDeleteModal) {
+                studentDeleteModal.addEventListener('click', function(event) {
+                    if (event.target === studentDeleteModal) {
+                        setStudentDeleteModalOpen(false);
+                    }
+                });
+            }
+
             if (menuDeleteStudent) {
                 menuDeleteStudent.addEventListener('click', function() {
                     if (!targetStudentId) return;
+                    setStudentDeleteModalOpen(true);
+                });
+            }
+
+            if (confirmStudentDelete) {
+                confirmStudentDelete.addEventListener('click', function() {
+                    if (!targetStudentId) return;
                     
-                    if (confirm("Are you absolutely sure?\n\nThis will permanently delete the student and ALL associated data (grades, enrollments, checklists, etc). This cannot be undone!")) {
-                        // Send delete request
-                        fetch('delete_student.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: 'student_id=' + encodeURIComponent(targetStudentId)
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                alert('The student has been permanently deleted.');
-                                window.location.reload();
-                            } else {
-                                alert('Error: ' + (data.error || 'An error occurred.'));
-                            }
-                        })
-                        .catch(err => {
-                            alert('Network error occurred.');
-                        });
-                    }
+                    const originalText = confirmStudentDelete.innerText;
+                    confirmStudentDelete.innerText = 'Deleting...';
+                    confirmStudentDelete.disabled = true;
+
+                    // Send delete request
+                    fetch('delete_student.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'student_id=' + encodeURIComponent(targetStudentId)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Error: ' + (data.error || 'An error occurred.'));
+                            confirmStudentDelete.innerText = originalText;
+                            confirmStudentDelete.disabled = false;
+                        }
+                    })
+                    .catch(err => {
+                        alert('Network error occurred.');
+                        confirmStudentDelete.innerText = originalText;
+                        confirmStudentDelete.disabled = false;
+                    });
                 });
             }
         });
