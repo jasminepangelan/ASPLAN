@@ -41,6 +41,7 @@ class StudyPlanGenerator {
     private $course_failure_counts = []; // Number of failures per course code
     private $thrice_failed_courses = []; // Courses failed 3+ times (triggers plan stop)
     private $student_classification = '';
+    private $student_registration_classification = '';
     private $student_enrollment_classification = '';
     private $student_registration_status = '';
     private $student_gwa = null;
@@ -891,7 +892,7 @@ class StudyPlanGenerator {
 
     private function loadStudentPolicyContext() {
         $stmt = $this->conn->prepare("
-            SELECT stud_classification, general_weighted_average
+            SELECT stud_classification, registration_classification, general_weighted_average
             FROM student_info
             WHERE student_number = ?
             LIMIT 1
@@ -902,6 +903,7 @@ class StudyPlanGenerator {
             $result = $stmt->get_result();
             if ($row = $result->fetch_assoc()) {
                 $this->student_classification = trim((string)($row['stud_classification'] ?? ''));
+                $this->student_registration_classification = trim((string)($row['registration_classification'] ?? ''));
                 $gwa = $row['general_weighted_average'] ?? null;
                 if ($gwa !== null && $gwa !== '' && is_numeric($gwa)) {
                     $this->student_gwa = (float)$gwa;
@@ -1677,6 +1679,11 @@ class StudyPlanGenerator {
         $classification = trim((string)$this->student_enrollment_classification);
         if ($classification !== '') {
             return $classification;
+        }
+
+        $registrationClassification = trim((string)$this->student_registration_classification);
+        if ($registrationClassification !== '') {
+            return $registrationClassification;
         }
 
         $recordClassification = strtolower(trim((string)$this->student_classification));
