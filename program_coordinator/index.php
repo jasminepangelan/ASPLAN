@@ -460,13 +460,6 @@ if (!$bridgeLoaded) {
       <h1>Program Coordinator Dashboard</h1>
     </div>
     <div class="content">
-      <div class="message-container">
-        <span class="message-icon">i</span>
-        <span class="message-copy">
-          <small>Coordinator Snapshot</small>
-          <span><strong><?= (int)($coordinatorShiftSummary['pending'] ?? 0) ?></strong> pending coordinator reviews, <strong><?= (int)($coordinatorShiftSummary['approved'] ?? 0) ?></strong> approved and executed shifts, and <strong><?= (int)($coordinatorShiftSummary['rejected'] ?? 0) ?></strong> rejected in the final stage.</span>
-        </span>
-      </div>
 
       <div class="section-card">
         <div class="section-head">
