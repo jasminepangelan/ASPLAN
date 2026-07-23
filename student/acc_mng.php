@@ -1399,8 +1399,8 @@ $csrfToken = getCSRFToken();
           <div class="field-note">Keep your current residence updated for student communications.</div>
         </div>
       </div>
-      <div class="buttons" id="student-profile-actions">
-        <button onclick="saveChanges()"><?= $studentCanEditDetails ? 'SAVE CHANGES' : 'SAVE PHOTO' ?></button>
+      <div class="actions">
+        <button onclick="saveChanges()">SAVE CHANGES</button>
         <button type="button" onclick="window.history.back();" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">BACK</button>
       </div>
     </div>
@@ -1468,8 +1468,8 @@ $csrfToken = getCSRFToken();
     }
 
     function toggleEdit(fieldId) {
-      if (!studentCanEditDetails) {
-        showFeedbackModal('error', 'Profile Details Locked', 'Only administrators can update your profile details. You may still change your password or profile picture here.');
+      if (!studentCanEditDetails && fieldId !== 'contact_no' && fieldId !== 'address') {
+        showFeedbackModal('error', 'Profile Details Locked', 'Only administrators can update your profile details. You may still change your password, profile picture, contact number, or address here.');
         return;
       }
       const field = document.getElementById(fieldId);
@@ -1509,9 +1509,9 @@ function closeModal(modalId) {
         formData.append("first_name", document.getElementById("first_name").value);
         formData.append("middle_name", document.getElementById("middle_name").value);
         formData.append("email", document.getElementById("email").value);
-        formData.append("contact_no", document.getElementById("contact_no").value);
-        formData.append("address", document.getElementById("address").value);
       }
+      formData.append("contact_no", document.getElementById("contact_no").value);
+      formData.append("address", document.getElementById("address").value);
 
       const fileInput = document.getElementById("file-input");
       if (fileInput.files.length > 0) {
@@ -1519,10 +1519,6 @@ function closeModal(modalId) {
         console.log('Picture file:', fileInput.files[0]);
       } else {
         console.log('No picture selected');
-        if (!studentCanEditDetails) {
-          showFeedbackModal('error', 'No Changes Allowed', 'Only administrators can update your profile details. You may still change your password or upload a new profile picture here.');
-          return;
-        }
       }
 
       fetch("save_profile.php", {

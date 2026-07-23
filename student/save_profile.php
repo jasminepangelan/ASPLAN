@@ -33,8 +33,6 @@ try {
         'first_name',
         'middle_name',
         'email',
-        'contact_no',
-        'address',
         'admission_date',
         'stud_classification',
         'registration_classification',
