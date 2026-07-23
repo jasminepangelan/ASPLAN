@@ -1371,14 +1371,19 @@ if (!$bridgeLoaded) {
         </div>
 
         <div class="toolbar">
-            <form method="GET" action="accounts_view.php">
-                <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
-                <input class="search-input" type="text" name="search" placeholder="Search in <?= htmlspecialchars($title) ?>" value="<?= htmlspecialchars($search) ?>">
-                <button class="btn btn-search" type="submit">Search</button>
-                <?php if ($search !== ''): ?>
-                    <a class="btn btn-clear" href="accounts_view.php?type=<?= htmlspecialchars($type) ?>">Clear</a>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <form method="GET" action="accounts_view.php" style="display: flex; gap: 10px; align-items: center; margin: 0;">
+                    <input type="hidden" name="type" value="<?= htmlspecialchars($type) ?>">
+                    <input class="search-input" type="text" name="search" placeholder="Search in <?= htmlspecialchars($title) ?>" value="<?= htmlspecialchars($search) ?>">
+                    <button class="btn btn-search" type="submit">Search</button>
+                    <?php if ($search !== ''): ?>
+                        <a class="btn btn-clear" href="accounts_view.php?type=<?= htmlspecialchars($type) ?>">Clear</a>
+                    <?php endif; ?>
+                </form>
+                <?php if ($type === 'students'): ?>
+                    <button type="button" class="btn btn-search" style="background: #e67e22;" onclick="openBatchArchiveModal()">Archive Batch</button>
                 <?php endif; ?>
-            </form>
+            </div>
             <div class="stats">Total: <strong><?= $total_records ?></strong></div>
         </div>
 
@@ -1748,6 +1753,28 @@ if (!$bridgeLoaded) {
                         <button type="button" class="modal-btn cancel" id="cancelStudentDelete">Cancel</button>
                         <button type="button" class="modal-btn danger" id="confirmStudentDelete">Yes, Delete Permanently</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="batchArchiveModal" aria-hidden="true">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="batchArchiveTitle">
+                <div class="modal-header">
+                    <h3 id="batchArchiveTitle">Archive Students by Batch</h3>
+                    <button type="button" class="modal-close" id="closeBatchArchiveModal" aria-label="Close modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group" style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="batchPrefixInput" class="form-control" placeholder="Enter batch prefix (e.g., 2401)" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                        <button type="button" class="btn btn-search" id="fetchBatchBtn" style="padding: 10px 15px;">Fetch Students</button>
+                    </div>
+                    <div id="batchArchiveResults" style="margin-top: 15px; max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px; display: none;">
+                        <!-- Checkboxes will be injected here -->
+                    </div>
+                </div>
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button type="button" class="modal-btn cancel" id="cancelBatchArchiveBtn">Cancel</button>
+                    <button type="button" class="modal-btn danger" id="confirmBatchArchiveBtn" style="display: none;">Confirm Archive</button>
                 </div>
             </div>
         </div>
@@ -2221,6 +2248,132 @@ if (!$bridgeLoaded) {
                 });
             }
         });
+
+        // Batch Archive Logic
+        const batchArchiveModal = document.getElementById('batchArchiveModal');
+        const closeBatchArchiveModalBtn = document.getElementById('closeBatchArchiveModal');
+        const cancelBatchArchiveBtn = document.getElementById('cancelBatchArchiveBtn');
+        const fetchBatchBtn = document.getElementById('fetchBatchBtn');
+        const confirmBatchArchiveBtn = document.getElementById('confirmBatchArchiveBtn');
+        const batchPrefixInput = document.getElementById('batchPrefixInput');
+        const batchArchiveResults = document.getElementById('batchArchiveResults');
+
+        function openBatchArchiveModal() {
+            if (batchArchiveModal) {
+                batchPrefixInput.value = '';
+                batchArchiveResults.style.display = 'none';
+                batchArchiveResults.innerHTML = '';
+                confirmBatchArchiveBtn.style.display = 'none';
+                batchArchiveModal.style.display = 'flex';
+                batchArchiveModal.classList.add('open');
+                batchArchiveModal.setAttribute('aria-hidden', 'false');
+            }
+        }
+
+        function closeBatchArchiveModal() {
+            if (batchArchiveModal) {
+                batchArchiveModal.style.display = 'none';
+                batchArchiveModal.classList.remove('open');
+                batchArchiveModal.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        if (closeBatchArchiveModalBtn) closeBatchArchiveModalBtn.addEventListener('click', closeBatchArchiveModal);
+        if (cancelBatchArchiveBtn) cancelBatchArchiveBtn.addEventListener('click', closeBatchArchiveModal);
+        if (batchArchiveModal) {
+            batchArchiveModal.addEventListener('click', function(event) {
+                if (event.target === batchArchiveModal) {
+                    closeBatchArchiveModal();
+                }
+            });
+        }
+
+        if (fetchBatchBtn) {
+            fetchBatchBtn.addEventListener('click', function() {
+                const prefix = batchPrefixInput.value.trim();
+                if (!prefix) {
+                    alert('Please enter a batch prefix first.');
+                    return;
+                }
+
+                fetchBatchBtn.innerText = 'Fetching...';
+                fetchBatchBtn.disabled = true;
+
+                fetch('api_get_batch_students.php?prefix=' + encodeURIComponent(prefix))
+                    .then(res => res.json())
+                    .then(data => {
+                        fetchBatchBtn.innerText = 'Fetch Students';
+                        fetchBatchBtn.disabled = false;
+
+                        if (data.success) {
+                            if (data.students.length === 0) {
+                                batchArchiveResults.innerHTML = '<p style="color: #666; font-style: italic;">No unarchived students found for this batch.</p>';
+                                batchArchiveResults.style.display = 'block';
+                                confirmBatchArchiveBtn.style.display = 'none';
+                            } else {
+                                let html = '<div style="margin-bottom: 10px;"><strong>Select students to archive:</strong><br><small style="color: #777;">(Uncheck those you do not want to archive)</small></div>';
+                                data.students.forEach(student => {
+                                    html += `<label style="display: block; margin-bottom: 5px; padding: 5px; background: #f9f9f9; border-radius: 4px; cursor: pointer;">
+                                        <input type="checkbox" class="batch-student-checkbox" value="${student.student_number}" checked style="margin-right: 8px;">
+                                        ${student.student_number} - ${student.name}
+                                    </label>`;
+                                });
+                                batchArchiveResults.innerHTML = html;
+                                batchArchiveResults.style.display = 'block';
+                                confirmBatchArchiveBtn.style.display = 'inline-block';
+                            }
+                        } else {
+                            alert('Error: ' + (data.error || 'Failed to fetch students.'));
+                        }
+                    })
+                    .catch(err => {
+                        fetchBatchBtn.innerText = 'Fetch Students';
+                        fetchBatchBtn.disabled = false;
+                        alert('Network error occurred.');
+                    });
+            });
+        }
+
+        if (confirmBatchArchiveBtn) {
+            confirmBatchArchiveBtn.addEventListener('click', function() {
+                const checkboxes = document.querySelectorAll('.batch-student-checkbox:checked');
+                const studentNumbers = Array.from(checkboxes).map(cb => cb.value);
+
+                if (studentNumbers.length === 0) {
+                    alert('No students selected for archiving.');
+                    return;
+                }
+
+                if (!confirm(`Are you sure you want to archive ${studentNumbers.length} student(s)?`)) {
+                    return;
+                }
+
+                confirmBatchArchiveBtn.innerText = 'Archiving...';
+                confirmBatchArchiveBtn.disabled = true;
+
+                fetch('api_archive_batch_students.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ student_numbers: studentNumbers })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Successfully archived ${data.count} student(s).`);
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + (data.error || 'An error occurred.'));
+                        confirmBatchArchiveBtn.innerText = 'Confirm Archive';
+                        confirmBatchArchiveBtn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    alert('Network error occurred.');
+                    confirmBatchArchiveBtn.innerText = 'Confirm Archive';
+                    confirmBatchArchiveBtn.disabled = false;
+                });
+            });
+        }
     </script>
 </body>
 
