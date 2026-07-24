@@ -76,11 +76,12 @@ if (!$bridgeLoaded) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student Homepage</title>
   <link rel="icon" type="image/png" href="../img/cav.png">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body {
       background: url('../pix/school.jpg') no-repeat center center fixed;
       background-size: cover;
-      font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;
+      font-family: 'Outfit', 'Segoe UI', Tahoma, Verdana, sans-serif;
       margin: 0;
       padding: 0;
       color: #333;
@@ -142,16 +143,19 @@ if (!$bridgeLoaded) {
     /* Sidebar styling */
     .sidebar {
       width: 250px;
-      height: calc(100vh - 38px);
-      background: linear-gradient(135deg, #1a4f16 0%, #2d8f22 100%);
-      color: white;
+      height: 100vh;
+      background: linear-gradient(180deg, rgba(32, 96, 24, 0.95) 0%, rgba(18, 56, 13, 0.98) 100%);
+      backdrop-filter: blur(10px);
+      color: #fff;
       position: fixed;
+      top: 0;
       left: 0;
-      top: 38px;
-      padding: 20px 0;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-      overflow-y: hidden;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+      z-index: 999;
       transition: transform 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .sidebar.collapsed {
@@ -224,7 +228,8 @@ if (!$bridgeLoaded) {
     .main-content {
       margin-left: 250px;
       min-height: calc(100vh - 38px);
-      background-color: rgba(245, 245, 245, 0.95);
+      background: rgba(245, 247, 245, 0.85);
+      backdrop-filter: blur(15px);
       width: calc(100vw - 250px);
       overflow-x: hidden;
       overflow-y: auto;
@@ -268,11 +273,12 @@ if (!$bridgeLoaded) {
     }
 
     .section-card {
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 248, 0.98) 100%);
-      border: 1px solid rgba(32, 96, 24, 0.12);
-      border-radius: 22px;
-      padding: 22px;
-      box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 28px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255,255,255,0.5);
     }
 
     .section-head {
@@ -309,20 +315,21 @@ if (!$bridgeLoaded) {
     .option-container {
       position: relative;
       overflow: hidden;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(245, 249, 246, 0.98) 100%);
-      border: 1px solid rgba(22, 79, 20, 0.12);
-      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
-      padding: 22px 20px 20px;
-      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(250, 252, 250, 0.8));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 10px 30px rgba(32, 96, 24, 0.05);
+      padding: 26px 22px 22px;
+      border-radius: 24px;
       text-align: left;
       cursor: pointer;
-      transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
       width: 100%;
       min-width: 0;
       max-width: none;
       margin: 0;
       box-sizing: border-box;
-      min-height: 210px;
+      min-height: 220px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -333,15 +340,21 @@ if (!$bridgeLoaded) {
       position: absolute;
       inset: 0 auto auto 0;
       width: 100%;
-      height: 4px;
-      background: linear-gradient(90deg, rgba(22, 79, 20, 0.95) 0%, rgba(76, 175, 80, 0.88) 100%);
-      opacity: 0.95;
+      height: 6px;
+      background: linear-gradient(90deg, #4CAF50, #206018);
+      opacity: 0;
+      transition: opacity 0.4s ease;
     }
 
     .option-container:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 22px 36px rgba(15, 23, 42, 0.14);
-      border-color: rgba(22, 79, 20, 0.24);
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: 0 25px 50px rgba(32, 96, 24, 0.15), 0 0 0 2px rgba(76, 175, 80, 0.3);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(245, 252, 245, 0.95));
+      z-index: 10;
+    }
+    
+    .option-container:hover::before {
+      opacity: 1;
     }
 
     .option-icon {
@@ -387,18 +400,24 @@ if (!$bridgeLoaded) {
     .message-container {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
       font-size: 15px;
       color: #17421a;
-      font-weight: 700;
+      font-weight: 600;
       letter-spacing: 0.2px;
       margin: 0;
-      padding: 16px 18px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(243, 250, 245, 0.96) 100%);
-      border-radius: 16px;
+      padding: 20px 24px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
       width: 100%;
-      border: 1px solid rgba(32, 96, 24, 0.12);
-      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-left: 6px solid #4CAF50;
+      box-shadow: 0 15px 35px rgba(32, 96, 24, 0.08);
+      transition: transform 0.3s ease;
+    }
+    .message-container:hover {
+      transform: translateX(4px);
     }
 
     .message-icon {
