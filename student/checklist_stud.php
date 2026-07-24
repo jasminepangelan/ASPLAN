@@ -840,10 +840,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         margin-right: auto;
         max-width: min(1180px, calc(100vw - 390px));
         padding: 42px 46px;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.8);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255,255,255,0.5);
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
         border-radius: 12px;
         overflow-x: visible;
         position: relative;

@@ -1320,8 +1320,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view
             padding: 20px;
             min-height: calc(100vh - 60px);
             transition: margin-left 0.3s ease;
-            background: rgba(245, 247, 245, 0.85);
-            backdrop-filter: blur(15px);
+            background: #ffffff;
         }
 
         .main-content.expanded {
@@ -1347,14 +1346,13 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         .page-header p {
             font-size: 14px;
             opacity: 0.9;
-        }        .academic-overview {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.8);
+        .academic-overview {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
             border-radius: 12px;
             padding: 22px;
             margin-bottom: 20px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
         }
 
         .academic-overview__header {

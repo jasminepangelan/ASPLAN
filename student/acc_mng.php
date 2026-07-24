@@ -375,8 +375,7 @@ $csrfToken = getCSRFToken();
       overflow-y: auto;
       transition: margin-left 0.3s ease;
       padding: 28px 24px 40px;
-      background: rgba(245, 247, 245, 0.85);
-      backdrop-filter: blur(15px);
+      background: #ffffff;
     }
 
     .main-content.expanded {
