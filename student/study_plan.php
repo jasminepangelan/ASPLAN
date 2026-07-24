@@ -1861,7 +1861,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
+        @media (max-width: 1100px) {
             .menu-toggle {
                 display: inline-flex;
             }
@@ -1883,11 +1883,31 @@ $studyPlanHeaderLabel = $is_admin_reference_view
             }
 
             .study-plan-container {
-                padding: 20px 15px;
+                padding: 15px 12px;
             }
 
             .page-header h1 {
                 font-size: 22px;
+            }
+            
+            .title-bar {
+                font-size: 12px;
+                padding: 5px 8px;
+            }
+    
+            .title-bar img {
+                height: 22px !important;
+                margin-right: 6px !important;
+            }
+    
+            .student-info {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+    
+            .student-info img {
+                width: 18px !important;
+                height: 18px !important;
             }
 
             .student-details {
