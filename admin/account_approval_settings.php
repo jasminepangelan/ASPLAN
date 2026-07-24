@@ -356,7 +356,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['approve_all_grades'])) {
         if ($conn instanceof PDO) {
             try {
-                $stmt = $conn->prepare("UPDATE student_checklists SET grade_approved = 1, approved_at = NOW(), approved_by = 'Admin' WHERE (grade_approved = 0 OR grade_approved IS NULL) AND final_grade IS NOT NULL AND final_grade != '' AND UPPER(final_grade) != 'NO GRADE'");
+                $stmt = $conn->prepare("
+                    UPDATE student_checklists 
+                    SET 
+                        grade_approved = 1, 
+                        approved_at = NOW(), 
+                        approved_by = 'Admin',
+                        evaluator_remarks = IF(evaluator_remarks = 'Pending' OR ((grade_approved = 0 OR grade_approved IS NULL) AND final_grade IS NOT NULL AND final_grade != '' AND UPPER(final_grade) != 'NO GRADE'), 'Approved', evaluator_remarks),
+                        evaluator_remarks_2 = IF(evaluator_remarks_2 = 'Pending' OR ((grade_approved = 0 OR grade_approved IS NULL) AND final_grade_2 IS NOT NULL AND final_grade_2 != '' AND UPPER(final_grade_2) != 'NO GRADE'), 'Approved', evaluator_remarks_2),
+                        evaluator_remarks_3 = IF(evaluator_remarks_3 = 'Pending' OR ((grade_approved = 0 OR grade_approved IS NULL) AND final_grade_3 IS NOT NULL AND final_grade_3 != '' AND UPPER(final_grade_3) != 'NO GRADE'), 'Approved', evaluator_remarks_3)
+                    WHERE 
+                        evaluator_remarks = 'Pending' 
+                        OR evaluator_remarks_2 = 'Pending' 
+                        OR evaluator_remarks_3 = 'Pending'
+                        OR (
+                            (grade_approved = 0 OR grade_approved IS NULL) 
+                            AND (
+                                (final_grade IS NOT NULL AND final_grade != '' AND UPPER(final_grade) != 'NO GRADE') OR
+                                (final_grade_2 IS NOT NULL AND final_grade_2 != '' AND UPPER(final_grade_2) != 'NO GRADE') OR
+                                (final_grade_3 IS NOT NULL AND final_grade_3 != '' AND UPPER(final_grade_3) != 'NO GRADE')
+                            )
+                        )
+                ");
                 $stmt->execute();
                 $affected = $stmt->rowCount();
                 aasWriteAdminAuditLog(
