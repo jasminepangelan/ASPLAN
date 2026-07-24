@@ -586,20 +586,27 @@ body.modal-open {
   body {
     justify-content: center;
     padding: 15px;
+    height: auto;
+    min-height: 100vh;
   }
   
   main {
     align-items: center;
+    justify-content: center;
+    height: auto;
+    min-height: 100vh;
   }
 
   .welcome-title {
-    top: 5%;
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
     font-size: clamp(0.7em, 3vw, 0.9em);
     width: 90vw;
     align-items: center;
     text-align: center;
+    margin: 0 0 20px 0;
   }
   
   .welcome-title img {
@@ -609,10 +616,11 @@ body.modal-open {
   }
   
   .container {
-    margin-top: calc(clamp(20vh, 25vh, 30vh) + 90px);
-    margin-left: auto;
-    margin-right: auto;
-    padding: 15px 20px;
+    position: relative;
+    margin-top: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 20px;
     width: 90vw;
     max-width: 320px;
     background-color: rgba(255, 255, 255, 0.96) !important;
@@ -639,16 +647,19 @@ body.modal-open {
   body {
     padding: 10px;
     justify-content: center;
-    overflow: hidden;
-    height: 100vh;
+    overflow: auto;
+    height: auto;
+    min-height: 100vh;
   }
   
   .welcome-title {
     font-size: clamp(0.5em, 4vw, 0.7em);
-    top: 2%;
-    left: 50%;
-    transform: translateX(-50%);
     align-items: center;
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    margin: 0 0 15px 0;
   }
   
   .welcome-title span {
@@ -656,10 +667,10 @@ body.modal-open {
   }
   
   .container {
-    margin-top: calc(clamp(25vh, 30vh, 35vh) + 75px);
-    margin-left: auto;
-    margin-right: auto;
-    padding: 6px 15px;
+    margin-top: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 15px;
     width: 85vw;
     max-width: 300px;
     background-color: rgba(255, 255, 255, 0.97) !important;
