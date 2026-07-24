@@ -149,7 +149,8 @@
       </form>
       <div class="forgot-password">
         <a href="#" onclick="openForgotPasswordModal(); return false;" aria-label="Reset your password">Forgot password?</a> | 
-        <a id="createAccountLink" href="forms/student_input_form_1.html" aria-label="Create a new student account">Create an Account</a>
+        <a id="createAccountLink" href="forms/student_input_form_1.html" aria-label="Create a new student account">Create an Account</a><br><br>
+        <a href="#" onclick="document.getElementById('aboutUsModal').style.display='flex'; return false;" aria-label="About Us" style="display: inline-block; padding: 8px 16px; background: #206018; color: white; border-radius: 20px; font-weight: 600; text-decoration: none; transition: transform 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 4px 12px rgba(32, 96, 24, 0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(32, 96, 24, 0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(32, 96, 24, 0.2)'">About Us</a>
       </div>
     </div>
 
@@ -609,6 +610,51 @@
       <div id="rejectedModalTitle" class="modal-title">Account Rejected</div>
       <div class="modal-message">Your account was rejected. Please contact admin for more information.</div>
       <button class="modal-button" onclick="closeModal('rejectedModal')" aria-label="Close rejection message">OK</button>
+    </div>
+  </div>
+
+  <!-- About Us Modal -->
+  <div id="aboutUsModal" class="modal" role="dialog" aria-labelledby="aboutUsTitle" aria-modal="true" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; backdrop-filter: blur(5px);">
+    <div class="modal-content about-us-content" style="
+      background: linear-gradient(135deg, #ffffff 0%, #f4fdf6 100%);
+      width: 90%;
+      max-width: 800px;
+      border-radius: 20px;
+      padding: 40px 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      position: relative;
+    ">
+      <button onclick="document.getElementById('aboutUsModal').style.display='none'" style="position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 28px; cursor: pointer; color: #888; transition: color 0.2s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#888'">&times;</button>
+      
+      <h2 id="aboutUsTitle" style="color: #206018; margin-top: 0; margin-bottom: 5px; font-size: 32px; font-weight: 800; letter-spacing: -0.5px;">About Us</h2>
+      <p style="color: #666; margin-bottom: 35px; font-size: 15px;">Meet the incredible team behind ASPLAN</p>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 25px;">
+        <!-- Person 1 -->
+        <div style="background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); transition: transform 0.3s ease, box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 15px 40px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.05)'">
+          <div style="width: 100px; height: 100px; border-radius: 50%; background: #e0f2e3; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #206018; border: 3px solid #b7e4c7;">👨‍💻</div>
+          <h3 style="margin: 0 0 5px; color: #2c3e50; font-size: 19px; font-weight: 700;">First Person</h3>
+          <p style="margin: 0; color: #206018; font-weight: 600; font-size: 13px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Role / Title</p>
+          <p style="margin: 0; color: #7f8c8d; font-size: 14px; line-height: 1.5;">Insert a short biography or description for the first team member here.</p>
+        </div>
+        
+        <!-- Person 2 -->
+        <div style="background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); transition: transform 0.3s ease, box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 15px 40px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.05)'">
+          <div style="width: 100px; height: 100px; border-radius: 50%; background: #e0f2e3; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #206018; border: 3px solid #b7e4c7;">👩‍💻</div>
+          <h3 style="margin: 0 0 5px; color: #2c3e50; font-size: 19px; font-weight: 700;">Second Person</h3>
+          <p style="margin: 0; color: #206018; font-weight: 600; font-size: 13px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Role / Title</p>
+          <p style="margin: 0; color: #7f8c8d; font-size: 14px; line-height: 1.5;">Insert a short biography or description for the second team member here.</p>
+        </div>
+        
+        <!-- Person 3 -->
+        <div style="background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); transition: transform 0.3s ease, box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 15px 40px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 30px rgba(0,0,0,0.05)'">
+          <div style="width: 100px; height: 100px; border-radius: 50%; background: #e0f2e3; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 40px; color: #206018; border: 3px solid #b7e4c7;">👨‍💼</div>
+          <h3 style="margin: 0 0 5px; color: #2c3e50; font-size: 19px; font-weight: 700;">Third Person</h3>
+          <p style="margin: 0; color: #206018; font-weight: 600; font-size: 13px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Role / Title</p>
+          <p style="margin: 0; color: #7f8c8d; font-size: 14px; line-height: 1.5;">Insert a short biography or description for the third team member here.</p>
+        </div>
+      </div>
     </div>
   </div>
 
