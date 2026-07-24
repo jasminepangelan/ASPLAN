@@ -583,24 +583,36 @@ body.modal-open {
 
 /* Responsive Design */
 @media screen and (max-width: 768px) {
+  body {
+    justify-content: center;
+    padding: 15px;
+  }
+  
+  main {
+    align-items: center;
+  }
+
   .welcome-title {
-    top: 3%;
-    left: 5%;
-    font-size: clamp(0.6em, 3vw, 0.8em);
+    top: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(0.7em, 3vw, 0.9em);
     width: 90vw;
     align-items: center;
-    transform: translateX(0);
+    text-align: center;
   }
   
   .welcome-title img {
     height: clamp(60px, 15vw, 100px);
-    margin-top: -10px;
+    margin-left: 0;
+    margin-bottom: 10px;
   }
   
   .container {
-    margin-top: calc(clamp(20vh, 35vh, 40vh) + 75px);
-    margin-left: calc(5% + 40px);
-    padding: 8px 18px;
+    margin-top: calc(clamp(20vh, 25vh, 30vh) + 90px);
+    margin-left: auto;
+    margin-right: auto;
+    padding: 15px 20px;
     width: 90vw;
     max-width: 320px;
     background-color: rgba(255, 255, 255, 0.96) !important;

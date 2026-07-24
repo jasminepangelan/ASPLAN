@@ -630,6 +630,34 @@
     .about-person {
       transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
+    
+    /* Responsive Adjustments for About Us Modal */
+    @media screen and (max-width: 768px) {
+      .about-wrapper {
+        padding: 30px 20px !important;
+        max-height: 85vh !important;
+        width: 90% !important;
+        border-radius: 20px !important;
+      }
+      #aboutUsTitle {
+        font-size: 28px !important;
+      }
+      .about-team-container {
+        gap: 15px !important;
+      }
+      .about-person {
+        min-width: 100% !important;
+        padding: 20px 15px !important;
+      }
+      .about-person img {
+        width: 110px !important;
+        height: 110px !important;
+        margin-bottom: 15px !important;
+      }
+      .about-person h3 {
+        font-size: 18px !important;
+      }
+    }
   </style>
   <div id="aboutUsModal" class="modal" role="dialog" aria-labelledby="aboutUsTitle" aria-modal="true" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; backdrop-filter: blur(12px);">
     <div class="about-wrapper" style="
