@@ -2092,6 +2092,7 @@ document.getElementById('bulkApproveButton').addEventListener('click', function(
         body: JSON.stringify({
             bulk_approve: true,
             student_id: studentId,
+            csrf_token: '<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, "UTF-8"); ?>',
             // program_view is required so the bulk approve request uses the same
             // curriculum/program view selected in the UI for prerequisite checking.
             program_view: '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>',
