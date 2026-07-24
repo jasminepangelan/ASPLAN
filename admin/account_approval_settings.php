@@ -353,6 +353,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if (isset($_POST['approve_all_grades'])) {
+        if ($conn instanceof PDO) {
+            try {
+                $stmt = $conn->prepare("UPDATE student_checklists SET grade_approved = 1, approved_at = NOW(), approved_by = 'Admin' WHERE (grade_approved = 0 OR grade_approved IS NULL) AND final_grade IS NOT NULL AND final_grade != '' AND UPPER(final_grade) != 'NO GRADE'");
+                $stmt->execute();
+                $affected = $stmt->rowCount();
+                aasWriteAdminAuditLog(
+                    $conn,
+                    (string)$_SESSION['admin_id'],
+                    'global_grade_approval',
+                    'student_checklists',
+                    "Approved $affected pending grades globally.",
+                    ['affected_rows' => $affected]
+                );
+                header("Location: account_approval_settings.php?message=" . urlencode("Successfully approved $affected pending grades across all students."));
+                exit();
+            } catch (Exception $e) {
+                $error_message = "Failed to approve all grades: " . $e->getMessage();
+            }
+        } else {
+            $error_message = "Database connection unavailable for this action.";
+        }
+    }
+
     if (isset($_POST['update_policy_settings'])) {
         if ($useLaravelBridge) {
             $bridgeData = postLaravelJsonBridge(
@@ -3098,6 +3122,19 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             </div>
 
             <div class="settings-column">
+                <div class="settings-card">
+                    <form method="POST">
+                        <h2><i class="fas fa-check-double"></i> Global Grade Approval</h2>
+                        <p class="card-note">Instantly approve all pending grades across all students. This action is immediate and cannot be automatically undone. Only grades that have an actual grade submitted will be approved.</p>
+                        
+                        <div class="settings-actions">
+                            <button type="submit" name="approve_all_grades" value="1" class="btn btn-bulk" style="padding:10px 14px; font-size:13px; background: linear-gradient(135deg, #1f7a2f 0%, #35a44a 100%); color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;" onclick="return confirm('Are you sure you want to approve all pending grades across all student accounts?');">
+                                <i class="fas fa-check-double"></i> Approve All Pending Grades
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
                 <div class="settings-card">
                     <form method="POST" id="settingsForm">
                         <h2><i class="fas fa-toggle-on"></i> Account Approval Control</h2>
