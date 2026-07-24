@@ -562,6 +562,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>Checklist</title>
   <link rel="icon" type="image/png" href="../img/cav.png">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     /* Notification styles */
     @keyframes slideInRight {
@@ -636,8 +637,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     }
 
     body {
-        font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;
-        background-color: #f0f0f0;
+        font-family: 'Outfit', 'Segoe UI', Tahoma, Verdana, sans-serif;
+        background: url('../pix/school.jpg') no-repeat center center fixed;
+        background-size: cover;
         margin: 0;
         padding: 0;
         overflow: hidden;
@@ -698,13 +700,15 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     .sidebar {
       width: 250px;
       height: calc(100vh - 32px);
-      background: linear-gradient(135deg, #1a4f16 0%, #2d8f22 100%);
+      background: linear-gradient(180deg, rgba(32, 96, 24, 0.95) 0%, rgba(18, 56, 13, 0.98) 100%);
+      backdrop-filter: blur(10px);
       color: white;
       position: fixed;
       left: 0;
       top: 32px;
       padding: 20px 0;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
       overflow-y: hidden;
       transition: transform 0.3s ease;
       z-index: 999;
@@ -836,9 +840,11 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         margin-right: auto;
         max-width: min(1180px, calc(100vw - 390px));
         padding: 42px 46px;
-        background-color: #fff;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255,255,255,0.5);
+        border-radius: 12px;
         overflow-x: visible;
         position: relative;
         flex-shrink: 1;

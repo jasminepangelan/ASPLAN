@@ -838,6 +838,7 @@ $studyPlanHeaderLabel = $is_admin_reference_view
     <meta http-equiv="Expires" content="0">
     <title><?= htmlspecialchars($studyPlanPageTitle) ?></title>
     <link rel="icon" type="image/png" href="../img/cav.png">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <?php if (!$is_study_plan_reference_view): ?>
         <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-study-plan-workspace.jsx']) ?>
     <?php endif; ?>
@@ -849,8 +850,9 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         }
 
         body {
-            background: #eef2f5;
-            font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;
+            font-family: 'Outfit', 'Segoe UI', Tahoma, Verdana, sans-serif;
+            background: url('../pix/school.jpg') no-repeat center center fixed;
+            background-size: cover;
             color: #333;
             overflow-x: hidden;
         }
@@ -1232,15 +1234,18 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         .sidebar {
             width: 250px;
             height: calc(100vh - 38px);
-            background: linear-gradient(135deg, #1a4f16 0%, #2d8f22 100%);
+            background: linear-gradient(180deg, rgba(32, 96, 24, 0.95) 0%, rgba(18, 56, 13, 0.98) 100%);
+            backdrop-filter: blur(10px);
             color: white;
             position: fixed;
             left: 0;
             top: 38px;
             padding: 20px 0;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
             overflow-y: hidden;
             transition: transform 0.3s ease;
+            z-index: 999;
         }
 
         .sidebar.collapsed {
@@ -1315,6 +1320,8 @@ $studyPlanHeaderLabel = $is_admin_reference_view
             padding: 20px;
             min-height: calc(100vh - 60px);
             transition: margin-left 0.3s ease;
+            background: rgba(245, 247, 245, 0.85);
+            backdrop-filter: blur(15px);
         }
 
         .main-content.expanded {
@@ -1340,15 +1347,14 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         .page-header p {
             font-size: 14px;
             opacity: 0.9;
-        }
-
-        .academic-overview {
-            background: #ffffff;
-            border: 1px solid #d7e3d6;
+        }        .academic-overview {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
             border-radius: 12px;
             padding: 22px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 14px rgba(24, 66, 20, 0.08);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
         }
 
         .academic-overview__header {
