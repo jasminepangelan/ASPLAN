@@ -613,49 +613,77 @@
     </div>
   </div>
 
-  <!-- About Us Modal -->
-  <div id="aboutUsModal" class="modal" role="dialog" aria-labelledby="aboutUsTitle" aria-modal="true" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); z-index: 2000; backdrop-filter: blur(8px);">
+  <!-- About Us Modal - Premium Dark Theme -->
+  <style>
+    /* Premium Hover Effects for About Us Modal */
+    .about-team-container:hover .about-person {
+      opacity: 0.5;
+      transform: scale(0.95);
+    }
+    .about-team-container .about-person:hover {
+      opacity: 1;
+      transform: scale(1.05);
+      z-index: 10;
+      box-shadow: 0 20px 40px rgba(32, 96, 24, 0.4);
+      border-color: #4CAF50;
+    }
+    .about-person {
+      transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+  </style>
+  <div id="aboutUsModal" class="modal" role="dialog" aria-labelledby="aboutUsTitle" aria-modal="true" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; backdrop-filter: blur(12px);">
     <div class="modal-content about-us-content" style="
-      background: linear-gradient(145deg, #ffffff 0%, #f4fdf6 100%);
-      width: 92%;
-      max-width: 950px;
+      background: linear-gradient(135deg, rgba(20,20,20,0.9) 0%, rgba(10,30,15,0.95) 100%);
+      width: 95%;
+      max-width: 1000px;
       max-height: 90vh;
       overflow-y: auto;
-      border-radius: 24px;
-      padding: 35px 30px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      border-radius: 30px;
+      padding: 50px 40px;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.1);
       text-align: center;
       position: relative;
-      border: 1px solid rgba(255,255,255,0.6);
+      border: 1px solid rgba(255,255,255,0.05);
     ">
-      <button onclick="document.getElementById('aboutUsModal').style.display='none'" style="position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 28px; cursor: pointer; color: #a0aec0; transition: color 0.2s, transform 0.2s;" onmouseover="this.style.color='#2d3748'; this.style.transform='rotate(90deg)';" onmouseout="this.style.color='#a0aec0'; this.style.transform='none';">&times;</button>
+      <button onclick="document.getElementById('aboutUsModal').style.display='none'" style="position: absolute; top: 20px; right: 25px; background: rgba(255,255,255,0.1); border: none; font-size: 24px; cursor: pointer; color: #fff; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.2)'; this.style.transform='rotate(90deg)';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.transform='none';">&times;</button>
       
-      <h2 id="aboutUsTitle" style="color: #206018; margin-top: 0; margin-bottom: 5px; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">About Us</h2>
-      <p style="color: #718096; margin-bottom: 30px; font-size: 14px; font-weight: 500;">Meet the incredible team behind ASPLAN</p>
+      <div style="margin-bottom: 40px;">
+        <h2 id="aboutUsTitle" style="color: #fff; margin: 0 0 8px 0; font-size: 36px; font-weight: 300; letter-spacing: 2px; text-transform: uppercase;">
+          The <strong style="color: #4CAF50; font-weight: 800;">Visionaries</strong>
+        </h2>
+        <div style="width: 60px; height: 3px; background: #4CAF50; margin: 0 auto 15px; border-radius: 3px; box-shadow: 0 0 10px #4CAF50;"></div>
+        <p style="color: #a0aec0; margin: 0; font-size: 15px; font-weight: 400; letter-spacing: 0.5px;">Architects behind the ASPLAN ecosystem</p>
+      </div>
       
-      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
+      <div class="about-team-container" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 30px;">
         <!-- Person 1 -->
-        <div style="flex: 1; min-width: 220px; background: rgba(255, 255, 255, 0.8); padding: 20px 15px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid rgba(32,96,24,0.1); backdrop-filter: blur(4px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 12px 25px rgba(32,96,24,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.03)'">
-          <div style="width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #e0f2e3 0%, #c6eccf 100%); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #206018; border: 2px solid #b7e4c7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);">👨‍💻</div>
-          <h3 style="margin: 0 0 4px; color: #2d3748; font-size: 18px; font-weight: 700;">First Person</h3>
-          <p style="margin: 0; color: #2b7a22; font-weight: 700; font-size: 11px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.8px;">Role / Title</p>
-          <p style="margin: 0; color: #718096; font-size: 13px; line-height: 1.5;">Insert a short biography or description for the first team member here.</p>
+        <div class="about-person" style="flex: 1; min-width: 250px; background: rgba(255, 255, 255, 0.03); padding: 35px 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px);">
+          <div style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #111 0%, #206018 100%); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(76, 175, 80, 0.5); box-shadow: 0 0 20px rgba(76, 175, 80, 0.2);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </div>
+          <h3 style="margin: 0 0 6px; color: #fff; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">First Person</h3>
+          <p style="margin: 0 0 15px; color: #4CAF50; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;">Lead Developer</p>
+          <p style="margin: 0; color: #8e9cae; font-size: 14px; line-height: 1.6; font-weight: 300;">Crafting robust architectures and seamless experiences through innovative coding.</p>
         </div>
         
         <!-- Person 2 -->
-        <div style="flex: 1; min-width: 220px; background: rgba(255, 255, 255, 0.8); padding: 20px 15px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid rgba(32,96,24,0.1); backdrop-filter: blur(4px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 12px 25px rgba(32,96,24,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.03)'">
-          <div style="width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #e0f2e3 0%, #c6eccf 100%); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #206018; border: 2px solid #b7e4c7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);">👩‍💻</div>
-          <h3 style="margin: 0 0 4px; color: #2d3748; font-size: 18px; font-weight: 700;">Second Person</h3>
-          <p style="margin: 0; color: #2b7a22; font-weight: 700; font-size: 11px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.8px;">Role / Title</p>
-          <p style="margin: 0; color: #718096; font-size: 13px; line-height: 1.5;">Insert a short biography or description for the second team member here.</p>
+        <div class="about-person" style="flex: 1; min-width: 250px; background: rgba(255, 255, 255, 0.03); padding: 35px 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px);">
+          <div style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #111 0%, #206018 100%); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(76, 175, 80, 0.5); box-shadow: 0 0 20px rgba(76, 175, 80, 0.2);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </div>
+          <h3 style="margin: 0 0 6px; color: #fff; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Second Person</h3>
+          <p style="margin: 0 0 15px; color: #4CAF50; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;">UI/UX Designer</p>
+          <p style="margin: 0; color: #8e9cae; font-size: 14px; line-height: 1.6; font-weight: 300;">Transforming complex requirements into elegant, intuitive, and beautiful interfaces.</p>
         </div>
         
         <!-- Person 3 -->
-        <div style="flex: 1; min-width: 220px; background: rgba(255, 255, 255, 0.8); padding: 20px 15px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid rgba(32,96,24,0.1); backdrop-filter: blur(4px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;" onmouseover="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 12px 25px rgba(32,96,24,0.12)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.03)'">
-          <div style="width: 75px; height: 75px; border-radius: 50%; background: linear-gradient(135deg, #e0f2e3 0%, #c6eccf 100%); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #206018; border: 2px solid #b7e4c7; box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);">👨‍💼</div>
-          <h3 style="margin: 0 0 4px; color: #2d3748; font-size: 18px; font-weight: 700;">Third Person</h3>
-          <p style="margin: 0; color: #2b7a22; font-weight: 700; font-size: 11px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.8px;">Role / Title</p>
-          <p style="margin: 0; color: #718096; font-size: 13px; line-height: 1.5;">Insert a short biography or description for the third team member here.</p>
+        <div class="about-person" style="flex: 1; min-width: 250px; background: rgba(255, 255, 255, 0.03); padding: 35px 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(10px);">
+          <div style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #111 0%, #206018 100%); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(76, 175, 80, 0.5); box-shadow: 0 0 20px rgba(76, 175, 80, 0.2);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </div>
+          <h3 style="margin: 0 0 6px; color: #fff; font-size: 22px; font-weight: 600; letter-spacing: 0.5px;">Third Person</h3>
+          <p style="margin: 0 0 15px; color: #4CAF50; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;">Project Manager</p>
+          <p style="margin: 0; color: #8e9cae; font-size: 14px; line-height: 1.6; font-weight: 300;">Ensuring strategic alignment, timely delivery, and operational excellence.</p>
         </div>
       </div>
     </div>
