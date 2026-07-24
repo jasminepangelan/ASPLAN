@@ -800,14 +800,14 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
       align-items: flex-start;
       justify-content: center;
       width: 100%;
-      max-width: min(1480px, calc(100vw - 238px));
+      max-width: 1480px;
       margin: 0 auto;
       padding-right: 156px;
       box-sizing: border-box;
     }
 
     .main-content.expanded .content-wrapper {
-      max-width: min(1580px, calc(100vw - 40px));
+      max-width: 1580px;
     }
 
     .menu-toggle {
@@ -837,7 +837,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         margin-bottom: 40px;
         margin-left: auto;
         margin-right: auto;
-        max-width: min(1180px, calc(100vw - 390px));
+        max-width: 1180px;
         padding: 42px 46px;
         background: #ffffff;
         border: 1px solid #e0e0e0;
@@ -850,7 +850,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     }
     
     .main-content.expanded .container {
-        max-width: min(1320px, calc(100vw - 80px));
+        max-width: 1320px;
     }
     
     .table-wrapper {
@@ -1038,7 +1038,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     .total {
         font-weight: bold;
     }
-    @media (max-width: 768px) {
+    @media (max-width: 1100px) {
         .sidebar {
           transform: translateX(-100%);
           z-index: 1000;
