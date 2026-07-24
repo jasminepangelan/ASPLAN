@@ -1650,21 +1650,35 @@ document.getElementById('showApproveMultiple').addEventListener('click', functio
 function setSemesterApproved(semesterKey, checked) {
     // Check/uncheck all approve-checkboxes for this semester, but only for rows with grades
     document.querySelectorAll(`tr[data-semester='${semesterKey}'] .approve-checkbox`).forEach(function(cb) {
-    const row = cb.closest('tr');
+        const row = cb.closest('tr');
         if (isLockedChecklistRow(row)) {
-      cb.checked = false;
-      return;
-    }
+            cb.checked = false;
+            return;
+        }
         let courseCode = cb.value;
-        let gradeSelect = document.querySelector(`[name='final_grade[${courseCode}]']`);
+        let gradeSelects = document.getElementsByName('final_grade[' + courseCode + ']');
+        let gradeSelect = gradeSelects.length > 0 ? gradeSelects[0] : null;
+        let gradeSelect2 = document.getElementsByName('final_grade_2[' + courseCode + ']')[0];
+        let gradeSelect3 = document.getElementsByName('final_grade_3[' + courseCode + ']')[0];
         
-        // Only check/uncheck if the row has a grade filled in
-        if (gradeSelect && gradeSelect.value && gradeSelect.value.trim() !== '') {
+        // Only check/uncheck if the row has at least one grade filled in
+        let hasGrade = false;
+        if (gradeSelect && gradeSelect.value && gradeSelect.value.trim() !== '') hasGrade = true;
+        if (gradeSelect2 && gradeSelect2.value && gradeSelect2.value.trim() !== '') hasGrade = true;
+        if (gradeSelect3 && gradeSelect3.value && gradeSelect3.value.trim() !== '') hasGrade = true;
+
+        if (hasGrade) {
             cb.checked = checked;
             // Set evaluator remarks to Approved if checked, else leave as is
-            let remarksSelect = document.querySelector(`[name='evaluator_remarks[${courseCode}]']`);
-            if (remarksSelect && checked) {
-                remarksSelect.value = 'Approved';
+            if (checked) {
+                let remarksSelect = document.getElementsByName('evaluator_remarks[' + courseCode + ']')[0];
+                if (remarksSelect && remarksSelect.value === 'Pending') remarksSelect.value = 'Approved';
+                
+                let remarksSelect2 = document.getElementsByName('evaluator_remarks_2[' + courseCode + ']')[0];
+                if (remarksSelect2 && remarksSelect2.value === 'Pending') remarksSelect2.value = 'Approved';
+                
+                let remarksSelect3 = document.getElementsByName('evaluator_remarks_3[' + courseCode + ']')[0];
+                if (remarksSelect3 && remarksSelect3.value === 'Pending') remarksSelect3.value = 'Approved';
             }
         } else {
             // If no grade, ensure checkbox is unchecked
