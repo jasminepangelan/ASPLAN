@@ -197,6 +197,7 @@ $csrfToken = getCSRFToken();
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Profile</title>
   <link rel="icon" type="image/png" href="../img/cav.png">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
   <style>
     * {
@@ -204,10 +205,11 @@ $csrfToken = getCSRFToken();
     }
     
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
       padding: 0;
-      background: linear-gradient(180deg, #eef3ee 0%, #f7faf7 52%, #edf2f6 100%);
+      background: url('../pix/school.jpg') no-repeat center center fixed;
+      background-size: cover;
       min-height: 100vh;
       overflow: hidden;
     }
@@ -287,13 +289,15 @@ $csrfToken = getCSRFToken();
     .sidebar {
       width: 250px;
       height: calc(100vh - 32px);
-      background: linear-gradient(135deg, #1a4f16 0%, #2d8f22 100%);
+      background: linear-gradient(180deg, rgba(32, 96, 24, 0.95) 0%, rgba(18, 56, 13, 0.98) 100%);
+      backdrop-filter: blur(10px);
       color: white;
       position: fixed;
       left: 0;
       top: 32px;
       padding: 20px 0;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
       overflow-y: hidden;
       transition: transform 0.3s ease;
       z-index: 999;
@@ -371,6 +375,8 @@ $csrfToken = getCSRFToken();
       overflow-y: auto;
       transition: margin-left 0.3s ease;
       padding: 28px 24px 40px;
+      background: rgba(245, 247, 245, 0.85);
+      backdrop-filter: blur(15px);
     }
 
     .main-content.expanded {
