@@ -57,7 +57,7 @@ if (isset($_GET['student_id'])) {
         $student_program = $student_data['program'] ?? '';
         
         // Format full name properly handling missing middle name
-        $full_name = $last_name . ", " . $first_name . (!empty($middle_name) ? " " . $middle_name : ""); 
+        $full_name = rtrim($last_name, " ,") . ", " . $first_name . (!empty($middle_name) ? " " . $middle_name : ""); 
     } else {
         die("Student not found");
     }
