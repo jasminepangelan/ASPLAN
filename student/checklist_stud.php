@@ -1056,30 +1056,30 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         }
 
         .content-wrapper {
-          flex-direction: row;
+          flex-direction: column;
           width: 100%;
-          gap: 5px;
-          align-items: flex-start;
+          gap: 10px;
+          align-items: center;
           justify-content: flex-start;
           padding-right: 0;
         }
 
         .action-buttons {
-          position: fixed;
-          right: 5px;
-          top: 45px;
-          flex-direction: column;
-          width: 60px;
-          gap: 5px;
+          position: static;
+          flex-direction: row;
+          flex-wrap: wrap;
+          width: calc(100vw - 20px);
+          margin-top: 10px;
+          gap: 8px;
           z-index: 998;
         }
 
         .action-buttons button {
-          padding: 8px 4px;
-          font-size: 9px;
-          width: 100%;
-          border-radius: 4px;
-          word-wrap: break-word;
+          padding: 12px 6px;
+          font-size: 12px;
+          flex: 1 1 calc(50% - 10px);
+          border-radius: 6px;
+          word-wrap: normal;
           line-height: 1.2;
         }
 
@@ -1120,16 +1120,26 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         }
 
         .container {
-          width: calc(100vw - 100px);
+          width: calc(100vw - 20px);
           max-width: none;
-          padding: 10px;
-          margin-top: 3px;
-          margin-bottom: 15px;
-          overflow-x: visible;
+          padding: 15px 12px;
+          margin-top: 10px;
+          margin-bottom: 20px;
+          overflow-x: hidden;
           overflow-y: visible;
           box-sizing: border-box;
           flex-shrink: 0;
           min-width: 0;
+        }
+        
+        .info {
+          flex-direction: column;
+          gap: 8px;
+          align-items: flex-start;
+        }
+        
+        .info-right {
+          text-align: left;
         }
         
         .table-wrapper {
