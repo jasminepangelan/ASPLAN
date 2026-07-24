@@ -1346,6 +1346,8 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         .page-header p {
             font-size: 14px;
             opacity: 0.9;
+        }
+        
         .academic-overview {
             background: #ffffff;
             border: 1px solid #e0e0e0;
