@@ -638,8 +638,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
     body {
         font-family: 'Outfit', 'Segoe UI', Tahoma, Verdana, sans-serif;
-        background: url('../pix/school.jpg') no-repeat center center fixed;
-        background-size: cover;
+        background: #f4f6f8;
         margin: 0;
         padding: 0;
         overflow: hidden;
