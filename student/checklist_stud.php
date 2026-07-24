@@ -1001,7 +1001,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     }
     table {
         width: 100%;
-        max-width: 100%;
+        min-width: 700px;
         border-collapse: collapse;
         margin: 0 auto 20px auto;
         font-size: 11px;

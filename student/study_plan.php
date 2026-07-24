@@ -1638,9 +1638,10 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         /* Course Table */
         .course-table {
             width: 100%;
+            min-width: 700px;
             border-collapse: collapse;
             border: 1px solid #000;
-            table-layout: fixed;
+            table-layout: auto;
         }
 
         .course-table thead {
