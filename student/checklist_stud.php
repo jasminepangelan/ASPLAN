@@ -1020,6 +1020,12 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         text-align: center;
         font-size: 10px;
     }
+    td {
+        font-weight: 400;
+    }
+    th, .semester-title td, .total td {
+        font-weight: 700 !important;
+    }
     th {
         background-color: #f2f2f2;
     }
