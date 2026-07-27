@@ -534,26 +534,47 @@ if (!function_exists('smlUpsertMasterlistStudent')) {
         $mi = smlExtractMiddleInitial((string) $middleInitial);
         $sourceFilename = 'Admin Created Account';
 
-        $sql = "
-            INSERT INTO student_masterlist (
-                student_number, last_name, first_name, middle_initial, program, source_filename, uploaded_by, uploaded_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-            ON DUPLICATE KEY UPDATE
-                last_name = VALUES(last_name),
-                first_name = VALUES(first_name),
-                middle_initial = VALUES(middle_initial),
-                program = VALUES(program),
-                source_filename = VALUES(source_filename),
-                uploaded_by = VALUES(uploaded_by),
-                updated_at = NOW()
-        ";
+        // Check existing record first to avoid MySQL 8.4 deprecated VALUES() syntax
+        $existing = smlFindMasterlistRecord($conn, $studentNumber);
 
+        if ($existing !== null) {
+            $sql = "UPDATE student_masterlist SET last_name = ?, first_name = ?, middle_initial = ?, program = ?, source_filename = ?, uploaded_by = ?, updated_at = NOW() WHERE student_number = ?";
+            if ($conn instanceof PDO) {
+                try {
+                    $stmt = $conn->prepare($sql);
+                    return $stmt->execute([$lastName, $firstName, $mi, $program, $sourceFilename, $uploadedBy, $studentNumber]);
+                } catch (Throwable $e) {
+                    error_log("smlUpsertMasterlistStudent PDO update error: " . $e->getMessage());
+                    return false;
+                }
+            }
+
+            if (is_object($conn) && method_exists($conn, 'prepare')) {
+                try {
+                    $stmt = $conn->prepare($sql);
+                    if ($stmt) {
+                        $stmt->bind_param('sssssss', $lastName, $firstName, $mi, $program, $sourceFilename, $uploadedBy, $studentNumber);
+                        $result = $stmt->execute();
+                        if (method_exists($stmt, 'close')) {
+                            $stmt->close();
+                        }
+                        return (bool) $result;
+                    }
+                } catch (Throwable $e) {
+                    error_log("smlUpsertMasterlistStudent mysqli update error: " . $e->getMessage());
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        $sql = "INSERT INTO student_masterlist (student_number, last_name, first_name, middle_initial, program, source_filename, uploaded_by, uploaded_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
         if ($conn instanceof PDO) {
             try {
                 $stmt = $conn->prepare($sql);
                 return $stmt->execute([$studentNumber, $lastName, $firstName, $mi, $program, $sourceFilename, $uploadedBy]);
             } catch (Throwable $e) {
-                error_log("smlUpsertMasterlistStudent PDO error: " . $e->getMessage());
+                error_log("smlUpsertMasterlistStudent PDO insert error: " . $e->getMessage());
                 return false;
             }
         }
@@ -570,7 +591,7 @@ if (!function_exists('smlUpsertMasterlistStudent')) {
                     return (bool) $result;
                 }
             } catch (Throwable $e) {
-                error_log("smlUpsertMasterlistStudent mysqli error: " . $e->getMessage());
+                error_log("smlUpsertMasterlistStudent mysqli insert error: " . $e->getMessage());
                 return false;
             }
         }
@@ -697,24 +718,37 @@ if (!function_exists('smlAppendProgramMasterlist')) {
                 INSERT INTO student_masterlist (student_number, last_name, first_name, middle_initial, program, source_filename, uploaded_by, uploaded_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE
-                    last_name = VALUES(last_name),
-                    first_name = VALUES(first_name),
-                    middle_initial = VALUES(middle_initial),
-                    program = VALUES(program),
-                    source_filename = VALUES(source_filename),
-                    uploaded_by = VALUES(uploaded_by),
+                    last_name = ?,
+                    first_name = ?,
+                    middle_initial = ?,
+                    program = ?,
+                    source_filename = ?,
+                    uploaded_by = ?,
                     uploaded_at = NOW()
             ");
 
             foreach ($rows as $row) {
+                $studentNum = trim((string) ($row['student_number'] ?? ''));
+                $lastName = ucwords(strtolower(trim((string) ($row['last_name'] ?? ''))));
+                $firstName = ucwords(strtolower(trim((string) ($row['first_name'] ?? ''))));
+                $middleInitial = ucwords(strtolower(trim((string) ($row['middle_initial'] ?? ''))));
+                $srcFile = substr($sourceFilename, 0, 255);
+                $uploader = substr($adminId, 0, 120);
+
                 $insertStmt->execute([
-                    trim((string) ($row['student_number'] ?? '')),
-                    ucwords(strtolower(trim((string) ($row['last_name'] ?? '')))),
-                    ucwords(strtolower(trim((string) ($row['first_name'] ?? '')))),
-                    ucwords(strtolower(trim((string) ($row['middle_initial'] ?? '')))),
+                    $studentNum,
+                    $lastName,
+                    $firstName,
+                    $middleInitial,
                     $program,
-                    substr($sourceFilename, 0, 255),
-                    substr($adminId, 0, 120),
+                    $srcFile,
+                    $uploader,
+                    $lastName,
+                    $firstName,
+                    $middleInitial,
+                    $program,
+                    $srcFile,
+                    $uploader,
                 ]);
             }
 

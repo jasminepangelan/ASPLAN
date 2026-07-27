@@ -33,11 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Check if student already exists
             $stmt = $conn->prepare("SELECT student_number FROM student_info WHERE student_number = ?");
             $stmt->execute([$student_number]);
-            if ($stmt->get_result()->num_rows > 0) {
+            $res = $stmt->get_result();
+            $exists = ($res && $res->num_rows > 0);
+            if (method_exists($stmt, 'close')) {
+                $stmt->close();
+            }
+
+            if ($exists) {
                 $error = 'Student account with this Student Number already exists.';
             } else {
-                $stmt->close();
-                
                 // Insert new student
                 // We use standard default values for mandatory fields.
                 $hashed_password = password_hash('12345678', PASSWORD_BCRYPT);
