@@ -9,6 +9,29 @@ if (!isset($_SESSION['admin_id'])) {
     exit();
 }
 
+if (isset($_GET['action']) && $_GET['action'] === 'check_student_number') {
+    header('Content-Type: application/json');
+    $snum = trim($_GET['student_number'] ?? '');
+    if ($snum === '') {
+        echo json_encode(['exists' => false]);
+        exit();
+    }
+    try {
+        $conn = getDBConnection();
+        $stmt = $conn->prepare("SELECT student_number FROM student_info WHERE student_number = ?");
+        $stmt->execute([$snum]);
+        $res = $stmt->get_result();
+        $exists = ($res && $res->num_rows > 0);
+        if (method_exists($stmt, 'close')) {
+            $stmt->close();
+        }
+        echo json_encode(['exists' => $exists]);
+    } catch (Throwable $e) {
+        echo json_encode(['exists' => false, 'error' => $e->getMessage()]);
+    }
+    exit();
+}
+
 $success = false;
 $error = '';
 $conn = getDBConnection();
@@ -392,7 +415,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" action="">
                 <div class="form-group">
                     <label>Student Number <span class="required">*</span></label>
-                    <input type="number" name="student_number" placeholder="e.g. 202312345" required value="<?= htmlspecialchars($_POST['student_number'] ?? '') ?>">
+                    <input type="number" name="student_number" id="student_number_input" placeholder="e.g. 202312345" required value="<?= htmlspecialchars($_POST['student_number'] ?? '') ?>">
+                    <small id="snum_feedback" style="display: block; margin-top: 6px; font-size: 13px; font-weight: 500; transition: all 0.2s ease;"></small>
                 </div>
                 
                 <div class="form-group">
@@ -477,6 +501,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mainContent.classList.add('expanded');
             }
         });
+
+        const snumInput = document.getElementById('student_number_input');
+        const snumFeedback = document.getElementById('snum_feedback');
+        const submitBtn = document.querySelector('.btn-submit');
+        let checkTimeout = null;
+
+        if (snumInput && snumFeedback) {
+            snumInput.addEventListener('input', function() {
+                const val = this.value.trim();
+                if (checkTimeout) clearTimeout(checkTimeout);
+                
+                if (val === '') {
+                    snumFeedback.textContent = '';
+                    snumFeedback.style.color = '';
+                    this.style.borderColor = '';
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '1';
+                        submitBtn.style.cursor = 'pointer';
+                    }
+                    return;
+                }
+
+                snumFeedback.textContent = 'Checking availability...';
+                snumFeedback.style.color = '#666';
+
+                checkTimeout = setTimeout(() => {
+                    fetch('create_student.php?action=check_student_number&student_number=' + encodeURIComponent(val))
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.exists) {
+                                snumFeedback.textContent = '❌ Student number is already taken.';
+                                snumFeedback.style.color = '#d32f2f';
+                                snumInput.style.borderColor = '#d32f2f';
+                                if (submitBtn) {
+                                    submitBtn.disabled = true;
+                                    submitBtn.style.opacity = '0.5';
+                                    submitBtn.style.cursor = 'not-allowed';
+                                }
+                            } else {
+                                snumFeedback.textContent = '✔ Student number is available.';
+                                snumFeedback.style.color = '#2e7d32';
+                                snumInput.style.borderColor = '#2e7d32';
+                                if (submitBtn) {
+                                    submitBtn.disabled = false;
+                                    submitBtn.style.opacity = '1';
+                                    submitBtn.style.cursor = 'pointer';
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error checking student number:', err);
+                            snumFeedback.textContent = '';
+                        });
+                }, 350);
+            });
+        }
     </script>
     <?php if ($success): ?>
     <script>
