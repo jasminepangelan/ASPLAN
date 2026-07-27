@@ -2833,6 +2833,7 @@ function autoSaveGrade(courseCode, courseRowKey = '') {
         let finalGrade3 = getAttemptGradeValue(courseCode, 3, targetRow);
         let profInput   = targetRow ? targetRow.querySelector(`[name='professor_instructor[${courseCode}]']`) : document.querySelector(`[name='professor_instructor[${courseCode}]']`);
         let professorValue  = profInput   ? profInput.value   : '';
+        let remarksCell     = document.getElementById(`remarks_${courseCode}`);
         let currentRemarks  = remarksCell ? remarksCell.textContent.trim() : '';
         
         let evaluatorRemark = isAlreadyApprovedOrCreditedRemark(currentRemarks) ? currentRemarks : ((

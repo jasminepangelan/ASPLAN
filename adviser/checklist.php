@@ -2013,8 +2013,10 @@ function autoSaveGrade(courseCode) {
             let code = gradeSelect.name.match(/\[(.*?)\]/)[1];
             let courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
             let finalGrade = gradeSelect.value;
-            let evaluatorRemark = document.querySelector(`[name="evaluator_remarks[${code}]"]`).value;
-            let professorInstructor = document.querySelector(`[name="professor_instructor[${code}]"]`).value;
+            let remEl = document.querySelector(`[name="evaluator_remarks[${code}]"]`);
+            let profEl = document.querySelector(`[name="professor_instructor[${code}]"]`);
+            let evaluatorRemark = remEl ? remEl.value : '';
+            let professorInstructor = profEl ? profEl.value : '';
             let grade2el = document.querySelector(`[name="final_grade_2[${code}]"]`);
             let grade3el = document.querySelector(`[name="final_grade_3[${code}]"]`);
 
