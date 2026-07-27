@@ -57,6 +57,7 @@ if (session_status() === PHP_SESSION_NONE) {
         ini_set('session.cookie_httponly', '1');
         ini_set('session.cookie_secure', isSecureRequest() ? '1' : '0');
         ini_set('session.cookie_samesite', 'Lax');
+        ini_set('session.gc_maxlifetime', '86400');
 
         session_set_cookie_params([
             'lifetime' => 0,
@@ -335,7 +336,17 @@ if (isset($_SESSION['login_time'])) {
         : $defaultTimeout;
     $loginUrl = buildLoginUrlWithTimeoutNotice($sessionTimeout);
 
-    $elapsed = time() - (int)$_SESSION['login_time'];
+    $lastActivity = isset($_SESSION['last_activity']) ? (int)$_SESSION['last_activity'] : (int)$_SESSION['login_time'];
+    $elapsed = time() - $lastActivity;
+
+    if ($elapsed <= $sessionTimeout) {
+        $isBgPoll = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest' && empty($_POST)) ||
+                    isset($_GET['ajax']) || isset($_GET['_bg_poll']) || isset($_GET['live_refresh']);
+        if (!$isBgPoll) {
+            $_SESSION['last_activity'] = time();
+            $elapsed = 0;
+        }
+    }
 
     if ($elapsed <= $sessionTimeout && shouldInjectSessionTimeoutClientScript()) {
         $remainingSeconds = max(1, $sessionTimeout - $elapsed);

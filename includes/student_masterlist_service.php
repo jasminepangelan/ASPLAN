@@ -472,6 +472,7 @@ if (!function_exists('smlLoadAuthorizedMasterlistRows')) {
 
         $stmt = $conn->query("
             SELECT
+                id,
                 student_number,
                 last_name,
                 first_name,
@@ -488,6 +489,19 @@ if (!function_exists('smlLoadAuthorizedMasterlistRows')) {
         }
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+}
+
+if (!function_exists('smlDeleteMasterlistStudent')) {
+    function smlDeleteMasterlistStudent($conn, string $studentNumber): bool
+    {
+        if (trim($studentNumber) === '') {
+            return false;
+        }
+        smlEnsureMasterlistTable($conn);
+        $stmt = $conn->prepare("DELETE FROM student_masterlist WHERE student_number = ?");
+        $stmt->execute([trim($studentNumber)]);
+        return $stmt->rowCount() > 0;
     }
 }
 

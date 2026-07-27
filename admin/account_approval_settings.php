@@ -353,6 +353,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if (isset($_POST['delete_masterlist_student'])) {
+        if (!$conn instanceof PDO) {
+            $error_message = 'Database connection error.';
+        } else {
+            $studentNumToDelete = trim((string) ($_POST['masterlist_student_number'] ?? ''));
+            if ($studentNumToDelete !== '') {
+                $deleted = smlDeleteMasterlistStudent($conn, $studentNumToDelete);
+                if ($deleted) {
+                    header('Location: account_approval_settings.php?show_masterlist=1&message=' . urlencode('Student ' . $studentNumToDelete . ' has been removed from the Authorized Student Masterlist.'));
+                    exit();
+                } else {
+                    $error_message = 'Failed to delete student from Authorized Masterlist or student not found.';
+                }
+            }
+        }
+    }
+
     if (isset($_POST['approve_all_grades'])) {
         if ($conn instanceof PDO) {
             try {
@@ -2000,6 +2017,82 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             background: #fbfdfb;
         }
 
+        .masterlist-modal-table tbody tr {
+            transition: background-color 0.15s ease;
+            cursor: context-menu;
+        }
+
+        .masterlist-modal-table tbody tr:hover {
+            background-color: #f0f7f2 !important;
+        }
+
+        .masterlist-modal-table tbody tr.ctx-highlight {
+            background-color: #e2f0e6 !important;
+            outline: 2px solid #2e7d32;
+            outline-offset: -2px;
+        }
+
+        .masterlist-ctx-menu {
+            position: fixed;
+            z-index: 100000;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 10px;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+            min-width: 220px;
+            padding: 6px 0;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            animation: ctxMenuFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+
+        @keyframes ctxMenuFadeIn {
+            0% { opacity: 0; transform: scale(0.95) translateY(-4px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .masterlist-ctx-header {
+            padding: 8px 14px;
+            font-size: 11px;
+            color: #6c757d;
+            border-bottom: 1px solid #f1f3f5;
+            background: #f8f9fa;
+            user-select: none;
+        }
+
+        .masterlist-ctx-header strong {
+            color: #212529;
+            display: block;
+            font-size: 13px;
+            margin-top: 2px;
+        }
+
+        .masterlist-ctx-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 14px;
+            background: transparent;
+            border: none;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 500;
+            color: #dc3545;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .masterlist-ctx-btn:hover {
+            background: #fff5f5;
+            color: #b02a37;
+            padding-left: 18px;
+        }
+
+        .masterlist-ctx-btn i {
+            font-size: 14px;
+        }
+
         .masterlist-modal-table .masterlist-program-pill {
             display: inline-block;
             max-width: 100%;
@@ -3312,7 +3405,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                                                         $uploadedAt = (string) ($masterlistRow['uploaded_at'] ?? '');
                                                         $searchIndex = strtolower(trim($studentNumber . ' ' . $lastName . ' ' . $firstName . ' ' . $middleInitial . ' ' . $programName . ' ' . $uploadedBy));
                                                         ?>
-                                                        <tr data-masterlist-row data-search="<?php echo htmlspecialchars($searchIndex, ENT_QUOTES); ?>">
+                                                        <tr data-masterlist-row data-search="<?php echo htmlspecialchars($searchIndex, ENT_QUOTES); ?>" data-student-number="<?php echo htmlspecialchars($studentNumber, ENT_QUOTES); ?>" data-student-name="<?php echo htmlspecialchars(trim($lastName . ', ' . $firstName . ' ' . $middleInitial), ENT_QUOTES); ?>">
                                                             <td><?php echo htmlspecialchars($studentNumber); ?></td>
                                                             <td><?php echo htmlspecialchars($lastName); ?></td>
                                                             <td><?php echo htmlspecialchars($firstName); ?></td>
@@ -3633,9 +3726,27 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             document.body.appendChild(masterlistModal);
         }
 
+        let currentCtxMenu = null;
+        let activeHighlightedRow = null;
+
+        function closeMasterlistCtxMenu() {
+            if (currentCtxMenu) {
+                currentCtxMenu.remove();
+                currentCtxMenu = null;
+            }
+            if (activeHighlightedRow) {
+                activeHighlightedRow.classList.remove('ctx-highlight');
+                activeHighlightedRow = null;
+            }
+        }
+
         function setMasterlistModalOpen(isOpen) {
             if (!masterlistModal) {
                 return;
+            }
+
+            if (!isOpen) {
+                closeMasterlistCtxMenu();
             }
 
             masterlistModal.hidden = !isOpen;
@@ -3704,6 +3815,93 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                 setMasterlistModalOpen(false);
             }
         });
+
+        document.addEventListener('click', (event) => {
+            if (currentCtxMenu && !currentCtxMenu.contains(event.target)) {
+                closeMasterlistCtxMenu();
+            }
+        });
+
+        if (masterlistModal) {
+            masterlistModal.addEventListener('contextmenu', (event) => {
+                const row = event.target.closest('[data-masterlist-row]');
+                if (!row) return;
+
+                event.preventDefault();
+                closeMasterlistCtxMenu();
+
+                activeHighlightedRow = row;
+                row.classList.add('ctx-highlight');
+
+                const studentNum = row.getAttribute('data-student-number') || '';
+                const studentName = row.getAttribute('data-student-name') || '';
+
+                const menu = document.createElement('div');
+                menu.className = 'masterlist-ctx-menu';
+                menu.innerHTML = `
+                    <div class="masterlist-ctx-header">
+                        Authorized Student
+                        <strong>${studentNum}</strong>
+                        <span style="font-size:11px; color:#666; display:block; margin-top:2px; font-weight:normal;">${studentName}</span>
+                    </div>
+                    <button type="button" class="masterlist-ctx-btn" id="ctxDeleteBtn">
+                        <i class="fas fa-trash-alt"></i> Delete Student
+                    </button>
+                `;
+
+                document.body.appendChild(menu);
+                currentCtxMenu = menu;
+
+                let x = event.clientX;
+                let y = event.clientY;
+                const rect = menu.getBoundingClientRect();
+
+                if (x + rect.width > window.innerWidth - 10) {
+                    x = window.innerWidth - rect.width - 10;
+                }
+                if (y + rect.height > window.innerHeight - 10) {
+                    y = window.innerHeight - rect.height - 10;
+                }
+
+                menu.style.left = `${x}px`;
+                menu.style.top = `${y}px`;
+
+                const deleteBtn = menu.querySelector('#ctxDeleteBtn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', () => {
+                        closeMasterlistCtxMenu();
+                        if (confirm(`Are you sure you want to delete student ${studentNum} (${studentName}) from the Authorized Student Masterlist?\n\nThis will remove their authorization to register or log into a student account.`)) {
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = 'account_approval_settings.php?show_masterlist=1';
+
+                            const inputAction = document.createElement('input');
+                            inputAction.type = 'hidden';
+                            inputAction.name = 'delete_masterlist_student';
+                            inputAction.value = '1';
+
+                            const inputNum = document.createElement('input');
+                            inputNum.type = 'hidden';
+                            inputNum.name = 'masterlist_student_number';
+                            inputNum.value = studentNum;
+
+                            form.appendChild(inputAction);
+                            form.appendChild(inputNum);
+                            document.body.appendChild(form);
+                            form.submit();
+                        }
+                    });
+                }
+            });
+
+            masterlistModal.addEventListener('scroll', closeMasterlistCtxMenu, true);
+        }
+
+        if (window.location.search.includes('show_masterlist=1')) {
+            if (openMasterlistModalButton) {
+                setTimeout(() => openMasterlistModalButton.click(), 100);
+            }
+        }
 
         function toggleAll() {
             const selectAllCheckbox = document.getElementById('selectAllCheckbox');
