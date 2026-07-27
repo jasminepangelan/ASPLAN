@@ -1363,8 +1363,16 @@ if ($lastPlannedTerm && !$hasUnresolvedPlan) {
             }
         }
         @media print {
-            body {
-                background: #fff;
+            @page {
+                size: auto;
+                margin: 0.4in;
+            }
+            html, body {
+                width: 100% !important;
+                background: #fff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
             }
             .header,
             .sidebar,
@@ -1377,13 +1385,20 @@ if ($lastPlannedTerm && !$hasUnresolvedPlan) {
             .main-content {
                 margin-left: 0 !important;
                 width: 100% !important;
+                max-width: 100% !important;
                 padding: 0 !important;
+                overflow: visible !important;
             }
             .page-card,
             .academic-overview,
             .study-plan-container,
             .semester-section {
                 box-shadow: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                overflow: visible !important;
             }
             .study-plan-container {
                 padding: 0 !important;
@@ -1396,6 +1411,39 @@ if ($lastPlannedTerm && !$hasUnresolvedPlan) {
             .course-table th:last-child,
             .course-table td:last-child {
                 display: none !important;
+            }
+            .course-table {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
+                font-size: 10pt !important;
+                table-layout: auto !important;
+                border-collapse: collapse !important;
+                word-wrap: break-word !important;
+                overflow: visible !important;
+            }
+            .course-table th,
+            .course-table td {
+                padding: 4px 5px !important;
+                font-size: 9pt !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                box-sizing: border-box !important;
+            }
+            .course-table th:nth-child(1), .course-table td:nth-child(1) {
+                width: 14% !important;
+            }
+            .course-table th:nth-child(2), .course-table td:nth-child(2) {
+                width: auto !important;
+            }
+            .course-table th:nth-child(3), .course-table td:nth-child(3),
+            .course-table th:nth-child(4), .course-table td:nth-child(4),
+            .course-table th:nth-child(5), .course-table td:nth-child(5),
+            .course-table th:nth-child(6), .course-table td:nth-child(6) {
+                width: 7% !important;
+            }
+            .course-table th:nth-child(7), .course-table td:nth-child(7) {
+                width: 16% !important;
             }
         }
     </style>

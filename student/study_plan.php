@@ -1819,8 +1819,17 @@ $studyPlanHeaderLabel = $is_admin_reference_view
 
         /* Print styles */
         @media print {
-            body {
-                background: white;
+            @page {
+                size: auto;
+                margin: 0.4in;
+            }
+
+            html, body {
+                width: 100% !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
             }
 
             .title-bar,
@@ -1838,13 +1847,21 @@ $studyPlanHeaderLabel = $is_admin_reference_view
             }
 
             .main-content {
-                margin-left: 0;
-                padding: 20px;
+                margin-left: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow: visible !important;
             }
 
             .study-plan-container {
-                box-shadow: none;
-                padding: 0;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow: visible !important;
+                border: none !important;
             }
 
             .page-content {
@@ -1854,10 +1871,48 @@ $studyPlanHeaderLabel = $is_admin_reference_view
             .semester-section {
                 page-break-inside: avoid;
                 margin-bottom: 25px;
+                width: 100% !important;
+                overflow: visible !important;
             }
 
             .course-table {
-                font-size: 12px;
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
+                font-size: 10pt !important;
+                table-layout: auto !important;
+                border-collapse: collapse !important;
+                word-wrap: break-word !important;
+                overflow: visible !important;
+            }
+
+            .course-table th,
+            .course-table td {
+                padding: 4px 6px !important;
+                font-size: 9.5pt !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                box-sizing: border-box !important;
+            }
+
+            .course-table th:nth-child(1), .course-table td:nth-child(1),
+            .course-table th:first-child, .course-table td:first-child {
+                width: 14% !important;
+            }
+
+            .course-table th:nth-child(2), .course-table td:nth-child(2) {
+                width: auto !important;
+            }
+
+            .course-table th:nth-child(3), .course-table td:nth-child(3),
+            .course-table th:nth-child(4), .course-table td:nth-child(4),
+            .course-table th:nth-child(5), .course-table td:nth-child(5),
+            .course-table th:nth-child(6), .course-table td:nth-child(6) {
+                width: 7% !important;
+            }
+
+            .course-table th:last-child, .course-table td:last-child {
+                width: 16% !important;
             }
         }
 
