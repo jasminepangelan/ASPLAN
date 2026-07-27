@@ -356,4 +356,79 @@ function csSaveChecklistRecords($conn, string $studentId, array $courses, array 
         'errors' => $errors
     ];
 }
+
+/**
+ * Get distinct list of all professor/instructor names across student checklists and adviser tables.
+ *
+ * @param mysqli|null $conn
+ * @return array
+ */
+function csGetAllInstructorsList($conn): array {
+    $instructors = [];
+    if (!$conn) {
+        return $instructors;
+    }
+    $query = $conn->query("
+        SELECT DISTINCT prof_name FROM (
+            SELECT TRIM(professor_instructor) AS prof_name 
+            FROM student_checklists 
+            WHERE professor_instructor IS NOT NULL AND TRIM(professor_instructor) != ''
+            UNION
+            SELECT TRIM(CONCAT_WS(' ', first_name, middle_name, last_name)) AS prof_name 
+            FROM adviser 
+            WHERE first_name IS NOT NULL AND TRIM(first_name) != ''
+        ) AS combined_profs
+        WHERE prof_name != ''
+        ORDER BY prof_name ASC
+    ");
+    if ($query) {
+        while ($row = $query->fetch_assoc()) {
+            $name = trim((string)$row['prof_name']);
+            if ($name !== '' && !in_array($name, $instructors, true)) {
+                $instructors[] = $name;
+            }
+        }
+    }
+    return $instructors;
+}
+
+/**
+ * Render HTML dropdown select for Professor/Instructor in checklists.
+ *
+ * @param string $courseCode
+ * @param string $currentValue
+ * @param array $allInstructors
+ * @param bool $isDisabled
+ * @param string $extraAttrs
+ * @param string $fontSize
+ * @param string $width
+ * @return string
+ */
+function csRenderInstructorSelect(
+    string $courseCode,
+    string $currentValue,
+    array $allInstructors,
+    bool $isDisabled = false,
+    string $extraAttrs = '',
+    string $fontSize = '9px',
+    string $width = '95px'
+): string {
+    $currProf = trim($currentValue);
+    $disabledAttr = $isDisabled ? ' disabled' : '';
+    $html = "<select name='professor_instructor[" . htmlspecialchars($courseCode, ENT_QUOTES, 'UTF-8') . "]' class='checklist-prof-select' style='border: none; font-size: {$fontSize}; border-bottom: 1px solid #000000; width: {$width}; max-width: 100%; background: transparent;'{$disabledAttr}{$extraAttrs}>";
+    $html .= "<option value=''>-- Select --</option>";
+    $profFoundInList = false;
+    foreach ($allInstructors as $inst) {
+        $sel = (strcasecmp($inst, $currProf) === 0) ? " selected" : "";
+        if ($sel !== "") {
+            $profFoundInList = true;
+        }
+        $html .= "<option value='" . htmlspecialchars($inst, ENT_QUOTES, 'UTF-8') . "'{$sel}>" . htmlspecialchars($inst, ENT_QUOTES, 'UTF-8') . "</option>";
+    }
+    if ($currProf !== '' && !$profFoundInList) {
+        $html .= "<option value='" . htmlspecialchars($currProf, ENT_QUOTES, 'UTF-8') . "' selected>" . htmlspecialchars($currProf, ENT_QUOTES, 'UTF-8') . "</option>";
+    }
+    $html .= "</select>";
+    return $html;
+}
 ?>

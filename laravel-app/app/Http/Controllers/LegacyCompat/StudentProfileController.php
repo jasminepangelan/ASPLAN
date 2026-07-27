@@ -129,9 +129,6 @@ class StudentProfileController extends Controller
                     'last_name',
                     'first_name',
                     'middle_name',
-                    'email',
-                    'contact_no',
-                    'address',
                     'admission_date',
                     'stud_classification',
                     'registration_classification',
@@ -139,7 +136,7 @@ class StudentProfileController extends Controller
                     if ($request->has($field)) {
                         return response()->json([
                             'success' => false,
-                            'message' => 'Only administrators can update your profile details. You may still change your password or profile picture here.',
+                            'message' => 'Only administrators can update your name and classification. You may still change your password, profile picture, contact number, address, or email here.',
                         ], 403);
                     }
                 }

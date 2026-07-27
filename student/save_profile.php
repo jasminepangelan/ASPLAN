@@ -32,7 +32,6 @@ try {
         'last_name',
         'first_name',
         'middle_name',
-        'email',
         'admission_date',
         'stud_classification',
         'registration_classification',
@@ -88,7 +87,7 @@ try {
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Only administrators can update your profile details. You may still change your password or profile picture here.',
+                    'message' => 'Only administrators can update your name and classification. You may still change your password, profile picture, contact number, address, or email here.',
                 ]);
                 exit;
             }

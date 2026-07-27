@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/academic_hold_service.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/checklist_term_lock_service.php';
+require_once __DIR__ . '/../includes/checklist_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
 require_once __DIR__ . '/generate_study_plan.php';
@@ -1866,6 +1867,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                         </thead>
                         <tbody>
                         <?php
+                        $allInstructors = csGetAllInstructorsList($conn);
                         $currentSemester = "";
                         $currentYear = "";
                         foreach ($page_year_keys as $year_key) {
@@ -1927,7 +1929,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 <td>{$row['contact_hrs_lab']}</td>
                                 <td>{$row['pre_requisite']}</td>
                                 <td>{$row['semester']} {$row['year']}</td>
-                                <td><input type='text' name='professor_instructor[{$row['course_code']}]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars($row['professor_instructor']) : "") . "' style='border: none; font-size: 9px; border-bottom: 1px solid #000000; width: 90px; max-width: 100%;' " . ($isCredited ? "readonly" : "") . ($isCredited ? "" : $prereqInputAttrs) . "></td>
+                                <td>" . csRenderInstructorSelect((string)$row['course_code'], (string)($row['professor_instructor'] ?? ''), $allInstructors, $isCredited, ($isCredited ? "" : $prereqSelectAttrs), '9px', '95px') . "</td>
                                 <td id='grade1_{$row['course_code']}'>"; // 1st attempt
                                 if (csChecklistIsApprovedRemark($remarks1) || $isCredited) {
                                     echo "<span style='font-size: 11px; color: #000; font-weight: bold;'>{$grade1_val}</span>";
@@ -2201,10 +2203,14 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
             syncGradeSelectVisualState(select, select.classList.contains('is-pending'));
         });
 
-        document.querySelectorAll('input[name^="professor_instructor"]').forEach(input => {
-            input.readOnly = true;
-            input.title = academicHold.short_message || academicHold.message || 'Read-only mode';
-            input.style.backgroundColor = '#f4f4f4';
+        document.querySelectorAll('[name^="professor_instructor"]').forEach(el => {
+            if (el.tagName === 'SELECT') {
+                el.disabled = true;
+            } else {
+                el.readOnly = true;
+            }
+            el.title = academicHold.short_message || academicHold.message || 'Read-only mode';
+            el.style.backgroundColor = '#f4f4f4';
         });
     }
 
@@ -2598,20 +2604,30 @@ function bindChecklistFieldListeners(root = document) {
         });
     });
 
-    root.querySelectorAll('input[name^="professor_instructor"]').forEach(function(textInput) {
-        if (textInput.dataset.liveBound === '1') {
+    root.querySelectorAll('[name^="professor_instructor"]').forEach(function(profEl) {
+        if (profEl.dataset.liveBound === '1') {
             return;
         }
 
-        textInput.dataset.liveBound = '1';
-        textInput.addEventListener('focus', function() {
+        profEl.dataset.liveBound = '1';
+        profEl.addEventListener('focus', function() {
             setChecklistInteractionState(true);
         });
-        textInput.addEventListener('blur', function() {
+        profEl.addEventListener('blur', function() {
             window.setTimeout(function() {
                 setChecklistInteractionState(false);
             }, 150);
         });
+        if (profEl.tagName === 'SELECT') {
+            profEl.addEventListener('change', function() {
+                const row = this.closest('tr');
+                const courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
+                const courseCodeMatch = this.name.match(/\[(.*?)\]/);
+                if (courseCodeMatch) {
+                    autoSaveGrade(courseCodeMatch[1], courseRowKey);
+                }
+            });
+        }
     });
 }
 
@@ -2697,11 +2713,19 @@ function stopChecklistLiveRefresh() {
         isCreditedRemark(course.evaluator_remarks_3);
 
         // Update professor/instructor
-        const professorInput = document.querySelector(`input[name="professor_instructor[${course.course_code}]"]`);
+        const professorInput = document.querySelector(`[name="professor_instructor[${course.course_code}]"]`);
         if (professorInput) {
-            professorInput.value = course.professor_instructor || '';
-        const prereqBlocked = professorInput.dataset.prereqBlocked === '1' || !!professorInput.closest('tr')?.dataset?.prereqBlocked;
-        professorInput.readOnly = isCredited || academicHold.active || prereqBlocked;
+            const val = course.professor_instructor || '';
+            if (professorInput.tagName === 'SELECT' && val && !Array.from(professorInput.options).some(opt => opt.value === val)) {
+                professorInput.add(new Option(val, val));
+            }
+            professorInput.value = val;
+            const prereqBlocked = professorInput.dataset.prereqBlocked === '1' || !!professorInput.closest('tr')?.dataset?.prereqBlocked;
+            if (professorInput.tagName === 'SELECT') {
+                professorInput.disabled = isCredited || academicHold.active || prereqBlocked;
+            } else {
+                professorInput.readOnly = isCredited || academicHold.active || prereqBlocked;
+            }
         }
         // Update 1st attempt grade
         const gradeSelect = document.querySelector(`select[name="final_grade[${course.course_code}]"]`);

@@ -1299,13 +1299,11 @@ $csrfToken = getCSRFToken();
           <label for="email">Email Address</label>
           <div class="field-input-row">
             <input id="email" type="email" value="<?= $email ?>" disabled>
-            <?php if ($studentCanEditDetails): ?>
             <button type="button" class="edit-trigger" onclick="toggleEdit('email')" aria-label="Edit email address">
               <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
-            <?php endif; ?>
           </div>
-          <div class="field-note">Student accounts must use an official @cvsu.edu.ph email address for notices and recovery.</div>
+          <div class="field-note">Student accounts must use a valid email address for account notices and recovery.</div>
         </div>
         <div class="field">
           <label for="password">Password</label>
@@ -1469,8 +1467,8 @@ $csrfToken = getCSRFToken();
     }
 
     function toggleEdit(fieldId) {
-      if (!studentCanEditDetails && fieldId !== 'contact_no' && fieldId !== 'address') {
-        showFeedbackModal('error', 'Profile Details Locked', 'Only administrators can update your profile details. You may still change your password, profile picture, contact number, or address here.');
+      if (!studentCanEditDetails && fieldId !== 'contact_no' && fieldId !== 'address' && fieldId !== 'email') {
+        showFeedbackModal('error', 'Profile Details Locked', 'Only administrators can update your name and classification. You may still change your password, profile picture, contact number, address, or email here.');
         return;
       }
       const field = document.getElementById(fieldId);
@@ -1509,8 +1507,8 @@ function closeModal(modalId) {
         formData.append("last_name", document.getElementById("last_name").value);
         formData.append("first_name", document.getElementById("first_name").value);
         formData.append("middle_name", document.getElementById("middle_name").value);
-        formData.append("email", document.getElementById("email").value);
       }
+      formData.append("email", document.getElementById("email").value);
       formData.append("contact_no", document.getElementById("contact_no").value);
       formData.append("address", document.getElementById("address").value);
 
@@ -1546,9 +1544,7 @@ function closeModal(modalId) {
               fileInput.value = '';
             }
 
-            if (studentCanEditDetails) {
-              setTimeout(() => location.reload(), 1200);
-            }
+            setTimeout(() => location.reload(), 1200);
           } else {
             showFeedbackModal('error', 'Profile Update Failed', data.message || 'Unable to update your profile right now.');
           }

@@ -44,6 +44,17 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!empty($_SESSION['student_id'])) {
+    $conn = getDBConnection();
+    $stmt = $conn->prepare("UPDATE student_info SET remember_token = NULL, remember_token_expiry = NULL WHERE student_number = ?");
+    if ($stmt) {
+        $studentId = (string) $_SESSION['student_id'];
+        $stmt->bind_param("s", $studentId);
+        $stmt->execute();
+    }
+    closeDBConnection($conn);
+}
+
 // Clear remember me cookie if it exists
 if (isset($_COOKIE['remember_me'])) {
     clearAppCookie('remember_me', '/');

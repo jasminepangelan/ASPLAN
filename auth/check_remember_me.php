@@ -23,10 +23,6 @@ if (isset($_SESSION['student_id'])) {
 
 // Check if remember me cookie exists
 if (isset($_COOKIE['remember_me'])) {
-    if (!$useLaravelAuthBridge) {
-        return;
-    }
-
     $autoLoginAttempted = true;
     $cookie_data = $_COOKIE['remember_me'];
     $parts = explode(':', $cookie_data);
@@ -43,75 +39,74 @@ if (isset($_COOKIE['remember_me'])) {
     }
 
     if ($isStudentToken && $student_id !== '' && $remember_token !== '') {
-        $bridgeUrl = laravelBridgeUrl('/api/check-auto-login');
-        $payloadJson = json_encode([
-            'remember_me' => $cookie_data,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-        ]);
-
-        $bridgeResponse = false;
-        if (function_exists('curl_init')) {
-            $ch = curl_init($bridgeUrl);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $payloadJson,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 8,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        if ($useLaravelAuthBridge) {
+            $bridgeUrl = laravelBridgeUrl('/api/check-auto-login');
+            $payloadJson = json_encode([
+                'remember_me' => $cookie_data,
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
             ]);
-            $bridgeResponse = curl_exec($ch);
-            curl_close($ch);
-        } else {
-            $context = stream_context_create([
-                'http' => [
-                    'method' => 'POST',
-                    'header' => "Content-Type: application/json\r\n",
-                    'content' => $payloadJson,
-                    'timeout' => 8,
-                ],
-            ]);
-            $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
-        }
 
-        if ($bridgeResponse !== false) {
-            $bridgeData = json_decode($bridgeResponse, true);
-            if (is_array($bridgeData)) {
-                if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
-                    session_regenerate_id(true);
-                    foreach ($bridgeData['session'] as $key => $value) {
-                        $_SESSION[$key] = $value;
+            $bridgeResponse = false;
+            if (function_exists('curl_init')) {
+                $ch = curl_init($bridgeUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $payloadJson,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 8,
+                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                ]);
+                $bridgeResponse = curl_exec($ch);
+                curl_close($ch);
+            } else {
+                $context = stream_context_create([
+                    'http' => [
+                        'method' => 'POST',
+                        'header' => "Content-Type: application/json\r\n",
+                        'content' => $payloadJson,
+                        'timeout' => 8,
+                    ],
+                ]);
+                $bridgeResponse = @file_get_contents($bridgeUrl, false, $context);
+            }
+
+            if ($bridgeResponse !== false) {
+                $bridgeData = json_decode($bridgeResponse, true);
+                if (is_array($bridgeData)) {
+                    if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
+                        session_regenerate_id(true);
+                        foreach ($bridgeData['session'] as $key => $value) {
+                            $_SESSION[$key] = $value;
+                        }
+
+                        $verificationConn = getDBConnection();
+                        $requiresVerification = sevApplySessionRequirement(
+                            $verificationConn,
+                            (string) ($_SESSION['student_id'] ?? ''),
+                            (string) ($_SESSION['email'] ?? '')
+                        );
+                        closeDBConnection($verificationConn);
+
+                        if ($requiresVerification) {
+                            $_SESSION['student_email_verification_notice'] = 'Please verify your CvSU email address before accessing your student workspace.';
+                        }
                     }
 
-                    $verificationConn = getDBConnection();
-                    $requiresVerification = sevApplySessionRequirement(
-                        $verificationConn,
-                        (string) ($_SESSION['student_id'] ?? ''),
-                        (string) ($_SESSION['email'] ?? '')
-                    );
-                    closeDBConnection($verificationConn);
-
-                    if ($requiresVerification) {
-                        $_SESSION['student_email_verification_notice'] = 'Please verify your CvSU email address before accessing your student workspace.';
+                    if (!empty($bridgeData['clear_cookie'])) {
+                        clearAppCookie('remember_me', '/');
+                        clearAppCookie('remember_me', '/PEAS/');
                     }
-                }
 
-                if (!empty($bridgeData['clear_cookie'])) {
-                    clearAppCookie('remember_me', '/');
-                    clearAppCookie('remember_me', '/PEAS/');
-                }
+                    if (!empty($bridgeData['redirect']) || !empty($_SESSION['student_email_verification_required'])) {
+                        header('Location: ' . (!empty($_SESSION['student_email_verification_required']) ? sevVerificationRedirectUrl() : $bridgeData['redirect']));
+                        exit();
+                    }
 
-                if (!empty($bridgeData['redirect']) || !empty($_SESSION['student_email_verification_required'])) {
-                    header('Location: ' . (!empty($_SESSION['student_email_verification_required']) ? sevVerificationRedirectUrl() : $bridgeData['redirect']));
-                    exit();
+                    return;
                 }
-
-                return;
             }
         }
 
-        return;
-
-        
         // Validate student_id format
         if (preg_match('/^[0-9]{1,20}$/', $student_id)) {
             $conn = getDBConnection();

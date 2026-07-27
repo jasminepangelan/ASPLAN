@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/checklist_term_lock_service.php';
+require_once __DIR__ . '/../includes/checklist_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 require_once __DIR__ . '/../includes/vite_legacy.php';
 $csrfToken = getCSRFToken();
@@ -1460,6 +1461,7 @@ foreach ($all_courses as $csRow) {
                 </thead>
                 <tbody>
                 <?php
+    $allInstructors = csGetAllInstructorsList($conn);
     $currentSemester = "";
     $currentYear = "";
 
@@ -1550,7 +1552,7 @@ foreach ($all_courses as $csRow) {
           <td>" . htmlspecialchars((string)($row['contact_hrs_lab'] ?? '')) . "</td>
           <td>" . htmlspecialchars((string)($row['pre_requisite'] ?? '')) . "</td>
           <td>" . htmlspecialchars((string)($row['semester'] ?? '')) . " " . htmlspecialchars((string)($row['year'] ?? '')) . "</td>
-        <td><input type='text' name='professor_instructor[" . htmlspecialchars($courseCode) . "]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars((string)$row['professor_instructor']) : "") . "'" . $readonlyAttr . " style='border: none; font-size: 11px; border-bottom: 1px solid #000; width: 108px;'></td>";
+        <td>" . csRenderInstructorSelect((string)$courseCode, (string)($row['professor_instructor'] ?? ''), $allInstructors, (!empty($disabledAttr)), $disabledAttr, '11px', '108px') . "</td>";
             
             $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
             echo "<td id='grade1_" . htmlspecialchars($courseCode) . "'><select name='final_grade[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade1Class) . "'" . $disabledAttr . ">";
@@ -2096,7 +2098,7 @@ document.getElementById('bulkApproveButton').addEventListener('click', function(
     let professorData = {};
     selectedCourses.forEach(courseCode => {
         const grade = document.querySelector(`select[name="final_grade[${courseCode}]"]`).value;
-        const professor = document.querySelector(`input[name="professor_instructor[${courseCode}]"]`).value;
+        const professor = document.querySelector(`[name="professor_instructor[${courseCode}]"]`).value;
         gradeData[courseCode] = grade;
         professorData[courseCode] = professor;
     });

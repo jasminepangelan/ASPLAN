@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/program_shift_service.php';
 require_once __DIR__ . '/../includes/checklist_term_lock_service.php';
+require_once __DIR__ . '/../includes/checklist_service.php';
 require_once __DIR__ . '/../includes/laravel_bridge.php';
 $csrfToken = getCSRFToken();
 
@@ -1414,6 +1415,7 @@ foreach ($checklistRows as $csRow) {
                 </thead>
                 <tbody>
                 <?php
+    $allInstructors = csGetAllInstructorsList($conn);
     // Initialize variables to track semester and year
     $currentSemester = "";
     $currentYear = "";
@@ -1493,7 +1495,7 @@ foreach ($checklistRows as $csRow) {
                     <td>{$row['contact_hrs_lab']}</td>
                     <td>{$row['pre_requisite']}</td>
                     <td>{$row['semester']} {$row['year']}</td>
-                <td><input type='text' name='professor_instructor[{$courseCode}]' value='" . (!empty($row['professor_instructor']) ? htmlspecialchars($row['professor_instructor']) : "") . "'" . $readonlyAttr . " style='border: none; font-size: 11px; border-bottom: 1px solid #000; width: 100px;'></td>";
+                <td>" . csRenderInstructorSelect((string)$courseCode, (string)($row['professor_instructor'] ?? ''), $allInstructors, (!empty($disabledAttr)), $disabledAttr, '11px', '100px') . "</td>";
             // 1st attempt grade
             $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
             echo "<td id='grade1_{$courseCode}'><select name='final_grade[{$courseCode}]' class='{$grade1Class}'" . $disabledAttr . ">";
@@ -2040,7 +2042,7 @@ document.getElementById('bulkApproveButton').addEventListener('click', function(
     let professorData = {};
     selectedCourses.forEach(courseCode => {
         const grade = document.querySelector(`select[name="final_grade[${courseCode}]"]`).value;
-        const professor = document.querySelector(`input[name="professor_instructor[${courseCode}]"]`).value;
+        const professor = document.querySelector(`[name="professor_instructor[${courseCode}]"]`).value;
         gradeData[courseCode] = grade;
         professorData[courseCode] = professor;
     });

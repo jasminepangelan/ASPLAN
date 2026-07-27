@@ -119,26 +119,19 @@ if (empty($_COOKIE['remember_me'])) {
     ]);
 }
 
-if ((getenv('USE_LARAVEL_AUTH_BRIDGE') ?: '') !== '1') {
-    autoLoginJson([
-        'redirect' => null,
-        'session_expired' => false,
-        'session_timeout_seconds' => $sessionTimeoutSeconds,
-    ]);
-}
-
 $bridgeData = null;
-
-try {
-    $bridgeData = postLaravelJsonBridge('/api/check-auto-login', [
-        'remember_me' => (string) $_COOKIE['remember_me'],
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-    ], 8);
-} catch (Throwable $e) {
-    $bridgeData = null;
+if ((getenv('USE_LARAVEL_AUTH_BRIDGE') ?: '') === '1') {
+    try {
+        $bridgeData = postLaravelJsonBridge('/api/check-auto-login', [
+            'remember_me' => (string) $_COOKIE['remember_me'],
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        ], 8);
+    } catch (Throwable $e) {
+        $bridgeData = null;
+    }
 }
 
-if (is_array($bridgeData)) {
+if (is_array($bridgeData) && (isset($bridgeData['session']) || !empty($bridgeData['redirect']) || !empty($bridgeData['clear_cookie']))) {
     if (isset($bridgeData['session']) && is_array($bridgeData['session'])) {
         session_regenerate_id(true);
         foreach ($bridgeData['session'] as $key => $value) {
@@ -171,6 +164,72 @@ if (is_array($bridgeData)) {
         'session_timeout_seconds' => $sessionTimeoutSeconds,
     ]);
 }
+
+// Local MySQL fallback verification when bridge is disabled or unavailable
+$cookieData = (string) $_COOKIE['remember_me'];
+$parts = explode(':', $cookieData);
+$studentId = '';
+$rememberToken = '';
+$accountType = 'student';
+
+if (count($parts) === 3) {
+    list($studentId, $rememberToken, $accountType) = $parts;
+} elseif (count($parts) === 2) {
+    list($studentId, $rememberToken) = $parts;
+}
+
+if ($accountType === 'student' && preg_match('/^[0-9]{1,20}$/', $studentId) && $rememberToken !== '') {
+    $conn = getDBConnection();
+    if (smlStudentHasSystemAccess($conn, $studentId)) {
+        $query = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name, email, contact_number AS contact_no, CONCAT_WS(', ', house_number_street, brgy, town, province) AS address, date_of_admission AS admission_date, picture, status, program, remember_token FROM student_info WHERE student_number = ? AND remember_token IS NOT NULL AND remember_token_expiry > NOW()");
+        if ($query) {
+            $query->bind_param("s", $studentId);
+            $query->execute();
+            $result = $query->get_result();
+
+            if ($result && $result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                if (($row['status'] ?? '') !== 'archived' && password_verify($rememberToken, (string) $row['remember_token'])) {
+                    session_regenerate_id(true);
+                    $_SESSION['student_id'] = $studentId;
+                    $_SESSION['last_name'] = $row['last_name'];
+                    $_SESSION['first_name'] = $row['first_name'];
+                    $_SESSION['middle_name'] = $row['middle_name'];
+                    $_SESSION['email'] = $row['email'] ?? '';
+                    $_SESSION['contact_no'] = $row['contact_no'];
+                    $_SESSION['address'] = $row['address'];
+                    $_SESSION['admission_date'] = $row['admission_date'];
+                    $_SESSION['picture'] = $row['picture'];
+                    $_SESSION['program'] = $row['program'] ?? '';
+                    $_SESSION['login_time'] = time();
+                    $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                    $_SESSION['user_type'] = 'student';
+                    $_SESSION['auto_login'] = true;
+
+                    $requiresVerification = sevApplySessionRequirement(
+                        $conn,
+                        (string) $studentId,
+                        (string) ($row['email'] ?? '')
+                    );
+                    if ($requiresVerification) {
+                        $_SESSION['student_email_verification_notice'] = 'Please verify your CvSU email address before accessing your student workspace.';
+                    }
+                    closeDBConnection($conn);
+
+                    autoLoginJson([
+                        'redirect' => $requiresVerification ? sevVerificationRedirectUrl() : 'student/home_page_student.php',
+                        'session_expired' => false,
+                        'session_timeout_seconds' => $sessionTimeoutSeconds,
+                    ]);
+                }
+            }
+        }
+    }
+    closeDBConnection($conn);
+}
+
+autoLoginClearCookie('remember_me', '/');
+autoLoginClearCookie('remember_me', '/PEAS/');
 
 autoLoginJson([
     'redirect' => null,
