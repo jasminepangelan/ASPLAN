@@ -256,24 +256,35 @@ class ChecklistController extends Controller
                 $grade3 = $this->normalizeString($grades3[$index] ?? '');
                 $remark = $this->normalizeString($remarks[$index] ?? '');
 
-                $hasIncomingSubmittedAttempt = ($grade !== '' && $grade !== 'No Grade')
-                    || ($grade2 !== '' && $grade2 !== 'No Grade')
-                    || ($grade3 !== '' && $grade3 !== 'No Grade');
-                $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
-                if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
-                    $errors[] = "Course {$courseCode} is outside the student's current term.";
-                    continue;
-                }
-                if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
-                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
-                    continue;
-                }
-
                 $existing = DB::table('student_checklists')
-                    ->select(['grade_submitted_at', 'submitted_by', 'evaluator_remarks'])
+                    ->select(['grade_submitted_at', 'submitted_by', 'evaluator_remarks', 'final_grade', 'final_grade_2', 'final_grade_3'])
                     ->where('student_id', $studentId)
                     ->where('course_code', $courseCode)
                     ->first();
+
+                $isGradeAttemptModified = false;
+                if ($existing) {
+                    $oldG1 = $this->normalizeString($existing->final_grade ?? '');
+                    $oldG2 = $this->normalizeString($existing->final_grade_2 ?? '');
+                    $oldG3 = $this->normalizeString($existing->final_grade_3 ?? '');
+                    if ($oldG1 !== $grade || $oldG2 !== $grade2 || $oldG3 !== $grade3) {
+                        $isGradeAttemptModified = true;
+                    }
+                } else {
+                    if ($hasIncomingSubmittedAttempt) {
+                        $isGradeAttemptModified = true;
+                    }
+                }
+
+                $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                if ($isGradeAttemptModified && $courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
+                    $errors[] = "Course {$courseCode} is outside the student's current term.";
+                    continue;
+                }
+                if ($isGradeAttemptModified && $hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+                    $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
+                    continue;
+                }
 
                 $remark = $this->resolveStaffRemarkForSave($remark, $existing?->evaluator_remarks ?? null);
                 $normalizedRemark = strtoupper(trim((string) $remark));
@@ -655,17 +666,32 @@ class ChecklistController extends Controller
                     ->where('course_code', $courseCode)
                     ->first();
 
-                if ($this->isCreditedLockedRecord($existing)) {
-                    $errors[] = "Skipped credited course (locked): {$courseCode}";
-                    continue;
-                }
-
                 $grade = $this->normalizeString($grades[$index] ?? '');
                 $grade2 = $this->normalizeString($grades2[$index] ?? '');
                 $grade3 = $this->normalizeString($grades3[$index] ?? '');
                 $hasIncomingSubmittedAttempt = $grade !== '' || $grade2 !== '' || $grade3 !== '';
+
+                $isGradeAttemptModified = false;
+                if ($existing) {
+                    $oldG1 = $this->normalizeString($existing->final_grade ?? '');
+                    $oldG2 = $this->normalizeString($existing->final_grade_2 ?? '');
+                    $oldG3 = $this->normalizeString($existing->final_grade_3 ?? '');
+                    if ($oldG1 !== $grade || $oldG2 !== $grade2 || $oldG3 !== $grade3) {
+                        $isGradeAttemptModified = true;
+                    }
+                } else {
+                    if ($hasIncomingSubmittedAttempt) {
+                        $isGradeAttemptModified = true;
+                    }
+                }
+
+                if ($isGradeAttemptModified && $this->isCreditedLockedRecord($existing)) {
+                    $errors[] = "Skipped credited course (locked): {$courseCode}";
+                    continue;
+                }
+
                 $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
-                if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+                if ($isGradeAttemptModified && $hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
                     $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
                     continue;
                 }

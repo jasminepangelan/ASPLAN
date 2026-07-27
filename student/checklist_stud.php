@@ -1929,7 +1929,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 <td>{$row['contact_hrs_lab']}</td>
                                 <td>{$row['pre_requisite']}</td>
                                 <td>{$row['semester']} {$row['year']}</td>
-                                <td>" . csRenderInstructorSelect((string)$row['course_code'], (string)($row['professor_instructor'] ?? ''), $allInstructors, $isCredited, ($isCredited ? "" : $prereqSelectAttrs), '9px', '95px') . "</td>
+                                <td>" . csRenderInstructorSelect((string)$row['course_code'], (string)($row['professor_instructor'] ?? ''), $allInstructors, $isCredited, "", '9px', '95px') . "</td>
                                 <td id='grade1_{$row['course_code']}'>"; // 1st attempt
                                 if (csChecklistIsApprovedRemark($remarks1) || $isCredited) {
                                     echo "<span style='font-size: 11px; color: #000; font-weight: bold;'>{$grade1_val}</span>";
@@ -2720,11 +2720,10 @@ function stopChecklistLiveRefresh() {
                 professorInput.add(new Option(val, val));
             }
             professorInput.value = val;
-            const prereqBlocked = professorInput.dataset.prereqBlocked === '1' || !!professorInput.closest('tr')?.dataset?.prereqBlocked;
             if (professorInput.tagName === 'SELECT') {
-                professorInput.disabled = isCredited || academicHold.active || prereqBlocked;
+                professorInput.disabled = isCredited || academicHold.active;
             } else {
-                professorInput.readOnly = isCredited || academicHold.active || prereqBlocked;
+                professorInput.readOnly = isCredited || academicHold.active;
             }
         }
         // Update 1st attempt grade

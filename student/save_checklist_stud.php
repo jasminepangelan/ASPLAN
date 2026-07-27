@@ -577,23 +577,37 @@ try {
         $existing = $check_stmt->get_result()->fetch_assoc();
         $check_stmt->close();
 
-        if (isCreditedLockedChecklistRecordLocal($existing ?: null)) {
-            $errors[] = "Skipped credited course (locked): $course_code";
-            continue;
-        }
-
         $hasIncomingSubmittedAttempt = ($finalGrade !== '' && $finalGrade !== 'No Grade')
             || ($finalGrade2 !== '' && $finalGrade2 !== 'No Grade')
             || ($finalGrade3 !== '' && $finalGrade3 !== 'No Grade');
 
+        $isGradeAttemptModified = false;
+        if ($existing) {
+            $oldG1 = normalizeChecklistValue($existing['final_grade'] ?? '');
+            $oldG2 = normalizeChecklistValue($existing['final_grade_2'] ?? '');
+            $oldG3 = normalizeChecklistValue($existing['final_grade_3'] ?? '');
+            if ($oldG1 !== $finalGrade || $oldG2 !== $finalGrade2 || $oldG3 !== $finalGrade3) {
+                $isGradeAttemptModified = true;
+            }
+        } else {
+            if ($hasIncomingSubmittedAttempt) {
+                $isGradeAttemptModified = true;
+            }
+        }
+
+        if ($isGradeAttemptModified && isCreditedLockedChecklistRecordLocal($existing ?: null)) {
+            $errors[] = "Skipped credited course (locked): $course_code";
+            continue;
+        }
+
         $courseCodeNorm = csStudChecklistNormalizeCourseTokenLocal($course_code);
         $courseInRecommendedLoad = $courseCodeNorm !== '' && !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
         $courseRowKey = trim((string)($course_row_keys[$index] ?? ''));
-        if ($courseRowKey !== '' && !empty($termLockSource) && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $termLockSource) && !$courseInRecommendedLoad) {
+        if ($isGradeAttemptModified && $courseRowKey !== '' && !empty($termLockSource) && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $termLockSource) && !$courseInRecommendedLoad) {
             $errors[] = "Course {$course_code} is outside the student's current study-plan term.";
             continue;
         }
-        if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+        if ($isGradeAttemptModified && $hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
             $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
             continue;
         }

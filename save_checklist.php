@@ -613,7 +613,7 @@ try {
     }
 
     $existingRemarkStmt = $conn->prepare("
-        SELECT evaluator_remarks
+        SELECT evaluator_remarks, final_grade, final_grade_2, final_grade_3
         FROM student_checklists
         WHERE student_id = ? AND course_code = ?
         LIMIT 1
@@ -627,6 +627,7 @@ try {
         $fg2 = isset($final_grades_2[$i]) ? $final_grades_2[$i] : '';
         $fg3 = isset($final_grades_3[$i]) ? $final_grades_3[$i] : '';
 
+        $existingRemarkRow = null;
         if ($existingRemarkStmt && $courseCode !== '') {
             $existingRemarkStmt->bind_param('ss', $student_id, $courseCode);
             if ($existingRemarkStmt->execute()) {
@@ -646,14 +647,28 @@ try {
             || ($fg2Norm !== '' && strtoupper($fg2Norm) !== 'NO GRADE')
             || ($fg3Norm !== '' && strtoupper($fg3Norm) !== 'NO GRADE');
 
+        $isGradeAttemptModified = false;
+        if ($existingRemarkRow) {
+            $oldG1 = trim((string)($existingRemarkRow['final_grade'] ?? ''));
+            $oldG2 = trim((string)($existingRemarkRow['final_grade_2'] ?? ''));
+            $oldG3 = trim((string)($existingRemarkRow['final_grade_3'] ?? ''));
+            if ($oldG1 !== $fg1Norm || $oldG2 !== $fg2Norm || $oldG3 !== $fg3Norm) {
+                $isGradeAttemptModified = true;
+            }
+        } else {
+            if ($hasIncomingSubmittedAttempt) {
+                $isGradeAttemptModified = true;
+            }
+        }
+
         $courseRowKey = trim((string)($course_row_keys[$i] ?? ''));
         $courseNorm = csStaffChecklistNormalizeCourseTokenLocal($courseCode);
         $courseInRecommendedLoad = $courseNorm !== '' && !empty($nextRecommendedLoadCourseCodes[$courseNorm]);
-        if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm) && !$courseInRecommendedLoad) {
+        if ($isGradeAttemptModified && $courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm) && !$courseInRecommendedLoad) {
             $errors[] = "Course {$courseCode} is outside the student's current term.";
             continue;
         }
-        if ($hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
+        if ($isGradeAttemptModified && $hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
             $errors[] = "Prerequisite(s) not cleared for {$courseCode}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
             continue;
         }
