@@ -35,7 +35,6 @@ try {
         'admission_date',
         'stud_classification',
         'registration_classification',
-        'student_id',
     ];
 
     if (!$isAdmin && $sessionStudentId === '') {
@@ -74,6 +73,7 @@ try {
 
         $student_id = $sessionStudentId;
         $profileContext = 'student';
+        unset($_POST['student_id'], $_POST['original_student_id']);
     }
 
     if ($profileContext === 'student') {
@@ -122,6 +122,7 @@ try {
 
         if ($profileContext === 'student') {
             $formFields['session_student_id'] = $student_id;
+            $formFields['student_id'] = $student_id;
         } else {
             $formFields['admin_id'] = (string) ($_SESSION['admin_id'] ?? $_SESSION['admin_username'] ?? '');
         }
