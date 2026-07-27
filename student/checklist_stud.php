@@ -2338,6 +2338,17 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         remarksCell.textContent = status || '';
     }
 
+    function getAttemptGradeValue(courseCode, attemptNum, targetRow = null) {
+        let inputName = attemptNum === 1 ? `final_grade[${courseCode}]` : (attemptNum === 2 ? `final_grade_2[${courseCode}]` : `final_grade_3[${courseCode}]`);
+        let input = targetRow ? targetRow.querySelector(`[name='${inputName}']`) : document.querySelector(`[name='${inputName}']`);
+        if (input) return input.value;
+        let cell = document.getElementById(`grade${attemptNum}_${courseCode}`);
+        if (!cell) return '';
+        let txt = cell.textContent.trim();
+        if (txt === '—' || txt === '--' || txt === '-- Select --' || txt.includes('Credited')) return '';
+        return txt;
+    }
+
     // Add event listeners to all Save buttons
     document.querySelectorAll('#saveButton').forEach(btn => {
         btn.addEventListener('click', async function () {
@@ -2360,12 +2371,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                 let courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
                 let professorValue = profInput.value;
 
-                let gradeInput  = document.querySelector(`[name='final_grade[${courseCode}]']`);
-                let gradeInput2 = document.querySelector(`[name='final_grade_2[${courseCode}]']`);
-                let gradeInput3 = document.querySelector(`[name='final_grade_3[${courseCode}]']`);
-                let finalGrade  = gradeInput  ? gradeInput.value  : '';
-                let finalGrade2 = gradeInput2 ? gradeInput2.value : '';
-                let finalGrade3 = gradeInput3 ? gradeInput3.value : '';
+                let finalGrade  = getAttemptGradeValue(courseCode, 1, row);
+                let finalGrade2 = getAttemptGradeValue(courseCode, 2, row);
+                let finalGrade3 = getAttemptGradeValue(courseCode, 3, row);
                 let courseLabel = getCourseDisplayLabel(courseCode);
 
                 let remarksCell = document.getElementById(`remarks_${courseCode}`);
@@ -2422,13 +2430,10 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                     showSuccessModal('Data saved successfully!');
                     professorInputs.forEach(function (profInput) {
                         let courseCode = profInput.name.split('[')[1].split(']')[0];
-                        let gradeInput  = document.querySelector(`[name='final_grade[${courseCode}]']`);
-                        let gradeInput2 = document.querySelector(`[name='final_grade_2[${courseCode}]']`);
-                        let gradeInput3 = document.querySelector(`[name='final_grade_3[${courseCode}]']`);
                         let hasSubmittedGrade = (
-                            hasSubmittedGradeValue(gradeInput ? gradeInput.value : '') ||
-                            hasSubmittedGradeValue(gradeInput2 ? gradeInput2.value : '') ||
-                            hasSubmittedGradeValue(gradeInput3 ? gradeInput3.value : '')
+                            hasSubmittedGradeValue(getAttemptGradeValue(courseCode, 1)) ||
+                            hasSubmittedGradeValue(getAttemptGradeValue(courseCode, 2)) ||
+                            hasSubmittedGradeValue(getAttemptGradeValue(courseCode, 3))
                         );
 
                         if (hasSubmittedGrade) {
@@ -2814,15 +2819,10 @@ function autoSaveGrade(courseCode, courseRowKey = '') {
         if (courseRowKey !== '') {
             targetRow = document.querySelector(`tr[data-course-row-key="${courseRowKey.replace(/"/g, '\\"')}"]`);
         }
-        let gradeInput  = targetRow ? targetRow.querySelector(`[name='final_grade[${courseCode}]']`) : document.querySelector(`[name='final_grade[${courseCode}]']`);
-        let gradeInput2 = targetRow ? targetRow.querySelector(`[name='final_grade_2[${courseCode}]']`) : document.querySelector(`[name='final_grade_2[${courseCode}]']`);
-        let gradeInput3 = targetRow ? targetRow.querySelector(`[name='final_grade_3[${courseCode}]']`) : document.querySelector(`[name='final_grade_3[${courseCode}]']`);
+        let finalGrade  = getAttemptGradeValue(courseCode, 1, targetRow);
+        let finalGrade2 = getAttemptGradeValue(courseCode, 2, targetRow);
+        let finalGrade3 = getAttemptGradeValue(courseCode, 3, targetRow);
         let profInput   = targetRow ? targetRow.querySelector(`[name='professor_instructor[${courseCode}]']`) : document.querySelector(`[name='professor_instructor[${courseCode}]']`);
-        let remarksCell = document.getElementById(`remarks_${courseCode}`);
-        
-        let finalGrade  = gradeInput  ? gradeInput.value  : '';
-        let finalGrade2 = gradeInput2 ? gradeInput2.value : '';
-        let finalGrade3 = gradeInput3 ? gradeInput3.value : '';
         let professorValue  = profInput   ? profInput.value   : '';
         let currentRemarks  = remarksCell ? remarksCell.textContent.trim() : '';
         

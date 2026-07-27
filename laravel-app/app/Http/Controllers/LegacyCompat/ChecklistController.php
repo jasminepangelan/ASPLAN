@@ -267,7 +267,10 @@ class ChecklistController extends Controller
                     $oldG1 = $this->normalizeString($existing->final_grade ?? '');
                     $oldG2 = $this->normalizeString($existing->final_grade_2 ?? '');
                     $oldG3 = $this->normalizeString($existing->final_grade_3 ?? '');
-                    if ($oldG1 !== $grade || $oldG2 !== $grade2 || $oldG3 !== $grade3) {
+                    $checkG1 = ($grade === '' && $oldG1 !== '') ? $oldG1 : $grade;
+                    $checkG2 = ($grade2 === '' && $oldG2 !== '') ? $oldG2 : $grade2;
+                    $checkG3 = ($grade3 === '' && $oldG3 !== '') ? $oldG3 : $grade3;
+                    if ($oldG1 !== $checkG1 || $oldG2 !== $checkG2 || $oldG3 !== $checkG3) {
                         $isGradeAttemptModified = true;
                     }
                 } else {
@@ -671,12 +674,20 @@ class ChecklistController extends Controller
                 $grade3 = $this->normalizeString($grades3[$index] ?? '');
                 $hasIncomingSubmittedAttempt = $grade !== '' || $grade2 !== '' || $grade3 !== '';
 
+                $payload = [
+                    'professor_instructor' => $this->resolveCourseValue($professors, $index, $courseCode),
+                ];
+                $payload += $this->resolveStudentAttemptPayload($existing, $grade, $grade2, $grade3);
+
                 $isGradeAttemptModified = false;
                 if ($existing) {
                     $oldG1 = $this->normalizeString($existing->final_grade ?? '');
                     $oldG2 = $this->normalizeString($existing->final_grade_2 ?? '');
                     $oldG3 = $this->normalizeString($existing->final_grade_3 ?? '');
-                    if ($oldG1 !== $grade || $oldG2 !== $grade2 || $oldG3 !== $grade3) {
+                    $newG1 = $this->normalizeString($payload['final_grade'] ?? '');
+                    $newG2 = $this->normalizeString($payload['final_grade_2'] ?? '');
+                    $newG3 = $this->normalizeString($payload['final_grade_3'] ?? '');
+                    if ($oldG1 !== $newG1 || $oldG2 !== $newG2 || $oldG3 !== $newG3) {
                         $isGradeAttemptModified = true;
                     }
                 } else {
@@ -696,11 +707,6 @@ class ChecklistController extends Controller
                     continue;
                 }
 
-                $payload = [
-                    'professor_instructor' => $this->resolveCourseValue($professors, $index, $courseCode),
-                ];
-
-                $payload += $this->resolveStudentAttemptPayload($existing, $grade, $grade2, $grade3);
                 $hasAnySavedAttempt = $this->hasAnySavedAttempt($payload);
                 $existingComparable = $this->buildComparableStudentChecklistPayload($existing);
                 $proposedComparable = $this->buildComparableStudentChecklistPayload((object) $payload);

@@ -652,7 +652,10 @@ try {
             $oldG1 = trim((string)($existingRemarkRow['final_grade'] ?? ''));
             $oldG2 = trim((string)($existingRemarkRow['final_grade_2'] ?? ''));
             $oldG3 = trim((string)($existingRemarkRow['final_grade_3'] ?? ''));
-            if ($oldG1 !== $fg1Norm || $oldG2 !== $fg2Norm || $oldG3 !== $fg3Norm) {
+            $checkG1 = ($fg1Norm === '' && $oldG1 !== '') ? $oldG1 : $fg1Norm;
+            $checkG2 = ($fg2Norm === '' && $oldG2 !== '') ? $oldG2 : $fg2Norm;
+            $checkG3 = ($fg3Norm === '' && $oldG3 !== '') ? $oldG3 : $fg3Norm;
+            if ($oldG1 !== $checkG1 || $oldG2 !== $checkG2 || $oldG3 !== $checkG3) {
                 $isGradeAttemptModified = true;
             }
         } else {

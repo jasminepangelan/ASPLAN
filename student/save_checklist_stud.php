@@ -581,12 +581,17 @@ try {
             || ($finalGrade2 !== '' && $finalGrade2 !== 'No Grade')
             || ($finalGrade3 !== '' && $finalGrade3 !== 'No Grade');
 
+        $attemptPayload = resolveStudentAttemptPayloadLocal($existing ?: null, $finalGrade, $finalGrade2, $finalGrade3);
+
         $isGradeAttemptModified = false;
         if ($existing) {
             $oldG1 = normalizeChecklistValue($existing['final_grade'] ?? '');
             $oldG2 = normalizeChecklistValue($existing['final_grade_2'] ?? '');
             $oldG3 = normalizeChecklistValue($existing['final_grade_3'] ?? '');
-            if ($oldG1 !== $finalGrade || $oldG2 !== $finalGrade2 || $oldG3 !== $finalGrade3) {
+            $newG1 = normalizeChecklistValue($attemptPayload['final_grade'] ?? '');
+            $newG2 = normalizeChecklistValue($attemptPayload['final_grade_2'] ?? '');
+            $newG3 = normalizeChecklistValue($attemptPayload['final_grade_3'] ?? '');
+            if ($oldG1 !== $newG1 || $oldG2 !== $newG2 || $oldG3 !== $newG3) {
                 $isGradeAttemptModified = true;
             }
         } else {
@@ -612,7 +617,6 @@ try {
             continue;
         }
 
-        $attemptPayload = resolveStudentAttemptPayloadLocal($existing ?: null, $finalGrade, $finalGrade2, $finalGrade3);
         $hasAnySavedAttempt = hasAnySavedAttemptLocal($attemptPayload);
         $existingComparable = buildComparableChecklistRecordLocal($existing ?: []);
         $proposedComparable = buildComparableChecklistRecordLocal([
