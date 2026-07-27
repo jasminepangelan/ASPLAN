@@ -374,17 +374,59 @@ function csGetAllInstructorsList($conn): array {
             FROM student_checklists 
             WHERE professor_instructor IS NOT NULL AND TRIM(professor_instructor) != ''
             UNION
-            SELECT TRIM(CONCAT_WS(' ', first_name, middle_name, last_name)) AS prof_name 
+            SELECT TRIM(CONCAT_WS(' ', 
+                COALESCE(
+                    NULLIF(TRIM(prefix), ''), 
+                    NULLIF(TRIM(pronoun), ''), 
+                    CASE WHEN sex = 'Male' THEN 'Mr.' WHEN sex = 'Female' THEN 'Ms.' ELSE 'Prof.' END
+                ), 
+                NULLIF(TRIM(first_name), ''), 
+                NULLIF(TRIM(middle_name), ''), 
+                NULLIF(TRIM(last_name), '')
+            )) AS prof_name 
             FROM adviser 
             WHERE first_name IS NOT NULL AND TRIM(first_name) != ''
         ) AS combined_profs
         WHERE prof_name != ''
         ORDER BY prof_name ASC
     ");
+
+    $validTitles = [
+        'mr', 'mister',
+        'ms', 'miss',
+        'mrs',
+        'sir',
+        'maam', "ma'am", 'mam', 'madam', 'madame',
+        'prof', 'professor',
+        'dr', 'doc', 'doctor',
+        'engr', 'engineer', 'er',
+        'inst', 'instructor',
+        'atty', 'attorney',
+        'arch', 'ar', 'architect',
+        'rev', 'reverend', 'pastor',
+        'dean',
+        'dir', 'director',
+        'col', 'gen', 'capt', 'major', 'sgt'
+    ];
+
     if ($query) {
         while ($row = $query->fetch_assoc()) {
             $name = trim((string)$row['prof_name']);
-            if ($name !== '' && !in_array($name, $instructors, true)) {
+            if ($name === '') {
+                continue;
+            }
+
+            // Normalize name: replace punctuation with space to check standalone word titles
+            $normName = ' ' . preg_replace('/[^a-z0-9\']+/i', ' ', strtolower($name)) . ' ';
+            $hasTitle = false;
+            foreach ($validTitles as $title) {
+                if (strpos($normName, ' ' . $title . ' ') !== false) {
+                    $hasTitle = true;
+                    break;
+                }
+            }
+
+            if ($hasTitle && !in_array($name, $instructors, true)) {
                 $instructors[] = $name;
             }
         }
