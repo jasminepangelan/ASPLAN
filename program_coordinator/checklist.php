@@ -1821,6 +1821,19 @@ function bindChecklistFieldListeners(root = document) {
             autoSaveGrade(courseCode);
         });
     });
+
+    root.querySelectorAll('[name^="professor_instructor"]').forEach(function(profSelect) {
+        if (profSelect.dataset.liveBound === '1') return;
+        profSelect.dataset.liveBound = '1';
+        if (profSelect.tagName === 'SELECT') {
+            profSelect.addEventListener('change', function() {
+                let courseCodeMatch = this.name.match(/\[(.*?)\]/);
+                if (courseCodeMatch) {
+                    autoSaveGrade(courseCodeMatch[1]);
+                }
+            });
+        }
+    });
 }
 
 function fetchAndUpdateChecklist() {

@@ -2219,6 +2219,11 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         return normalized !== '' && normalized !== 'No Grade';
     }
 
+    function isAlreadyApprovedOrCreditedRemark(rem) {
+        const r = String(rem || '').trim().toUpperCase();
+        return r.includes('APPROVE') || r.includes('CREDITED');
+    }
+
     function isPendingUnsettledGradeValue(value) {
         const normalized = String(value || '').trim().toUpperCase();
         return normalized === 'INC' || normalized === '4.00';
@@ -2389,11 +2394,11 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                     unsettledItems.push({ course: courseLabel, attempt: '3rd Attempt', grade: finalGrade3 });
                 }
 
-                let evaluatorRemark = (
+                let evaluatorRemark = isAlreadyApprovedOrCreditedRemark(currentRemarks) ? currentRemarks : ((
                     hasSubmittedGradeValue(finalGrade) ||
                     hasSubmittedGradeValue(finalGrade2) ||
                     hasSubmittedGradeValue(finalGrade3)
-                ) ? 'Pending' : currentRemarks;
+                ) ? 'Pending' : currentRemarks);
 
                 formData.append('courses[]', courseCode);
                 formData.append('course_row_keys[]', courseRowKey);
@@ -2436,13 +2441,17 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                             hasSubmittedGradeValue(getAttemptGradeValue(courseCode, 3))
                         );
 
-                        if (hasSubmittedGrade) {
-                            setChecklistRemarksBadge(courseCode, 'Pending');
-                        } else {
-                            setChecklistRemarksBadge(courseCode, '');
+                        let remarksCell = document.getElementById(`remarks_${courseCode}`);
+                        let currRem = remarksCell ? remarksCell.textContent.trim() : '';
+                        if (!isAlreadyApprovedOrCreditedRemark(currRem)) {
+                            if (hasSubmittedGrade) {
+                                setChecklistRemarksBadge(courseCode, 'Pending');
+                            } else {
+                                setChecklistRemarksBadge(courseCode, '');
+                            }
                         }
                     });
-                    fetchAndUpdateChecklist();
+                    fetchAndUpdateChecklist(true);
                 } else if (data.status === 'noop') {
                     showNotification('info', 'No Changes Detected', data.message || 'No checklist changes were detected.');
                 } else {
@@ -2636,12 +2645,12 @@ function bindChecklistFieldListeners(root = document) {
     });
 }
 
-function fetchAndUpdateChecklist() {
+function fetchAndUpdateChecklist(force = false) {
     if (isChecklistRefreshRunning) {
         return;
     }
 
-    if (hasActiveChecklistInteraction() || isSaving) {
+    if (!force && (hasActiveChecklistInteraction() || isSaving)) {
         return;
     }
 
@@ -2826,11 +2835,11 @@ function autoSaveGrade(courseCode, courseRowKey = '') {
         let professorValue  = profInput   ? profInput.value   : '';
         let currentRemarks  = remarksCell ? remarksCell.textContent.trim() : '';
         
-        let evaluatorRemark = (
+        let evaluatorRemark = isAlreadyApprovedOrCreditedRemark(currentRemarks) ? currentRemarks : ((
             hasSubmittedGradeValue(finalGrade) ||
             hasSubmittedGradeValue(finalGrade2) ||
             hasSubmittedGradeValue(finalGrade3)
-        ) ? 'Pending' : currentRemarks;
+        ) ? 'Pending' : currentRemarks);
         
         formData.append('courses[]', courseCode);
         formData.append('course_row_keys[]', courseRowKey);
@@ -2855,12 +2864,14 @@ function autoSaveGrade(courseCode, courseRowKey = '') {
                 let hasNewGrade = hasSubmittedGradeValue(finalGrade) ||
                                   hasSubmittedGradeValue(finalGrade2) ||
                                   hasSubmittedGradeValue(finalGrade3);
-                if (hasNewGrade) {
-                    setChecklistRemarksBadge(courseCode, 'Pending');
-                } else {
-                    setChecklistRemarksBadge(courseCode, '');
+                if (!isAlreadyApprovedOrCreditedRemark(currentRemarks)) {
+                    if (hasNewGrade) {
+                        setChecklistRemarksBadge(courseCode, 'Pending');
+                    } else {
+                        setChecklistRemarksBadge(courseCode, '');
+                    }
                 }
-                fetchAndUpdateChecklist();
+                fetchAndUpdateChecklist(true);
             } else if (data.status === 'noop') {
                 console.log('No checklist changes to auto-save for ' + courseCode);
             } else {
