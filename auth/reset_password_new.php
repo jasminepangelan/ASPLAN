@@ -8,15 +8,6 @@ $conn = getDBConnection();
 
 $useLaravelAuthBridge = getenv('USE_LARAVEL_AUTH_BRIDGE') === '1';
 
-if (!$useLaravelAuthBridge) {
-    closeDBConnection($conn);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Authentication bridge is disabled. Set USE_LARAVEL_AUTH_BRIDGE=1.',
-    ]);
-    exit;
-}
-
 $student_id = isset($_POST['student_id']) ? trim($_POST['student_id']) : '';
 $code = isset($_POST['code']) ? trim($_POST['code']) : '';
 $password = isset($_POST['password']) ? $_POST['password'] : '';
@@ -25,6 +16,8 @@ if (!$student_id || !$code || !$password) {
     echo json_encode(['success' => false, 'message' => 'All fields are required.']);
     exit;
 }
+
+if ($useLaravelAuthBridge) {
 
 $bridgeUrl = laravelBridgeUrl('/api/reset-password');
 $payloadJson = json_encode([
@@ -72,13 +65,7 @@ if ($bridgeResponse !== false) {
         exit;
     }
 }
-
-closeDBConnection($conn);
-echo json_encode([
-    'success' => false,
-    'message' => 'Authentication service is temporarily unavailable. Please try again shortly.',
-]);
-exit;
+}
 
 $minimumPasswordLength = policySettingInt($conn, 'min_password_length', 8, 6, 64);
 if (strlen($password) < $minimumPasswordLength) {
@@ -112,7 +99,7 @@ $stmt->bind_result($db_code, $expires_at);
 $stmt->fetch();
 $stmt->close();
 
-if ($db_code !== $code) {
+if ($db_code !== $code && !password_verify($code, (string)$db_code)) {
     echo json_encode(['success' => false, 'message' => 'Invalid code.']);
     exit;
 }

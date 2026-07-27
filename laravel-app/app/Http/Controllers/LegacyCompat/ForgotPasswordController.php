@@ -88,11 +88,11 @@ class ForgotPasswordController extends Controller
                 ]);
             }
 
-            if (!preg_match('/^([a-zA-Z0-9_.+-]+)@cvsu.edu\.ph$/', (string) $email)) {
+            if (!$this->isAllowedEmailDomain((string) $email)) {
                 $this->recordRateLimitAttempt($request, 'forgot_password');
                 return response()->json([
                     'success' => false,
-                    'message' => 'Only CvSU accounts are allowed.',
+                    'message' => 'Email domain is not allowed by system policy.',
                 ]);
             }
 
@@ -338,5 +338,47 @@ class ForgotPasswordController extends Controller
         DB::table('rate_limits')
             ->where('last_attempt', '<', now()->subHour()->toDateTimeString())
             ->delete();
+    }
+
+    private function isAllowedEmailDomain(string $email): bool
+    {
+        $normalizedEmail = strtolower(trim($email));
+        if (!filter_var($normalizedEmail, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        if ((bool) preg_match('/@cvsu\.edu\.ph$/i', $normalizedEmail)) {
+            return true;
+        }
+
+        $allowedDomainsRaw = (string) ($this->getSettingValue('allowed_email_domains') ?? 'cvsu.edu.ph');
+        if (trim($allowedDomainsRaw) === '') {
+            $allowedDomainsRaw = 'cvsu.edu.ph';
+        }
+        $allowedDomains = array_values(array_filter(array_map(
+            static fn ($domain): string => strtolower(trim((string) $domain)),
+            explode(',', $allowedDomainsRaw)
+        ), static fn (string $domain): bool => $domain !== ''));
+
+        if (empty($allowedDomains)) {
+            $allowedDomains = ['cvsu.edu.ph'];
+        }
+
+        $emailDomain = strtolower((string) substr(strrchr($normalizedEmail, '@') ?: '', 1));
+        return $emailDomain !== '' && in_array($emailDomain, $allowedDomains, true);
+    }
+
+    private function getSettingValue(string $settingName): ?string
+    {
+        try {
+            $value = DB::table('system_settings')
+                ->where('setting_name', $settingName)
+                ->orderByDesc('id')
+                ->value('setting_value');
+
+            return $value === null ? null : (string) $value;
+        } catch (Throwable $e) {
+            return null;
+        }
     }
 }

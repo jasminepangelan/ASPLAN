@@ -5,6 +5,7 @@ header('Content-Type: application/json; charset=UTF-8');
 
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/rate_limit.php';
+require_once __DIR__ . '/../includes/security_policy.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -138,10 +139,11 @@ if ($result->num_rows === 0) {
 
 $row = $result->fetch_assoc();
 $email = $row['email'];
-// Only allow CvSU email addresses for security
-if (!preg_match('/^([a-zA-Z0-9_.+-]+)@cvsu.edu\.ph$/', $email)) {
+
+$emailPolicy = isAllowedEmailDomain($conn, $email);
+if (empty($emailPolicy['allowed'])) {
     recordAttemptDB($conn, 'forgot_password');
-    echo json_encode(['success' => false, 'message' => 'Only CvSU accounts are allowed.']);
+    echo json_encode(['success' => false, 'message' => $emailPolicy['message'] ?? 'Email domain is not allowed.']);
     exit;
 }
 
