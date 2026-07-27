@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/program_catalog.php';
+require_once __DIR__ . '/../includes/student_masterlist_service.php';
 
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
@@ -9,23 +11,25 @@ if (!isset($_SESSION['admin_id'])) {
 
 $success = false;
 $error = '';
+$conn = getDBConnection();
+$programCatalog = pcLoadProgramCatalog($conn, true);
+ksort($programCatalog);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $student_number = trim($_POST['student_number'] ?? '');
     $last_name = trim($_POST['last_name'] ?? '');
     $first_name = trim($_POST['first_name'] ?? '');
     $middle_name = trim($_POST['middle_name'] ?? '');
+    $program = trim($_POST['program'] ?? '');
 
-    if (empty($student_number) || empty($last_name) || empty($first_name)) {
-        $error = 'Student Number, Last Name, and First Name are required.';
+    if (empty($student_number) || empty($last_name) || empty($first_name) || empty($program)) {
+        $error = 'Student Number, Last Name, First Name, and Program are required.';
     } else {
         $last_name = ucwords(strtolower($last_name));
         $first_name = ucwords(strtolower($first_name));
         $middle_name = $middle_name !== '' ? ucwords(strtolower($middle_name)) : null;
 
         try {
-            $conn = getDBConnection();
-            
             // Check if student already exists
             $stmt = $conn->prepare("SELECT student_number FROM student_info WHERE student_number = ?");
             $stmt->execute([$student_number]);
@@ -42,21 +46,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $stmt = $conn->prepare("
                     INSERT INTO student_info (
-                        student_number, last_name, first_name, middle_name, 
+                        student_number, last_name, first_name, middle_name, program,
                         password, status, registration_classification, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
                 
-                if ($stmt->execute([
-                    $student_number, $last_name, $first_name, $middle_name,
+                $inserted = $stmt->execute([
+                    $student_number, $last_name, $first_name, $middle_name, $program,
                     $hashed_password, $status, $registration_classification
-                ])) {
+                ]);
+                $stmt->close();
+
+                if ($inserted) {
+                    // Also insert automatically to Authorized Student Masterlist
+                    $adminId = (string) ($_SESSION['admin_id'] ?? 'Admin');
+                    smlUpsertMasterlistStudent($conn, $student_number, $last_name, $first_name, $middle_name, $program, $adminId);
+
                     $success = true;
                 } else {
                     $error = 'Failed to create student account.';
                 }
             }
-            if (isset($stmt)) $stmt->close();
         } catch (Exception $e) {
             $error = 'Database error occurred: ' . $e->getMessage();
         }
@@ -288,16 +298,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .form-group input[type="text"],
-        .form-group input[type="number"] {
+        .form-group input[type="number"],
+        .form-group select {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #ccc;
             border-radius: 6px;
             font-size: 15px;
             transition: border-color 0.2s;
+            background-color: #fff;
+            box-sizing: border-box;
         }
         
-        .form-group input:focus {
+        .form-group input:focus,
+        .form-group select:focus {
             outline: none;
             border-color: #1976D2;
             box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
@@ -374,22 +388,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" action="">
                 <div class="form-group">
                     <label>Student Number <span class="required">*</span></label>
-                    <input type="number" name="student_number" placeholder="e.g. 202312345" required>
+                    <input type="number" name="student_number" placeholder="e.g. 202312345" required value="<?= htmlspecialchars($_POST['student_number'] ?? '') ?>">
                 </div>
                 
                 <div class="form-group">
                     <label>Last Name <span class="required">*</span></label>
-                    <input type="text" name="last_name" placeholder="e.g. Dela Cruz" required>
+                    <input type="text" name="last_name" placeholder="e.g. Dela Cruz" required value="<?= htmlspecialchars($_POST['last_name'] ?? '') ?>">
                 </div>
 
                 <div class="form-group">
                     <label>First Name <span class="required">*</span></label>
-                    <input type="text" name="first_name" placeholder="e.g. Juan" required>
+                    <input type="text" name="first_name" placeholder="e.g. Juan" required value="<?= htmlspecialchars($_POST['first_name'] ?? '') ?>">
                 </div>
 
                 <div class="form-group">
                     <label>Middle Name/Initial <span style="font-weight: normal; color: #888;">(Optional)</span></label>
-                    <input type="text" name="middle_name" placeholder="e.g. M">
+                    <input type="text" name="middle_name" placeholder="e.g. M" value="<?= htmlspecialchars($_POST['middle_name'] ?? '') ?>">
+                </div>
+
+                <div class="form-group">
+                    <label>Program <span class="required">*</span></label>
+                    <select name="program" required>
+                        <option value="">Select Program...</option>
+                        <?php foreach ($programCatalog as $code => $name): ?>
+                            <option value="<?= htmlspecialchars($code) ?>" <?= (isset($_POST['program']) && $_POST['program'] === $code) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($code . ' - ' . $name) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div class="button-group">
@@ -418,9 +444,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (!logo || !logo.contains(event.target))) {
                 sidebar.classList.add('collapsed');
                 const mainContent = document.getElementById('mainContent');
-                if (mainContent) {
-                    mainContent.classList.add('expanded');
-                }
+                mainContent.classList.add('expanded');
             }
         });
 
@@ -454,7 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         Swal.fire({
             title: 'Success!',
-            text: 'Student account has been created successfully. The default password is 12345678.',
+            text: 'Student account has been created and automatically added to the Authorized Student Masterlist. The default password is 12345678.',
             icon: 'success',
             confirmButtonColor: '#1976D2'
         }).then((result) => {

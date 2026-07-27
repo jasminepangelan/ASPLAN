@@ -499,9 +499,83 @@ if (!function_exists('smlDeleteMasterlistStudent')) {
             return false;
         }
         smlEnsureMasterlistTable($conn);
-        $stmt = $conn->prepare("DELETE FROM student_masterlist WHERE student_number = ?");
-        $stmt->execute([trim($studentNumber)]);
-        return $stmt->rowCount() > 0;
+        if ($conn instanceof PDO) {
+            $stmt = $conn->prepare("DELETE FROM student_masterlist WHERE student_number = ?");
+            $stmt->execute([trim($studentNumber)]);
+            return $stmt->rowCount() > 0;
+        }
+        if (is_object($conn) && method_exists($conn, 'prepare')) {
+            $stmt = $conn->prepare("DELETE FROM student_masterlist WHERE student_number = ?");
+            if ($stmt) {
+                $cleanNum = trim($studentNumber);
+                $stmt->bind_param('s', $cleanNum);
+                $stmt->execute();
+                $affected = $stmt->affected_rows ?? $conn->affected_rows ?? 0;
+                if (method_exists($stmt, 'close')) {
+                    $stmt->close();
+                }
+                return $affected > 0;
+            }
+        }
+        return false;
+    }
+}
+
+if (!function_exists('smlUpsertMasterlistStudent')) {
+    function smlUpsertMasterlistStudent($conn, string $studentNumber, string $lastName, string $firstName, ?string $middleInitial, string $program, string $uploadedBy = 'Admin'): bool
+    {
+        $studentNumber = trim($studentNumber);
+        if ($studentNumber === '' || trim($lastName) === '' || trim($firstName) === '') {
+            return false;
+        }
+
+        smlEnsureMasterlistTable($conn);
+
+        $mi = smlExtractMiddleInitial((string) $middleInitial);
+        $sourceFilename = 'Admin Created Account';
+
+        $sql = "
+            INSERT INTO student_masterlist (
+                student_number, last_name, first_name, middle_initial, program, source_filename, uploaded_by, uploaded_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ON DUPLICATE KEY UPDATE
+                last_name = VALUES(last_name),
+                first_name = VALUES(first_name),
+                middle_initial = VALUES(middle_initial),
+                program = VALUES(program),
+                source_filename = VALUES(source_filename),
+                uploaded_by = VALUES(uploaded_by),
+                updated_at = NOW()
+        ";
+
+        if ($conn instanceof PDO) {
+            try {
+                $stmt = $conn->prepare($sql);
+                return $stmt->execute([$studentNumber, $lastName, $firstName, $mi, $program, $sourceFilename, $uploadedBy]);
+            } catch (Throwable $e) {
+                error_log("smlUpsertMasterlistStudent PDO error: " . $e->getMessage());
+                return false;
+            }
+        }
+
+        if (is_object($conn) && method_exists($conn, 'prepare')) {
+            try {
+                $stmt = $conn->prepare($sql);
+                if ($stmt) {
+                    $stmt->bind_param('sssssss', $studentNumber, $lastName, $firstName, $mi, $program, $sourceFilename, $uploadedBy);
+                    $result = $stmt->execute();
+                    if (method_exists($stmt, 'close')) {
+                        $stmt->close();
+                    }
+                    return (bool) $result;
+                }
+            } catch (Throwable $e) {
+                error_log("smlUpsertMasterlistStudent mysqli error: " . $e->getMessage());
+                return false;
+            }
+        }
+
+        return false;
     }
 }
 
