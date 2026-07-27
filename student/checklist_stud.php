@@ -31,10 +31,14 @@ if (!function_exists('ensureStudentChecklistColumn')) {
 }
 
 // Ensure 2nd and 3rd attempt grade columns exist in a MySQL-version-safe way
-ensureStudentChecklistColumn($conn, 'final_grade_2', 'VARCHAR(20) DEFAULT NULL');
-ensureStudentChecklistColumn($conn, 'evaluator_remarks_2', 'VARCHAR(50) DEFAULT NULL');
-ensureStudentChecklistColumn($conn, 'final_grade_3', 'VARCHAR(20) DEFAULT NULL');
-ensureStudentChecklistColumn($conn, 'evaluator_remarks_3', 'VARCHAR(50) DEFAULT NULL');
+// PERFORMANCE: Only check once per session to avoid 4 DDL queries on every page load.
+if (empty($_SESSION['_checklist_columns_verified'])) {
+    ensureStudentChecklistColumn($conn, 'final_grade_2', 'VARCHAR(20) DEFAULT NULL');
+    ensureStudentChecklistColumn($conn, 'evaluator_remarks_2', 'VARCHAR(50) DEFAULT NULL');
+    ensureStudentChecklistColumn($conn, 'final_grade_3', 'VARCHAR(20) DEFAULT NULL');
+    ensureStudentChecklistColumn($conn, 'evaluator_remarks_3', 'VARCHAR(50) DEFAULT NULL');
+    $_SESSION['_checklist_columns_verified'] = true;
+}
 
 // Get student_id from URL parameter if available, otherwise use session
 $student_id = '';
@@ -1840,6 +1844,10 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
             <?php endif; ?>
 
             <?php if (count($all_courses) > 0): ?>
+                <?php
+                // PERFORMANCE: Load instructor list ONCE before the pages loop, not inside each page.
+                $allInstructors = csGetAllInstructorsList($conn);
+                ?>
                 <?php foreach ($pages as $page_index => $page_year_keys): ?>
                 <div class="page-content <?= $page_index === 0 ? 'active' : '' ?>" data-page="<?= $page_index + 1 ?>">
                     <table>
@@ -1867,7 +1875,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                         </thead>
                         <tbody>
                         <?php
-                        $allInstructors = csGetAllInstructorsList($conn);
+                        // PERFORMANCE: $allInstructors is loaded once before the pages loop (see below),
+                        // not inside each page iteration.
                         $currentSemester = "";
                         $currentYear = "";
                         foreach ($page_year_keys as $year_key) {
@@ -2451,7 +2460,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                             }
                         }
                     });
-                    fetchAndUpdateChecklist(true);
+                    // PERFORMANCE: Skip full-page re-fetch. UI is already updated above
+                    // via setChecklistRemarksBadge(). This avoids re-running all server-side
+                    // PHP + DB work (StudyPlanGenerator, curriculum queries, etc.).
                 } else if (data.status === 'noop') {
                     showNotification('info', 'No Changes Detected', data.message || 'No checklist changes were detected.');
                 } else {
@@ -2701,7 +2712,7 @@ function startChecklistLiveRefresh() {
         }
 
         fetchAndUpdateChecklist();
-    }, 15000);
+    }, 60000);
 }
 
 function stopChecklistLiveRefresh() {
@@ -2872,7 +2883,8 @@ function autoSaveGrade(courseCode, courseRowKey = '') {
                         setChecklistRemarksBadge(courseCode, '');
                     }
                 }
-                fetchAndUpdateChecklist(true);
+                // PERFORMANCE: Skip full-page re-fetch after auto-save.
+                // UI is already updated above via setChecklistRemarksBadge().
             } else if (data.status === 'noop') {
                 console.log('No checklist changes to auto-save for ' + courseCode);
             } else {
@@ -2946,7 +2958,9 @@ document.addEventListener('DOMContentLoaded', function() {
     applyAcademicReadOnlyState();
     updatePageDisplay({ scrollToContainer: false });
     startChecklistLiveRefresh();
-    fetchAndUpdateChecklist();
+    // PERFORMANCE: Removed redundant fetchAndUpdateChecklist() on page load.
+    // The page is already fully rendered by PHP. The live refresh timer will
+    // handle subsequent updates at 60-second intervals.
     bindChecklistFieldListeners();
 
     const archiveGroup = document.getElementById('archiveChecklistGroup');

@@ -415,6 +415,8 @@ try {
         $progStmt->close();
     }
 
+    $isSingleCourseAutoSave = (count($courses) <= 1);
+
     $studyPlanGenerator = new StudyPlanGenerator($student_id, $studentProgramLabel);
     $effectiveTerm = $studyPlanGenerator->getEffectiveCurrentTerm();
     $effectiveTermKey = trim((string)($effectiveTerm['year'] ?? '')) . '|' . trim((string)($effectiveTerm['semester'] ?? ''));
@@ -430,41 +432,35 @@ try {
 
     // Courses in the next recommended load can still be edited even if their row term
     // differs from the student's current enrollment term.
+    // PERFORMANCE: Skip heavy generateOptimizedPlan() for single-course auto-saves.
+    // The term-lock and prerequisite checks are independently computed below.
     $nextRecommendedLoadCourseCodes = [];
-    try {
-        $optimizedPlan = $studyPlanGenerator->generateOptimizedPlan();
-        foreach ($optimizedPlan as $planTerm) {
-            if (!empty($planTerm['skipped']) || empty($planTerm['courses']) || !is_array($planTerm['courses'])) {
-                continue;
-            }
-
-            foreach ($planTerm['courses'] as $planCourse) {
-                $planCourseCode = csStudChecklistNormalizeCourseTokenLocal((string)($planCourse['code'] ?? ''));
-                if ($planCourseCode !== '') {
-                    $nextRecommendedLoadCourseCodes[$planCourseCode] = true;
+    if (!$isSingleCourseAutoSave) {
+        try {
+            $optimizedPlan = $studyPlanGenerator->generateOptimizedPlan();
+            foreach ($optimizedPlan as $planTerm) {
+                if (!empty($planTerm['skipped']) || empty($planTerm['courses']) || !is_array($planTerm['courses'])) {
+                    continue;
                 }
-            }
 
-            break;
+                foreach ($planTerm['courses'] as $planCourse) {
+                    $planCourseCode = csStudChecklistNormalizeCourseTokenLocal((string)($planCourse['code'] ?? ''));
+                    if ($planCourseCode !== '') {
+                        $nextRecommendedLoadCourseCodes[$planCourseCode] = true;
+                    }
+                }
+
+                break;
+            }
+        } catch (Throwable $e) {
+            $nextRecommendedLoadCourseCodes = [];
         }
-    } catch (Throwable $e) {
-        $nextRecommendedLoadCourseCodes = [];
     }
 
     // Build prerequisite blockers based on the student's current/program-view curriculum.
+    // NOTE: $studentProgramLabel already loaded above (lines 406-416), no duplicate query needed.
     $prereqBlockersByCourse = [];
     try {
-        $studentProgramLabel = '';
-        $progStmt = $conn->prepare('SELECT program FROM student_info WHERE student_number = ? LIMIT 1');
-        if ($progStmt) {
-            $progStmt->bind_param('s', $student_id);
-            $progStmt->execute();
-            $progResult = $progStmt->get_result();
-            if ($progResult && ($progRow = $progResult->fetch_assoc())) {
-                $studentProgramLabel = trim((string)($progRow['program'] ?? ''));
-            }
-            $progStmt->close();
-        }
 
         $programKey = $program_view !== '' ? $program_view : psNormalizeProgramKey($studentProgramLabel);
         $programLabel = $studentProgramLabel;
@@ -555,6 +551,20 @@ try {
     $unchanged = 0;
     $errors = [];
 
+    // PERFORMANCE: Batch-load ALL existing checklist records for this student in ONE query
+    // instead of running individual SELECT per course inside the loop (N+1 → 1 query).
+    $allExistingRecords = [];
+    $batchStmt = $conn->prepare("SELECT course_code, final_grade, evaluator_remarks, professor_instructor, final_grade_2, evaluator_remarks_2, final_grade_3, evaluator_remarks_3, approved_by, submitted_by FROM student_checklists WHERE student_id = ?");
+    if ($batchStmt) {
+        $batchStmt->bind_param('s', $student_id);
+        $batchStmt->execute();
+        $batchResult = $batchStmt->get_result();
+        while ($batchRow = $batchResult->fetch_assoc()) {
+            $allExistingRecords[trim((string)$batchRow['course_code'])] = $batchRow;
+        }
+        $batchStmt->close();
+    }
+
     foreach ($courses as $index => $course_code) {
         $course_code = trim((string) $course_code);
         if ($course_code === '') {
@@ -566,16 +576,8 @@ try {
         $finalGrade3 = normalizeChecklistValue($final_grades_3[$index] ?? '');
         $professorInstructor = normalizeChecklistValue($professor_instructors[$index] ?? '');
 
-        // Fetch existing record to preserve values from previous attempts
-        $check_stmt = $conn->prepare("SELECT final_grade, evaluator_remarks, professor_instructor, final_grade_2, evaluator_remarks_2, final_grade_3, evaluator_remarks_3, approved_by, submitted_by FROM student_checklists WHERE student_id = ? AND course_code = ?");
-        if (!$check_stmt) {
-            $errors[] = "Check prepare failed for $course_code: " . $conn->error;
-            continue;
-        }
-        $check_stmt->bind_param('ss', $student_id, $course_code);
-        $check_stmt->execute();
-        $existing = $check_stmt->get_result()->fetch_assoc();
-        $check_stmt->close();
+        // Use batch-loaded record instead of per-course SELECT query
+        $existing = $allExistingRecords[$course_code] ?? null;
 
         $hasIncomingSubmittedAttempt = ($finalGrade !== '' && $finalGrade !== 'No Grade')
             || ($finalGrade2 !== '' && $finalGrade2 !== 'No Grade')
