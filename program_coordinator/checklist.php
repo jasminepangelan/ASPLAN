@@ -1551,6 +1551,8 @@ foreach ($checklistRows as $csRow) {
 
     <!-- Action Buttons Panel -->
     <div class="action-buttons">
+      <button class="btn-primary" onclick="window.open('study_plan_view.php?student_id=<?= urlencode((string)($_GET['student_id'] ?? '')) ?>', '_blank')">Study Plan</button>
+      <button class="btn-primary" onclick="window.open('account_management.php?student_id=<?= urlencode((string)($_GET['student_id'] ?? '')) ?>', '_blank')">Student Profile</button>
       <button id="downloadPDF" class="btn-primary">Print</button>
       <button class="btn-primary" onclick="window.location.href='<?= htmlspecialchars($listStudentsHref) ?>'">Back</button>
       <button id="saveButton" class="btn-primary">Save</button>
