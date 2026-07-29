@@ -76,7 +76,7 @@ if __name__ == "__main__":
     USER = "root"
     PASSWORD = "qMsZwbiIngMfINmKygVSbMIiqJfdoTst"
     DATABASE = "railway"
-    SQL_FILE = os.path.join(os.path.dirname(__file__), "backups", "railway-production-2026-07-05.sql")
+    SQL_FILE = os.path.join(os.path.dirname(__file__), "osas_db_07_28_26_part2_ignore.sql")
     
     print("=" * 60)
     print("Railway MySQL Database Importer")
@@ -92,3 +92,4 @@ if __name__ == "__main__":
         sys.exit(1)
     
     import_sql_file(HOST, PORT, USER, PASSWORD, DATABASE, SQL_FILE)
+
