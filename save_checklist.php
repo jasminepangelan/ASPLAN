@@ -615,7 +615,7 @@ try {
     }
 
     $existingRemarkStmt = $conn->prepare("
-        SELECT evaluator_remarks, final_grade, final_grade_2, final_grade_3
+        SELECT evaluator_remarks, final_grade, final_grade_2, final_grade_3, professor_instructor
         FROM student_checklists
         WHERE student_id = ? AND course_code = ?
         LIMIT 1
@@ -649,21 +649,30 @@ try {
             || ($fg2Norm !== '' && strtoupper($fg2Norm) !== 'NO GRADE')
             || ($fg3Norm !== '' && strtoupper($fg3Norm) !== 'NO GRADE');
 
-        $isGradeAttemptModified = false;
+        $isModified = false;
         if ($existingRemarkRow) {
-            $oldG1 = trim((string)($existingRemarkRow['final_grade'] ?? ''));
-            $oldG2 = trim((string)($existingRemarkRow['final_grade_2'] ?? ''));
-            $oldG3 = trim((string)($existingRemarkRow['final_grade_3'] ?? ''));
-            $checkG1 = ($fg1Norm === '' && $oldG1 !== '') ? $oldG1 : $fg1Norm;
-            $checkG2 = ($fg2Norm === '' && $oldG2 !== '') ? $oldG2 : $fg2Norm;
-            $checkG3 = ($fg3Norm === '' && $oldG3 !== '') ? $oldG3 : $fg3Norm;
-            if ($oldG1 !== $checkG1 || $oldG2 !== $checkG2 || $oldG3 !== $checkG3) {
-                $isGradeAttemptModified = true;
+            $existing_g1 = trim((string)($existingRemarkRow['final_grade'] ?? ''));
+            $existing_g2 = trim((string)($existingRemarkRow['final_grade_2'] ?? ''));
+            $existing_g3 = trim((string)($existingRemarkRow['final_grade_3'] ?? ''));
+            $existing_rm = trim((string)($existingRemarkRow['evaluator_remarks'] ?? ''));
+            $existing_prof = trim((string)($existingRemarkRow['professor_instructor'] ?? ''));
+
+            if ($existing_g1 !== $final_grades[$i] || 
+                $existing_g2 !== $fg2 || 
+                $existing_g3 !== $fg3 || 
+                $existing_rm !== $remarks ||
+                $existing_prof !== $professor_instructor) {
+                $isModified = true;
             }
         } else {
-            if ($hasIncomingSubmittedAttempt) {
-                $isGradeAttemptModified = true;
+            if ($fg1Norm !== '' || $fg2Norm !== '' || $fg3Norm !== '' || $remarks !== '' || $professor_instructor !== '') {
+                $isModified = true;
             }
+        }
+
+        if (!$isModified) {
+            $successful++;
+            continue;
         }
 
         $courseRowKey = trim((string)($course_row_keys[$i] ?? ''));

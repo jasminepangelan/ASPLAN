@@ -323,10 +323,15 @@ class ChecklistController extends Controller
                         : 'adviser';
                 }
 
-                DB::table('student_checklists')->updateOrInsert(
-                    ['student_id' => $studentId, 'course_code' => $courseCode],
-                    $payload
-                );
+                $existingComparable = $this->buildComparableStudentChecklistPayload($existing);
+                $proposedComparable = $this->buildComparableStudentChecklistPayload((object) $payload);
+
+                if ($existingComparable !== $proposedComparable) {
+                    DB::table('student_checklists')->updateOrInsert(
+                        ['student_id' => $studentId, 'course_code' => $courseCode],
+                        $payload
+                    );
+                }
 
                 $successful++;
             }
