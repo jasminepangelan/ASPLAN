@@ -709,6 +709,8 @@ try {
             $remarks
         );
         if (!$stmt->execute()) {
+            error_log('save_checklist execute failed for course ' . $courseCode . ': ' . $stmt->error);
+            $errors[] = 'Failed to save ' . $courseCode . ': ' . $stmt->error;
             continue;
         }
         $successful++;

@@ -1934,7 +1934,7 @@ function startChecklistLiveRefresh() {
     }
 
     checklistLiveRefreshTimer = window.setInterval(() => {
-        if (document.hidden || isSaving) {
+        if (document.hidden || isSaving || (typeof hasPendingSave !== 'undefined' && hasPendingSave)) {
             return;
         }
 
@@ -1983,10 +1983,12 @@ function showNotification(type, title, message) {
 // Auto-save functionality for final grades
 let autoSaveTimeout;
 let isSaving = false;
+let hasPendingSave = false;
 
 function autoSaveGrade(courseCode) {
+    hasPendingSave = true;
     if (isSaving) {
-        console.log('Auto-save already in progress, skipping...');
+        console.log('Auto-save already in progress, queuing...');
         return;
     }
     
@@ -1994,6 +1996,7 @@ function autoSaveGrade(courseCode) {
     autoSaveTimeout = setTimeout(() => {
         console.log('Starting auto-save for course:', courseCode);
         isSaving = true;
+        hasPendingSave = false;
         
         // Collect all course data (only 1st-attempt selects to avoid duplicates)
         let courses = [];
@@ -2067,10 +2070,12 @@ function autoSaveGrade(courseCode) {
                 console.error('Response text:', text);
                 showNotification('error', 'Auto-save Error', 'Server response error');
             }
+            if (hasPendingSave) { autoSaveGrade('queued'); }
         })
         .catch(error => {
             isSaving = false;
             console.error('âœ— Auto-save fetch error:', error);
+            if (hasPendingSave) { autoSaveGrade('queued'); }
         });
     }, 1000);
 }

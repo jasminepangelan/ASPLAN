@@ -2817,6 +2817,7 @@ function stopChecklistLiveRefresh() {
 // Auto-save functionality for final grades
 let autoSaveTimeout;
 let isSaving = false;
+let hasPendingSave = false;
 
 function autoSaveGrade(courseCode, courseRowKey = '') {
     if (academicHold.active) {

@@ -327,6 +327,14 @@ class ChecklistController extends Controller
                 $proposedComparable = $this->buildComparableStudentChecklistPayload((object) $payload);
 
                 if ($existingComparable !== $proposedComparable) {
+                    file_put_contents(storage_path('logs/save_staff.log'), json_encode([
+                        'time' => date('Y-m-d H:i:s'),
+                        'course' => $courseCode,
+                        'existing' => $existingComparable,
+                        'proposed' => $proposedComparable,
+                        'payload' => $payload
+                    ]) . PHP_EOL, FILE_APPEND);
+
                     DB::table('student_checklists')->updateOrInsert(
                         ['student_id' => $studentId, 'course_code' => $courseCode],
                         $payload
