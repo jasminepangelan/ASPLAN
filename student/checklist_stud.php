@@ -1945,7 +1945,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 } else {
                                     $ps1 = ($remarks1 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
                                     $grade1Class = "checklist-grade-select" . (($remarks1 === 'Pending') ? " is-pending" : "");
-                                  echo "<select name='final_grade[{$row['course_code']}]' class='{$grade1Class}'{$prereqSelectAttrs}>";
+                                  echo "<select name='final_grade[{$row['course_code']}]' class='{$grade1Class}'>";
                                     foreach ($grades as $g) {
                                         $sel = ($g === $grade1_val) ? 'selected' : '';
                                         $dt  = ($g === '') ? '-- Select --' : $g;
@@ -1963,13 +1963,13 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                     } else {
                                         $ps2 = ($remarks2 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
                                         $grade2Class = "checklist-grade-select" . (($remarks2 === 'Pending') ? " is-pending" : "");
-                                    echo "<select name='final_grade_2[{$row['course_code']}]' class='{$grade2Class}'{$prereqSelectAttrs}>";
+                                    echo "<select name='final_grade_2[{$row['course_code']}]' class='{$grade2Class}'>";
                                         foreach ($grades as $g) {
                                             $sel = ($g === $grade2_val) ? 'selected' : '';
                                             $dt  = ($g === '') ? '-- Select --' : $g;
                                             echo "<option value='{$g}' {$sel}>{$dt}</option>";
                                         }
-                                        echo "</select>";
+                                    echo "</select>";
                                     }
                                 } else {
                                     echo "<span style='color:#ccc;font-size:11px;'>&#8212;</span>";
@@ -1984,7 +1984,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                     } else {
                                         $ps3 = ($remarks3 === 'Pending') ? 'color:#000;font-weight:bold;' : '';
                                         $grade3Class = "checklist-grade-select" . (($remarks3 === 'Pending') ? " is-pending" : "");
-                                    echo "<select name='final_grade_3[{$row['course_code']}]' class='{$grade3Class}'{$prereqSelectAttrs}>";
+                                    echo "<select name='final_grade_3[{$row['course_code']}]' class='{$grade3Class}'>";
                                         foreach ($grades as $g) {
                                             $sel = ($g === $grade3_val) ? 'selected' : '';
                                             $dt  = ($g === '') ? '-- Select --' : $g;

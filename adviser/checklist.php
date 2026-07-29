@@ -1555,7 +1555,7 @@ foreach ($all_courses as $csRow) {
         <td>" . csRenderInstructorSelect((string)$courseCode, (string)($row['professor_instructor'] ?? ''), $allInstructors, (!empty($disabledAttr)), $disabledAttr, '11px', '108px') . "</td>";
             
             $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-            echo "<td id='grade1_" . htmlspecialchars($courseCode) . "'><select name='final_grade[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade1Class) . "'" . $disabledAttr . ">";
+            echo "<td id='grade1_" . htmlspecialchars($courseCode) . "'><select name='final_grade[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade1Class) . "'>";
             foreach ($grade_opts as $g) {
                 echo "<option value='" . htmlspecialchars((string)$g) . "'" . ($g === $grade1_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
             }
@@ -1563,7 +1563,7 @@ foreach ($all_courses as $csRow) {
             echo "<td id='grade2_" . htmlspecialchars($courseCode) . "'>";
             if ($show_2nd) {
                 $grade2Class = 'checklist-grade-select' . (($remark2_val === 'Pending' || in_array(strtoupper(trim((string)$grade2_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-              echo "<select name='final_grade_2[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade2Class) . "'" . $disabledAttr . ">";
+              echo "<select name='final_grade_2[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade2Class) . "'>";
                 foreach ($grade_opts as $g) {
                     echo "<option value='" . htmlspecialchars((string)$g) . "'" . ($g === $grade2_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
                 }
@@ -1575,7 +1575,7 @@ foreach ($all_courses as $csRow) {
             echo "<td id='grade3_" . htmlspecialchars($courseCode) . "'>";
             if ($show_3rd) {
                 $grade3Class = 'checklist-grade-select' . (($remark3_val === 'Pending' || in_array(strtoupper(trim((string)$grade3_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-              echo "<select name='final_grade_3[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade3Class) . "'" . $disabledAttr . ">";
+              echo "<select name='final_grade_3[" . htmlspecialchars($courseCode) . "]' class='" . htmlspecialchars($grade3Class) . "'>";
                 foreach ($grade_opts as $g) {
                     echo "<option value='" . htmlspecialchars((string)$g) . "'" . ($g === $grade3_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
                 }

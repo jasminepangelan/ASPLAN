@@ -1498,7 +1498,7 @@ foreach ($checklistRows as $csRow) {
                 <td>" . csRenderInstructorSelect((string)$courseCode, (string)($row['professor_instructor'] ?? ''), $allInstructors, (!empty($disabledAttr)), $disabledAttr, '11px', '100px') . "</td>";
             // 1st attempt grade
             $grade1Class = 'checklist-grade-select' . (($remark1_val === 'Pending' || in_array(strtoupper(trim((string)$grade1_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-            echo "<td id='grade1_{$courseCode}'><select name='final_grade[{$courseCode}]' class='{$grade1Class}'" . $disabledAttr . ">";
+            echo "<td id='grade1_{$courseCode}'><select name='final_grade[{$courseCode}]' class='{$grade1Class}'>";
             foreach ($grade_opts as $g) {
                 echo "<option value='{$g}'" . ($g === $grade1_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
             }
@@ -1507,7 +1507,7 @@ foreach ($checklistRows as $csRow) {
             echo "<td id='grade2_{$courseCode}'>";
             if ($show_2nd) {
                 $grade2Class = 'checklist-grade-select' . (($remark2_val === 'Pending' || in_array(strtoupper(trim((string)$grade2_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-              echo "<select name='final_grade_2[{$courseCode}]' class='{$grade2Class}'" . $disabledAttr . ">";
+              echo "<select name='final_grade_2[{$courseCode}]' class='{$grade2Class}'>";
                 foreach ($grade_opts as $g) {
                     echo "<option value='{$g}'" . ($g === $grade2_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
                 }
@@ -1520,7 +1520,7 @@ foreach ($checklistRows as $csRow) {
             echo "<td id='grade3_{$courseCode}'>";
             if ($show_3rd) {
                 $grade3Class = 'checklist-grade-select' . (($remark3_val === 'Pending' || in_array(strtoupper(trim((string)$grade3_val)), ['INC', '4.00'], true)) ? ' is-pending' : '');
-              echo "<select name='final_grade_3[{$courseCode}]' class='{$grade3Class}'" . $disabledAttr . ">";
+              echo "<select name='final_grade_3[{$courseCode}]' class='{$grade3Class}'>";
                 foreach ($grade_opts as $g) {
                     echo "<option value='{$g}'" . ($g === $grade3_val ? ' selected' : '') . ">" . ($g ?: '-- Select --') . "</option>";
                 }
