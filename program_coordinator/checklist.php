@@ -1954,9 +1954,6 @@ function autoSaveGrade(courseCode) {
         document.querySelectorAll('[name^="final_grade"]').forEach(function(gradeSelect) {
             if (!/^final_grade\[/.test(gradeSelect.name)) return; // skip grade_2 and grade_3
           const row = gradeSelect.closest('tr');
-          if (row && row.dataset && row.dataset.prereqBlocked === '1') {
-            return;
-          }
             let code = gradeSelect.name.match(/\[(.*?)\]/)[1];
             let courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
             let finalGrade = gradeSelect.value;

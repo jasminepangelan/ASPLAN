@@ -576,6 +576,7 @@ try {
 
     $prereqBlockersByCourse = csStaffChecklistBuildPrereqBlockersLocal($conn, (string)$student_id, (string)$program_view);
     $currentEnrollmentTerm = ctlsLoadStudentCurrentEnrollmentTerm($conn, (string)$student_id);
+    $nextRecommendedLoadCourseCodes = [];
     $errors = [];
 
     $stmt = $conn->prepare("
@@ -657,9 +658,9 @@ try {
             $existing_rm = trim((string)($existingRemarkRow['evaluator_remarks'] ?? ''));
             $existing_prof = trim((string)($existingRemarkRow['professor_instructor'] ?? ''));
 
-            if ($existing_g1 !== $final_grades[$i] || 
-                $existing_g2 !== $fg2 || 
-                $existing_g3 !== $fg3 || 
+            if ($existing_g1 !== $fg1Norm || 
+                $existing_g2 !== $fg2Norm || 
+                $existing_g3 !== $fg3Norm || 
                 $existing_rm !== $remarks ||
                 $existing_prof !== $professor_instructor) {
                 $isModified = true;
