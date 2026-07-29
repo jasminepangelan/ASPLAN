@@ -1921,12 +1921,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                                 if ($isPrereqBlocked) {
                                   $prereqAttr .= " data-prereq-blocked='1' data-prereq-tooltip='" . htmlspecialchars($prereqTooltip, ENT_QUOTES, 'UTF-8') . "'";
                                 }
-                                $prereqInputAttrs = $isPrereqBlocked
-                                  ? (" readonly data-prereq-blocked='1' title='" . htmlspecialchars($prereqTooltip, ENT_QUOTES, 'UTF-8') . "'")
-                                  : '';
-                                $prereqSelectAttrs = $isPrereqBlocked
-                                  ? (" disabled data-prereq-blocked='1' title='" . htmlspecialchars($prereqTooltip, ENT_QUOTES, 'UTF-8') . "'")
-                                  : '';
+                                $prereqInputAttrs = '';
+                                $prereqSelectAttrs = '';
 
                                 $recommendedAttr = $courseInRecommendedLoad ? " data-recommended-load='1'" : " data-recommended-load='0'";
                                 echo "<tr{$prereqAttr}{$recommendedAttr}>
@@ -2760,7 +2756,7 @@ function stopChecklistLiveRefresh() {
             } else {
                 gradeSelect.value = course.final_grade || '';
             const prereqBlocked = gradeSelect.dataset.prereqBlocked === '1' || !!gradeSelect.closest('tr')?.dataset?.prereqBlocked;
-            gradeSelect.disabled = !!academicHold.active || prereqBlocked;
+            gradeSelect.disabled = !!academicHold.active;
                 syncGradeSelectVisualState(gradeSelect, course.evaluator_remarks === 'Pending' || isPendingUnsettledGradeValue(course.final_grade));
             }
         }
@@ -2774,7 +2770,7 @@ function stopChecklistLiveRefresh() {
                 if (sel2 && course.final_grade_2) sel2.value = course.final_grade_2;
                 if (sel2) {
                   const prereqBlocked = sel2.dataset.prereqBlocked === '1' || !!sel2.closest('tr')?.dataset?.prereqBlocked;
-                  sel2.disabled = !!academicHold.active || prereqBlocked;
+                  sel2.disabled = !!academicHold.active;
                 }
                 if (sel2) {
                     syncGradeSelectVisualState(sel2, course.evaluator_remarks_2 === 'Pending' || isPendingUnsettledGradeValue(course.final_grade_2));
@@ -2791,7 +2787,7 @@ function stopChecklistLiveRefresh() {
                 if (sel3 && course.final_grade_3) sel3.value = course.final_grade_3;
                 if (sel3) {
                   const prereqBlocked = sel3.dataset.prereqBlocked === '1' || !!sel3.closest('tr')?.dataset?.prereqBlocked;
-                  sel3.disabled = !!academicHold.active || prereqBlocked;
+                  sel3.disabled = !!academicHold.active;
                 }
                 if (sel3) {
                     syncGradeSelectVisualState(sel3, course.evaluator_remarks_3 === 'Pending' || isPendingUnsettledGradeValue(course.final_grade_3));

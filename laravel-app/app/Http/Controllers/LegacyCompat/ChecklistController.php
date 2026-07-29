@@ -706,10 +706,12 @@ class ChecklistController extends Controller
                 }
 
                 $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                /*
                 if ($isGradeAttemptModified && $hasIncomingSubmittedAttempt && $courseRowKey !== '' && isset($prereqBlockersByCourse[$courseRowKey])) {
                     $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
                     continue;
                 }
+                */
 
                 $hasAnySavedAttempt = $this->hasAnySavedAttempt($payload);
                 $existingComparable = $this->buildComparableStudentChecklistPayload($existing);
