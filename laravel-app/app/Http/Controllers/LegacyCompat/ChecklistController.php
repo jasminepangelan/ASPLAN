@@ -146,6 +146,7 @@ class ChecklistController extends Controller
                 $gradeNorm = $this->normalizeString($grades[$courseCode] ?? '');
                 $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && $gradeNorm !== 'No Grade');
                 $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                /*
                 if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
                     $errors[] = "Course {$courseCode} is outside the student's current term.";
                     continue;
@@ -154,6 +155,7 @@ class ChecklistController extends Controller
                     $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
                     continue;
                 }
+                */
 
                 $existing = DB::table('student_checklists')
                     ->select(['grade_submitted_at', 'submitted_by'])
@@ -280,6 +282,7 @@ class ChecklistController extends Controller
                 }
 
                 $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
+                /*
                 if ($isGradeAttemptModified && $courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
                     $errors[] = "Course {$courseCode} is outside the student's current term.";
                     continue;
@@ -288,6 +291,7 @@ class ChecklistController extends Controller
                     $errors[] = 'Prerequisite(s) not cleared for ' . $courseCode . ': ' . implode(', ', (array) $prereqBlockersByCourse[$courseRowKey]);
                     continue;
                 }
+                */
 
                 $remark = $this->resolveStaffRemarkForSave($remark, $existing?->evaluator_remarks ?? null);
                 $normalizedRemark = strtoupper(trim((string) $remark));

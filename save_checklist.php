@@ -515,6 +515,7 @@ try {
             $hasIncomingSubmittedAttempt = ($gradeNorm !== '' && strtoupper($gradeNorm) !== 'NO GRADE');
             $courseNorm = csStaffChecklistNormalizeCourseTokenLocal($course_code);
             $inRecommended = $courseNorm !== '' && !empty($nextRecommendedLoadCourseCodes[$courseNorm]);
+            /*
             if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm) && !$inRecommended) {
                 $errors[] = "Course {$course_code} is outside the student's current term.";
                 continue;
@@ -523,6 +524,7 @@ try {
                 $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
                 continue;
             }
+            */
 
             $stmt->bind_param('ssss', $student_id, $course_code, $grade, $professor_instructor);
             if (!$stmt->execute()) {
@@ -667,6 +669,7 @@ try {
         $courseRowKey = trim((string)($course_row_keys[$i] ?? ''));
         $courseNorm = csStaffChecklistNormalizeCourseTokenLocal($courseCode);
         $courseInRecommendedLoad = $courseNorm !== '' && !empty($nextRecommendedLoadCourseCodes[$courseNorm]);
+        /*
         if ($isGradeAttemptModified && $courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm) && !$courseInRecommendedLoad) {
             $errors[] = "Course {$courseCode} is outside the student's current term.";
             continue;
@@ -675,6 +678,7 @@ try {
             $errors[] = "Prerequisite(s) not cleared for {$courseCode}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
             continue;
         }
+        */
 
         // Propagate the same evaluator_remarks to attempt 2/3 only when their grade has a value
         $er2 = $fg2 !== '' ? $remarks : '';

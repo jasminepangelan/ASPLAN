@@ -224,10 +224,12 @@ function csSaveBulkChecklistApprovals($conn, string $studentId, array $courses, 
         $professor = isset($professors[$course_code]) ? $professors[$course_code] : '';
         $courseRowKey = trim((string) ($courseRowKeys[$index] ?? ''));
 
+        /*
         if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
             $errors[] = "Course $course_code is outside the student's current term.";
             continue;
         }
+        */
         
         $stmt->bind_param('ssss', $studentId, $course_code, $grade, $professor);
         
@@ -319,10 +321,12 @@ function csSaveChecklistRecords($conn, string $studentId, array $courses, array 
         $professor = isset($professors[$courses[$i]]) ? $professors[$courses[$i]] : '';
         $courseRowKey = trim((string) ($courseRowKeys[$i] ?? ''));
 
+        /*
         if ($courseRowKey !== '' && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $currentEnrollmentTerm)) {
             $errors[] = "Course {$courses[$i]} is outside the student's current term.";
             continue;
         }
+        */
         
         if (!$stmt->bind_param(
             'ssssssssss',

@@ -610,6 +610,7 @@ try {
         $courseCodeNorm = csStudChecklistNormalizeCourseTokenLocal($course_code);
         $courseInRecommendedLoad = $courseCodeNorm !== '' && !empty($nextRecommendedLoadCourseCodes[$courseCodeNorm]);
         $courseRowKey = trim((string)($course_row_keys[$index] ?? ''));
+        /*
         if ($isGradeAttemptModified && $courseRowKey !== '' && !empty($termLockSource) && ctlsIsChecklistRowLockedToCurrentTerm($courseRowKey, $termLockSource) && !$courseInRecommendedLoad) {
             $errors[] = "Course {$course_code} is outside the student's current study-plan term.";
             continue;
@@ -618,6 +619,7 @@ try {
             $errors[] = "Prerequisite(s) not cleared for {$course_code}: " . implode(', ', (array)$prereqBlockersByCourse[$courseRowKey]);
             continue;
         }
+        */
 
         $hasAnySavedAttempt = hasAnySavedAttemptLocal($attemptPayload);
         $existingComparable = buildComparableChecklistRecordLocal($existing ?: []);
