@@ -2369,16 +2369,16 @@ class StudyPlanGenerator {
                 
                 // Within retakes, prioritize lower year levels first
                 $year_retake_priority = [
-                    '1st Yr' => 120,
-                    '2nd Yr' => 90,
+                    '1st Yr' => 140,
+                    '2nd Yr' => 100,
                     '3rd Yr' => 60,
-                    '4th Yr' => 30
+                    '4th Yr' => 20
                 ];
                 $score += $year_retake_priority[$course['year']] ?? 0;
             }
 
             // Earlier curriculum terms should be cleared first to minimize cascading delay.
-            $score += max(0, 135 - ($term_order * 8));
+            $score += max(0, 500 - ($term_order * 50));
 
             // Prefer courses that belong to the current target term, but still
             // keep unresolved earlier-term backlog ahead of future-term fill.
@@ -2513,7 +2513,7 @@ class StudyPlanGenerator {
             $key = $year . '|' . $semester;
             $reference_term = $this->getReferenceTermForSemester($semester);
 
-            if ($is_midyear && isset($this->term_max_units[$key])) {
+            if (isset($this->term_max_units[$key]) && $this->term_max_units[$key] > 0) {
                 $curriculum_max = $this->term_max_units[$key];
             } elseif ($is_midyear && $reference_term !== null && isset($reference_term['max_units'])) {
                 $curriculum_max = (int)$reference_term['max_units'];
@@ -3767,26 +3767,7 @@ class StudyPlanGenerator {
     }
 
     private function satisfiesBackFailedProgressionPolicy(array $course, $target_year, $target_semester, array $simulated_all_courses): bool {
-        $lowestRetakeOrder = $this->getLowestActiveRetakeTermOrder($simulated_all_courses);
-        if ($lowestRetakeOrder >= 999) {
-            return true;
-        }
-
-        $courseOrder = $this->getCurriculumTermOrder($course['year'] ?? '', $course['semester'] ?? '');
-        if ($courseOrder <= 0 || $courseOrder >= 999) {
-            return true;
-        }
-
-        if (!empty($course['needs_retake'])) {
-            return $courseOrder <= $lowestRetakeOrder;
-        }
-
-        $isExactAsIsTerm = (($course['year'] ?? '') === $target_year && ($course['semester'] ?? '') === $target_semester);
-        if ($isExactAsIsTerm) {
-            return true;
-        }
-
-        return $courseOrder <= $lowestRetakeOrder;
+        return true;
     }
     
     /**
@@ -4043,7 +4024,23 @@ class StudyPlanGenerator {
 
         $firstIncompleteIndex = -1;
         foreach ($terms as $index => $term) {
-            if (!$this->isSemesterCompleted($term['year'], $term['semester'])) {
+            $year = $term['year'];
+            $semester = $term['semester'];
+            
+            $termCourses = array_filter($this->all_courses, function($c) use ($year, $semester) {
+                return $c['year'] === $year && $c['semester'] === $semester;
+            });
+            
+            $totalCourses = count($termCourses);
+            if ($totalCourses === 0) {
+                continue;
+            }
+            
+            $completedCourses = count(array_filter($termCourses, function($c) {
+                return $c['completed'] === true;
+            }));
+            
+            if (($completedCourses / $totalCourses) < 0.5) {
                 $firstIncompleteIndex = $index;
                 break;
             }
