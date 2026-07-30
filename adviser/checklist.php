@@ -1412,6 +1412,9 @@ foreach ($all_courses as $csRow) {
     
     <div class="container">
         <div class="header">
+            <div style="position: absolute; right: 50px; top: 15px;">
+                <img src="<?= $picture_src ?>" alt="Student Photo" style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
             <h1>Republic of the Philippines</h1>
             <h2>CAVITE STATE UNIVERSITY - CARMONA</h2>
             <h2>Carmona Cavite</h2>
@@ -1432,9 +1435,6 @@ foreach ($all_courses as $csRow) {
                 <p><strong>Address: <?= htmlspecialchars("$address") ?></p>
             </div>
             <div class="info-right">
-                <div style="margin-bottom: 5px;">
-                    <img src="<?= $picture_src ?>" alt="Student Photo" style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
                 <p><strong>Admission Date: <?= htmlspecialchars("$admission_date") ?></p>
                 <p><strong>Contact #: <?= htmlspecialchars("$contact_no") ?></p>
                 <p><strong>Adviser: <input type="text"  style="border: none; font-size: 10px; border-bottom: 1px solid #000; width: 140px;" readonly></strong></p>

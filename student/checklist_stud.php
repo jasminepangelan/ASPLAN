@@ -1781,6 +1781,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                   <img src="../img/cav.png" alt="CvSU Logo"/>
                 </div>
             </div>
+            <div style="position: absolute; right: 50px; top: 15px;">
+                <img src="<?= $picture ?>" alt="Student Photo" style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
             <h1>Republic of the Philippines</h1>
             <h2>CAVITE STATE UNIVERSITY - CARMONA</h2>
             <h2>Carmona Cavite</h2>
@@ -1816,9 +1819,6 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                 <p><strong>Address: <?= htmlspecialchars("$address") ?></p>
             </div>
             <div class="info-right">
-                <div style="margin-bottom: 5px;">
-                    <img src="<?= $picture ?>" alt="Student Photo" style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
                 <p><strong>Admission Date: <?= htmlspecialchars("$admission_date") ?></strong></p>
                 <p><strong>Contact #: <?= htmlspecialchars("$contact_no") ?></strong></p>
                 <p><strong>Adviser: <span style="display: inline-block; border-bottom: 2px solid #000; width: 90px; min-height: 14px;">&nbsp;</span></strong></p>
