@@ -41,7 +41,7 @@ if (isset($_GET['student_id'])) {
     $student_id = $_GET['student_id'];
     
     // Fetch student details for this specific student
-    $stmt = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name, program, contact_number AS contact_no, CONCAT_WS(', ', house_number_street, brgy, town, province) AS address, date_of_admission AS admission_date FROM student_info WHERE student_number = ?");
+    $stmt = $conn->prepare("SELECT student_number AS student_id, last_name, first_name, middle_name, program, contact_number AS contact_no, CONCAT_WS(', ', house_number_street, brgy, town, province) AS address, date_of_admission AS admission_date, picture FROM student_info WHERE student_number = ?");
     $stmt->bind_param("s", $student_id);
     $stmt->execute();
     $student_result = $stmt->get_result();
@@ -56,6 +56,9 @@ if (isset($_GET['student_id'])) {
         $address = htmlspecialchars($student_data['address'] ?? '');
         $admission_date = htmlspecialchars($student_data['admission_date'] ?? ''); 
         $student_program = $student_data['program'] ?? '';
+        
+        $picture_raw = $student_data['picture'] ?? '';
+        $picture_src = htmlspecialchars(resolveScopedPictureSrc((string)$picture_raw, '../', 'pix/anonymous.jpg'));
         
         // Format full name properly handling missing middle name
         $full_name = rtrim($last_name, " ,") . ", " . $first_name . (!empty($middle_name) ? " " . $middle_name : ""); 
@@ -1383,6 +1386,9 @@ foreach ($checklistRows as $csRow) {
                 <p><strong>Address: <?= htmlspecialchars("$address") ?></p>
             </div>
             <div class="info-right">
+                <div style="margin-bottom: 5px;">
+                    <img src="<?= $picture_src ?>" alt="Student Photo" style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
                 <p><strong>Admission Date: <?= htmlspecialchars("$admission_date") ?></p>
                 <p><strong>Contact #: <?= htmlspecialchars("$contact_no") ?></p>
                 <p><strong>Adviser: <input type="text"  style="border: none; font-size: 8px; border-bottom: 1px solid #000; width: 140px;" readonly></strong></p>
