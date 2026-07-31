@@ -537,6 +537,18 @@ foreach ($checklistRows as $csRow) {
         height: 40px;
         flex-shrink: 0;
     }
+    .student-photo-header {
+        position: absolute;
+        right: 50px;
+        top: 15px;
+    }
+    .student-photo-img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
     .info {
         display: flex;
         justify-content: space-between;
@@ -894,6 +906,15 @@ foreach ($checklistRows as $csRow) {
 
     /* Responsive design */
     @media (max-width: 768px) {
+        .student-photo-header {
+            position: static;
+            text-align: center;
+            margin: 10px auto;
+        }
+        .student-photo-img {
+            width: 70px;
+            height: 70px;
+        }
       .sidebar {
         transform: translateX(-250px);
         z-index: 1001;
@@ -1366,8 +1387,8 @@ foreach ($checklistRows as $csRow) {
     
     <div class="container">
         <div class="header">
-            <div style="position: absolute; right: 50px; top: 15px;">
-                <img src="<?= $picture_src ?>" alt="Student Photo" style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
+            <div class="student-photo-header">
+                <img src="<?= $picture_src ?>" alt="Student Photo" class="student-photo-img">
             </div>
             <h1>Republic of the Philippines</h1>
             <h2>CAVITE STATE UNIVERSITY - CARMONA</h2>

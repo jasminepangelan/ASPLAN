@@ -986,6 +986,20 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         height: 40px;
         flex-shrink: 0;
     }
+    
+    .student-photo-header {
+        position: absolute;
+        right: 50px;
+        top: 15px;
+    }
+    
+    .student-photo-img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
     .info {
         display: flex;
         justify-content: space-between;
@@ -1197,6 +1211,17 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
         .header {
           padding: 3px;
+        }
+        
+        .student-photo-header {
+            position: static;
+            text-align: center;
+            margin: 10px auto;
+        }
+        
+        .student-photo-img {
+            width: 70px;
+            height: 70px;
         }
 
         .header h1 {
@@ -1821,8 +1846,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
                   <img src="../img/cav.png" alt="CvSU Logo"/>
                 </div>
             </div>
-            <div style="position: absolute; right: 50px; top: 15px;">
-                <img src="<?= $picture ?>" alt="Student Photo" style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
+            <div class="student-photo-header">
+                <img src="<?= $picture ?>" alt="Student Photo" class="student-photo-img">
             </div>
             <h1>Republic of the Philippines</h1>
             <h2>CAVITE STATE UNIVERSITY - CARMONA</h2>
