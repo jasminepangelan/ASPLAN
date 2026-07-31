@@ -1007,12 +1007,17 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
     table {
         width: 100%;
         min-width: 700px;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         margin: 0 auto 20px auto;
-        font-size: 11px;
+        font-size: 12px;
         page-break-inside: auto !important;
         break-inside: auto !important;
         table-layout: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
     tr, td, th {
         page-break-inside: avoid !important;
@@ -1020,25 +1025,60 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         box-decoration-break: clone;
     }
     th, td {
-        border: 1px solid #000;
-        padding: 3px 5px;
+        border-bottom: 1px solid #e2e8f0;
+        border-right: 1px solid #f1f5f9;
+        padding: 8px 10px;
         text-align: center;
-        font-size: 10px;
+        font-size: 11.5px;
+        color: #334155;
+    }
+    td:last-child, th:last-child {
+        border-right: none;
+    }
+    tr:last-child td {
+        border-bottom: none;
+    }
+    tr:hover td {
+        background-color: #f8fafc;
+        transition: background-color 0.2s ease;
     }
     td {
         font-weight: 400;
     }
     th, .semester-title td, .total td {
-        font-weight: 700 !important;
+        font-weight: 600 !important;
     }
     th {
-        background-color: #f2f2f2;
+        background-color: #f1f5f9;
+        color: #475569;
+        text-transform: uppercase;
+        font-size: 10.5px;
+        letter-spacing: 0.5px;
+    }
+    select {
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-family: inherit;
+        background-color: #fff;
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s ease;
+        min-width: 70px;
+    }
+    select:hover {
+        border-color: #94a3b8;
+    }
+    select:focus {
+        border-color: #22c55e;
+        box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
     }
     .semester-title {
         text-align: center;
         font-weight: bold;
-        background-color: #f2f2f2;
-        
+        background-color: #e2e8f0;
+        color: #0f172a;
     }
     .total {
         font-weight: bold;

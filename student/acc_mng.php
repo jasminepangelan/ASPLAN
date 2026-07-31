@@ -206,12 +206,10 @@ $csrfToken = getCSRFToken();
     
     body {
       font-family: 'Outfit', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f4f6f8 0%, #e8f0eb 100%);
+      color: #333;
       margin: 0;
       padding: 0;
-      background: url('../pix/school.jpg') no-repeat center center fixed;
-      background-size: cover;
-      min-height: 100vh;
-      overflow: hidden;
     }
 
     /* Title bar styling */
@@ -375,7 +373,6 @@ $csrfToken = getCSRFToken();
       overflow-y: auto;
       transition: margin-left 0.3s ease;
       padding: 28px 24px 40px;
-      background: #ffffff;
     }
 
     .main-content.expanded {
@@ -385,12 +382,14 @@ $csrfToken = getCSRFToken();
     .container {
       max-width: 1150px;
       margin: 0 auto;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(249, 252, 248, 0.97));
-      backdrop-filter: blur(8px);
-      border-radius: 30px;
-      box-shadow: 0 26px 58px rgba(33, 61, 34, 0.14), 0 8px 18px rgba(33, 61, 34, 0.07);
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.6);
       overflow: hidden;
-      border: 1px solid rgba(32, 96, 24, 0.07);
+      position: relative;
     }
 
     .title {
@@ -736,50 +735,52 @@ $csrfToken = getCSRFToken();
 
     .profile .details .field input {
       width: 100%;
-      padding: 13px 15px;
-      border: 2px solid #e1e5e9;
-      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
       font-size: 14px;
-      background: #ffffff;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+      background: #f9fafb;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
       min-width: 0;
+      color: #1f2937;
     }
 
     .profile .details .field input:focus {
-      border-color: #206018;
+      border-color: #10b981;
+      background: #ffffff;
       outline: none;
-      box-shadow: 0 4px 20px rgba(32, 96, 24, 0.15);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
       transform: translateY(-1px);
     }
 
     .profile .details .field input:disabled {
-      background: #f8f9fa;
-      color: #6c757d;
+      background: #f3f4f6;
+      color: #9ca3af;
       cursor: not-allowed;
+      border-color: #e5e7eb;
+      box-shadow: none;
     }
 
     .edit-trigger {
-      flex: 0 0 40px;
-      width: 40px;
-      height: 40px;
+      flex: 0 0 38px;
+      width: 38px;
+      height: 38px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid #d7e7d3;
-      border-radius: 12px;
-      background: linear-gradient(180deg, #ffffff 0%, #eef6ec 100%);
-      color: #206018;
+      border: none;
+      border-radius: 10px;
+      background: #eef2ff;
+      color: #4f46e5;
       cursor: pointer;
-      box-shadow: 0 6px 14px rgba(32, 96, 24, 0.08);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      transition: all 0.2s ease;
     }
 
     .edit-trigger:hover {
-      transform: translateY(-1px);
-      color: #2d8f22;
-      border-color: #bfd7ba;
-      box-shadow: 0 10px 20px rgba(32, 96, 24, 0.14);
+      background: #e0e7ff;
+      color: #4338ca;
+      transform: scale(1.05);
     }
 
     .edit-trigger i {

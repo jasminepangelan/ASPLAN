@@ -851,9 +851,11 @@ $studyPlanHeaderLabel = $is_admin_reference_view
 
         body {
             font-family: 'Outfit', 'Segoe UI', Tahoma, Verdana, sans-serif;
-            background: url('../pix/school.jpg') no-repeat center center fixed;
-            background-size: cover;
-            color: #333;
+            background: linear-gradient(135deg, #f4f6f8 0%, #e8f0eb 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            color: #17361d;
             overflow-x: hidden;
         }
 
@@ -1395,22 +1397,30 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         }
 
         .stat-card {
-            background: #f5faf4;
-            border: 1px solid #cfe1cd;
-            border-radius: 10px;
-            padding: 14px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            padding: 20px;
             text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.08);
         }
 
         .stat-value {
-            font-size: 30px;
-            font-weight: 700;
-            color: #1f5d17;
+            font-size: 32px;
+            font-weight: 800;
+            color: #17361d;
             line-height: 1.15;
         }
 
         .stat-value.compact {
-            font-size: 18px;
+            font-size: 20px;
         }
 
         .stat-sub {
@@ -1428,10 +1438,13 @@ $studyPlanHeaderLabel = $is_admin_reference_view
 
         /* Study Plan Container */
         .study-plan-container {
-            background: #ffffff;
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 16px;
             padding: 40px 50px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
             width: 100%;
             max-width: none;
             margin: 0 auto;
@@ -1467,14 +1480,18 @@ $studyPlanHeaderLabel = $is_admin_reference_view
         /* Semester Section */
         .semester-section {
             margin-bottom: 30px;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
             transition: all 0.3s ease;
         }
         
         .semester-section:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+            background: rgba(255, 255, 255, 0.7);
         }
 
         .semester-section.completed-term {
