@@ -8,7 +8,7 @@ require_once __DIR__ . '/program_shift_service.php';
 require_once __DIR__ . '/student_profile_service.php';
 require_once __DIR__ . '/student_masterlist_service.php';
 
-const SRS_MAX_PICTURE_SIZE = 5000000; // 5MB
+const SRS_MAX_PICTURE_SIZE = 3000000; // 3MB
 const SRS_ALLOWED_IMAGE_TYPES = ['jpg', 'png', 'jpeg', 'gif'];
 const SRS_DEFAULT_PICTURE = 'pix/anonymous.jpg';
 

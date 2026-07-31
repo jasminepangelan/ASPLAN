@@ -254,7 +254,7 @@ define('SESSION_TIMEOUT', 3600); // 1 hour in seconds
 // File Upload Settings
 define('UPLOAD_DIR', resolveUploadStorageDir());
 define('UPLOAD_PUBLIC_SUBDIR', 'uploads/');
-define('MAX_FILE_SIZE', 5242880); // 5MB in bytes
+define('MAX_FILE_SIZE', 3145728); // 3MB in bytes
 define('ALLOWED_IMAGE_TYPES', ['jpg', 'jpeg', 'png', 'gif']);
 define('MAX_IMAGE_WIDTH', 4096);
 define('MAX_IMAGE_HEIGHT', 4096);

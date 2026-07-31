@@ -10,7 +10,7 @@ if (!function_exists('spsUploadErrorMessage')) {
         switch ($errorCode) {
             case UPLOAD_ERR_INI_SIZE:
             case UPLOAD_ERR_FORM_SIZE:
-                return 'Picture file is too large (max 5MB).';
+                return 'Picture file is too large (max 3MB).';
             case UPLOAD_ERR_PARTIAL:
                 return 'The picture upload was interrupted. Please try again.';
             case UPLOAD_ERR_NO_TMP_DIR:
@@ -44,7 +44,7 @@ if (!function_exists('spsValidateUploadedImageFile')) {
         }
 
         if ($size > MAX_FILE_SIZE) {
-            return ['valid' => false, 'error' => 'Picture file is too large (max 5MB).'];
+            return ['valid' => false, 'error' => 'Picture file is too large (max 3MB).'];
         }
 
         $imageInfo = @getimagesize($tmpPath);

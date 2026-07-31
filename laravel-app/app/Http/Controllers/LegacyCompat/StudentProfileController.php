@@ -392,8 +392,8 @@ class StudentProfileController extends Controller
                 return ['success' => false, 'path' => null, 'error' => 'The uploaded picture is empty.'];
             }
 
-            if ((int) $file->getSize() > 5242880) {
-                return ['success' => false, 'path' => null, 'error' => 'Picture file is too large (max 5MB).'];
+            if ($file->getSize() > 3145728) { // 3MB limit (3 * 1024 * 1024)
+                return ['success' => false, 'path' => null, 'error' => 'Picture file is too large (max 3MB).'];
             }
 
             $imageInfo = @getimagesize($path);
