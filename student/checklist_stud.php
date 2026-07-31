@@ -1179,9 +1179,9 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         }
 
         .container {
-          width: calc(100vw - 20px);
-          max-width: none;
-          padding: 15px 12px;
+          width: 100%;
+          max-width: 100%;
+          padding: 15px 8px;
           margin-top: 10px;
           margin-bottom: 20px;
           overflow-x: hidden;

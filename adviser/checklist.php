@@ -1014,17 +1014,15 @@ foreach ($all_courses as $csRow) {
         right: 10px;
       }
 
-      .container {
-        width: calc(100vw - 20px);
-        max-width: none;
-        padding: 15px 5px;
-        margin: 10px 0;
-        flex: 0 0 auto;
-      }
-
-      .header {
-        min-height: auto;
-        padding-top: 60px;
+        .container {
+          width: 100%;
+          max-width: 100%;
+          padding: 15px 8px;
+          margin-top: 10px;
+          margin-bottom: 20px;
+          overflow-x: hidden;
+          overflow-y: visible;
+          box-sizing: border-box;
       }
 
       .header h1, .header h2, .header h3 {
