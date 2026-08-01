@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/security_policy.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
 header('Content-Type: application/json');
 
@@ -13,6 +14,11 @@ if (!isset($_SESSION['student_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+        echo json_encode(['success' => false, 'message' => 'Invalid security token. Please refresh the page and try again.']);
+        exit;
+    }
+
     $student_id = $_SESSION['student_id'];  // Get the student ID from the session
     $current_password = isset($_POST['current_password']) ? (string) $_POST['current_password'] : '';
     $new_password = isset($_POST['new_password']) ? (string) $_POST['new_password'] : '';
@@ -80,7 +86,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bind_param('s', $student_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    $stored_password = $result->fetch_assoc()['password'];
+    $row = $result->fetch_assoc();
+    if (!$row) {
+        echo json_encode(['success' => false, 'message' => 'Student not found in the database.']);
+        exit;
+    }
+    $stored_password = $row['password'];
 
     // Verify the current password
     if (!password_verify($current_password, $stored_password)) {

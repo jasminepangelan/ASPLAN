@@ -1310,6 +1310,7 @@ $csrfToken = getCSRFToken();
           <label for="password">Password</label>
           <input id="password" type="password" value="<?= $password_display ?>" disabled>
             <div class="field-note">For security, your password is hidden. Change it regularly if needed.</div>
+            <?php if (!$is_admin): ?>
             <button type="button" onclick="togglePasswordForm()">Change Password</button>
 
             <div id="change-password-container" style="display: none;">
@@ -1329,6 +1330,7 @@ $csrfToken = getCSRFToken();
                     <button onclick="changePassword()">Save New Password</button>
                 </div>
             </div>
+            <?php endif; ?>
 
             <script>
                 function togglePasswordForm() {
@@ -1348,6 +1350,7 @@ $csrfToken = getCSRFToken();
 
                     const formData = new FormData();
                     formData.append("student_id", "<?= $student_id ?>");
+                    formData.append("csrf_token", "<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>");
                     formData.append("current_password", currentPassword);
                     formData.append("new_password", newPassword);
 
@@ -1360,6 +1363,9 @@ $csrfToken = getCSRFToken();
                         if (data.success) {
                             showFeedbackModal('success', 'Password Updated', 'Your password has been changed successfully.');
                             // Optionally reset the form or close it
+                            document.getElementById('current_password').value = '';
+                            document.getElementById('new_password').value = '';
+                            document.getElementById('confirm_password').value = '';
                             document.getElementById('change-password-container').style.display = 'none';
                         } else {
                             showFeedbackModal('error', 'Password Update Failed', data.message || 'Unable to update your password right now.');
