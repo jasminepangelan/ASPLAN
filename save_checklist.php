@@ -403,19 +403,28 @@ try {
                 ]
             );
         } else {
+            // Resolve each field: may be a PHP array (courses[]) or a JSON string (legacy)
+            $resolvePostArr = function(string $key) {
+                if (isset($_POST[$key]) && is_array($_POST[$key])) return $_POST[$key];
+                if (isset($_POST[$key]) && is_string($_POST[$key])) {
+                    $d = json_decode($_POST[$key], true);
+                    return is_array($d) ? $d : [];
+                }
+                return [];
+            };
             $bridgeData = postLaravelJsonBridge(
                 '/api/save-checklist',
                 [
-                    'save_context' => 'staff',
-                    'student_id' => (string) ($_POST['student_id'] ?? $student_id),
-                    'program_view' => trim((string)($_POST['program_view'] ?? '')),
-                    'courses' => $_POST['courses'] ?? [],
-                    'course_row_keys' => $_POST['course_row_keys'] ?? [],
-                    'final_grades' => $_POST['final_grades'] ?? [],
-                    'final_grades_2' => $_POST['final_grades_2'] ?? [],
-                    'final_grades_3' => $_POST['final_grades_3'] ?? [],
-                    'evaluator_remarks' => $_POST['evaluator_remarks'] ?? [],
-                    'professor_instructors' => $_POST['professor_instructors'] ?? [],
+                    'save_context'          => 'staff',
+                    'student_id'            => (string) ($_POST['student_id'] ?? $student_id),
+                    'program_view'          => trim((string)($_POST['program_view'] ?? '')),
+                    'courses'               => $resolvePostArr('courses'),
+                    'course_row_keys'       => $resolvePostArr('course_row_keys'),
+                    'final_grades'          => $resolvePostArr('final_grades'),
+                    'final_grades_2'        => $resolvePostArr('final_grades_2'),
+                    'final_grades_3'        => $resolvePostArr('final_grades_3'),
+                    'evaluator_remarks'     => $resolvePostArr('evaluator_remarks'),
+                    'professor_instructors' => $resolvePostArr('professor_instructors'),
                 ]
             );
         }
@@ -557,13 +566,26 @@ try {
     // Standard save (form-data)
     $student_id = $_POST['student_id'];
     $program_view = trim((string)($_POST['program_view'] ?? ''));
-    $courses = json_decode($_POST['courses'], true);
-    $course_row_keys = isset($_POST['course_row_keys']) ? json_decode($_POST['course_row_keys'], true) : [];
-    $final_grades = json_decode($_POST['final_grades'], true);
-    $final_grades_2 = isset($_POST['final_grades_2']) ? json_decode($_POST['final_grades_2'], true) : [];
-    $final_grades_3 = isset($_POST['final_grades_3']) ? json_decode($_POST['final_grades_3'], true) : [];
-    $evaluator_remarks = json_decode($_POST['evaluator_remarks'], true);
-    $professor_instructors = isset($_POST['professor_instructors']) ? json_decode($_POST['professor_instructors'], true) : [];
+
+    // Helper: resolve a POST field that may come as a JSON string (legacy) or a PHP array (courses[])
+    $resolvePostArray = function(string $key) {
+        if (isset($_POST[$key]) && is_array($_POST[$key])) {
+            return $_POST[$key];
+        }
+        if (isset($_POST[$key]) && is_string($_POST[$key])) {
+            $decoded = json_decode($_POST[$key], true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
+    };
+
+    $courses              = $resolvePostArray('courses');
+    $course_row_keys      = $resolvePostArray('course_row_keys');
+    $final_grades         = $resolvePostArray('final_grades');
+    $final_grades_2       = $resolvePostArray('final_grades_2');
+    $final_grades_3       = $resolvePostArray('final_grades_3');
+    $evaluator_remarks    = $resolvePostArray('evaluator_remarks');
+    $professor_instructors = $resolvePostArray('professor_instructors');
 
     if (!$courses || !$final_grades || !$evaluator_remarks) {
         throw new Exception('Invalid data format');
