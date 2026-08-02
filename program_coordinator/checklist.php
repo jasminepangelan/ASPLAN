@@ -1745,9 +1745,6 @@ document.addEventListener('change', function(e) {
     document.querySelectorAll('[name^="final_grade"]').forEach(function(course) {
         if (!/^final_grade\[/.test(course.name)) return; // skip final_grade_2 and final_grade_3
       const row = course.closest('tr');
-      if (isLockedChecklistRow(row)) {
-        return;
-      }
         let courseCode = course.name.match(/\[(.*?)\]/)[1];
         let courseRowKey = row && row.dataset ? (row.dataset.courseRowKey || '') : '';
         let finalGrade = course.value;
@@ -1773,13 +1770,13 @@ document.addEventListener('change', function(e) {
     // Append arrays to FormData
     formData.append('student_id', '<?php echo $_GET['student_id']; ?>');
     formData.append('program_view', '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>');
-    formData.append('courses', JSON.stringify(courses));
-    formData.append('course_row_keys', JSON.stringify(course_row_keys));
-    formData.append('final_grades', JSON.stringify(final_grades));
-    formData.append('final_grades_2', JSON.stringify(final_grades_2));
-    formData.append('final_grades_3', JSON.stringify(final_grades_3));
-    formData.append('evaluator_remarks', JSON.stringify(remarks));
-    formData.append('professor_instructors', JSON.stringify(professors));
+    courses.forEach(c => formData.append('courses[]', c));
+    course_row_keys.forEach(k => formData.append('course_row_keys[]', k));
+    final_grades.forEach(g => formData.append('final_grades[]', g));
+    final_grades_2.forEach(g => formData.append('final_grades_2[]', g));
+    final_grades_3.forEach(g => formData.append('final_grades_3[]', g));
+    remarks.forEach(r => formData.append('evaluator_remarks[]', r));
+    professors.forEach(p => formData.append('professor_instructors[]', p));
     formData.append('csrf_token', '<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, "UTF-8"); ?>');
 
     fetch('../save_checklist.php', {
@@ -2013,17 +2010,17 @@ function autoSaveGrade(courseCode) {
             professors.push(professorInstructor);
         });
         
-        let formData = new FormData();
-        formData.append('student_id', '<?php echo $_GET['student_id']; ?>');
-        formData.append('program_view', '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>');
-        formData.append('courses', JSON.stringify(courses));
-        formData.append('course_row_keys', JSON.stringify(course_row_keys));
-        formData.append('final_grades', JSON.stringify(final_grades));
-        formData.append('final_grades_2', JSON.stringify(final_grades_2));
-        formData.append('final_grades_3', JSON.stringify(final_grades_3));
-        formData.append('evaluator_remarks', JSON.stringify(remarks));
-        formData.append('professor_instructors', JSON.stringify(professors));
-        formData.append('csrf_token', '<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, "UTF-8"); ?>');
+          let formData = new FormData();
+          formData.append('student_id', '<?php echo $_GET['student_id']; ?>');
+          formData.append('program_view', '<?php echo htmlspecialchars((string)$program_abbr, ENT_QUOTES, "UTF-8"); ?>');
+          courses.forEach(c => formData.append('courses[]', c));
+          course_row_keys.forEach(k => formData.append('course_row_keys[]', k));
+          final_grades.forEach(g => formData.append('final_grades[]', g));
+          final_grades_2.forEach(g => formData.append('final_grades_2[]', g));
+          final_grades_3.forEach(g => formData.append('final_grades_3[]', g));
+          remarks.forEach(r => formData.append('evaluator_remarks[]', r));
+          professors.forEach(p => formData.append('professor_instructors[]', p));
+          formData.append('csrf_token', '<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, "UTF-8"); ?>');
         
         fetch('../save_checklist.php', {
             method: 'POST',
