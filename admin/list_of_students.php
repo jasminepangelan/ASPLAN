@@ -17,6 +17,7 @@ if (!isset($_SESSION['admin_id'])) {
 $search = isset($_GET['search']) ? trim((string)$_GET['search']) : '';
 $selectedProgram = isset($_GET['program']) ? trim((string)$_GET['program']) : '';
 $selectedBatch = isset($_GET['batch']) ? trim((string)$_GET['batch']) : '';
+$remarksFilter = isset($_GET['remarks_status']) ? trim((string)$_GET['remarks_status']) : '';
 
 $queryParams = [];
 if ($search !== '') {
@@ -27,6 +28,9 @@ if ($selectedProgram !== '') {
 }
 if ($selectedBatch !== '') {
     $queryParams['batch'] = $selectedBatch;
+}
+if ($remarksFilter !== '') {
+    $queryParams['remarks_status'] = $remarksFilter;
 }
 $paginationSuffix = empty($queryParams) ? '' : '&' . http_build_query($queryParams);
 $exportParams = $queryParams;
@@ -44,6 +48,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                 'search' => $search,
                 'program' => $selectedProgram,
                 'batch' => $selectedBatch,
+                'remarks_status' => $remarksFilter,
                 'export' => true,
             ]
         );
@@ -72,7 +77,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
         }
     }
 
-    $students = losExportStudents($search, $selectedProgram, $selectedBatch);
+    $students = losExportStudents($search, $selectedProgram, $selectedBatch, $remarksFilter);
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=students_list_' . date('Y-m-d_H-i-s') . '.csv');
     $output = fopen('php://output', 'w');
@@ -113,6 +118,7 @@ try {
                 'search' => $search,
                 'program' => $selectedProgram,
                 'batch' => $selectedBatch,
+                'remarks_status' => $remarksFilter,
                 'page' => $current_page,
                 'records_per_page' => $records_per_page,
             ]
@@ -150,7 +156,7 @@ try {
             $selectedBatch = '';
         }
 
-        list($students, $total_records) = losLoadStudents($search, $selectedProgram, $selectedBatch, $records_per_page, $offset);
+        list($students, $total_records) = losLoadStudents($search, $selectedProgram, $selectedBatch, $records_per_page, $offset, $remarksFilter);
         $total_pages = max(1, (int) ceil($total_records / $records_per_page));
     }
 } catch (Throwable $e) {
@@ -1182,6 +1188,12 @@ try {
                         </option>
                     <?php endforeach; ?>
                 </select>
+
+                <label for="remarksFilter">Remarks Status</label>
+                <select id="remarksFilter" name="remarks_status">
+                    <option value="">-- All Students --</option>
+                    <option value="pending_only" <?php echo $remarksFilter === 'pending_only' ? 'selected' : ''; ?>>Pending Remarks Only</option>
+                </select>
             </form>
             <div class="filter-note">
                 Select program first, then choose a batch to narrow the table.
@@ -1357,6 +1369,13 @@ try {
 
         if (batchFilter && filterForm) {
             batchFilter.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        }
+        
+        const remarksFilter = document.getElementById('remarksFilter');
+        if (remarksFilter && filterForm) {
+            remarksFilter.addEventListener('change', function() {
                 filterForm.submit();
             });
         }

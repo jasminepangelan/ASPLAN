@@ -20,6 +20,7 @@ class ListOfStudentsController extends Controller
             $search = trim((string) $request->input('search', ''));
             $selectedProgram = trim((string) $request->input('program', ''));
             $selectedBatch = trim((string) $request->input('batch', ''));
+            $remarksStatus = trim((string) $request->input('remarks_status', ''));
             $recordsPerPage = max(1, (int) $request->input('records_per_page', 10));
             $page = max(1, (int) $request->input('page', 1));
             $export = filter_var($request->input('export', false), FILTER_VALIDATE_BOOL);
@@ -39,12 +40,12 @@ class ListOfStudentsController extends Controller
                 $selectedBatch = '';
             }
 
-            $totalRecords = $this->countStudents($search, $selectedProgram, $selectedBatch);
+            $totalRecords = $this->countStudents($search, $selectedProgram, $selectedBatch, $remarksStatus);
             $totalPages = max(1, (int) ceil($totalRecords / $recordsPerPage));
             $offset = ($page - 1) * $recordsPerPage;
-            $students = $this->loadStudents($search, $selectedProgram, $selectedBatch, !$export, $offset, $recordsPerPage);
+            $students = $this->loadStudents($search, $selectedProgram, $selectedBatch, $remarksStatus, !$export, $offset, $recordsPerPage);
             $allStudents = $export
-                ? $this->loadStudents($search, $selectedProgram, $selectedBatch, false, 0, 0)
+                ? $this->loadStudents($search, $selectedProgram, $selectedBatch, $remarksStatus, false, 0, 0)
                 : [];
 
             return response()->json([
@@ -97,9 +98,9 @@ class ListOfStudentsController extends Controller
             ->all();
     }
 
-    private function loadStudents(string $search, string $selectedProgram, string $selectedBatch, bool $paged, int $offset, int $limit): array
+    private function loadStudents(string $search, string $selectedProgram, string $selectedBatch, string $remarksStatus, bool $paged, int $offset, int $limit): array
     {
-        $query = $this->baseStudentQuery($search, $selectedProgram, $selectedBatch)
+        $query = $this->baseStudentQuery($search, $selectedProgram, $selectedBatch, $remarksStatus)
             ->select(['student_number', 'last_name', 'first_name', 'middle_name', 'program']);
 
         $query->orderBy('last_name')->orderBy('first_name')->orderBy('student_number');
@@ -117,12 +118,12 @@ class ListOfStudentsController extends Controller
         ])->all();
     }
 
-    private function countStudents(string $search, string $selectedProgram, string $selectedBatch): int
+    private function countStudents(string $search, string $selectedProgram, string $selectedBatch, string $remarksStatus): int
     {
-        return (int) $this->baseStudentQuery($search, $selectedProgram, $selectedBatch)->count();
+        return (int) $this->baseStudentQuery($search, $selectedProgram, $selectedBatch, $remarksStatus)->count();
     }
 
-    private function baseStudentQuery(string $search, string $selectedProgram, string $selectedBatch)
+    private function baseStudentQuery(string $search, string $selectedProgram, string $selectedBatch, string $remarksStatus)
     {
         $query = DB::table('student_info');
 
@@ -141,6 +142,14 @@ class ListOfStudentsController extends Controller
 
         if ($selectedBatch !== '') {
             $query->whereRaw('LEFT(student_number, 4) = ?', [$selectedBatch]);
+        }
+
+        if ($remarksStatus === 'pending_only') {
+            $query->whereIn('student_number', function($q) {
+                $q->select('student_id')
+                  ->from('student_checklists')
+                  ->where('evaluator_remarks', 'Pending');
+            });
         }
 
         return $query;

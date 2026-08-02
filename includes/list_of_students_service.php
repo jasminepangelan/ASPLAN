@@ -11,7 +11,7 @@ function losActiveStudentCondition(): string
         AND LOWER(COALESCE(status, '')) NOT IN ('archived', 'deleted', 'rejected')";
 }
 
-function losPrepareFilters($conn, string $search, string $selectedProgram, string $selectedBatch): array
+function losPrepareFilters($conn, string $search, string $selectedProgram, string $selectedBatch, string $remarksFilter = ''): array
 {
     $whereParts = [losActiveStudentCondition()];
     $params = [];
@@ -34,6 +34,10 @@ function losPrepareFilters($conn, string $search, string $selectedProgram, strin
         $whereParts[] = "LEFT(student_number, 4) = ?";
         $params[] = $selectedBatch;
         $types .= 's';
+    }
+
+    if ($remarksFilter === 'pending_only') {
+        $whereParts[] = "student_number IN (SELECT student_id FROM student_checklists WHERE evaluator_remarks = 'Pending')";
     }
 
     return [
@@ -94,12 +98,12 @@ function losGetAvailableBatches($selectedProgram)
  * Loads filtered students for the directory, paginated.
  * Returns [students, total_records].
  */
-function losLoadStudents($search, $selectedProgram, $selectedBatch, $records_per_page, $offset)
+function losLoadStudents($search, $selectedProgram, $selectedBatch, $records_per_page, $offset, $remarksFilter = '')
 {
     $conn = getDBConnection();
     $records_per_page = max(1, (int) $records_per_page);
     $offset = max(0, (int) $offset);
-    $filters = losPrepareFilters($conn, trim($search), trim($selectedProgram), trim($selectedBatch));
+    $filters = losPrepareFilters($conn, trim($search), trim($selectedProgram), trim($selectedBatch), trim($remarksFilter));
     $where_clause = $filters['where_clause'];
     $params = $filters['params'];
     $types = $filters['types'];
@@ -146,10 +150,10 @@ function losLoadStudents($search, $selectedProgram, $selectedBatch, $records_per
  * Loads all filtered students for CSV export (no pagination).
  * Returns an array of students.
  */
-function losExportStudents($search, $selectedProgram, $selectedBatch)
+function losExportStudents($search, $selectedProgram, $selectedBatch, $remarksFilter = '')
 {
     $conn = getDBConnection();
-    $filters = losPrepareFilters($conn, trim($search), trim($selectedProgram), trim($selectedBatch));
+    $filters = losPrepareFilters($conn, trim($search), trim($selectedProgram), trim($selectedBatch), trim($remarksFilter));
     $where_clause = $filters['where_clause'];
     $params = $filters['params'];
     $types = $filters['types'];
