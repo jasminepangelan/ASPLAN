@@ -1628,26 +1628,34 @@ document.getElementById('showApproveMultiple').addEventListener('click', functio
 
 // Semester approve checkbox logic
 function setSemesterApproved(semesterKey, checked) {
-    // Check/uncheck all approve-checkboxes for this semester, but only for rows with grades
+    // Check/uncheck all approve-checkboxes for this semester, but only for valid rows
     document.querySelectorAll(`tr[data-semester='${semesterKey}'] .approve-checkbox`).forEach(function(cb) {
-    const row = cb.closest('tr');
-        if (isLockedChecklistRow(row)) {
-      cb.checked = false;
-      return;
-    }
         let courseCode = cb.value;
-        let gradeSelect = document.querySelector(`[name='final_grade[${courseCode}]']`);
+        let gradeSelects = document.getElementsByName('final_grade[' + courseCode + ']');
+        let gradeSelect = gradeSelects.length > 0 ? gradeSelects[0] : null;
+        let gradeSelects2 = document.getElementsByName('final_grade_2[' + courseCode + ']');
+        let gradeSelect2 = gradeSelects2.length > 0 ? gradeSelects2[0] : null;
+        let gradeSelects3 = document.getElementsByName('final_grade_3[' + courseCode + ']');
+        let gradeSelect3 = gradeSelects3.length > 0 ? gradeSelects3[0] : null;
         
-        // Only check/uncheck if the row has a grade filled in
-        if (gradeSelect && gradeSelect.value && gradeSelect.value.trim() !== '') {
+        let hasGrade = false;
+        if (gradeSelect && gradeSelect.value && gradeSelect.value.trim() !== '') hasGrade = true;
+        if (gradeSelect2 && gradeSelect2.value && gradeSelect2.value.trim() !== '') hasGrade = true;
+        if (gradeSelect3 && gradeSelect3.value && gradeSelect3.value.trim() !== '') hasGrade = true;
+
+        let remarksSelects = document.getElementsByName('evaluator_remarks[' + courseCode + ']');
+        let remarksSelect = remarksSelects.length > 0 ? remarksSelects[0] : null;
+        let isPending = remarksSelect && remarksSelect.value === 'Pending';
+        
+        const row = cb.closest('tr');
+        // If the row has a Pending remark, it should ALWAYS be selectable.
+        // If it doesn't have a Pending remark, but has a grade, we only allow selection if it's NOT locked.
+        if (isPending || (hasGrade && !isLockedChecklistRow(row))) {
             cb.checked = checked;
-            // Set evaluator remarks to Approved if checked, else leave as is
-            let remarksSelect = document.querySelector(`[name='evaluator_remarks[${courseCode}]']`);
             if (remarksSelect && checked) {
                 remarksSelect.value = 'Approved';
             }
         } else {
-            // If no grade, ensure checkbox is unchecked
             cb.checked = false;
         }
     });
