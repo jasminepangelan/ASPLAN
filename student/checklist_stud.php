@@ -1420,6 +1420,19 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         display: none !important;
       }
 
+      /* Keep student photo positioned in the upper right during print */
+      .student-photo-header {
+        position: absolute !important;
+        right: 0 !important;
+        top: 0 !important;
+        margin: 0 !important;
+      }
+
+      .student-photo-img {
+        width: 80px !important;
+        height: 80px !important;
+      }
+
       .header h1 {
         font-size: 10px;
         margin-top: 3px;
