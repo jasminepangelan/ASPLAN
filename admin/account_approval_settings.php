@@ -3250,6 +3250,16 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                 </div>
 
                 <div class="settings-card">
+                    <h2><i class="fas fa-database"></i> Database Backup</h2>
+                    <p class="card-note">Export all system data into a downloadable .sql file for backup or restoration purposes.</p>
+                    <div class="settings-actions">
+                        <a href="export_database.php" class="btn btn-bulk" style="padding:10px 14px; font-size:13px; background: linear-gradient(135deg, #1f7a2f 0%, #35a44a 100%); color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; width: fit-content;">
+                            <i class="fas fa-download"></i> Export Database
+                        </a>
+                    </div>
+                </div>
+
+                <div class="settings-card">
                     <form method="POST" id="settingsForm">
                         <h2><i class="fas fa-toggle-on"></i> Account Approval Control</h2>
                         <p class="card-note">Choose whether student registrations are automatically approved or queued for manual review.</p>
