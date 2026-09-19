@@ -8,6 +8,82 @@ if (!isset($_SESSION['admin_username'])) {
 }
 
 $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['admin_full_name']) : '';
+
+$conn = getDBConnection();
+
+// 1. Total Registered Students
+$resTotalStudents = $conn->query("SELECT COUNT(*) AS c FROM student_info");
+$totalStudents = $resTotalStudents ? $resTotalStudents->fetch_assoc()['c'] : 0;
+
+// 2. Pending Accounts
+$resPending = $conn->query("SELECT COUNT(*) AS c FROM student_info WHERE status = 'pending'");
+$pendingAccounts = $resPending ? $resPending->fetch_assoc()['c'] : 0;
+
+// 3. Pending Program Shifts
+$resShifts = $conn->query("SELECT COUNT(*) AS c FROM program_shift_requests WHERE status LIKE 'pending%'");
+$pendingShifts = $resShifts ? $resShifts->fetch_assoc()['c'] : 0;
+
+// 4. Active Advisers
+$resAdvisers = $conn->query("SELECT COUNT(*) AS c FROM adviser");
+$activeAdvisers = $resAdvisers ? $resAdvisers->fetch_assoc()['c'] : 0;
+
+// 5. Chart: Registration Trend
+$chartTrendLabels = [];
+$chartTrendData = [];
+$resTrend = $conn->query("
+    SELECT DATE_FORMAT(created_at, '%Y-%m') AS month_yr, COUNT(*) AS count 
+    FROM student_info 
+    WHERE created_at IS NOT NULL
+    GROUP BY month_yr 
+    ORDER BY month_yr ASC 
+    LIMIT 6
+");
+if ($resTrend) {
+    while ($row = $resTrend->fetch_assoc()) {
+        $chartTrendLabels[] = date('M Y', strtotime($row['month_yr'] . '-01'));
+        $chartTrendData[] = (int)$row['count'];
+    }
+}
+
+// 6. Chart: Students by Program
+$chartProgramLabels = [];
+$chartProgramData = [];
+$resPrograms = $conn->query("
+    SELECT program, COUNT(*) AS count 
+    FROM student_info 
+    WHERE program IS NOT NULL AND program != '' AND status = 'approved'
+    GROUP BY program
+    ORDER BY count DESC
+    LIMIT 5
+");
+if ($resPrograms) {
+    while ($row = $resPrograms->fetch_assoc()) {
+        $short = $row['program'];
+        if (strpos($row['program'], 'Computer Science') !== false) $short = 'Comp. Science';
+        elseif (strpos($row['program'], 'Information Tech') !== false) $short = 'Info. Tech';
+        elseif (strpos($row['program'], 'Computer Engineering') !== false) $short = 'Comp. Eng.';
+        elseif (strpos($row['program'], 'Hospitality') !== false) $short = 'Hospitality';
+        elseif (strpos($row['program'], 'Business') !== false) $short = 'Business Admin';
+        elseif (strpos($row['program'], 'Education') !== false) $short = 'Education';
+        
+        $chartProgramLabels[] = $short;
+        $chartProgramData[] = (int)$row['count'];
+    }
+}
+
+// 7. Recent Activity Feed
+$recentActivities = [];
+$resActivity = $conn->query("
+    SELECT action_type, summary, created_at 
+    FROM admin_audit_logs 
+    ORDER BY created_at DESC 
+    LIMIT 6
+");
+if ($resActivity) {
+    while ($row = $resActivity->fetch_assoc()) {
+        $recentActivities[] = $row;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -465,6 +541,194 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
             letter-spacing: 1px;
         }
     </style>
+
+  <style>
+    /* --- NEW DASHBOARD CSS --- */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .metric-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .metric-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .metric-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #173318;
+      margin-bottom: 5px;
+    }
+    
+    .metric-label {
+      font-size: 13px;
+      color: #5c6f5d;
+      font-weight: 600;
+    }
+    
+    .metric-icon {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 42px;
+      height: 42px;
+      background: rgba(45, 143, 34, 0.08);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .metric-icon img {
+      width: 24px;
+      height: 24px;
+      filter: invert(36%) sepia(87%) saturate(583%) hue-rotate(69deg) brightness(97%) contrast(89%); /* Make icon green */
+    }
+    
+    .dashboard-panel {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+      height: 100%;
+    }
+    
+    .panel-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #173318;
+      margin-top: 0;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 250px;
+      width: 100%;
+    }
+
+    .quick-access-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    
+    .quick-access-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 15px;
+      background: #f9fbf9;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(22, 79, 20, 0.05);
+    }
+    
+    .quick-access-item:hover {
+      background: #f0f7f1;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    }
+    
+    .qa-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, rgba(234, 247, 236, 0.98), rgba(221, 241, 226, 0.98));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+    }
+    
+    .qa-icon img { width: 20px; height: 20px; }
+    
+    .qa-text {
+      font-weight: 600;
+      color: #173318;
+      font-size: 14px;
+    }
+    
+    .activity-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .activity-item {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .activity-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #8b5cf6;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .activity-dot.purple { background: #8b5cf6; }
+    .activity-dot.orange { background: #f97316; }
+    .activity-dot.green { background: #10b981; }
+    .activity-dot.blue { background: #3b82f6; }
+    
+    .activity-content {
+      font-size: 13px;
+      flex-grow: 1;
+    }
+    
+    .activity-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 3px;
+    }
+    
+    .activity-time {
+      color: #888;
+      font-size: 11px;
+    }
+
+    @media (max-width: 1024px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+        .metric-cards {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .metric-cards {
+            grid-template-columns: 1fr;
+        }
+        .quick-access-list {
+            grid-template-columns: 1fr;
+        }
+    }
+  </style>
+
 </head>
 <body>
   <div class="main-header">
@@ -482,80 +746,120 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
   require __DIR__ . '/../includes/admin_sidebar.php';
   ?>
 
+
   <!-- Main Content -->
   <div class="main-content">
     <div class="content">
       <div class="page-header">
-        <h1>Admin Dashboard</h1>
+        <h1>Dashboard Overview</h1>
       </div>
-      <div class="message-container">
-        <span class="message-icon">i</span>
-        <span class="message-copy">
-          <small>Admin Command Center</small>
-          <span>Jump into the system’s main control areas quickly and keep <strong>user access</strong>, <strong>curriculum setup</strong>, and <strong>platform settings</strong> organized from one cleaner dashboard.</span>
-        </span>
+      
+      <!-- Top Metrics -->
+      <div class="metric-cards">
+        <div class="metric-card">
+            <div class="metric-icon"><img src="../pix/generic_user.svg" alt="Students"></div>
+            <div class="metric-value"><?php echo number_format($totalStudents); ?></div>
+            <div class="metric-label">Total Students</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon"><img src="../pix/account.png" alt="Pending"></div>
+            <div class="metric-value"><?php echo number_format($pendingAccounts); ?></div>
+            <div class="metric-label">Pending Approvals</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon"><img src="../pix/update.png" alt="Shifts"></div>
+            <div class="metric-value"><?php echo number_format($pendingShifts); ?></div>
+            <div class="metric-label">Pending Program Shifts</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon"><img src="../pix/curr.png" alt="Advisers"></div>
+            <div class="metric-value"><?php echo number_format($activeAdvisers); ?></div>
+            <div class="metric-label">Active Advisers</div>
+        </div>
       </div>
 
-      <div class="section-card">
-        <div class="section-head">
-          <div>
-            <h2 class="section-title">Quick Access</h2>
-            <p class="section-subtitle">Use the same polished dashboard structure as the student view while keeping the key admin modules easy to reach.</p>
-          </div>
+      <!-- Middle Charts -->
+      <div class="dashboard-grid">
+        <div class="dashboard-panel">
+            <h3 class="panel-title">Registration Trends (Last 6 Months)</h3>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
         </div>
-        <div class="options">
-        <div class="option" onclick="window.location.href='account_module.php'">
-          <div class="option-icon"><img src="../pix/account.png" alt="User Management Icon"></div>
-          <div>
-            <label class="option-title">User Management</label>
-            <p class="option-caption">Manage platform access, account records, and administrative user actions from one central module.</p>
-          </div>
+        
+        <div class="dashboard-panel">
+            <h3 class="panel-title">Students by Program</h3>
+            <div class="chart-container">
+                <canvas id="programChart"></canvas>
+            </div>
         </div>
-        <div class="option" onclick="window.location.href='list_of_students.php'">
-          <div class="option-icon"><img src="../pix/generic_user.svg" alt="Registered Students Icon"></div>
-          <div>
-            <label class="option-title">Registered Students</label>
-            <p class="option-caption">Browse student records already saved in the system and move into profile, checklist, or study plan workflows.</p>
-          </div>
+      </div>
+
+      <!-- Bottom Layout -->
+      <div class="dashboard-grid">
+        <div class="dashboard-panel">
+            <h3 class="panel-title">Quick Access</h3>
+            <div class="quick-access-list">
+                <div class="quick-access-item" onclick="window.location.href='account_module.php'">
+                    <div class="qa-icon"><img src="../pix/account.png" alt="Icon"></div>
+                    <div class="qa-text">User Management</div>
+                </div>
+                <div class="quick-access-item" onclick="window.location.href='list_of_students.php'">
+                    <div class="qa-icon"><img src="../pix/generic_user.svg" alt="Icon"></div>
+                    <div class="qa-text">Registered Students</div>
+                </div>
+                <div class="quick-access-item" onclick="window.location.href='program_shift.php'">
+                    <div class="qa-icon"><img src="../pix/update.png" alt="Icon"></div>
+                    <div class="qa-text">Program Shift</div>
+                </div>
+                <div class="quick-access-item" onclick="window.location.href='curriculum_management.php'">
+                    <div class="qa-icon"><img src="../pix/curr.png" alt="Icon"></div>
+                    <div class="qa-text">Curriculum Management</div>
+                </div>
+                <div class="quick-access-item" onclick="window.location.href='programs.php'">
+                    <div class="qa-icon"><img src="../pix/update.png" alt="Icon"></div>
+                    <div class="qa-text">Programs Catalog</div>
+                </div>
+                <div class="quick-access-item" onclick="window.location.href='account_approval_settings.php'">
+                    <div class="qa-icon"><img src="../pix/set.png" alt="Icon"></div>
+                    <div class="qa-text">System Settings</div>
+                </div>
+            </div>
         </div>
-        <div class="option" onclick="window.location.href='program_shift.php'">
-          <div class="option-icon"><img src="../pix/update.png" alt="Program Shift Icon"></div>
-          <div>
-            <label class="option-title">Program Shift</label>
-            <p class="option-caption">Move a student to another program and automatically credit eligible completed courses into the destination checklist.</p>
-          </div>
-        </div>
-        <div class="option" onclick="window.location.href='curriculum_management.php'">
-          <div class="option-icon"><img src="../pix/curr.png" alt="Curriculum Management Icon"></div>
-          <div>
-            <label class="option-title">Curriculum Management</label>
-            <p class="option-caption">Configure curriculum structures and checklist foundations with the same cleaner dashboard presentation.</p>
-          </div>
-        </div>
-        <div class="option" onclick="window.location.href='programs.php'">
-          <div class="option-icon"><img src="../pix/update.png" alt="Programs Icon"></div>
-          <div>
-            <label class="option-title">Programs</label>
-            <p class="option-caption">Open the program catalog, review current offerings, and move directly into checklist-builder workflows.</p>
-          </div>
-        </div>
-        <div class="option" onclick="window.location.href='account_approval_settings.php'">
-          <div class="option-icon"><img src="../pix/set.png" alt="Settings Icon"></div>
-          <div>
-            <label class="option-title">Settings</label>
-            <p class="option-caption">Control approval rules, security options, and advanced system settings from one premium card-based entry.</p>
-          </div>
-        </div>
+        
+        <div class="dashboard-panel">
+            <h3 class="panel-title">Recent Activity</h3>
+            <div class="activity-feed">
+                <?php if (empty($recentActivities)): ?>
+                    <p style="color: #888; font-size: 13px;">No recent activity.</p>
+                <?php else: ?>
+                    <?php 
+                    $colors = ['purple', 'orange', 'green', 'blue'];
+                    foreach ($recentActivities as $index => $act): 
+                        $color = $colors[$index % count($colors)];
+                        // format time
+                        $time = date('M d, g:i A', strtotime($act['created_at']));
+                    ?>
+                    <div class="activity-item">
+                        <div class="activity-dot <?php echo $color; ?>"></div>
+                        <div class="activity-content">
+                            <div class="activity-title"><?php echo htmlspecialchars($act['summary']); ?></div>
+                            <div class="activity-time"><?php echo htmlspecialchars($act['action_type']); ?> &bull; <?php echo $time; ?></div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
+    // Existing Sidebar scripts
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       const mainContent = document.querySelector('.main-content');
-
       sidebar.classList.toggle('collapsed');
       mainContent.classList.toggle('expanded');
     }
@@ -563,22 +867,16 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
     document.addEventListener('click', function(event) {
       const sidebar = document.getElementById('sidebar');
       const logo = document.querySelector('.main-header img');
-
-      if (window.innerWidth <= 768 &&
-          sidebar && !sidebar.contains(event.target) &&
-          (!logo || !logo.contains(event.target))) {
+      if (window.innerWidth <= 768 && sidebar && !sidebar.contains(event.target) && (!logo || !logo.contains(event.target))) {
         sidebar.classList.add('collapsed');
         const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-          mainContent.classList.add('expanded');
-        }
+        if (mainContent) mainContent.classList.add('expanded');
       }
     });
 
     window.addEventListener('DOMContentLoaded', function() {
       const sidebar = document.getElementById('sidebar');
       const mainContent = document.querySelector('.main-content');
-
       if (window.innerWidth <= 768) {
         sidebar.classList.add('collapsed');
         mainContent.classList.add('expanded');
@@ -591,7 +889,6 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
     window.addEventListener('resize', function() {
       const sidebar = document.getElementById('sidebar');
       const mainContent = document.querySelector('.main-content');
-
       if (window.innerWidth > 768) {
         sidebar.classList.remove('collapsed');
         mainContent.classList.remove('expanded');
@@ -600,9 +897,85 @@ $admin_name = isset($_SESSION['admin_full_name']) ? htmlspecialchars($_SESSION['
         mainContent.classList.add('expanded');
       }
     });
+
+    // Chart.js Library loading and Initialization
+    const chartScript = document.createElement('script');
+    chartScript.src = '../js/chart.min.js';
+    chartScript.onload = function() {
+        try {
+            var trendEl = document.getElementById('trendChart');
+            if (trendEl) {
+                new Chart(trendEl.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: <?php echo json_encode($chartTrendLabels ?: ['No Data']); ?>,
+                        datasets: [{
+                            label: 'New Registrations',
+                            data: <?php echo json_encode($chartTrendData ?: [0]); ?>,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointBackgroundColor: '#8b5cf6',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            var tc = document.getElementById('trendChart');
+            if (tc) tc.parentNode.innerHTML = '<div style="color:red; padding:20px;">Trend Error: ' + e.message + '</div>';
+        }
+
+        try {
+            var progEl = document.getElementById('programChart');
+            if (progEl) {
+                new Chart(progEl.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: <?php echo json_encode($chartProgramLabels ?: ['No Data']); ?>,
+                        datasets: [{
+                            data: <?php echo json_encode($chartProgramData ?: [1]); ?>,
+                            backgroundColor: ['#8b5cf6', '#f97316', '#10b981', '#3b82f6', '#f43f5e'],
+                            borderWidth: 2,
+                            borderColor: '#fff',
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '65%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, padding: 16 } }
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            var pc = document.getElementById('programChart');
+            if (pc) pc.parentNode.innerHTML = '<div style="color:red; padding:20px;">Prog Error: ' + e.message + '</div>';
+        }
+    };
+    chartScript.onerror = function() {
+        var tc = document.getElementById('trendChart');
+        if (tc) tc.parentNode.innerHTML = '<div style="color:red; padding:20px;">Failed to load Chart.js. Please verify that the local file exists at ../js/chart.min.js</div>';
+    };
+    document.head.appendChild(chartScript);
   </script>
 </body>
 </html>
+
 
 
 
