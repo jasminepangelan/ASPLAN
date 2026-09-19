@@ -134,36 +134,9 @@ if ($is_admin && $view_student_id) {
   }
 }
 
-$studentShellPayload = htmlspecialchars(json_encode([
-  'title' => 'Profile & Account',
-  'description' => 'Manage your personal information, keep your contact details current, and update your student-facing account settings without leaving the legacy workflow.',
-  'accent' => 'emerald',
-  'pageKey' => 'profile',
-  'stats' => [
-    ['label' => 'Student ID', 'value' => (string)$student_id],
-    ['label' => 'Email', 'value' => $email !== '' ? (string)$email : 'Not set'],
-    ['label' => 'Admission', 'value' => $admission_date !== '' ? (string)$admission_date : 'Not set'],
-  ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
-$studentProfileWorkspacePayload = htmlspecialchars(json_encode([
-  'studentName' => trim($first_name . ' ' . ($middle_name !== '' ? $middle_name . ' ' : '') . $last_name),
-  'roleLabel' => 'Student profile center',
-  'note' => 'This page keeps your current PHP save flow intact while giving you faster access to the profile actions you use most often.',
-  'chips' => [
-    ['label' => 'Student ID', 'value' => (string)$student_id],
-    ['label' => 'Email', 'value' => $email !== '' ? (string)$email : 'Not set'],
-    ['label' => 'Contact', 'value' => $contact_no !== '' ? (string)$contact_no : 'Not set'],
-    ['label' => 'Admission', 'value' => $admission_date !== '' ? (string)$admission_date : 'Not set'],
-  ],
-  'actionCards' => [
-    ['key' => 'picture', 'title' => 'Update photo', 'description' => 'Choose a new profile image using the existing upload flow.'],
-    ['key' => 'email', 'title' => 'Edit email', 'description' => 'Jump directly to the email field and enable editing.'],
-    ['key' => 'contact', 'title' => 'Edit contact number', 'description' => 'Quickly unlock your contact field for updates.'],
-    ['key' => 'password', 'title' => 'Change password', 'description' => 'Open the password panel without hunting through the form.'],
-    ['key' => 'save', 'title' => 'Save all changes', 'description' => 'Run the current PHP save handler with your latest form values.'],
-  ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+
 
 $emailVerificationStatus = [
   'variant' => 'neutral',
@@ -1164,7 +1137,7 @@ $csrfToken = getCSRFToken();
       color: #fff;
     }
   </style>
-  <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-profile-workspace.jsx']) ?>
+
 </head>
 <body>
   <!-- Title Bar -->
@@ -1207,12 +1180,12 @@ $csrfToken = getCSRFToken();
 
   <!-- Main Content -->
   <div class="main-content" id="mainContent">
-  <div data-student-shell="<?= $studentShellPayload ?>"></div>
+
 
   <div class="container">
     <div class="title">Student Profile</div>
     <div class="content-wrapper">
-      <div data-student-profile-workspace="<?= $studentProfileWorkspacePayload ?>"></div>
+
       <div class="subtitle">View and manage your account details</div>
       <?php if ($showVerificationBanner): ?>
         <div class="verification-banner">

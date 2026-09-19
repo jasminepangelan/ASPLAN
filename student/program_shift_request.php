@@ -123,32 +123,9 @@ foreach ($historyAll as $item) {
     }
 }
 
-$studentShellPayload = htmlspecialchars(json_encode([
-    'title' => 'Program Shift Center',
-    'description' => 'Track your requests, review your current academic path, and submit a shift request that will be reviewed by Program Coordinators only.',
-    'accent' => 'slate',
-    'pageKey' => 'program-shift',
-    'stats' => [
-        ['label' => 'Current Program', 'value' => $currentProgram !== '' ? (string)$currentProgram : 'Not set'],
-        ['label' => 'Pending', 'value' => (string)$historyStats['pending']],
-        ['label' => 'Approved', 'value' => (string)$historyStats['approved']],
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
-$studentProgramShiftWorkspacePayload = htmlspecialchars(json_encode([
-    'title' => 'Program Shift Command Deck',
-    'note' => 'Use quick actions to jump into the request form, browse your history, or focus the destination program selector while the current PHP request workflow stays intact.',
-    'stats' => [
-        ['label' => 'Current Program', 'value' => $currentProgram !== '' ? (string)$currentProgram : 'Not set'],
-        ['label' => 'Pending', 'value' => (string)$historyStats['pending']],
-        ['label' => 'Approved', 'value' => (string)$historyStats['approved']],
-    ],
-    'reminders' => [
-        'Only one active request can stay pending at a time.',
-        'Be specific in your reason so adviser and coordinator review can move faster.',
-        'Strict course equivalency still decides which subjects can be credited after approval.',
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
+
 
 foreach ($programOptions as $programOption) {
     if (strcasecmp(psNormalizeProgramLabel((string)$programOption), psNormalizeProgramLabel($currentProgram)) === 0) {
@@ -197,7 +174,7 @@ closeDBConnection($conn);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Program Shift Request</title>
     <link rel="icon" type="image/png" href="../img/cav.png">
-    <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-program-shift-workspace.jsx']) ?>
+
     <style>
         :root {
             --brand-900: #164f14;
@@ -790,8 +767,8 @@ closeDBConnection($conn);
     </div>
 
     <div class="main-content" id="mainContent">
-    <div data-student-shell="<?= $studentShellPayload ?>"></div>
-    <div data-student-program-shift-workspace="<?= $studentProgramShiftWorkspacePayload ?>"></div>
+
+
     <div class="container">
         <section class="hero">
             <div class="hero-card">

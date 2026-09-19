@@ -1,0 +1,10 @@
+{
+  "description": "Automatically analyze and implement Markdown files to streamline content integration and enhance workflow efficiency for developers and content creators.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

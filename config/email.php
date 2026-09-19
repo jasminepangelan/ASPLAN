@@ -75,7 +75,6 @@ function getMailer() {
         $mail->SMTPSecure = SMTP_SECURE;
         $mail->Port = SMTP_PORT;
         $mail->Timeout = SMTP_TIMEOUT;
-        $mail->Timelimit = SMTP_TIMEOUT;
         $mail->SMTPKeepAlive = false;
         
         // Sender info

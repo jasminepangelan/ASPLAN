@@ -756,32 +756,6 @@ function describeStudyPlanCourseReasonTooltip(array $course, array $termSourceCo
     return $text;
 }
 
-$studentShellPayload = htmlspecialchars(json_encode([
-    'title' => 'Study Plan Workspace',
-    'description' => 'Review your generated roadmap, keep an eye on completion progress, and stay inside the existing student planning workflow while we modernize the shell around it.',
-    'accent' => 'violet',
-    'pageKey' => 'study-plan',
-    'stats' => [
-        ['label' => 'Program', 'value' => (string)$program],
-        ['label' => 'Completion', 'value' => (string)($stats['completion_rate'] ?? 0) . '%'],
-        ['label' => 'Remaining', 'value' => (string)($stats['remaining_courses'] ?? 0)],
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
-
-$studentStudyPlanWorkspacePayload = htmlspecialchars(json_encode([
-    'title' => 'Study Plan Command Deck',
-    'note' => 'Use quick actions to print, review the academic-year overview, save your current enrolled courses, or jump back to your progress summary so the planner stays aligned with what you are taking now.',
-    'stats' => [
-        ['label' => 'Completion', 'value' => (string)($stats['completion_percentage'] ?? 0) . '%'],
-        ['label' => 'Completed', 'value' => (string)($stats['completed_courses'] ?? 0) . '/' . (string)($stats['total_courses'] ?? 0)],
-        ['label' => 'Remaining', 'value' => (string)($stats['remaining_courses'] ?? 0)],
-    ],
-    'insights' => [
-        ['title' => 'Program', 'value' => (string)$program],
-        ['title' => 'Projected completion', 'value' => $estimated_graduation ? (string)$estimated_graduation : 'In progress'],
-        ['title' => 'Semesters to go', 'value' => (string)$remaining_semesters],
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
 $current_enrollment_allowed_course_map = sceBuildSelectableCourseMap($current_enrollment_term_map);
 $_SESSION['current_enrollment_allowed_courses'] = [
@@ -839,9 +813,6 @@ $studyPlanHeaderLabel = $is_admin_reference_view
     <title><?= htmlspecialchars($studyPlanPageTitle) ?></title>
     <link rel="icon" type="image/png" href="../img/cav.png">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <?php if (!$is_study_plan_reference_view): ?>
-        <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-study-plan-workspace.jsx']) ?>
-    <?php endif; ?>
     <style>
         * {
             margin: 0;
@@ -2378,10 +2349,6 @@ $studyPlanHeaderLabel = $is_admin_reference_view
 
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
-        <?php if (!$is_study_plan_reference_view): ?>
-        <div data-student-shell="<?= $studentShellPayload ?>"></div>
-        <div data-student-study-plan-workspace="<?= $studentStudyPlanWorkspacePayload ?>"></div>
-        <?php endif; ?>
         <div class="page-header">
             <h1>Automated Study Plan Generator</h1>
             <p>Personalized academic roadmap powered by CSP & Greedy Algorithm</p>

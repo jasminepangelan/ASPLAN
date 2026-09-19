@@ -1611,6 +1611,401 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             margin: 2px 0;
         }
 
+        /* ===== ADVANCED SETTINGS CATEGORIZED CARDS ===== */
+        .adv-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--line-soft);
+        }
+
+        .adv-section-header h2 {
+            font-size: 16px;
+            color: var(--brand-700);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+
+        .adv-section-header .adv-section-badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: var(--brand-700);
+        }
+
+        .adv-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 960px) {
+            .adv-cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .adv-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid var(--line-soft);
+            box-shadow: 0 2px 8px rgba(24, 58, 22, 0.06);
+            overflow: hidden;
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
+        }
+
+        .adv-card:hover {
+            box-shadow: 0 6px 20px rgba(24, 58, 22, 0.10);
+            transform: translateY(-2px);
+        }
+
+        .adv-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 18px 12px;
+            border-bottom: 1px solid #edf2ed;
+            background: linear-gradient(135deg, #f7faf7 0%, #f0f5f0 100%);
+        }
+
+        .adv-card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .adv-card-icon.security {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #1565c0;
+        }
+
+        .adv-card-icon.access {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+        }
+
+        .adv-card-icon.workflow {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            color: #e65100;
+        }
+
+        .adv-card-icon.danger {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            color: #c62828;
+        }
+
+        .adv-card-header-text h3 {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-900);
+            margin: 0 0 2px;
+            line-height: 1.3;
+        }
+
+        .adv-card-header-text p {
+            font-size: 11px;
+            color: var(--text-700);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .adv-card-body {
+            padding: 6px 0;
+        }
+
+        .adv-setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 18px;
+            border-bottom: 1px solid #f5f8f5;
+            transition: background 0.15s ease;
+        }
+
+        .adv-setting-row:last-child {
+            border-bottom: none;
+        }
+
+        .adv-setting-row:hover {
+            background: #fafcfa;
+        }
+
+        .adv-setting-label {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .adv-setting-label .adv-label-title {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-900);
+            margin: 0 0 3px;
+            line-height: 1.3;
+        }
+
+        .adv-setting-label .adv-label-help {
+            font-size: 11px;
+            color: var(--text-700);
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .adv-setting-control {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Premium Toggle Switch */
+        .adv-toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .adv-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+
+        .adv-toggle-slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #d1d5db;
+            border-radius: 24px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .adv-toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #ffffff;
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+
+        .adv-toggle input:checked + .adv-toggle-slider {
+            background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1), 0 0 8px rgba(46,125,50,0.25);
+        }
+
+        .adv-toggle input:checked + .adv-toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        .adv-toggle input:focus-visible + .adv-toggle-slider {
+            outline: 2px solid var(--brand-500);
+            outline-offset: 2px;
+        }
+
+        .adv-toggle-state {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-700);
+            min-width: 24px;
+        }
+
+        .adv-toggle input:checked ~ .adv-toggle-state {
+            color: #2e7d32;
+        }
+
+        /* Danger Zone Toggle */
+        .adv-toggle.danger-toggle input:checked + .adv-toggle-slider {
+            background: linear-gradient(135deg, #c62828 0%, #e53935 100%);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1), 0 0 8px rgba(198,40,40,0.3);
+        }
+
+        /* Number / Text / Datetime inputs inside cards */
+        .adv-input {
+            padding: 7px 12px;
+            border: 1px solid #cfd9cf;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--text-900);
+            background: #fafcfa;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            max-width: 180px;
+        }
+
+        .adv-input:focus {
+            outline: none;
+            border-color: var(--brand-500);
+            box-shadow: 0 0 0 3px rgba(63,154,59,0.12);
+        }
+
+        .adv-input-wide {
+            max-width: 240px;
+        }
+
+        .adv-textarea {
+            padding: 7px 12px;
+            border: 1px solid #cfd9cf;
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: inherit;
+            color: var(--text-900);
+            background: #fafcfa;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            resize: vertical;
+            min-height: 38px;
+            width: 100%;
+            max-width: 220px;
+        }
+
+        .adv-textarea:focus {
+            outline: none;
+            border-color: var(--brand-500);
+            box-shadow: 0 0 0 3px rgba(63,154,59,0.12);
+        }
+
+        .adv-input-unit {
+            font-size: 11px;
+            color: var(--text-700);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* Danger Zone Card */
+        .adv-card.danger-zone {
+            background: #fffbfb;
+            border-color: #fca5a5;
+            box-shadow: 0 2px 8px rgba(220,38,38,0.06);
+        }
+
+        .adv-card.danger-zone:hover {
+            box-shadow: 0 6px 20px rgba(220,38,38,0.10);
+        }
+
+        .adv-card.danger-zone .adv-card-header {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            border-bottom-color: #fecaca;
+        }
+
+        .adv-card.danger-zone .adv-card-header-text h3 {
+            color: #991b1b;
+        }
+
+        .adv-card.danger-zone .adv-card-header-text p {
+            color: #b91c1c;
+        }
+
+        .adv-card.danger-zone .adv-setting-row:hover {
+            background: #fef8f8;
+        }
+
+        .adv-card.danger-zone .adv-setting-label .adv-label-title {
+            color: #7f1d1d;
+        }
+
+        .adv-card.danger-zone .adv-setting-label .adv-label-help {
+            color: #991b1b;
+        }
+
+        .adv-card.danger-zone .adv-setting-row {
+            border-bottom-color: #fef2f2;
+        }
+
+        /* Advanced Settings Save Button */
+        .adv-save-bar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 14px 0 4px;
+        }
+
+        .adv-save-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 22px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-500) 100%);
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(31,95,27,0.22);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .adv-save-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .adv-save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(31,95,27,0.28);
+        }
+
+        .adv-save-btn:hover::after {
+            left: 100%;
+        }
+
+        .adv-save-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(31,95,27,0.18);
+        }
+
+        /* Server time note inside advanced cards */
+        .adv-server-time {
+            margin-top: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: #f5faf4;
+            border: 1px solid #d9e7d9;
+            color: #3f5a42;
+            font-size: 10px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* Full-width card (danger zone spans full width on bottom) */
+        .adv-card-full {
+            grid-column: 1 / -1;
+        }
+
         .policy-item small {
             display: block;
             margin-top: 6px;
@@ -3056,7 +3451,70 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             line-height: 1.2;
             letter-spacing: 1px;
         }
-    </style>
+            /* ===== TABBED NAVIGATION UI ===== */
+        .settings-tabs {
+            display: flex;
+            gap: 8px;
+            margin: 20px 0 24px;
+            border-bottom: 2px solid var(--line-soft);
+            padding-bottom: 0;
+            overflow-x: auto; /* Handle overflow on mobile */
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        .settings-tabs::-webkit-scrollbar {
+            display: none; /* Hide scrollbar Chrome/Safari */
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-600);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            margin-bottom: -2px; /* Overlap the container's bottom border */
+        }
+
+        .tab-btn:hover {
+            color: var(--brand-600);
+            background: rgba(63, 154, 59, 0.05);
+            border-radius: 8px 8px 0 0;
+        }
+
+        .tab-btn.active {
+            color: var(--brand-700);
+            border-bottom-color: var(--brand-600);
+        }
+
+        .tab-btn i {
+            margin-right: 6px;
+        }
+
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* Adjust internal spacing for tab panes */
+        .tab-pane > .settings-card,
+        .tab-pane > .section-heading,
+        .tab-pane > .stats-grid {
+            margin-bottom: 24px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+</style>
 </head>
 <body>
     <div class="header">
@@ -3112,9 +3570,15 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
             <span class="detail"><?php echo htmlspecialchars($registrationStatusDetail); ?></span>
         </div>
 
-        <div class="settings-layout">
-            <div class="settings-column">
-                <div class="settings-card">
+        <div class="settings-tabs">
+            <button type="button" class="tab-btn active" data-target="tab-operations"><i class="fas fa-chart-line"></i> Dashboard &amp; Ops</button>
+            <button type="button" class="tab-btn" data-target="tab-config"><i class="fas fa-sliders-h"></i> System Config</button>
+            <button type="button" class="tab-btn" data-target="tab-data"><i class="fas fa-database"></i> Data Management</button>
+            <button type="button" class="tab-btn" data-target="tab-admin"><i class="fas fa-shield-alt"></i> Admin &amp; Logs</button>
+        </div>
+
+        <div class="tab-pane tab-config" id="pane-config">
+            <div class="settings-card">
                     <form method="POST">
                         <h2><i class="fas fa-shield-alt"></i> Security and Rate Limit Policies</h2>
                         <p class="card-note">Control session expiry, password policy, and anti-bruteforce thresholds.</p>
@@ -3146,99 +3610,247 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                     </form>
                 </div>
 
-                <div class="settings-card">
+                <div class="settings-card" style="padding: 18px;">
                     <form method="POST">
-                        <h2><i class="fas fa-cogs"></i> Advanced Admin Controls</h2>
-                        <p class="card-note">Configure authentication hardening, workflow safeguards, governance controls, and operational safety flags.</p>
-
-                        <div class="policy-grid">
-                            <?php foreach ($advancedSettings as $key => $meta): ?>
-                                <div class="policy-item">
-                                    <label for="<?php echo htmlspecialchars($key); ?>">
-                                        <?php echo htmlspecialchars($meta['label']); ?>
-                                    </label>
-
-                                    <?php if (($meta['type'] ?? 'text') === 'boolean'): ?>
-                                        <label class="toggle-inline" for="<?php echo htmlspecialchars($key); ?>">
-                                            <input
-                                                type="checkbox"
-                                                id="<?php echo htmlspecialchars($key); ?>"
-                                                name="<?php echo htmlspecialchars($key); ?>"
-                                                value="1"
-                                                <?php echo ((int)$advancedSettingValues[$key] === 1) ? 'checked' : ''; ?>
-                                            >
-                                            Enabled
-                                        </label>
-                                    <?php elseif (($meta['type'] ?? 'text') === 'select'): ?>
-                                        <select
-                                            id="<?php echo htmlspecialchars($key); ?>"
-                                            name="<?php echo htmlspecialchars($key); ?>"
-                                        >
-                                            <?php foreach (($meta['options'] ?? []) as $option): ?>
-                                                <?php
-                                                    $optionValue = is_array($option)
-                                                        ? (string)($option['value'] ?? $option['label'] ?? '')
-                                                        : (string)$option;
-                                                    $optionLabel = is_array($option)
-                                                        ? (string)($option['label'] ?? $option['value'] ?? '')
-                                                        : (string)$option;
-                                                ?>
-                                                <option
-                                                    value="<?php echo htmlspecialchars($optionValue); ?>"
-                                                    <?php echo ((string)$advancedSettingValues[$key] === $optionValue) ? 'selected' : ''; ?>
-                                                >
-                                                    <?php echo htmlspecialchars($optionLabel); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    <?php elseif (($meta['type'] ?? 'text') === 'number'): ?>
-                                        <input
-                                            type="number"
-                                            id="<?php echo htmlspecialchars($key); ?>"
-                                            name="<?php echo htmlspecialchars($key); ?>"
-                                            value="<?php echo (int)$advancedSettingValues[$key]; ?>"
-                                            min="<?php echo (int)($meta['min'] ?? 0); ?>"
-                                            max="<?php echo (int)($meta['max'] ?? 999999); ?>"
-                                        >
-                                    <?php elseif (($meta['type'] ?? 'text') === 'datetime'): ?>
-                                        <input
-                                            type="datetime-local"
-                                            id="<?php echo htmlspecialchars($key); ?>"
-                                            name="<?php echo htmlspecialchars($key); ?>"
-                                            value="<?php echo htmlspecialchars(aasToDateTimeLocalValue((string)$advancedSettingValues[$key])); ?>"
-                                        >
-                                        <?php if ($key === 'registration_open_start' || $key === 'registration_open_end'): ?>
-                                            <small class="server-time-note">
-                                                Current server time (<?php echo htmlspecialchars($registrationTimezoneLabel); ?>):
-                                                <?php echo htmlspecialchars($registrationServerNowLabel); ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    <?php else: ?>
-                                        <textarea
-                                            id="<?php echo htmlspecialchars($key); ?>"
-                                            name="<?php echo htmlspecialchars($key); ?>"
-                                            placeholder="<?php echo htmlspecialchars($meta['placeholder'] ?? ''); ?>"
-                                        ><?php echo htmlspecialchars($advancedSettingValues[$key]); ?></textarea>
-                                    <?php endif; ?>
-
-                                    <small><?php echo htmlspecialchars($meta['help']); ?></small>
-                                </div>
-                            <?php endforeach; ?>
+                        <!-- Section Header -->
+                        <div class="adv-section-header">
+                            <h2><i class="fas fa-cogs"></i> Advanced Admin Controls</h2>
+                            <span class="adv-section-badge">14 Settings</span>
                         </div>
 
-                        <div class="settings-actions">
-                            <button type="submit" name="update_advanced_settings" value="1" class="btn btn-bulk" style="padding:8px 14px; font-size:11px;">
+                        <div class="adv-cards-grid">
+
+                            <!-- ═══════════════════ CARD 1: SECURITY & AUTHENTICATION ═══════════════════ -->
+                            <div class="adv-card">
+                                <div class="adv-card-header">
+                                    <div class="adv-card-icon security"><i class="fas fa-shield-alt"></i></div>
+                                    <div class="adv-card-header-text">
+                                        <h3>Security &amp; Authentication</h3>
+                                        <p>Admin login hardening &amp; lockout policies</p>
+                                    </div>
+                                </div>
+                                <div class="adv-card-body">
+                                    <!-- Enable 2FA -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['enable_admin_2fa']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['enable_admin_2fa']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <label class="adv-toggle" for="enable_admin_2fa">
+                                                <input type="checkbox" id="enable_admin_2fa" name="enable_admin_2fa" value="1" <?php echo ((int)($advancedSettingValues['enable_admin_2fa'] ?? 0) === 1) ? 'checked' : ''; ?>>
+                                                <span class="adv-toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <!-- Password History -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['password_history_count']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['password_history_count']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <input type="number" class="adv-input" id="password_history_count" name="password_history_count" value="<?php echo (int)($advancedSettingValues['password_history_count'] ?? 5); ?>" min="<?php echo (int)($advancedSettings['password_history_count']['min'] ?? 0); ?>" max="<?php echo (int)($advancedSettings['password_history_count']['max'] ?? 24); ?>">
+                                            <span class="adv-input-unit">passwords</span>
+                                        </div>
+                                    </div>
+                                    <!-- Lockout Duration -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['account_lockout_duration_seconds']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['account_lockout_duration_seconds']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <input type="number" class="adv-input" id="account_lockout_duration_seconds" name="account_lockout_duration_seconds" value="<?php echo (int)($advancedSettingValues['account_lockout_duration_seconds'] ?? 900); ?>" min="<?php echo (int)($advancedSettings['account_lockout_duration_seconds']['min'] ?? 60); ?>" max="<?php echo (int)($advancedSettings['account_lockout_duration_seconds']['max'] ?? 86400); ?>">
+                                            <span class="adv-input-unit">seconds</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ═══════════════════ CARD 2: STUDENT ACCESS & REGISTRATION ═══════════════════ -->
+                            <div class="adv-card">
+                                <div class="adv-card-header">
+                                    <div class="adv-card-icon access"><i class="fas fa-user-graduate"></i></div>
+                                    <div class="adv-card-header-text">
+                                        <h3>Student Access &amp; Registration</h3>
+                                        <p>Enrollment rules, email verification &amp; scheduling</p>
+                                    </div>
+                                </div>
+                                <div class="adv-card-body">
+                                    <!-- CvSU Email OTP -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['enforce_student_cvsu_email_verification']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['enforce_student_cvsu_email_verification']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <label class="adv-toggle" for="enforce_student_cvsu_email_verification">
+                                                <input type="checkbox" id="enforce_student_cvsu_email_verification" name="enforce_student_cvsu_email_verification" value="1" <?php echo ((int)($advancedSettingValues['enforce_student_cvsu_email_verification'] ?? 1) === 1) ? 'checked' : ''; ?>>
+                                                <span class="adv-toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <!-- Allowed Domains -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['allowed_email_domains']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['allowed_email_domains']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <textarea class="adv-textarea" id="allowed_email_domains" name="allowed_email_domains" placeholder="<?php echo htmlspecialchars($advancedSettings['allowed_email_domains']['placeholder'] ?? ''); ?>"><?php echo htmlspecialchars($advancedSettingValues['allowed_email_domains'] ?? 'cvsu.edu.ph'); ?></textarea>
+                                        </div>
+                                    </div>
+                                    <!-- Registration Window Start -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['registration_open_start']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['registration_open_start']['help']); ?></p>
+                                            <span class="adv-server-time"><i class="fas fa-clock"></i> Server: <?php echo htmlspecialchars($registrationServerNowLabel); ?></span>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <input type="datetime-local" class="adv-input adv-input-wide" id="registration_open_start" name="registration_open_start" value="<?php echo htmlspecialchars(aasToDateTimeLocalValue((string)($advancedSettingValues['registration_open_start'] ?? ''))); ?>">
+                                        </div>
+                                    </div>
+                                    <!-- Registration Window End -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['registration_open_end']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['registration_open_end']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <input type="datetime-local" class="adv-input adv-input-wide" id="registration_open_end" name="registration_open_end" value="<?php echo htmlspecialchars(aasToDateTimeLocalValue((string)($advancedSettingValues['registration_open_end'] ?? ''))); ?>">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ═══════════════════ CARD 3: WORKFLOW & OPERATIONS ═══════════════════ -->
+                            <div class="adv-card">
+                                <div class="adv-card-header">
+                                    <div class="adv-card-icon workflow"><i class="fas fa-project-diagram"></i></div>
+                                    <div class="adv-card-header-text">
+                                        <h3>Workflow &amp; Operations</h3>
+                                        <p>Approval mechanics, alerts &amp; display defaults</p>
+                                    </div>
+                                </div>
+                                <div class="adv-card-body">
+                                    <!-- Strand Alignment -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['enforce_shift_strand_alignment']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['enforce_shift_strand_alignment']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <label class="adv-toggle" for="enforce_shift_strand_alignment">
+                                                <input type="checkbox" id="enforce_shift_strand_alignment" name="enforce_shift_strand_alignment" value="1" <?php echo ((int)($advancedSettingValues['enforce_shift_strand_alignment'] ?? 0) === 1) ? 'checked' : ''; ?>>
+                                                <span class="adv-toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <!-- Rejection Cooldown -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['rejection_cooldown_days']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['rejection_cooldown_days']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <input type="number" class="adv-input" id="rejection_cooldown_days" name="rejection_cooldown_days" value="<?php echo (int)($advancedSettingValues['rejection_cooldown_days'] ?? 0); ?>" min="<?php echo (int)($advancedSettings['rejection_cooldown_days']['min'] ?? 0); ?>" max="<?php echo (int)($advancedSettings['rejection_cooldown_days']['max'] ?? 365); ?>">
+                                            <span class="adv-input-unit">days</span>
+                                        </div>
+                                    </div>
+                                    <!-- Pending Alert Threshold -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['pending_alert_threshold']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['pending_alert_threshold']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <input type="number" class="adv-input" id="pending_alert_threshold" name="pending_alert_threshold" value="<?php echo (int)($advancedSettingValues['pending_alert_threshold'] ?? 50); ?>" min="<?php echo (int)($advancedSettings['pending_alert_threshold']['min'] ?? 1); ?>" max="<?php echo (int)($advancedSettings['pending_alert_threshold']['max'] ?? 5000); ?>">
+                                            <span class="adv-input-unit">accounts</span>
+                                        </div>
+                                    </div>
+                                    <!-- Default Records Per Page -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['default_records_per_page']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['default_records_per_page']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <input type="number" class="adv-input" id="default_records_per_page" name="default_records_per_page" value="<?php echo (int)($advancedSettingValues['default_records_per_page'] ?? 10); ?>" min="<?php echo (int)($advancedSettings['default_records_per_page']['min'] ?? 5); ?>" max="<?php echo (int)($advancedSettings['default_records_per_page']['max'] ?? 100); ?>">
+                                            <span class="adv-input-unit">rows</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ═══════════════════ CARD 4: DANGER ZONE ═══════════════════ -->
+                            <div class="adv-card danger-zone">
+                                <div class="adv-card-header">
+                                    <div class="adv-card-icon danger"><i class="fas fa-exclamation-triangle"></i></div>
+                                    <div class="adv-card-header-text">
+                                        <h3>Emergency System Controls</h3>
+                                        <p>Critical overrides — handle with caution</p>
+                                    </div>
+                                </div>
+                                <div class="adv-card-body">
+                                    <!-- Freeze Approvals -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['freeze_approvals']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['freeze_approvals']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <label class="adv-toggle danger-toggle" for="freeze_approvals">
+                                                <input type="checkbox" id="freeze_approvals" name="freeze_approvals" value="1" <?php echo ((int)($advancedSettingValues['freeze_approvals'] ?? 0) === 1) ? 'checked' : ''; ?>>
+                                                <span class="adv-toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <!-- Disable Registrations -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['disable_new_registrations']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['disable_new_registrations']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <label class="adv-toggle danger-toggle" for="disable_new_registrations">
+                                                <input type="checkbox" id="disable_new_registrations" name="disable_new_registrations" value="1" <?php echo ((int)($advancedSettingValues['disable_new_registrations'] ?? 0) === 1) ? 'checked' : ''; ?>>
+                                                <span class="adv-toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <!-- Disable Student Logins -->
+                                    <div class="adv-setting-row">
+                                        <div class="adv-setting-label">
+                                            <p class="adv-label-title"><?php echo htmlspecialchars($advancedSettings['disable_student_logins']['label']); ?></p>
+                                            <p class="adv-label-help"><?php echo htmlspecialchars($advancedSettings['disable_student_logins']['help']); ?></p>
+                                        </div>
+                                        <div class="adv-setting-control">
+                                            <label class="adv-toggle danger-toggle" for="disable_student_logins">
+                                                <input type="checkbox" id="disable_student_logins" name="disable_student_logins" value="1" <?php echo ((int)($advancedSettingValues['disable_student_logins'] ?? 0) === 1) ? 'checked' : ''; ?>>
+                                                <span class="adv-toggle-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div><!-- /.adv-cards-grid -->
+
+                        <div class="adv-save-bar">
+                            <button type="submit" name="update_advanced_settings" value="1" class="adv-save-btn">
                                 <i class="fas fa-save"></i> Save Advanced Controls
                             </button>
                         </div>
                     </form>
                 </div>
-            </div>
+        </div>
 
-            <div class="settings-column">
-                <div class="settings-card">
-                    <form method="POST">
-                        <h2><i class="fas fa-check-double"></i> Global Grade Approval</h2>
+        <div class="tab-pane tab-operations active" id="pane-operations-1">
+            <div class="settings-card">
+                <form method="POST">
+                    <h2><i class="fas fa-check-double"></i> Global Grade Approval</h2>
                         <p class="card-note">Instantly approve all pending grades across all students. This action is immediate and cannot be automatically undone. Only grades that have an actual grade submitted will be approved.</p>
                         
                         <div class="settings-actions">
@@ -3248,9 +3860,11 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                         </div>
                     </form>
                 </div>
+        </div>
 
-                <div class="settings-card">
-                    <h2><i class="fas fa-database"></i> Database Backup</h2>
+        <div class="tab-pane tab-data" id="pane-data-1">
+            <div class="settings-card">
+                <h2><i class="fas fa-database"></i> Database Backup</h2>
                     <p class="card-note">Export all system data into a downloadable .sql file for backup or restoration purposes.</p>
                     <div class="settings-actions">
                         <a href="export_database.php" class="btn btn-bulk" style="padding:10px 14px; font-size:13px; background: linear-gradient(135deg, #1f7a2f 0%, #35a44a 100%); color: white; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; width: fit-content;">
@@ -3258,10 +3872,12 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                         </a>
                     </div>
                 </div>
+        </div>
 
-                <div class="settings-card">
-                    <form method="POST" id="settingsForm">
-                        <h2><i class="fas fa-toggle-on"></i> Account Approval Control</h2>
+        <div class="tab-pane tab-operations active" id="pane-operations-2">
+            <div class="settings-card">
+                <form method="POST" id="settingsForm">
+                    <h2><i class="fas fa-toggle-on"></i> Account Approval Control</h2>
                         <p class="card-note">Choose whether student registrations are automatically approved or queued for manual review.</p>
                         <div class="toggle-container">
                             <div class="toggle-info">
@@ -3280,10 +3896,12 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                         <input type="hidden" name="update_setting" value="1">
                     </form>
                 </div>
+        </div>
 
-                <div class="settings-card">
-                    <form method="POST" enctype="multipart/form-data">
-                        <h2><i class="fas fa-file-upload"></i> Authorized Student Masterlist</h2>
+        <div class="tab-pane tab-data" id="pane-data-2">
+            <div class="settings-card">
+                <form method="POST" enctype="multipart/form-data">
+                    <h2><i class="fas fa-file-upload"></i> Authorized Student Masterlist</h2>
                         <p class="card-note">Upload the official CSV authorization list per program. This masterlist controls which students are allowed to create a student account and access the system. It is different from the registered students directory.</p>
 
                         <div class="masterlist-shell">
@@ -3441,10 +4059,12 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                         </div>
                     </form>
                 </div>
+        </div>
 
-                <div class="settings-card">
-                    <form method="POST">
-                        <h2><i class="fas fa-user-shield"></i> Admin Account Security</h2>
+        <div class="tab-pane tab-admin" id="pane-admin-1">
+            <div class="settings-card">
+                <form method="POST">
+                    <h2><i class="fas fa-user-shield"></i> Admin Account Security</h2>
                         <p class="card-note">Update your admin username or password from the same settings workspace. Use your current password to confirm the change.</p>
 
                         <div class="admin-account-shell">
@@ -3541,12 +4161,11 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                         </div>
                     </form>
                 </div>
-            </div>
         </div>
 
-        <!-- Statistics -->
-        <div class="section-heading">
-            <h2><i class="fas fa-chart-bar"></i> Account Overview</h2>
+        <div class="tab-pane tab-operations active" id="pane-operations-3">
+            <div class="section-heading">
+                <h2><i class="fas fa-chart-bar"></i> Account Overview</h2>
             <span>Realtime Snapshot</span>
         </div>
         <div class="stats-grid">
@@ -3640,9 +4259,11 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                 <?php echo aasRenderMiniPagination('shift_page', $shiftCurrentPage, $shiftTotalPages); ?>
             <?php endif; ?>
         </div>
+        </div>
 
-        <div class="section-heading">
-            <h2><i class="fas fa-clipboard-list"></i> Admin Audit Trail</h2>
+        <div class="tab-pane tab-admin" id="pane-admin-2">
+            <div class="section-heading">
+                <h2><i class="fas fa-clipboard-list"></i> Admin Audit Trail</h2>
             <span><?php echo (int)$auditTotalRecords; ?> actions</span>
         </div>
         <div class="settings-card">
@@ -3679,6 +4300,7 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                 </div>
                 <?php echo aasRenderMiniPagination('audit_page', $auditCurrentPage, $auditTotalPages); ?>
             <?php endif; ?>
+        </div>
         </div>
 
     </div>
@@ -4148,6 +4770,32 @@ $masterlistSummaryPage = array_slice($masterlistSummary, ($masterlistCurrentPage
                 }, 300);
             }
         }
+        // Tabbed Navigation Logic
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabPanes = document.querySelectorAll('.tab-pane');
+
+        function activateTab(target) {
+            tabBtns.forEach(btn => btn.classList.remove('active'));
+            tabPanes.forEach(pane => pane.classList.remove('active'));
+            
+            const activeBtn = document.querySelector(`.tab-btn[data-target="${target}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const targetPanes = document.querySelectorAll(`.${target}`);
+            targetPanes.forEach(pane => pane.classList.add('active'));
+            
+            window.location.hash = target;
+        }
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                activateTab(btn.dataset.target);
+            });
+        });
+
+        // Initialize from hash if present, otherwise default to operations
+        const initialTab = window.location.hash ? window.location.hash.substring(1) : 'tab-operations';
+        activateTab(initialTab);
     </script>
 </body>
 </html>

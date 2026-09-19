@@ -529,6 +529,8 @@ if (!function_exists('smlUpsertMasterlistStudent')) {
             return false;
         }
 
+        $program = smlCanonicalProgramLabel($program);
+
         smlEnsureMasterlistTable($conn);
 
         $mi = smlExtractMiddleInitial((string) $middleInitial);

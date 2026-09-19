@@ -534,30 +534,8 @@ try {
   // ignore
 }
 
-$studentShellPayload = htmlspecialchars(json_encode([
-    'title' => 'Checklist Workspace',
-    'description' => 'Review your course checklist, encode grades, and monitor evaluation remarks with the existing PHP saving flow still in place behind the page.',
-    'accent' => 'slate',
-    'pageKey' => 'checklist',
-    'stats' => [
-        ['label' => 'Program View', 'value' => (string)($selected_program_view !== '' ? $selected_program_view : 'Current')],
-        ['label' => 'Courses', 'value' => (string)count($all_courses)],
-        ['label' => 'Pages', 'value' => (string)$total_pages],
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
 
-$studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
-    'title' => 'Checklist Control Deck',
-    'note' => 'Navigate checklist pages, jump into archived checklist views, and use the existing print flow without disturbing the current grade-encoding and autosave logic.',
-    'programLabel' => (string)($selected_program_label !== '' ? $selected_program_label : 'Current Program'),
-    'stats' => [
-        ['label' => 'Student ID', 'value' => (string)$student_id],
-        ['label' => 'Program View', 'value' => (string)($selected_program_view !== '' ? $selected_program_view : 'Current')],
-        ['label' => 'Courses', 'value' => (string)count($all_courses)],
-    ],
-    'initialPage' => 1,
-    'totalPages' => (int)$total_pages,
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+
 ?>
 
 <!DOCTYPE html>
@@ -1793,7 +1771,7 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
         box-shadow: none;
     }
     </style>
-    <?= renderLegacyViteTags(['resources/js/student-shell.jsx', 'resources/js/student-checklist-workspace.jsx']) ?>
+
     <script>
         const originalPrint = window.print;
         window.print = function() {
@@ -1849,8 +1827,8 @@ $studentChecklistWorkspacePayload = htmlspecialchars(json_encode([
 
   <!-- Main Content -->
   <div class="main-content" id="mainContent">
-    <div data-student-shell="<?= $studentShellPayload ?>"></div>
-    <div data-student-checklist-workspace="<?= $studentChecklistWorkspacePayload ?>"></div>
+
+
     <div class="content-wrapper">
       <div class="container">
         <div class="header">
